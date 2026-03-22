@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuVision - Intelligent Document Processing System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Bar -->
+        <header class="top-nav">
+            <div class="nav-left">
+                <div class="logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span class="logo-text">DocuVision</span>
+                    <span class="logo-subtitle">Intelligent Document Processing</span>
+                </div>
+            </div>
+            <div class="nav-center">
+                <div class="nav-tabs">
+                    <button class="nav-tab active" data-tab="process">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v10M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h10M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"></path>
+                        </svg>
+                        Document Processing
+                    </button>
+                    <button class="nav-tab" data-tab="batch">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        Batch Processing
+                    </button>
+                    <button class="nav-tab" data-tab="templates">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        Templates
+                    </button>
+                    <button class="nav-tab" data-tab="history">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        History
+                    </button>
+                </div>
+            </div>
+            <div class="nav-right">
+                <button class="icon-btn" title="Settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+                <button class="icon-btn" title="Help">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Left Panel - File Management -->
+            <aside class="left-panel">
+                <div class="panel-section upload-section">
+                    <h3 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Upload Document
+                    </h3>
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="12" y1="18" x2="12" y2="12"></line>
+                                <line x1="9" y1="15" x2="12" y2="12"></line>
+                                <line x1="15" y1="15" x2="12" y2="12"></line>
+                            </svg>
+                        </div>
+                        <p class="upload-text">Drop files here</p>
+                        <p class="upload-hint">or click to browse</p>
+                        <p class="upload-formats">Supports PDF, PNG, JPG, TIFF</p>
+                        <input type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif" hidden>
+                    </div>
+                </div>
+
+                <div class="panel-section queue-section">
+                    <h3 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        Processing Queue
+                        <span class="queue-count">0</span>
+                    </h3>
+                    <div class="queue-list" id="queueList">
+                        <!-- Queue items will be added dynamically -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center Panel - Document Preview -->
+            <section class="center-panel">
+                <div class="preview-header">
+                    <div class="action-buttons">
+                        <button class="action-btn primary" id="runAnalysisBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Run Analysis
+                        </button>
+                        <button class="action-btn" id="analysisOptionsBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                            Analysis Options
+                        </button>
+                    </div>
+                </div>
+                <div class="preview-container" id="previewContainer">
+                    <div class="document-page" id="documentPage">
+                        <!-- Document content will be populated by JavaScript after initialization -->
+                    </div>
+                </div>
+                <div class="preview-pagination">
+                    <div class="page-display-container">
+                        <button class="page-btn" id="prevPage">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <div class="page-info">
+                            <input type="number" value="1" min="1" max="1" class="page-input">
+                            <span class="page-total">/ 1</span>
+                        </div>
+                        <button class="page-btn" id="nextPage">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel - Results Display -->
+            <aside class="right-panel" id="rightPanel">
+                <!-- Resize handle -->
+                <div class="panel-resize-handle" id="panelResizeHandle"></div>
+                
+                <div class="result-header">
+                    <h3 class="result-title">Processing Results</h3>
+                    <div class="result-main-tabs">
+                        <button class="result-main-tab active" data-main-tab="content">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                                <line x1="9" y1="3" x2="9" y2="21"></line>
+                            </svg>
+                            Content
+                        </button>
+                        <button class="result-main-tab" data-main-tab="result">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                            Result
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Content View -->
+                <div class="result-main-view active" id="contentView">
+                    <div class="content-sub-tabs">
+                        <button class="content-sub-tab active" data-content="text">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                                <line x1="9" y1="20" x2="15" y2="20"></line>
+                                <line x1="12" y1="4" x2="12" y2="20"></line>
+                            </svg>
+                            Text
+                        </button>
+                        <button class="content-sub-tab" data-content="tables">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                                <line x1="3" y1="15" x2="21" y2="15"></line>
+                                <line x1="9" y1="3" x2="9" y2="21"></line>
+                                <line x1="15" y1="3" x2="15" y2="21"></line>
+                            </svg>
+                            Tables
+                        </button>
+                        <button class="content-sub-tab" data-content="figures">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                            Figures
+                        </button>
+                    </div>
+                    
+                    <!-- Content sub-views -->
+                    <div class="content-view active" id="contentTextView">
+                        <div class="text-toolbar">
+                            <button class="text-tool-btn active" title="Plain Text">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="17" y1="10" x2="3" y2="10"></line>
+                                    <line x1="21" y1="6" x2="3" y2="6"></line>
+                                    <line x1="21" y1="14" x2="3" y2="14"></line>
+                                    <line x1="17" y1="18" x2="3" y2="18"></line>
+                                </svg>
+                            </button>
+                            <button class="text-tool-btn" title="Copy">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="text-content" id="contentTextContent">
+                            <!-- Text content will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="content-view" id="contentTablesView">
+                        <div class="table-list" id="contentTableList">
+                            <!-- Tables will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="content-view" id="contentFiguresView">
+                        <div class="figures-list" id="contentFiguresList">
+                            <!-- Figures will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Result View (JSON) -->
+                <div class="result-main-view" id="resultView">
+                    <div class="result-view-toolbar">
+                        <button class="result-tool-btn" id="copyJsonBtn" title="Copy JSON">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy
+                        </button>
+                        <button class="result-tool-btn" id="downloadJsonBtn" title="Download JSON">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="result-json-content" id="resultJsonContent">
+                        <pre class="json-viewer"><code id="jsonCode">No result data available</code></pre>
+                    </div>
+                </div>
+                
+                <!-- Legacy views (kept for backward compatibility, will be hidden) -->
+                <div class="result-content" id="resultContent" style="display: none;">
+
+                <div class="result-content" id="resultContent">
+                    <!-- Structure View -->
+                    <div class="result-view active" id="structureView">
+                        <div class="structure-tree">
+                            <div class="tree-item expanded">
+                                <div class="tree-item-header">
+                                    <span class="tree-toggle">▼</span>
+                                    <span class="tree-icon header-icon">📄</span>
+                                    <span class="tree-label">Document Structure</span>
+                                    <span class="tree-count">12 elements</span>
+                                </div>
+                                <div class="tree-children">
+                                    <div class="tree-item">
+                                        <div class="tree-item-header">
+                                            <span class="tree-icon">🏷️</span>
+                                            <span class="tree-label">Header</span>
+                                            <span class="tree-badge header-badge">Header</span>
+                                        </div>
+                                    </div>
+                                    <div class="tree-item expanded">
+                                        <div class="tree-item-header">
+                                            <span class="tree-toggle">▼</span>
+                                            <span class="tree-icon">📝</span>
+                                            <span class="tree-label">Titles (3)</span>
+                                            <span class="tree-badge title-badge">Title</span>
+                                        </div>
+                                        <div class="tree-children">
+                                            <div class="tree-item">
+                                                <div class="tree-item-header clickable" data-region="title-1">
+                                                    <span class="tree-icon">•</span>
+                                                    <span class="tree-label">1. Company Overview</span>
+                                                </div>
+                                            </div>
+                                            <div class="tree-item">
+                                                <div class="tree-item-header clickable" data-region="title-2">
+                                                    <span class="tree-icon">•</span>
+                                                    <span class="tree-label">2. Financial Summary</span>
+                                                </div>
+                                            </div>
+                                            <div class="tree-item">
+                                                <div class="tree-item-header clickable" data-region="title-3">
+                                                    <span class="tree-icon">•</span>
+                                                    <span class="tree-label">3. Main Products</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="tree-item">
+                                        <div class="tree-item-header">
+                                            <span class="tree-icon">📋</span>
+                                            <span class="tree-label">Paragraphs (3)</span>
+                                            <span class="tree-badge paragraph-badge">Paragraph</span>
+                                        </div>
+                                    </div>
+                                    <div class="tree-item">
+                                        <div class="tree-item-header">
+                                            <span class="tree-icon">📊</span>
+                                            <span class="tree-label">Tables (1)</span>
+                                            <span class="tree-badge table-badge">Table</span>
+                                        </div>
+                                    </div>
+                                    <div class="tree-item">
+                                        <div class="tree-item-header">
+                                            <span class="tree-icon">📑</span>
+                                            <span class="tree-label">Lists (1)</span>
+                                            <span class="tree-badge list-badge">List</span>
+                                        </div>
+                                    </div>
+                                    <div class="tree-item">
+                                        <div class="tree-item-header">
+                                            <span class="tree-icon">🖼️</span>
+                                            <span class="tree-label">Images (1)</span>
+                                            <span class="tree-badge figure-badge">Figure</span>
+                                        </div>
+                                    </div>
+                                    <div class="tree-item">
+                                        <div class="tree-item-header">
+                                            <span class="tree-icon">🏷️</span>
+                                            <span class="tree-label">Footer</span>
+                                            <span class="tree-badge footer-badge">Footer</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Text View -->
+                    <div class="result-view" id="textView">
+                        <div class="text-toolbar">
+                            <button class="text-tool-btn active" title="Plain Text">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="17" y1="10" x2="3" y2="10"></line>
+                                    <line x1="21" y1="6" x2="3" y2="6"></line>
+                                    <line x1="21" y1="14" x2="3" y2="14"></line>
+                                    <line x1="17" y1="18" x2="3" y2="18"></line>
+                                </svg>
+                            </button>
+                            <button class="text-tool-btn" title="Markdown">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                                </svg>
+                            </button>
+                            <button class="text-tool-btn" title="Copy">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="text-content">
+                            <div class="text-block">
+                                <div class="text-block-header">
+                                    <span class="block-type">Title</span>
+                                    <span class="block-confidence">Confidence: 98.5%</span>
+                                </div>
+                                <p class="text-block-content">TechCorp Industries Ltd.</p>
+                            </div>
+                            <div class="text-block">
+                                <div class="text-block-header">
+                                    <span class="block-type">Subtitle</span>
+                                    <span class="block-confidence">Confidence: 97.2%</span>
+                                </div>
+                                <p class="text-block-content">Annual Financial Report 2024</p>
+                            </div>
+                            <div class="text-block">
+                                <div class="text-block-header">
+                                    <span class="block-type">Section Title</span>
+                                    <span class="block-confidence">Confidence: 99.1%</span>
+                                </div>
+                                <p class="text-block-content">1. Company Overview</p>
+                            </div>
+                            <div class="text-block">
+                                <div class="text-block-header">
+                                    <span class="block-type">Paragraph</span>
+                                    <span class="block-confidence">Confidence: 96.8%</span>
+                                </div>
+                                <p class="text-block-content">TechCorp Industries Ltd. was established in 2015 as a high-tech enterprise focusing on artificial intelligence technology research and development. The company headquarters is located in Silicon Valley Technology Park, with R&D centers in New York and London.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table View -->
+                    <div class="result-view" id="tableView">
+                        <div class="table-list">
+                            <div class="table-card">
+                                <div class="table-card-header">
+                                    <span class="table-name">Table 1: Financial Summary</span>
+                                    <div class="table-actions">
+                                        <button class="table-action-btn" title="Edit">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                        </button>
+                                        <button class="table-action-btn" title="Export CSV">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="7 10 12 15 17 10"></polyline>
+                                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="table-preview">
+                                    <table class="extracted-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Item</th>
+                                                <th>2024</th>
+                                                <th>2023</th>
+                                                <th>Growth</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Revenue</td>
+                                                <td>$52.8M</td>
+                                                <td>$41.5M</td>
+                                                <td>+27.2%</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Net Profit</td>
+                                                <td>$8.92M</td>
+                                                <td>$6.80M</td>
+                                                <td>+31.2%</td>
+                                            </tr>
+                                            <tr>
+                                                <td>R&D Investment</td>
+                                                <td>$10.56M</td>
+                                                <td>$8.30M</td>
+                                                <td>+27.2%</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Extract View -->
+                    <div class="result-view" id="extractView">
+                        <div class="extract-summary">
+                            <div class="extract-card">
+                                <div class="extract-card-header">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    <span>Company Name</span>
+                                </div>
+                                <div class="extract-card-value">TechCorp Industries Ltd.</div>
+                            </div>
+                            <div class="extract-card">
+                                <div class="extract-card-header">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    <span>Report Year</span>
+                                </div>
+                                <div class="extract-card-value">2024</div>
+                            </div>
+                            <div class="extract-card">
+                                <div class="extract-card-header">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    <span>Revenue</span>
+                                </div>
+                                <div class="extract-card-value highlight">$52.8M</div>
+                            </div>
+                            <div class="extract-card">
+                                <div class="extract-card-header">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                        <polyline points="17 6 23 6 23 12"></polyline>
+                                    </svg>
+                                    <span>Net Profit</span>
+                                </div>
+                                <div class="extract-card-value highlight">$8.92M</div>
+                            </div>
+                        </div>
+                        <!-- P2: Keywords Section -->
+                        <div class="keywords-section">
+                            <h4 class="keywords-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                Extracted Keywords
+                                <span class="p2-badge">NLP</span>
+                            </h4>
+                            <div class="keywords-list" id="keywordsList">
+                                <span class="keyword-tag" data-score="0.92">Artificial Intelligence</span>
+                                <span class="keyword-tag" data-score="0.85">High-tech</span>
+                                <span class="keyword-tag" data-score="0.78">R&D</span>
+                                <span class="keyword-tag" data-score="0.72">Financial Report</span>
+                                <span class="keyword-tag" data-score="0.68">Revenue</span>
+                                <span class="keyword-tag" data-score="0.65">Net Profit</span>
+                            </div>
+                        </div>
+
+                        <!-- P2: Named Entities Section -->
+                        <div class="entities-section">
+                            <h4 class="entities-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                Named Entities
+                                <span class="p2-badge">NER</span>
+                            </h4>
+                            <div class="entities-list" id="entitiesList">
+                                <div class="entity-group">
+                                    <span class="entity-label org">ORG</span>
+                                    <div class="entity-items">
+                                        <span class="entity-tag">TechCorp Industries Ltd.</span>
+                                    </div>
+                                </div>
+                                <div class="entity-group">
+                                    <span class="entity-label loc">LOC</span>
+                                    <div class="entity-items">
+                                        <span class="entity-tag">Silicon Valley</span>
+                                        <span class="entity-tag">New York</span>
+                                        <span class="entity-tag">London</span>
+                                    </div>
+                                </div>
+                                <div class="entity-group">
+                                    <span class="entity-label date">DATE</span>
+                                    <div class="entity-items">
+                                        <span class="entity-tag">2015</span>
+                                        <span class="entity-tag">2024</span>
+                                        <span class="entity-tag">2023</span>
+                                    </div>
+                                </div>
+                                <div class="entity-group">
+                                    <span class="entity-label money">MONEY</span>
+                                    <div class="entity-items">
+                                        <span class="entity-tag">$52.8M</span>
+                                        <span class="entity-tag">$8.92M</span>
+                                        <span class="entity-tag">$10.56M</span>
+                                    </div>
+                                </div>
+                                <div class="entity-group">
+                                    <span class="entity-label percent">PERCENT</span>
+                                    <div class="entity-items">
+                                        <span class="entity-tag">27.2%</span>
+                                        <span class="entity-tag">31.2%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- P2: Template Extraction Section -->
+                        <div class="template-extraction-section">
+                            <h4 class="template-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                                </svg>
+                                Template Match
+                                <span class="p2-badge">Template</span>
+                            </h4>
+                            <div class="template-match-info" id="templateMatchInfo">
+                                <div class="template-match-card">
+                                    <span class="match-icon">📄</span>
+                                    <div class="match-details">
+                                        <span class="match-name">Financial Report</span>
+                                        <span class="match-score">Confidence: 87%</span>
+                                    </div>
+                                </div>
+                                <div class="template-fields" id="templateFields">
+                                    <div class="field-item">
+                                        <span class="field-label">Company Name</span>
+                                        <span class="field-value">TechCorp Industries Ltd.</span>
+                                        <span class="field-confidence">✓ 98%</span>
+                                    </div>
+                                    <div class="field-item">
+                                        <span class="field-label">Report Year</span>
+                                        <span class="field-value">2024</span>
+                                        <span class="field-confidence">✓ 95%</span>
+                                    </div>
+                                    <div class="field-item">
+                                        <span class="field-label">Total Revenue</span>
+                                        <span class="field-value">$52.8M</span>
+                                        <span class="field-confidence">✓ 92%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="export-section">
+                    <h4 class="export-title">Export Results</h4>
+                    <div class="export-buttons">
+                        <button class="export-btn" data-format="json">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            JSON
+                        </button>
+                        <button class="export-btn" data-format="csv">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                                <line x1="9" y1="21" x2="9" y2="9"></line>
+                            </svg>
+                            CSV
+                        </button>
+                        <button class="export-btn" data-format="markdown">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                            Markdown
+                        </button>
+                        <button class="export-btn" data-format="docx">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            Word
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Bottom Status Bar -->
+        <footer class="status-bar">
+            <div class="status-left">
+                <span class="status-item">
+                    <span class="status-dot online"></span>
+                    System Ready
+                </span>
+                <span class="status-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    <span id="activeEngine">PaddleOCR v2.7</span>
+                </span>
+            </div>
+            <div class="status-center">
+                <div class="status-default" id="statusDefault">
+                    Ready to process documents
+                </div>
+                <div class="status-processing" id="statusProcessing" style="display: none;">
+                    <span class="processing-step">Analyzing...</span>
+                </div>
+                <div class="status-completed" id="statusCompleted" style="display: none;">
+                    <span class="completed-icon">✓</span>
+                    <span class="completed-text">Processing completed</span>
+                </div>
+            </div>
+            <div class="status-right">
+                <span class="status-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Memory: 2.1GB / 8GB
+                </span>
+                <span class="status-item">
+                    v1.0.0
+                </span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Analysis Options Dialog -->
+    <div class="modal" id="analysisOptionsModal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>Analysis Options</h3>
+                <button class="modal-close" id="closeAnalysisOptionsBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-tabs">
+                    <button class="modal-tab active" data-tab="processing">Processing</button>
+                    <button class="modal-tab" data-tab="engines">Engines</button>
+                    <button class="modal-tab" data-tab="advanced">Advanced</button>
+                </div>
+                
+                <!-- Processing Tab -->
+                <div class="modal-tab-content active" id="processingTab">
+                    <div class="options-list">
+                        <label class="option-item">
+                            <input type="checkbox" id="optLayout" checked>
+                            <span class="checkbox-custom"></span>
+                            <span class="option-label">Layout Analysis</span>
+                            <span class="option-badge">Core</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" id="optOCR" checked>
+                            <span class="checkbox-custom"></span>
+                            <span class="option-label">OCR Recognition</span>
+                            <span class="option-badge">Core</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" id="optTable" checked>
+                            <span class="checkbox-custom"></span>
+                            <span class="option-label">Table Extraction</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" id="optFormula">
+                            <span class="checkbox-custom"></span>
+                            <span class="option-label">Formula Recognition</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" id="optStamp">
+                            <span class="checkbox-custom"></span>
+                            <span class="option-label">Stamp Detection</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" id="optNLP">
+                            <span class="checkbox-custom"></span>
+                            <span class="option-label">NLP Analysis</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" id="optTemplate">
+                            <span class="checkbox-custom"></span>
+                            <span class="option-label">Template Matching</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Engines Tab -->
+                <div class="modal-tab-content" id="enginesTab">
+                    <div class="engine-selector">
+                        <label class="engine-label">OCR Engine</label>
+                        <select class="engine-select" id="dialogOcrEngineSelect">
+                            <option value="paddleocr" selected>PaddleOCR (Recommended)</option>
+                            <option value="tesseract">Tesseract OCR (Fallback)</option>
+                            <option value="easyocr">EasyOCR</option>
+                        </select>
+                    </div>
+                    <div class="engine-selector">
+                        <label class="engine-label">Layout Engine</label>
+                        <select class="engine-select" id="dialogLayoutEngineSelect">
+                            <option value="ppstructure" selected>PP-StructureV2 (Recommended)</option>
+                            <option value="layoutparser">LayoutParser (Fallback)</option>
+                        </select>
+                    </div>
+                    <div class="engine-selector">
+                        <label class="engine-label">NLP Engine</label>
+                        <select class="engine-select" id="dialogNlpEngineSelect">
+                            <option value="spacy" selected>spaCy (Recommended)</option>
+                            <option value="hanlp">HanLP</option>
+                            <option value="simple">Simple (Regex)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Advanced Tab -->
+                <div class="modal-tab-content" id="advancedTab">
+                    <div class="template-selector" id="dialogTemplateSelector" style="display: none;">
+                        <label class="template-label">Select Template</label>
+                        <select class="template-select" id="dialogTemplateSelect">
+                            <option value="">-- Select Preset Template --</option>
+                            <option value="invoice">📄 VAT Invoice</option>
+                            <option value="receipt">🧾 Receipt</option>
+                            <option value="id_card">🪪 ID Card</option>
+                            <option value="business_card">💼 Business Card</option>
+                            <option value="custom">✨ Custom Template...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary" id="resetOptionsBtn">Reset to Defaults</button>
+                <button class="modal-btn secondary" id="cancelOptionsBtn">Cancel</button>
+                <button class="modal-btn primary" id="saveOptionsBtn">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Progress Card -->
+    <div class="floating-progress-card" id="floatingProgressCard" style="display: none;">
+        <div class="floating-card-header">
+            <div class="floating-card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span class="floating-card-filename">Processing document...</span>
+            </div>
+            <button class="floating-card-close" id="closeFloatingCardBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="floating-card-body">
+            <div class="floating-card-step" id="floatingCardStep">Initializing...</div>
+            <div class="floating-card-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="floatingCardProgressFill" style="width: 0%"></div>
+                </div>
+                <span class="progress-text" id="floatingCardProgressText">0%</span>
+            </div>
+        </div>
+        <div class="floating-card-footer">
+            <button class="floating-card-cancel" id="cancelFloatingCardBtn">Cancel</button>
+        </div>
+    </div>
+
+    <script src="layout-annotation.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

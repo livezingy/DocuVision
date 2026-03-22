@@ -1,0 +1,35 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Markdown: keep trailing whitespace for intentional breaks
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = 80
+
+# Python
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+charset = utf-8
+
+# JavaScript / TypeScript / JSON / HTML / CSS
+[*.{js,jsx,ts,tsx,json,html,css}]
+indent_style = space
+indent_size = 2
+
+# YAML
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Makefiles must use tabs
+[Makefile]
+indent_style = tab

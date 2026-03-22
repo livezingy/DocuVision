@@ -1,0 +1,4549 @@
+/**
+ * DocuVision - Intelligent Document Processing System
+ * Frontend Interaction Script
+ */
+
+// API Base URL (auto-adapt for local and cloud deployments)
+function normalizeApiBaseUrl(baseUrl) {
+    const trimmed = (baseUrl || '').trim().replace(/\/+$/, '');
+    if (!trimmed) return '/api/v1';
+    return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+}
+
+function resolveApiBaseUrl() {
+    // Optional override via global config: window.DOCUVISION_CONFIG.API_BASE_URL
+    if (window.DOCUVISION_CONFIG && typeof window.DOCUVISION_CONFIG.API_BASE_URL === 'string') {
+        return normalizeApiBaseUrl(window.DOCUVISION_CONFIG.API_BASE_URL);
+    }
+
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
+    if (isLocal) {
+        return 'http://localhost:8000/api/v1';
+    }
+
+    // Cloud/staging friendly: infer proxy prefix from current path when '/frontend' is present.
+    const path = window.location.pathname || '/';
+    const prefix = path.includes('/frontend') ? path.split('/frontend')[0] : '';
+    return `${window.location.origin}${prefix}/api/v1`;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
+const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, '');
+
+// Status bar throttling and filtering with queue mechanism
+let statusUpdateQueue = [];
+let isProcessingQueue = false;
+let lastStatusMessage = '';
+let lastStatusUpdateTime = 0;
+const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
+
+/**
+ * Check if a status message should be displayed
+ * Show all processing steps and completions for real-time feedback
+ */
+function shouldDisplayStatus(message) {
+    if (!message) return false;
+
+    const msg = message.toLowerCase();
+
+    // Always show key statuses
+    if (msg.includes('initializing')) return true;
+    if (msg.includes('trying')) return true;
+    if (msg.includes('completed')) return true; // Show all completions
+    if (msg.includes('processing')) return true;
+    if (msg.includes('failed')) return true;
+    if (msg.includes('cancelled')) return true;
+
+    // Show everything else by default (changed from false to true)
+    // This ensures all processing steps are visible in real-time
+    return true;
+}
+
+/**
+ * Process status update queue
+ * Ensures each key status is displayed with proper timing
+ */
+function processStatusQueue() {
+    if (statusUpdateQueue.length === 0) {
+        isProcessingQueue = false;
+        return;
+    }
+
+    isProcessingQueue = true;
+    const { status, data, message, isImmediate } = statusUpdateQueue.shift();
+
+    // Update status bar immediately
+    updateStatusBar(status, data);
+
+    // Update tracking variables
+    lastStatusMessage = message;
+    lastStatusUpdateTime = Date.now();
+
+    // Schedule next item
+    if (statusUpdateQueue.length > 0) {
+        // Use shorter delay for faster updates
+        const delay = isImmediate ? 100 : STATUS_UPDATE_MIN_INTERVAL;
+        setTimeout(() => {
+            processStatusQueue();
+        }, delay);
+    } else {
+        isProcessingQueue = false;
+    }
+}
+
+/**
+ * Throttled status bar update with queue mechanism
+ * Ensures all key statuses are displayed in order without being lost
+ */
+function updateStatusBarThrottled(status, data, isImmediate = false) {
+    const message = data.step || '';
+
+    // Check if this is a key status that should be displayed
+    if (!shouldDisplayStatus(message)) {
+        return; // Skip non-key statuses
+    }
+
+    // If same as last displayed message, skip (unless it's immediate)
+    // But allow different messages even if they contain similar content
+    if (message === lastStatusMessage && !isImmediate) {
+        return;
+    }
+
+    // Don't skip if message is already in queue - allow updates even if similar
+    // This ensures all processing steps are visible
+
+    // Add to queue
+    statusUpdateQueue.push({ status, data, message, isImmediate });
+
+    // Debug log
+    console.log(`[Queue] Added to queue: ${message.substring(0, 50)}... (Queue length: ${statusUpdateQueue.length}, Processing: ${isProcessingQueue})`);
+
+    // Start processing queue if not already processing
+    // CRITICAL FIX: Process first item immediately, don't wait
+    // This ensures the first status is shown right away
+    if (!isProcessingQueue) {
+        console.log(`[Queue] Starting queue processing...`);
+        processStatusQueue();
+    }
+}
+
+/**
+ * Clear status update queue
+ * Used when we need to reset the queue (e.g., on error)
+ */
+function clearStatusQueue() {
+    statusUpdateQueue = [];
+    isProcessingQueue = false;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Clear any existing results on page load
+    clearResultsDisplay();
+
+    // Initialize status bar
+    updateStatusBar();
+
+    // Check API connection
+    initializeAPIConnection();
+
+    initUploadZone();
+    initTabs();
+    initResultTabs();
+    initActionButtons();
+    initAnalysisOptionsDialog();
+    initTreeToggle();
+    initTemplateSelector();
+    initAnalysisView();
+    initExportButtons();
+    initBatchProcessing();
+    initNLPFeatures();
+
+    // Insert a lightweight skeleton placeholder to avoid initial flash
+    if (typeof insertInitialSkeleton === 'function') {
+        insertInitialSkeleton();
+    }
+});
+
+
+
+/**
+ * Initialize API connection and check server status
+ */
+async function initializeAPIConnection() {
+    try {
+        console.log('[Init] Checking API connection to:', API_BASE_URL);
+
+        // First check the health endpoint
+        const healthResponse = await fetch(API_ROOT_URL + '/health', {
+            timeout: 3000
+        });
+
+        if (!healthResponse.ok) {
+            console.warn('[Init] Health check failed with status:', healthResponse.status);
+            updateStatusBar('warning', {
+                step: 'Server connection weak - some features may not work properly'
+            });
+            return;
+        }
+
+        // Get server info
+        const infoResponse = await fetch(API_ROOT_URL, {
+            timeout: 3000
+        });
+
+        if (!infoResponse.ok) {
+            console.warn('[Init] Could not fetch server info');
+            updateStatusBar('warning', {
+                step: 'Server connection established but version info unavailable'
+            });
+            return;
+        }
+
+        const serverInfo = await infoResponse.json();
+        console.log('[Init] Server info:', serverInfo);
+        console.log('[Init] ✓ API connection successful - ' + serverInfo.name + ' v' + serverInfo.version);
+
+        // Show brief success message
+        updateStatusBar('success', {
+            step: '✓ API Connected: ' + serverInfo.name + ' v' + serverInfo.version
+        });
+
+    } catch (error) {
+        console.error('[Init] Failed to connect to API:', error);
+        updateStatusBar('error', {
+            step: `⚠ Server not responding - check backend: ${API_ROOT_URL}`
+        });
+
+        // Show alert to user
+        const uploadZone = document.getElementById('uploadZone');
+        if (uploadZone) {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.3);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                color: #ff6b6b;
+                padding: 16px;
+                text-align: center;
+                z-index: 10;
+            `;
+            overlay.innerHTML = '⚠ Server not responding<br/>Make sure backend is running';
+            uploadZone.parentElement.style.position = 'relative';
+            uploadZone.parentElement.appendChild(overlay);
+        }
+    }
+}
+
+function insertInitialSkeleton() {
+    const container = document.getElementById('documentPage');
+    if (!container) return;
+    const skeleton = document.createElement('div');
+    skeleton.className = 'empty-skeleton';
+    skeleton.innerHTML = `
+        <div class="s-line title"></div>
+        <div class="s-line subtitle"></div>
+        <div class="s-block"></div>
+    `;
+    container.innerHTML = '';
+    container.appendChild(skeleton);
+}
+
+/**
+ * Initialize file upload zone
+ */
+function initUploadZone() {
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+
+    // Click to upload
+    uploadZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // File selection
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    // Drag and drop
+    uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+}
+
+/**
+ * Handle uploaded files
+ */
+function handleFiles(files) {
+    const queueList = document.getElementById('queueList');
+    const queueCount = document.querySelector('.queue-count');
+
+    let addedCount = 0;
+
+    Array.from(files).forEach((file, index) => {
+        // Validate file type
+        const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/tiff'];
+        const isValid = validTypes.some(type => file.type.includes(type.split('/')[1])) ||
+                        file.name.toLowerCase().endsWith('.pdf') ||
+                        file.name.toLowerCase().endsWith('.png') ||
+                        file.name.toLowerCase().endsWith('.jpg') ||
+                        file.name.toLowerCase().endsWith('.jpeg') ||
+                        file.name.toLowerCase().endsWith('.tiff') ||
+                        file.name.toLowerCase().endsWith('.tif');
+
+        if (!isValid) {
+            showNotification(`File "${file.name}" format not supported`, 'error');
+            return;
+        }
+
+        // Create queue item
+        const queueItem = createQueueItem(file.name, file);
+        queueList.appendChild(queueItem);
+        addedCount++;
+
+        // Display the first file automatically, or if queue was empty before
+        const existingItems = queueList.querySelectorAll('.queue-item');
+        if (index === 0 || existingItems.length === 1) {
+            // Automatically switch to the first file or newly added file
+            switchToQueueItem(queueItem);
+        }
+
+        // Update queue count
+        const count = queueList.querySelectorAll('.queue-item').length;
+        queueCount.textContent = count;
+    });
+
+    if (addedCount > 0) {
+        showNotification(`Added ${addedCount} file(s) to processing queue`, 'success');
+    }
+}
+
+/**
+ * Create queue item element
+ */
+function createQueueItem(fileName, file = null, taskId = null) {
+    const item = document.createElement('div');
+    item.className = 'queue-item pending';
+    item.dataset.fileName = fileName;
+    if (file) {
+        item.file = file;
+    }
+    if (taskId) {
+        item.dataset.taskId = taskId;
+    }
+
+    item.innerHTML = `
+        <div class="queue-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+        </div>
+        <div class="queue-item-info">
+            <span class="queue-item-name">${fileName}</span>
+            <span class="queue-item-status">Waiting</span>
+        </div>
+        <button class="queue-item-action" title="Remove">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        </button>
+    `;
+
+    // Add click event to switch documents (except when clicking the action button)
+    item.addEventListener('click', (e) => {
+        // Don't switch if clicking the action button
+        if (e.target.closest('.queue-item-action')) {
+            return;
+        }
+
+        // Switch to the clicked queue item
+        switchToQueueItem(item);
+    });
+
+    // Remove/Cancel button event
+    const actionBtn = item.querySelector('.queue-item-action');
+    if (actionBtn) {
+    actionBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+
+        const isProcessing = item.className.includes('processing');
+        const isPending = item.className.includes('pending');
+        const isCompleted = item.className.includes('completed');
+        const isCancelled = item.className.includes('cancelled');
+        const isQueued = item.className.includes('queued');
+
+        if (isProcessing && item.dataset.taskId) {
+            // Cancel running task
+            try {
+                const response = await fetch(`${API_BASE_URL}/tasks/${item.dataset.taskId}/cancel`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    showNotification('Task cancelled', 'info');
+                    // Stop polling if active
+                    if (item.pollInterval) {
+                        clearInterval(item.pollInterval);
+                        item.pollInterval = null;
+                    }
+                    // Update UI immediately
+                    item.classList.remove('processing');
+                    item.classList.add('cancelled');
+                    const statusEl = item.querySelector('.queue-item-status');
+                        if (statusEl) {
+                    statusEl.textContent = 'Cancelled';
+                        }
+                    const icon = item.querySelector('.queue-item-icon');
+                        if (icon) {
+                    icon.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                    `;
+                        }
+                    actionBtn.title = 'Remove';
+                    actionBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    `;
+                } else {
+                    showNotification('Failed to cancel task', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to cancel task:', error);
+                showNotification('Failed to cancel task', 'error');
+            }
+        } else if (isCompleted || isCancelled || isPending || isQueued) {
+            // Use centralized deletion handler
+            handleQueueItemDeletion(item);
+        }
+    });
+    } else {
+        console.warn('Action button not found in queue item');
+    }
+
+    return item;
+}
+
+/**
+ * Handle queue item deletion
+ */
+async function handleQueueItemDeletion(item) {
+    const isCurrentItem = (item === currentQueueItem);
+
+    // Delete task from server if it has a task ID
+    if (item.dataset.taskId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/tasks/${item.dataset.taskId}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) {
+                console.warn('Failed to delete task from server');
+            }
+        } catch (error) {
+            console.error('Failed to delete task:', error);
+        }
+    }
+
+    // Remove from UI
+    item.style.animation = 'fadeOut 0.3s ease-out forwards';
+    setTimeout(() => {
+        item.remove();
+        updateQueueCount();
+
+        // Ensure file input can be used again after deletion
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) {
+            fileInput.value = ''; // Clear file input value to allow re-selecting the same file
+        }
+
+        // If deleted item was the current one, switch to another or clear display
+        if (isCurrentItem) {
+            // Clean up global state
+            if (currentOriginalFileUrl) {
+                URL.revokeObjectURL(currentOriginalFileUrl);
+            }
+            currentOriginalFileUrl = null;
+            currentTaskId = null;
+            currentQueueItem = null;
+
+            // Find next available queue item
+            const queueList = document.getElementById('queueList');
+            const remainingItems = queueList.querySelectorAll('.queue-item');
+
+            if (remainingItems.length > 0) {
+                // Switch to the first available queue item
+                switchToQueueItem(remainingItems[0]);
+            } else {
+                // No other documents, clear display
+                clearResultsDisplay();
+                const documentPage = document.getElementById('documentPage');
+                if (documentPage) {
+                    documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No document loaded. Upload and process a file to see results.</div>';
+                    delete documentPage.dataset.currentFileName;
+                    delete documentPage.dataset.currentResult;
+                }
+            }
+        }
+    }, 300);
+}
+
+/**
+ * Update queue count
+ */
+function updateQueueCount() {
+    const queueList = document.getElementById('queueList');
+    const queueCount = document.querySelector('.queue-count');
+    const count = queueList.querySelectorAll('.queue-item').length;
+    queueCount.textContent = count;
+}
+
+/**
+ * Initialize navigation tabs
+ */
+function initTabs() {
+    const navTabs = document.querySelectorAll('.nav-tab');
+    navTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            navTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            const tabName = tab.dataset.tab;
+            showNotification(`Switched to ${tab.textContent.trim()} view`, 'info');
+        });
+    });
+}
+
+/**
+ * Initialize result tabs (new structure: Content/Result)
+ */
+function initResultTabs() {
+    // Main tabs (Content/Result)
+    const mainTabs = document.querySelectorAll('.result-main-tab');
+    const mainViews = document.querySelectorAll('.result-main-view');
+
+    mainTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.dataset.mainTab;
+
+            // Update main tab state
+            mainTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Update main view
+            mainViews.forEach(view => {
+                view.classList.remove('active');
+                if (view.id === `${targetTab}View`) {
+                    view.classList.add('active');
+                }
+            });
+        });
+    });
+
+    // Content sub-tabs (Text/Tables/Figures)
+    const contentSubTabs = document.querySelectorAll('.content-sub-tab');
+    const contentViews = document.querySelectorAll('.content-view');
+
+    contentSubTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetContent = tab.dataset.content;
+
+            // Update sub-tab state
+            contentSubTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Update content view
+            contentViews.forEach(view => {
+                view.classList.remove('active');
+                if (view.id === `content${targetContent.charAt(0).toUpperCase() + targetContent.slice(1)}View`) {
+                    view.classList.add('active');
+                }
+            });
+        });
+    });
+
+    // Initialize panel resize
+    initPanelResize();
+
+    // Initialize JSON view buttons
+    initJsonViewButtons();
+}
+
+/**
+ * Initialize action buttons
+ */
+function initActionButtons() {
+    const runAnalysisBtn = document.getElementById('runAnalysisBtn');
+    const analysisOptionsBtn = document.getElementById('analysisOptionsBtn');
+
+    if (runAnalysisBtn) {
+        runAnalysisBtn.addEventListener('click', () => {
+            startProcessing();
+        });
+    }
+
+    if (analysisOptionsBtn) {
+        analysisOptionsBtn.addEventListener('click', () => {
+            openAnalysisOptionsDialog();
+        });
+    }
+
+}
+
+// Store original file URL for display
+let currentOriginalFileUrl = null;
+let currentTaskId = null;
+let currentQueueItem = null; // Track currently selected queue item
+
+/**
+ * Upload file to backend for preview (PDF only)
+ * Returns taskId for immediate preview without processing
+ */
+async function uploadFileForPreview(file, queueItem) {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`${API_BASE_URL}/upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => 'Unknown error');
+            throw new Error(`Upload failed: ${response.status} ${errorText}`);
+        }
+
+        const result = await response.json();
+        const taskId = result.task_id;
+
+        // Store taskId
+        currentTaskId = taskId;
+        if (queueItem) {
+            queueItem.dataset.taskId = taskId;
+        }
+
+        return taskId;
+    } catch (error) {
+        console.error('Error uploading file for preview:', error);
+        throw error;
+    }
+}
+
+/**
+ * Switch to a different queue item and display its document
+ */
+async function switchToQueueItem(queueItem) {
+    if (!queueItem) return;
+
+    // Remove active class from all queue items
+    document.querySelectorAll('.queue-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    // Mark current item as active
+    queueItem.classList.add('active');
+    currentQueueItem = queueItem;
+
+    // Get file information
+    const file = queueItem.file;
+    const fileName = queueItem.dataset.fileName;
+    const taskId = queueItem.dataset.taskId;
+
+    if (!file) {
+        showNotification('File data not available', 'warning');
+        return;
+    }
+
+    // Update global state
+    if (currentOriginalFileUrl) {
+        URL.revokeObjectURL(currentOriginalFileUrl);
+    }
+    currentOriginalFileUrl = URL.createObjectURL(file);
+    currentTaskId = taskId || null;
+
+    // Update document page
+    const documentPage = document.getElementById('documentPage');
+    if (documentPage) {
+        documentPage.dataset.currentFileName = fileName;
+        // Clear result if switching to a different file
+        delete documentPage.dataset.currentResult;
+    }
+
+    // Display file
+    const fileExt = fileName.toLowerCase().split('.').pop();
+    if (fileExt === 'pdf' && !taskId) {
+        // PDF file needs to be uploaded first to get taskId
+        if (documentPage) {
+            documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><div class="spinner" style="margin: 0 auto 16px; width: 32px; height: 32px; border: 3px solid rgba(99, 102, 241, 0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;"></div><p style="margin-top: 16px; font-size: 0.875rem;">Uploading PDF for preview...</p></div>';
+        }
+
+        uploadFileForPreview(file, queueItem).then((newTaskId) => {
+            currentTaskId = newTaskId;
+            updatePreviewView('original');
+        }).catch((error) => {
+            console.error('Failed to upload file for preview:', error);
+            if (documentPage) {
+                documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><p style="margin-bottom: 8px; color: #f43f5e;">⚠️ Preview unavailable</p><p style="font-size: 0.875rem; color: #94a3b8;">PDF uploaded but preview failed.</p></div>';
+            }
+        });
+    } else {
+        // Image file or PDF with existing taskId, display directly
+        updatePreviewView('original');
+
+        // If there's result data, also display it
+        if (queueItem.result) {
+            updateResultsDisplay(queueItem.result);
+        }
+    }
+}
+
+/**
+ * Get PDF page image from backend
+ */
+async function getPdfPageImage(taskId, pageNum = 1) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/page-image/${pageNum}`);
+        if (!response.ok) {
+            throw new Error(`Failed to get page image: ${response.statusText}`);
+        }
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+    } catch (error) {
+        console.error('Error getting PDF page image:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update preview view
+ */
+async function updatePreviewView(viewType) {
+    const documentPage = document.getElementById('documentPage');
+    if (!documentPage) return;
+
+    switch (viewType) {
+        case 'original':
+            // Display original document (PDF or image) - can show even without result
+            if (currentOriginalFileUrl) {
+                // Try to get file name from result or queue item
+                let fileName = 'Document';
+                const resultJson = documentPage.dataset.currentResult;
+                if (resultJson) {
+                    try {
+                        const result = JSON.parse(resultJson);
+                        const docInfo = result.document_info || {};
+                        fileName = docInfo.file_name || 'Document';
+                    } catch (e) {
+                        // Use default
+                    }
+                } else {
+                    // Try to get from documentPage dataset or queue item
+                    if (documentPage.dataset.currentFileName) {
+                        fileName = documentPage.dataset.currentFileName;
+                    } else {
+                        const queueItem = document.querySelector('.queue-item.pending, .queue-item.processing, .queue-item.completed');
+                        if (queueItem) {
+                            fileName = queueItem.dataset.fileName || queueItem.querySelector('.queue-item-name')?.textContent || 'Document';
+                        }
+                    }
+                }
+
+                const fileExt = fileName.toLowerCase().split('.').pop();
+
+                // For PDF files, we need taskId to get the image
+                if (fileExt === 'pdf') {
+                    if (!currentTaskId) {
+                        // Show loading state while uploading
+                        documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><div class="spinner" style="margin: 0 auto 16px; width: 32px; height: 32px; border: 3px solid rgba(99, 102, 241, 0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;"></div><p style="margin-top: 16px; font-size: 0.875rem;">Preparing PDF preview...</p></div>';
+                        return;
+                    }
+
+                    // Get PDF page image from backend
+                    try {
+                        // Show loading state while fetching image
+                        documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><div class="spinner" style="margin: 0 auto 16px; width: 32px; height: 32px; border: 3px solid rgba(99, 102, 241, 0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;"></div><p style="margin-top: 16px; font-size: 0.875rem;">Loading PDF page...</p></div>';
+
+                        let html = '<div class="document-preview-content">';
+                        const imageUrl = await getPdfPageImage(currentTaskId, 1);
+                        html += `<img id="documentImage" src="${imageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()" onerror="this.parentElement.innerHTML=\'<div class=\\\'empty-state\\\' style=\\\'padding: 40px; text-align: center; color: #f43f5e;\\\'>Failed to load PDF image. Please try again.</div>\'">`;
+                        html += '</div>';
+                        documentPage.innerHTML = html;
+
+                        // Adjust document size after rendering
+                        setTimeout(() => {
+                            adjustDocumentSize();
+                        }, 100);
+                    } catch (error) {
+                        console.error('Failed to get PDF page image:', error);
+                        documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><p style="margin-bottom: 8px; color: #f43f5e;">⚠️ Failed to load PDF preview</p><p style="font-size: 0.875rem; color: #94a3b8;">Please try running analysis or refresh the page.</p></div>';
+                    }
+                } else {
+                    // For image files, display directly
+                    let html = '<div class="document-preview-content">';
+                    html += `<img id="documentImage" src="${currentOriginalFileUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()">`;
+                    html += '</div>';
+                    documentPage.innerHTML = html;
+
+                    // Adjust document size after rendering
+                    setTimeout(() => {
+                        adjustDocumentSize();
+                    }, 100);
+                }
+            } else {
+                documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">Original document not available. Please upload a document first.</div>';
+            }
+            break;
+        case 'analyzed':
+            // Display extracted text and analysis results
+            const resultJson = documentPage.dataset.currentResult;
+            if (resultJson) {
+                try {
+                    const result = JSON.parse(resultJson);
+                    updateDocumentPreview(result);
+                    // Add visual highlights for analyzed regions if available
+                    setTimeout(() => {
+                        const regions = documentPage.querySelectorAll('.analyzed-region');
+                        regions.forEach(r => {
+                            const type = r.dataset.type;
+                            const colors = {
+                                header: '#8b5cf6',
+                                title: '#3b82f6',
+                                paragraph: '#10b981',
+                                table: '#f59e0b',
+                                list: '#06b6d4',
+                                figure: '#ec4899',
+                                footer: '#6b7280'
+                            };
+                            r.style.outline = `2px solid ${colors[type] || '#6366f1'}`;
+                            r.style.outlineOffset = '4px';
+                        });
+                    }, 100);
+                } catch (e) {
+                    documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">Analysis results not available yet. Processing in progress...</div>';
+                }
+            } else {
+                documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">Analysis results not available yet. Processing in progress...</div>';
+            }
+            break;
+        case 'compare':
+            showNotification('Compare view coming soon...', 'info');
+            break;
+    }
+}
+
+/**
+ * Initialize tree toggle
+ */
+function initTreeToggle() {
+    // Remove existing event listeners by cloning and replacing
+    const structureView = document.getElementById('structureView');
+    if (structureView) {
+        const treeItems = structureView.querySelectorAll('.tree-item-header');
+
+        treeItems.forEach(header => {
+            // Remove existing listeners by cloning
+            const newHeader = header.cloneNode(true);
+            header.parentNode.replaceChild(newHeader, header);
+
+            // Add new event listener
+            newHeader.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const item = newHeader.closest('.tree-item');
+                if (!item) return;
+
+                const children = item.querySelector('.tree-children');
+                if (children) {
+                    const isExpanded = item.classList.contains('expanded');
+                    const toggle = newHeader.querySelector('.tree-toggle');
+
+                    if (isExpanded) {
+                        item.classList.remove('expanded');
+                        if (toggle) toggle.textContent = '▶';
+                    } else {
+                        item.classList.add('expanded');
+                        if (toggle) toggle.textContent = '▼';
+                    }
+                }
+
+                // Highlight document region if clickable
+                if (newHeader.classList.contains('clickable')) {
+                    const regionId = newHeader.dataset.region;
+                    highlightDocumentRegion(regionId);
+                }
+            });
+        });
+    }
+}
+
+/**
+ * Highlight document region
+ */
+function highlightDocumentRegion(regionId) {
+    // Remove all highlights
+    document.querySelectorAll('.analyzed-region').forEach(r => {
+        r.style.boxShadow = 'none';
+    });
+
+    showNotification(`Navigated to: ${regionId}`, 'info');
+}
+
+/**
+ * Initialize template selector
+ */
+function initTemplateSelector() {
+    const options = document.querySelectorAll('.option-item');
+
+    // Find "Template Matching" option
+    options.forEach(option => {
+        const label = option.querySelector('.option-label');
+        if (label && label.textContent === 'Template Matching') {
+            const checkbox = option.querySelector('input[type="checkbox"]');
+            const templateSelector = document.getElementById('templateSelector');
+
+            checkbox.addEventListener('change', () => {
+                templateSelector.style.display = checkbox.checked ? 'block' : 'none';
+            });
+        }
+    });
+}
+
+/**
+ * Initialize engine selectors
+ */
+function initEngineSelectors() {
+    const ocrSelect = document.getElementById('ocrEngineSelect');
+    const layoutSelect = document.getElementById('layoutEngineSelect');
+    const activeEngineDisplay = document.getElementById('activeEngine');
+
+    if (ocrSelect) {
+        ocrSelect.addEventListener('change', () => {
+            const engineNames = {
+                'paddleocr': 'PaddleOCR v2.7',
+                'tesseract': 'Tesseract 5.x',
+                'easyocr': 'EasyOCR'
+            };
+            activeEngineDisplay.textContent = engineNames[ocrSelect.value] || ocrSelect.value;
+            showNotification(`OCR engine changed to ${engineNames[ocrSelect.value]}`, 'info');
+        });
+    }
+
+    if (layoutSelect) {
+        layoutSelect.addEventListener('change', () => {
+            const engineNames = {
+                'ppstructure': 'PP-StructureV2',
+                'layoutparser': 'LayoutParser'
+            };
+            showNotification(`Layout engine changed to ${engineNames[layoutSelect.value]}`, 'info');
+        });
+    }
+}
+
+
+/**
+ * Initialize analysis view
+ */
+function initAnalysisView() {
+    // Start processing button
+    const startBtn = document.getElementById('startProcessBtn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            startProcessing();
+        });
+    }
+}
+
+/**
+ * Initialize export buttons
+ */
+function initExportButtons() {
+    const exportBtns = document.querySelectorAll('.export-btn');
+    exportBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const format = btn.dataset.format || btn.textContent.trim();
+            exportResults(format);
+        });
+    });
+}
+
+/**
+ * Initialize Analysis Options Dialog
+ */
+function initAnalysisOptionsDialog() {
+    const modal = document.getElementById('analysisOptionsModal');
+    const openBtn = document.getElementById('analysisOptionsBtn');
+    const closeBtn = document.getElementById('closeAnalysisOptionsBtn');
+    const cancelBtn = document.getElementById('cancelOptionsBtn');
+    const saveBtn = document.getElementById('saveOptionsBtn');
+    const resetBtn = document.getElementById('resetOptionsBtn');
+    const modalTabs = document.querySelectorAll('.modal-tab');
+    const templateCheckbox = document.getElementById('optTemplate');
+    const templateSelector = document.getElementById('dialogTemplateSelector');
+
+    // Tab switching
+    modalTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+            modalTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            document.querySelectorAll('.modal-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            const targetContent = document.getElementById(tabName + 'Tab');
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+
+    // Template selector visibility
+    if (templateCheckbox && templateSelector) {
+        templateCheckbox.addEventListener('change', () => {
+            templateSelector.style.display = templateCheckbox.checked ? 'block' : 'none';
+        });
+    }
+
+    // Close handlers
+    const closeModal = () => {
+        if (modal) modal.classList.remove('active');
+    };
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    // Click outside to close
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+    }
+
+    // Save handler
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+            saveAnalysisOptions();
+            closeModal();
+        });
+    }
+
+    // Reset handler
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            resetAnalysisOptions();
+        });
+    }
+}
+
+/**
+ * Open Analysis Options Dialog
+ */
+function openAnalysisOptionsDialog() {
+    const modal = document.getElementById('analysisOptionsModal');
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+/**
+ * Save Analysis Options
+ */
+function saveAnalysisOptions() {
+    // Options are read dynamically from dialog when needed
+    showNotification('Analysis options saved', 'success');
+}
+
+/**
+ * Reset Analysis Options to defaults
+ */
+function resetAnalysisOptions() {
+    document.getElementById('optLayout').checked = true;
+    document.getElementById('optOCR').checked = true;
+    document.getElementById('optTable').checked = true;
+    document.getElementById('optFormula').checked = false;
+    document.getElementById('optStamp').checked = false;
+    document.getElementById('optNLP').checked = false;
+    document.getElementById('optTemplate').checked = false;
+    document.getElementById('dialogOcrEngineSelect').value = 'paddleocr';
+    document.getElementById('dialogLayoutEngineSelect').value = 'ppstructure';
+    document.getElementById('dialogNlpEngineSelect').value = 'spacy';
+    document.getElementById('dialogTemplateSelector').style.display = 'none';
+    showNotification('Options reset to defaults', 'info');
+}
+
+/**
+ * Get current processing options from dialog
+ */
+function getProcessingOptions() {
+    const options = {
+        enable_layout: document.getElementById('optLayout')?.checked ?? true,
+        enable_ocr: document.getElementById('optOCR')?.checked ?? true,
+        enable_table: document.getElementById('optTable')?.checked ?? true,
+        enable_formula: document.getElementById('optFormula')?.checked ?? false,
+        enable_stamp: document.getElementById('optStamp')?.checked ?? false,
+        enable_nlp: document.getElementById('optNLP')?.checked ?? true,
+        template_id: null,
+        ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
+        layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure',
+        nlp_engine: document.getElementById('dialogNlpEngineSelect')?.value || 'spacy'
+    };
+
+    // Get template if template matching is enabled
+    const templateEnabled = document.getElementById('optTemplate')?.checked ?? false;
+    if (templateEnabled) {
+        options.template_id = document.getElementById('dialogTemplateSelect')?.value || null;
+    }
+
+    return options;
+}
+
+/**
+ * Start processing
+ */
+async function startProcessing() {
+    // Check for pending files first
+    let queueItems = document.querySelectorAll('.queue-item.pending');
+
+    // If no pending files, check for completed or cancelled files that can be reprocessed
+    if (queueItems.length === 0) {
+        const completedItems = document.querySelectorAll('.queue-item.completed, .queue-item.cancelled, .queue-item.failed');
+        if (completedItems.length > 0) {
+            // Ask user if they want to reprocess
+            const firstItem = completedItems[0];
+            if (firstItem.file) {
+                // Reset the item to pending state
+                firstItem.classList.remove('completed', 'cancelled', 'failed');
+                firstItem.classList.add('pending');
+
+                // Reset status
+                const status = firstItem.querySelector('.queue-item-status');
+                if (status) {
+                    status.textContent = 'Waiting';
+                }
+
+                // Reset icon
+                const icon = firstItem.querySelector('.queue-item-icon');
+                if (icon) {
+                    icon.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    `;
+                }
+
+                // Clear previous result
+                delete firstItem.result;
+                delete firstItem.dataset.taskId;
+
+                showNotification('Document reset for reprocessing', 'info');
+                queueItems = document.querySelectorAll('.queue-item.pending');
+            } else {
+                showNotification('No files available for processing. Please upload a new file.', 'warning');
+                return;
+            }
+        } else {
+            showNotification('No files waiting to be processed', 'warning');
+            return;
+        }
+    }
+
+    // Clear previous results, but keep document preview visible during processing
+    clearResultsDisplay(true);
+
+    const options = getProcessingOptions();
+
+    // Process first pending file
+    const firstPending = queueItems[0];
+    // If another item is already processing, queue this one instead of starting
+    const activeProcessing = document.querySelector('.queue-item.processing');
+    if (activeProcessing) {
+        // Mark as queued so we don't start concurrent processing
+        firstPending.classList.remove('pending');
+        firstPending.classList.add('queued');
+        const qStatus = firstPending.querySelector('.queue-item-status');
+        if (qStatus) qStatus.textContent = 'Queued — waiting for current task to finish';
+        const qIcon = firstPending.querySelector('.queue-item-icon');
+        if (qIcon) {
+            qIcon.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 6v6l4 2"></path>
+                    <circle cx="12" cy="12" r="9"></circle>
+                </svg>
+            `;
+        }
+        showNotification('Document queued due to single-processing limit', 'info');
+        return;
+    }
+    firstPending.classList.remove('pending');
+    firstPending.classList.add('processing');
+
+    // Update current queue item and display the file
+    if (currentQueueItem !== firstPending) {
+        switchToQueueItem(firstPending);
+    }
+
+    const icon = firstPending.querySelector('.queue-item-icon');
+    icon.innerHTML = '<div class="spinner"></div>';
+
+    const status = firstPending.querySelector('.queue-item-status');
+    const info = firstPending.querySelector('.queue-item-info');
+    const actionBtn = firstPending.querySelector('.queue-item-action');
+
+    // Update action button to Cancel
+    actionBtn.title = 'Cancel';
+    actionBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+    `;
+
+    // Add progress bar
+    let progressBar = info.querySelector('.progress-bar');
+    if (!progressBar) {
+        progressBar = document.createElement('div');
+        progressBar.className = 'progress-bar';
+        progressBar.innerHTML = '<div class="progress-fill" style="width: 0%"></div>';
+        info.appendChild(progressBar);
+    }
+
+    showNotification('Starting document processing...', 'info');
+
+    // Check if we have the actual file
+    if (firstPending.file) {
+        try {
+            // Update status bar (no floating card) - use throttled version to maintain state sync
+            updateStatusBarThrottled('processing', {
+                step: 'Initializing......'
+            }, true); // Immediate update for initialization
+
+            // Upload and process via API
+            const formData = new FormData();
+            formData.append('file', firstPending.file);
+
+            // Add options as query params or form fields
+            // CRITICAL FIX: Convert boolean values to "1"/"0" strings for proper FastAPI parsing
+            Object.keys(options).forEach(key => {
+                const value = options[key];
+                // FastAPI/Form doesn't parse "true"/"false" strings correctly
+                // Use "1"/"0" which gets parsed as True/False by FastAPI
+                if (typeof value === 'boolean') {
+                    formData.append(key, value ? '1' : '0');
+                } else {
+                    formData.append(key, value);
+                }
+            });
+
+            // Check API availability first (with timeout for health check only)
+            let apiAvailable = false;
+            try {
+                const healthCheck = await fetch(`${API_ROOT_URL}/health`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000) // 5 second timeout for health check only
+                });
+                if (healthCheck && healthCheck.ok) {
+                    apiAvailable = true;
+                }
+            } catch (e) {
+                console.warn('Health check failed:', e);
+            }
+
+            if (!apiAvailable) {
+                throw new Error(`API server is not available. Please ensure backend is reachable at ${API_ROOT_URL}`);
+            }
+
+            // Don't set timeout for upload - let it take as long as needed
+            // Layout analysis and other processing can take several minutes
+            const response = await fetch(`${API_BASE_URL}/analyze`, {
+                method: 'POST',
+                body: formData
+                // Removed timeout to allow long processing times
+            });
+
+            if (response.ok) {
+                const task = await response.json();
+                firstPending.dataset.taskId = task.task_id;
+                currentTaskId = task.task_id; // Store taskId for PDF page image API
+
+                // Removed short-lived WS handshake: rely on persistent WS and `since` param.
+                // Ensure we have a lastEventId placeholder on the queue item (default 0)
+                firstPending.lastEventId = firstPending.lastEventId || 0;
+
+                // Start normal poll/WS handler
+                pollTaskStatus(task.task_id, firstPending, progressBar, status);
+            } else {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`Server returned ${response.status}: ${errorText}`);
+            }
+        } catch (error) {
+            console.error('API Error:', error);
+            const errorMessage = error.message || 'Connection error';
+
+            // Provide helpful error message
+            if (errorMessage.includes('not available') || errorMessage.includes('Failed to fetch')) {
+                showNotification(`Cannot connect to API server. Please ensure backend is reachable at ${API_ROOT_URL}`, 'error');
+                failProcessing(firstPending, 'API server unavailable');
+            } else if (error.name === 'AbortError') {
+                showNotification('Request timeout. The server may be slow or unavailable.', 'error');
+                failProcessing(firstPending, 'Request timeout');
+            } else {
+                showNotification(`Processing failed to start: ${errorMessage}`, 'error');
+                failProcessing(firstPending, errorMessage);
+            }
+        }
+    } else {
+        // Simulation mode
+        simulateProcessing(firstPending, progressBar, status);
+    }
+}
+
+/**
+ * Poll task status from API using WebSocket
+ * This provides real-time event streaming with WebSocket connection
+ */
+async function pollTaskStatus(taskId, item, progressBar, status) {
+    let websocket = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    const reconnectDelay = 2000; // 2 seconds
+
+    // Get WebSocket URL (convert http to ws)
+    const wsUrl = API_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://');
+    // Include `since` param (last seen event id) to avoid replaying older events
+    const since = item.lastEventId || 0;
+    const wsEndpoint = `${wsUrl}/tasks/${taskId}/ws?since=${since}`;
+
+    const connectWebSocket = () => {
+        try {
+            console.log(`[WebSocket] Connecting to ${wsEndpoint}`);
+            websocket = new WebSocket(wsEndpoint);
+
+            websocket.onopen = () => {
+                console.log(`[WebSocket] Connection opened for task ${taskId}`);
+                reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+
+                // Send ping to keep connection alive
+                const pingInterval = setInterval(() => {
+                    if (websocket && websocket.readyState === WebSocket.OPEN) {
+                        websocket.send('ping');
+                    } else {
+                        clearInterval(pingInterval);
+                    }
+                }, 30000); // Ping every 30 seconds
+
+                // Store ping interval for cleanup
+                item.pingInterval = pingInterval;
+            };
+
+            websocket.onmessage = (event) => {
+                try {
+                    // Handle pong response
+                    if (event.data === 'pong') {
+                        return;
+                    }
+
+                    const data = JSON.parse(event.data);
+                    const eventType = data.type;
+                    const message = data.message || '';
+                    const progress = data.progress !== undefined ? Math.floor(data.progress) : undefined;
+                    // (duplicate suppression removed — backend now avoids re-sending current_event)
+
+                    console.log(`[WebSocket] Event received - type: ${eventType}, message: ${message.substring(0, 50)}...`);
+
+                    // Update display based on event type
+                    if (eventType === 'log' || (eventType === 'status' && data.status !== 'completed')) {
+                        // FINAL FIX: Direct synchronous UI update - no queues, no delays, no async
+                        // Update queue item status immediately and synchronously
+                        if (status) {
+                            const oldText = status.textContent;
+                            status.textContent = message;
+                            status.style.display = 'block';
+                            status.style.visibility = 'visible';
+                            void status.offsetHeight; // Force reflow
+                            console.log(`[UI-Sync] Queue item updated: "${oldText.substring(0, 30)}..." -> "${message.substring(0, 50)}..."`);
+                        } else {
+                            console.error('[WebSocket] ERROR: status element is null!', { item, taskId });
+                        }
+
+                        // Update status bar immediately and synchronously - direct DOM manipulation
+                        const statusProcessingEl = document.getElementById('statusProcessing');
+                        if (statusProcessingEl) {
+                            statusProcessingEl.style.display = 'flex';
+                            statusProcessingEl.style.visibility = 'visible';
+                            statusProcessingEl.style.opacity = '1';
+                            const stepEl = statusProcessingEl.querySelector('.processing-step');
+                            if (stepEl) {
+                                const oldStepText = stepEl.textContent;
+                                stepEl.textContent = message;
+                                void statusProcessingEl.offsetHeight; // Force reflow
+                                console.log(`[UI-Sync] Status bar updated: "${oldStepText.substring(0, 30)}..." -> "${message.substring(0, 50)}..."`);
+                            } else {
+                                console.error('[WebSocket] ERROR: .processing-step element not found!');
+                            }
+                        } else {
+                            console.error('[WebSocket] ERROR: statusProcessing element not found!');
+                        }
+
+                        console.log(`[WebSocket] Event processed immediately - type: ${eventType}, message: ${message.substring(0, 50)}...`);
+                    } else if (eventType === 'completed') {
+                        // Task completed
+                        if (item.classList.contains('completed')) {
+                            closeWebSocket();
+                            return;
+                        }
+
+                        if (status) {
+                            status.textContent = message || 'Processing completed';
+                        }
+
+                        // Update status bar with completed message
+                        updateStatusBarThrottled('processing', {
+                            step: message || 'Processing completed...'
+                        }, true); // Immediate update for completion
+
+                        closeWebSocket();
+
+                        // Fetch full result (this will call completeProcessing which will update status bar)
+                        fetchTaskResult(taskId, item);
+                    } else if (eventType === 'failed' || eventType === 'cancelled') {
+                        // Task failed or cancelled
+                        closeWebSocket();
+
+                        if (eventType === 'failed') {
+                            failProcessing(item, message || 'Processing failed');
+                        } else {
+                            item.classList.remove('processing');
+                            item.classList.add('cancelled');
+                            status.textContent = 'Cancelled';
+                            showNotification('Task cancelled', 'warning');
+                            updateStatusBar();
+                        }
+                    }
+                } catch (error) {
+                    console.error('[WebSocket] Error parsing message:', error);
+                }
+            };
+
+            websocket.onerror = (error) => {
+                console.error(`[WebSocket] Connection error for task ${taskId}:`, error);
+            };
+
+            websocket.onclose = (event) => {
+                console.log(`[WebSocket] Connection closed for task ${taskId} (code: ${event.code}, reason: ${event.reason})`);
+
+                // Clean up ping interval
+                if (item.pingInterval) {
+                    clearInterval(item.pingInterval);
+                    item.pingInterval = null;
+                }
+
+                // Try to reconnect if not a normal closure and task is still processing
+                if (event.code !== 1000 && !item.classList.contains('completed') &&
+                    !item.classList.contains('failed') && !item.classList.contains('cancelled')) {
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        console.log(`[WebSocket] Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+                        setTimeout(connectWebSocket, reconnectDelay);
+                    } else {
+                        console.error(`[WebSocket] Max reconnect attempts reached, falling back to polling`);
+                        // Fallback to HTTP polling if WebSocket fails
+                        startFallbackPolling();
+                    }
+                }
+            };
+        } catch (error) {
+            console.error(`[WebSocket] Failed to create WebSocket for task ${taskId}:`, error);
+            // Fallback to HTTP polling
+            startFallbackPolling();
+        }
+    };
+
+    const closeWebSocket = () => {
+        if (websocket) {
+            websocket.close(1000, 'Task completed'); // Normal closure
+            websocket = null;
+        }
+        if (item.pingInterval) {
+            clearInterval(item.pingInterval);
+            item.pingInterval = null;
+        }
+    };
+
+    // Fallback polling function (if WebSocket fails)
+    const startFallbackPolling = () => {
+        console.warn('[WebSocket] Using fallback HTTP polling');
+        let pollCount = 0;
+        const maxPolls = 600; // 5 minutes
+
+        const poll = async () => {
+            pollCount++;
+            if (pollCount > maxPolls) {
+                failProcessing(item, 'Processing timeout - please check server status');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        failProcessing(item, 'Task not found on server');
+                        return;
+                    }
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                const task = await response.json();
+                const step = task.message || 'Processing...';
+
+                if (status) {
+                    status.textContent = step;
+                }
+                updateStatusBarThrottled('processing', { step: step });
+
+                if (task.status === 'completed') {
+                    fetchTaskResult(taskId, item);
+                } else if (task.status === 'failed') {
+                    failProcessing(item, task.message || 'Processing failed');
+                } else {
+                    setTimeout(poll, 1000); // Poll every second
+                }
+            } catch (error) {
+                console.error(`[Fallback] Error polling task ${taskId}:`, error);
+                setTimeout(poll, 2000); // Retry after 2 seconds on error
+            }
+        };
+
+        poll();
+    };
+
+    // Start WebSocket connection
+    connectWebSocket();
+
+    // Store cleanup function on item
+    item.cleanupPolling = () => {
+        closeWebSocket();
+    };
+}
+
+
+/**
+ * Fetch task result and complete processing
+ */
+async function fetchTaskResult(taskId, item) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/result`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch result: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Task completed successfully:', taskId);
+        showNotification('Document processing completed successfully!', 'success');
+        completeProcessing(item, result);
+    } catch (error) {
+        console.error('Error fetching task result:', error);
+        showNotification('Document processing completed, but result fetch failed', 'warning');
+        failProcessing(item, `Failed to fetch result: ${error.message}`);
+    }
+}
+
+/**
+ * Simulate processing (for demo/offline mode)
+ */
+function simulateProcessing(item, progressBar, status) {
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            completeProcessing(item);
+        }
+
+        status.textContent = `Processing · ${Math.floor(progress)}%`;
+        progressBar.querySelector('.progress-fill').style.width = `${progress}%`;
+    }, 500);
+}
+
+/**
+ * Complete processing
+ */
+function completeProcessing(item, result = null) {
+    // 防止重复调用
+    if (item.classList.contains('completed')) {
+        console.log('Already completed, skipping duplicate call');
+        return;
+    }
+
+    item.classList.remove('processing');
+    item.classList.add('completed');
+
+    const icon = item.querySelector('.queue-item-icon');
+    icon.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+    `;
+
+    const status = item.querySelector('.queue-item-status');
+    const pageCount = result?.document_info?.pages || 0;
+    status.textContent = `Completed · ${pageCount} page${pageCount !== 1 ? 's' : ''}`;
+
+    // Store result on item
+    if (result) {
+        item.result = result;
+        // Update UI with results
+        updateResultsDisplay(result);
+
+        // Generate completion summary
+        const layout = result.layout || {};
+        const elements = layout.elements || [];
+        const titleCount = elements.filter(e => e.type === 'title' || e.type === 'heading').length;
+        const tableCount = elements.filter(e => e.type === 'table').length;
+        const imageCount = elements.filter(e => e.type === 'figure' || e.type === 'image').length;
+
+        const summaryParts = [];
+        if (titleCount > 0) summaryParts.push(`${titleCount} title${titleCount !== 1 ? 's' : ''}`);
+        if (tableCount > 0) summaryParts.push(`${tableCount} table${tableCount !== 1 ? 's' : ''}`);
+        if (imageCount > 0) summaryParts.push(`${imageCount} image${imageCount !== 1 ? 's' : ''}`);
+
+        const summary = summaryParts.length > 0
+            ? `Completed: ${summaryParts.join(', ')} detected`
+            : 'Processing completed';
+
+        // Update status bar with summary (but keep showing processing steps until then)
+        // Don't immediately switch to completed - let the last processing step show for a moment
+        setTimeout(() => {
+            updateStatusBar('completed', { summary: summary });
+
+            // Auto-hide summary after 5 seconds
+            setTimeout(() => {
+                updateStatusBar('default');
+            }, 5000);
+        }, 1000); // Wait 1 second before showing completed status
+    }
+
+    const progressBar = item.querySelector('.progress-bar');
+    if (progressBar) {
+        progressBar.remove();
+    }
+
+    const action = item.querySelector('.queue-item-action');
+    if (action) {
+        action.title = 'Delete';
+        action.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        `;
+
+        // Remove existing event listeners by cloning the button
+        const newAction = action.cloneNode(true);
+        action.parentNode.replaceChild(newAction, action);
+
+        // Add delete event handler
+        newAction.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            // Use centralized deletion handler
+            handleQueueItemDeletion(item);
+        });
+    } else {
+        console.warn('Action button not found in completed queue item');
+    }
+
+    showNotification('Document processing completed!', 'success');
+
+    // Don't reset status bar here - let it show the completed status from updateStatusBar('completed')
+    // The status bar will be reset to default after 5 seconds (already handled above)
+
+    // After finishing, promote any queued item to pending and start it
+    promoteNextQueued();
+}
+
+/**
+ * Clear results display
+ * @param {boolean} keepDocumentPreview - If true, keep document preview visible, only clear result data
+ */
+function clearResultsDisplay(keepDocumentPreview = false) {
+    // Clear document preview only if not keeping it
+    if (!keepDocumentPreview) {
+        const documentPage = document.getElementById('documentPage');
+        if (documentPage) {
+            documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No document loaded. Upload and process a file to see results.</div>';
+        }
+    }
+
+    // Clear structure view
+    const structureView = document.getElementById('structureView');
+    if (structureView) {
+        structureView.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No structure data available</div>';
+    }
+
+    // Clear text view
+    const textView = document.getElementById('textView');
+    if (textView) {
+        const textContent = textView.querySelector('.text-content');
+        if (textContent) {
+            textContent.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No text extracted</div>';
+        }
+    }
+
+    // Clear table view
+    const tableView = document.getElementById('tableView');
+    if (tableView) {
+        const tableList = tableView.querySelector('.table-list');
+        if (tableList) {
+            tableList.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No tables extracted</div>';
+        }
+    }
+
+    // Clear extract view
+    const extractView = document.getElementById('extractView');
+    if (extractView) {
+        const extractSummary = extractView.querySelector('.extract-summary');
+        if (extractSummary) {
+            extractSummary.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No extracted data available</div>';
+        }
+    }
+
+    // Clear keywords
+    const keywordsList = document.getElementById('keywordsList');
+    if (keywordsList) {
+        keywordsList.innerHTML = '<span style="color: #6b7280; font-size: 14px;">No keywords extracted</span>';
+    }
+
+    // Clear entities
+    const entitiesList = document.getElementById('entitiesList');
+    if (entitiesList) {
+        entitiesList.innerHTML = '<div style="color: #6b7280; font-size: 14px; padding: 20px;">No entities extracted</div>';
+    }
+}
+
+/**
+ * Promote the next queued item (if any) to pending and start processing it.
+ */
+function promoteNextQueued() {
+    const nextQueued = document.querySelector('.queue-item.queued');
+    if (!nextQueued) return;
+
+    // Convert queued -> pending
+    nextQueued.classList.remove('queued');
+    nextQueued.classList.add('pending');
+    const statusEl = nextQueued.querySelector('.queue-item-status');
+    if (statusEl) statusEl.textContent = 'Waiting';
+
+    showNotification('Queued document is ready; starting processing...', 'info');
+
+    // Slight delay to allow UI updates, then trigger processing
+    setTimeout(() => {
+        startProcessing();
+    }, 200);
+}
+
+/**
+ * Update results display with actual data
+ */
+function updateResultsDisplay(result) {
+    if (!result) return;
+
+    // Update document preview
+    updateDocumentPreview(result);
+
+    // Load and display unified layout analysis
+    loadUnifiedLayoutAnalysis();
+
+    // Update Content views
+    updateContentText(result);
+    updateContentTables(result);
+    updateContentFigures(result);
+
+    // Update Result JSON view
+    updateResultJson(result);
+
+    // Legacy views (kept for compatibility)
+    updateStructureView(result);
+    updateTextView(result);
+    updateTableView(result);
+    updateExtractView(result);
+    updateKeywords(result);
+    updateEntities(result);
+}
+
+/**
+ * Update document preview
+ */
+function updateDocumentPreview(result) {
+    const documentPage = document.getElementById('documentPage');
+    if (!documentPage) return;
+
+    const docInfo = result.document_info || {};
+    const fileName = docInfo.file_name || 'Document';
+    const pages = docInfo.pages || result.layout?.total_pages || result.page_count || 1;
+
+    // Update pagination controls with actual page count
+    const pageInput = document.querySelector('.page-input');
+    const pageTotal = document.querySelector('.page-total');
+    if (pageInput) {
+        pageInput.max = pages;
+        pageInput.value = 1;
+    }
+    if (pageTotal) {
+        pageTotal.textContent = ` / ${pages}`;
+    }
+
+    // Store current result for preview switching
+    documentPage.dataset.currentResult = JSON.stringify(result);
+
+
+    // Always prioritize showing source image when available.
+    // Annotation data may come from layout, OCR, or table-only paths.
+    if (currentOriginalFileUrl) {
+        renderDocumentWithAnnotations(result);
+    } else {
+        // Fallback to text preview only when source image is unavailable.
+        renderTextPreview(result);
+    }
+}
+
+function normalizeAnnotationBbox(bbox) {
+    if (!bbox) return { x: 0, y: 0, width: 0, height: 0 };
+
+    if (Array.isArray(bbox) && bbox.length >= 4) {
+        return {
+            x: Number(bbox[0]) || 0,
+            y: Number(bbox[1]) || 0,
+            width: Math.max((Number(bbox[2]) || 0) - (Number(bbox[0]) || 0), 0),
+            height: Math.max((Number(bbox[3]) || 0) - (Number(bbox[1]) || 0), 0)
+        };
+    }
+
+    if (typeof bbox === 'object') {
+        if ('x' in bbox || 'y' in bbox || 'width' in bbox || 'height' in bbox) {
+            return {
+                x: Number(bbox.x) || 0,
+                y: Number(bbox.y) || 0,
+                width: Number(bbox.width) || 0,
+                height: Number(bbox.height) || 0
+            };
+        }
+        if ('x1' in bbox || 'y1' in bbox || 'x2' in bbox || 'y2' in bbox) {
+            const x1 = Number(bbox.x1) || 0;
+            const y1 = Number(bbox.y1) || 0;
+            const x2 = Number(bbox.x2) || 0;
+            const y2 = Number(bbox.y2) || 0;
+            return { x: x1, y: y1, width: Math.max(x2 - x1, 0), height: Math.max(y2 - y1, 0) };
+        }
+    }
+
+    return { x: 0, y: 0, width: 0, height: 0 };
+}
+
+function bboxFromPolygon(polygon) {
+    if (!Array.isArray(polygon) || polygon.length === 0) return null;
+
+    let points = [];
+    if (Array.isArray(polygon[0])) {
+        points = polygon.filter(p => Array.isArray(p) && p.length >= 2).map(p => [Number(p[0]) || 0, Number(p[1]) || 0]);
+    } else {
+        for (let i = 0; i < polygon.length - 1; i += 2) {
+            points.push([Number(polygon[i]) || 0, Number(polygon[i + 1]) || 0]);
+        }
+    }
+
+    if (points.length === 0) return null;
+    const xs = points.map(p => p[0]);
+    const ys = points.map(p => p[1]);
+    const x1 = Math.min(...xs);
+    const y1 = Math.min(...ys);
+    const x2 = Math.max(...xs);
+    const y2 = Math.max(...ys);
+    return { x: x1, y: y1, width: Math.max(0, x2 - x1), height: Math.max(0, y2 - y1) };
+}
+
+function getRenderableAnnotationElements(result) {
+    const layoutElements = (result.layout?.elements || []).filter(el => el && typeof el === 'object');
+    if (layoutElements.length > 0) {
+        return layoutElements;
+    }
+
+    const fallbackElements = [];
+    const docInfo = result.document_info || {};
+    const docWidth = Number(docInfo.width) || Number(docInfo.image_width) || 0;
+    const docHeight = Number(docInfo.height) || Number(docInfo.image_height) || 0;
+
+    // OCR-only fallback: map text_blocks to annotation elements
+    const textBlocks = result.text_blocks || [];
+    textBlocks.forEach((block, idx) => {
+        const polyBbox = bboxFromPolygon(block.polygon);
+        const bbox = polyBbox || normalizeAnnotationBbox(block.bbox || block.bounding_box);
+        if (bbox.width <= 0 || bbox.height <= 0) return;
+        fallbackElements.push({
+            id: `ocr_text_${idx}`,
+            page: block.page || 1,
+            type: 'text',
+            bbox,
+            polygon: block.polygon || [],
+            confidence: typeof block.confidence === 'number' ? block.confidence : 0,
+            text: block.text || ''
+        });
+    });
+
+    // Table-only fallback: map tables to annotation elements
+    const tables = result.tables || [];
+    tables.forEach((table, idx) => {
+        let bbox = normalizeAnnotationBbox(table.bbox || table.bounding_box);
+        let inferredBbox = false;
+        if (bbox.width <= 0 || bbox.height <= 0) {
+            // Fallback to page-size bbox when table coordinates are unavailable.
+            const width = docWidth > 0 ? docWidth : 1000;
+            const height = docHeight > 0 ? docHeight : 1400;
+            bbox = { x: 0, y: 0, width, height };
+            inferredBbox = true;
+        }
+        fallbackElements.push({
+            id: table.id || `table_${idx}`,
+            page: table.page || table.page_number || 1,
+            type: 'table',
+            bbox,
+            inferred_bbox: inferredBbox,
+            confidence: typeof table.confidence === 'number' ? table.confidence : 0,
+            html: table.html,
+            text: table.title || 'Table detected'
+        });
+    });
+
+    return fallbackElements;
+}
+
+/**
+ * Render document with annotations overlay
+ */
+async function renderDocumentWithAnnotations(result) {
+    const documentPage = document.getElementById('documentPage');
+    if (!documentPage) return;
+
+    const docInfo = result.document_info || {};
+    const fileName = docInfo.file_name || 'Document';
+    const elements = getRenderableAnnotationElements(result);
+
+    // Use the same HTML structure as initial loading for consistency
+    let html = '<div class="document-preview-content">';
+
+    // Display original document as image (PDF converted to image via API)
+    if (currentOriginalFileUrl && currentTaskId) {
+        const fileExt = fileName.toLowerCase().split('.').pop();
+        let imageUrl = currentOriginalFileUrl;
+
+        // For PDF, get first page as image from backend using the same method as initial loading
+        if (fileExt === 'pdf') {
+            try {
+                imageUrl = await getPdfPageImage(currentTaskId, 1);
+            } catch (error) {
+                console.error('Failed to get PDF page image in renderDocumentWithAnnotations:', error);
+                // Fallback to API URL
+                imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/1`;
+            }
+        }
+
+        // Create image with same style as initial loading, and add onload handler
+        html += `<img id="documentImage" src="${imageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize(); adjustAnnotationPositions();">`;
+
+        // Create annotation overlay container - positioned relative to image
+        html += '<div class="annotation-overlay-container" id="annotationOverlayContainer" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;">';
+
+        elements.forEach((element, index) => {
+            // Bbox can be object/list/polygon-derived in different pipelines.
+            const polyBbox = bboxFromPolygon(element.polygon || []);
+            const bbox = polyBbox || normalizeAnnotationBbox(element.bbox || element.bounding_box || {});
+
+            let x = bbox.x || 0;
+            let y = bbox.y || 0;
+            let width = bbox.width || 0;
+            let height = bbox.height || 0;
+
+            // Skip invalid or near-zero boxes to avoid misplaced overlays.
+            if (width <= 1 || height <= 1) {
+                return;
+            }
+
+            const type = element.type || element.type_name || 'paragraph';
+            // Confidence is stored in element.confidence (0-1 range)
+            // If confidence is 0, try to get from score or use a default value
+            let confidence = element.confidence || element.score || 0;
+            // If confidence is still 0, use a reasonable default (0.9 = 90%)
+            if (confidence === 0) {
+                confidence = 0.9; // Default confidence for layout elements
+            }
+            const confidencePercent = confidence > 1 ? confidence : (confidence * 100);
+
+            // Extract text content
+            const text = element.text || element.content || (element.type === 'table' ? 'Table detected' : '');
+            // Limit text length for display
+            const displayText = text.length > 100 ? text.substring(0, 100) + '...' : text;
+
+            // Format polygon/bbox location
+            const polygon = element.polygon || [];
+            let polygonText = '';
+            if (polygon.length > 0 && Array.isArray(polygon[0])) {
+                // Format polygon coordinates: [[x1,y1], [x2,y2], ...]
+                polygonText = polygon.map(p => {
+                    if (Array.isArray(p) && p.length >= 2) {
+                        return `(${p[0]?.toFixed(0) || 0}, ${p[1]?.toFixed(0) || 0})`;
+                    }
+                    return '';
+                }).filter(p => p).join(', ');
+            } else if (polygon.length > 0) {
+                // Single array format: [x1, y1, x2, y2, ...]
+                const coords = [];
+                for (let i = 0; i < polygon.length; i += 2) {
+                    if (i + 1 < polygon.length) {
+                        coords.push(`(${polygon[i]?.toFixed(0) || 0}, ${polygon[i + 1]?.toFixed(0) || 0})`);
+                    }
+                }
+                polygonText = coords.join(', ');
+            } else {
+                // Use bbox as polygon representation (top-left and bottom-right corners)
+                polygonText = `(${x.toFixed(0)}, ${y.toFixed(0)}) → (${(x + width).toFixed(0)}, ${(y + height).toFixed(0)})`;
+            }
+
+            // Map element types to annotation classes
+            const typeMap = {
+                'title': 'annotation-title',
+                'heading': 'annotation-title',
+                'text_title': 'annotation-title',
+                'paragraph': 'annotation-paragraph',
+                'text': 'annotation-paragraph',
+                'text_block': 'annotation-paragraph',
+                'table': 'annotation-table',
+                'figure': 'annotation-figure',
+                'image': 'annotation-figure',
+                'header': 'annotation-header',
+                'footer': 'annotation-footer',
+                'list': 'annotation-list'
+            };
+
+            const annotationClass = typeMap[type.toLowerCase()] || 'annotation-paragraph';
+            const inferredClass = element.inferred_bbox ? ' annotation-inferred' : '';
+
+            // Store tooltip data in dataset for global tooltip
+            const tooltipData = {
+                role: type,
+                content: text,
+                displayContent: displayText,
+                polygon: polygonText,
+                confidence: confidencePercent
+            };
+
+            html += `<div class="annotation-overlay ${annotationClass}${inferredClass}"
+                         data-element-index="${index}"
+                         data-element-type="${type}"
+                         data-tooltip-data='${JSON.stringify(tooltipData).replace(/'/g, "&apos;")}'
+                         data-x="${x}"
+                         data-y="${y}"
+                         data-width="${width}"
+                         data-height="${height}"
+                         style="position: absolute; left: ${x}px; top: ${y}px; width: ${width}px; height: ${height}px;">
+                     </div>`;
+        });
+
+        html += '</div>'; // annotation-overlay-container
+    }
+
+    html += '</div>'; // document-preview-content
+
+    documentPage.innerHTML = html;
+
+    // Wait for image to load, then adjust size and annotation positions
+    const image = document.getElementById('documentImage');
+    if (image) {
+        if (image.complete) {
+            adjustDocumentSize();
+            adjustAnnotationPositions();
+            initAnnotationInteractions();
+        } else {
+            image.addEventListener('load', () => {
+                adjustDocumentSize();
+                adjustAnnotationPositions();
+                initAnnotationInteractions();
+            });
+        }
+    } else {
+        setTimeout(() => {
+            adjustAnnotationPositions();
+            initAnnotationInteractions();
+        }, 300);
+    }
+}
+
+/**
+ * Adjust annotation positions based on actual document dimensions
+ */
+function adjustAnnotationPositions() {
+    const image = document.getElementById('documentImage');
+    const overlayContainer = document.getElementById('annotationOverlayContainer');
+    if (!image || !overlayContainer) return;
+
+    // Get actual displayed image dimensions (after adjustDocumentSize has been called)
+    const displayedWidth = image.offsetWidth || image.clientWidth;
+    const displayedHeight = image.offsetHeight || image.clientHeight;
+    const originalWidth = image.naturalWidth || displayedWidth;
+    const originalHeight = image.naturalHeight || displayedHeight;
+
+    // Calculate scale factors: bbox coordinates are in original document pixels
+    // We need to scale them to displayed size
+    const scaleX = originalWidth > 0 ? (displayedWidth / originalWidth) : 1;
+    const scaleY = originalHeight > 0 ? (displayedHeight / originalHeight) : 1;
+
+    // Update overlay container to match displayed image dimensions exactly
+    overlayContainer.style.width = `${displayedWidth}px`;
+    overlayContainer.style.height = `${displayedHeight}px`;
+    overlayContainer.style.top = '0';
+    overlayContainer.style.left = '0';
+
+    // Adjust each annotation position
+    const annotations = overlayContainer.querySelectorAll('.annotation-overlay');
+    annotations.forEach(annotation => {
+        const x = parseFloat(annotation.dataset.x || 0);
+        const y = parseFloat(annotation.dataset.y || 0);
+        const width = parseFloat(annotation.dataset.width || 100);
+        const height = parseFloat(annotation.dataset.height || 50);
+
+        // Scale coordinates to match displayed image size
+        annotation.style.left = `${x * scaleX}px`;
+        annotation.style.top = `${y * scaleY}px`;
+        annotation.style.width = `${width * scaleX}px`;
+        annotation.style.height = `${height * scaleY}px`;
+    });
+
+    // Re-adjust on window resize - ensure adjustDocumentSize is called first
+    window.removeEventListener('resize', handleResizeForAnnotations);
+    window.addEventListener('resize', handleResizeForAnnotations);
+}
+
+/**
+ * Handle window resize for annotations - ensures document size is adjusted first
+ */
+function handleResizeForAnnotations() {
+    adjustDocumentSize();
+    setTimeout(adjustAnnotationPositions, 100);
+}
+
+/**
+ * Render text preview (fallback)
+ */
+function renderTextPreview(result) {
+    const documentPage = document.getElementById('documentPage');
+    if (!documentPage) return;
+
+    const docInfo = result.document_info || {};
+    const fileName = docInfo.file_name || 'Document';
+    const pages = docInfo.pages || result.layout?.total_pages || result.page_count || 1;
+
+    // Get text content for preview (Analysis view)
+    const textBlocks = result.text_blocks || [];
+    const fullText = result.full_text || '';
+    const layout = result.layout || {};
+    const elements = layout.elements || [];
+
+    // Try to get text from various sources
+    let previewText = '';
+    if (fullText) {
+        previewText = fullText.substring(0, 2000); // Limit preview length
+    } else if (textBlocks.length > 0) {
+        previewText = textBlocks.slice(0, 10).map(b => b.text || '').join('\n\n').substring(0, 2000);
+    } else if (elements.length > 0) {
+        const textElements = elements.filter(el => el.text && el.type !== 'table').slice(0, 10);
+        previewText = textElements.map(el => el.text).join('\n\n').substring(0, 2000);
+    }
+
+    // Create document preview with extracted text content (Analysis view)
+    let html = '<div class="document-preview-content">';
+    html += '<div class="preview-header-info" style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e5e7eb;">';
+    html += `<h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 18px;">${escapeHtml(fileName)} (Text Preview)</h3>`;
+    html += `<p style="margin: 0; color: #6b7280; font-size: 14px;">${pages} page${pages !== 1 ? 's' : ''} · Extracted Text</p>`;
+    html += '</div>';
+
+    if (previewText) {
+        html += '<div class="preview-text-content" style="padding: 20px; background: #f9fafb; border-radius: 8px; max-height: 600px; overflow-y: auto;">';
+        html += '<div style="white-space: pre-wrap; line-height: 1.6; color: #374151; font-size: 14px;">';
+        html += escapeHtml(previewText);
+        if ((fullText && fullText.length > 2000) || (textBlocks.length > 10) || (elements.length > 10)) {
+            html += '<p style="margin-top: 15px; color: #6b7280; font-style: italic;">...</p>';
+            html += '<p style="color: #6b7280; font-size: 12px;">(Preview truncated. Use the Text tab to view full content.)</p>';
+        }
+        html += '</div>';
+        html += '</div>';
+    } else {
+        html += '<div class="preview-text-preview" style="padding: 40px; text-align: center; color: #6b7280;">';
+        html += '<p>No text content available for preview</p>';
+        html += '<p style="font-size: 14px; margin-top: 10px;">Use the tabs above to view structure, text, and tables</p>';
+        html += '</div>';
+    }
+
+    html += '</div>';
+    documentPage.innerHTML = html;
+}
+
+// Global tooltip instance
+let globalTooltip = null;
+
+/**
+ * Initialize global tooltip
+ */
+function initGlobalTooltip() {
+    if (!globalTooltip) {
+        globalTooltip = document.createElement('div');
+        globalTooltip.className = 'annotation-tooltip global-tooltip';
+        globalTooltip.style.display = 'none';
+        globalTooltip.style.position = 'fixed';
+        globalTooltip.style.zIndex = '10000';
+        document.body.appendChild(globalTooltip);
+    }
+}
+
+/**
+ * Initialize annotation interactions
+ */
+function initAnnotationInteractions() {
+    // Initialize global tooltip
+    initGlobalTooltip();
+
+    const annotations = document.querySelectorAll('.annotation-overlay');
+
+    annotations.forEach(annotation => {
+        // Make overlay clickable
+        annotation.style.pointerEvents = 'auto';
+
+        // Click handler - highlight in results panel
+        annotation.addEventListener('click', () => {
+            const elementType = annotation.dataset.elementType;
+            const elementIndex = annotation.dataset.elementIndex;
+
+            // Remove previous highlights
+            annotations.forEach(a => a.classList.remove('annotation-active'));
+
+            // Highlight clicked annotation
+            annotation.classList.add('annotation-active');
+
+            // Scroll to corresponding item in results panel
+            highlightResultItem(elementType, elementIndex);
+        });
+
+        // Hover handler - show global tooltip with fixed positioning
+        annotation.addEventListener('mouseenter', (e) => {
+            if (!globalTooltip) return;
+
+            // Get tooltip data from dataset
+            const tooltipDataStr = annotation.dataset.tooltipData;
+            if (!tooltipDataStr) return;
+
+            try {
+                const tooltipData = JSON.parse(tooltipDataStr.replace(/&apos;/g, "'"));
+
+                // Update tooltip content (escapeHtml is defined globally)
+                const escapeHtml = (str) => {
+                    if (typeof str !== 'string') str = String(str);
+                    const div = document.createElement('div');
+                    div.textContent = str;
+                    return div.innerHTML;
+                };
+
+                globalTooltip.innerHTML = `
+                    <div class="tooltip-line"><strong>Role:</strong> ${escapeHtml(tooltipData.role)}</div>
+                    <div class="tooltip-line"><strong>Content:</strong> ${tooltipData.displayContent ? escapeHtml(tooltipData.displayContent) : '(empty)'}</div>
+                    <div class="tooltip-line"><strong>Polygon:</strong> ${escapeHtml(tooltipData.polygon)}</div>
+                    <div class="tooltip-line"><strong>Confidence:</strong> ${tooltipData.confidence.toFixed(1)}%</div>
+                `;
+
+                // Get element position in viewport
+                const rect = annotation.getBoundingClientRect();
+
+                // Show tooltip temporarily to get its dimensions
+                globalTooltip.style.display = 'block';
+                globalTooltip.style.left = '0';
+                globalTooltip.style.top = '0';
+                const tooltipRect = globalTooltip.getBoundingClientRect();
+                const tooltipWidth = tooltipRect.width;
+                const tooltipHeight = tooltipRect.height;
+
+                // Calculate best position (relative to viewport)
+                let left = rect.right + 10;  // Default: right side
+                let top = rect.top;
+
+                // Calculate available space
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const spaceRight = viewportWidth - rect.right;
+                const spaceLeft = rect.left;
+                const spaceBottom = viewportHeight - rect.bottom;
+                const spaceTop = rect.top;
+
+                // Smart positioning: choose best location
+                // Try right side first
+                if (spaceRight < tooltipWidth + 10) {
+                    // Not enough space on right, try left
+                    if (spaceLeft >= tooltipWidth + 10) {
+                        left = rect.left - tooltipWidth - 10;
+                    } else {
+                        // Not enough space on either side, use right and adjust
+                        left = Math.max(10, viewportWidth - tooltipWidth - 10);
+                    }
+                }
+
+                // Adjust vertical position
+                if (top + tooltipHeight > viewportHeight - 10) {
+                    // Not enough space below, try above
+                    if (spaceTop >= tooltipHeight + 10) {
+                        top = rect.top - tooltipHeight - 10;
+                    } else {
+                        // Not enough space above or below, adjust to fit
+                        top = Math.max(10, viewportHeight - tooltipHeight - 10);
+                    }
+                }
+
+                // Ensure tooltip stays within viewport
+                left = Math.max(10, Math.min(left, viewportWidth - tooltipWidth - 10));
+                top = Math.max(10, Math.min(top, viewportHeight - tooltipHeight - 10));
+
+                // Set final position (relative to viewport)
+                globalTooltip.style.left = `${left}px`;
+                globalTooltip.style.top = `${top}px`;
+            } catch (error) {
+                console.error('Error parsing tooltip data:', error);
+                globalTooltip.style.display = 'none';
+            }
+        });
+
+        annotation.addEventListener('mouseleave', () => {
+            if (globalTooltip) {
+                globalTooltip.style.display = 'none';
+            }
+        });
+    });
+}
+
+/**
+ * Highlight corresponding item in results panel
+ */
+function highlightResultItem(elementType, elementIndex) {
+    // This would scroll to and highlight the corresponding item in the structure view
+    // Implementation depends on structure view structure
+    console.log('Highlighting:', elementType, elementIndex);
+}
+
+
+/**
+ * Update structure view
+ */
+function updateStructureView(result) {
+    const structureView = document.getElementById('structureView');
+    if (!structureView) return;
+
+    const layout = result.layout || {};
+    const elements = layout.elements || [];
+    const summary = layout.summary || {};
+    const typeCounts = summary.type_counts || {};
+
+    let html = '<div class="structure-tree">';
+    html += '<div class="tree-item expanded">';
+    html += '<div class="tree-item-header">';
+    html += '<span class="tree-toggle">▼</span>';
+    html += '<span class="tree-icon header-icon">📄</span>';
+    html += `<span class="tree-label">Document Structure</span>`;
+    html += `<span class="tree-count">${elements.length} elements</span>`;
+    html += '</div>';
+    html += '<div class="tree-children">';
+
+    // Group elements by type
+    const elementsByType = {};
+    elements.forEach(el => {
+        const type = el.type || 'unknown';
+        if (!elementsByType[type]) {
+            elementsByType[type] = [];
+        }
+        elementsByType[type].push(el);
+    });
+
+    // Add element type groups with expandable details
+    const typesToShow = Object.keys(typeCounts).length > 0 ? Object.keys(typeCounts) : Object.keys(elementsByType);
+    if (typesToShow.length > 0) {
+        typesToShow.forEach(type => {
+            const count = typeCounts[type] || elementsByType[type]?.length || 0;
+            const typeElements = elementsByType[type] || [];
+            html += '<div class="tree-item">';
+            html += '<div class="tree-item-header" style="cursor: pointer; user-select: none;">';
+            if (typeElements.length > 0) {
+                html += '<span class="tree-toggle">▶</span>';
+            } else {
+                html += '<span class="tree-toggle" style="visibility: hidden;">▶</span>';
+            }
+            html += `<span class="tree-icon">${getElementIcon(type)}</span>`;
+            const typeLabel = String(type).charAt(0).toUpperCase() + String(type).slice(1).replace(/_/g, ' ');
+            html += `<span class="tree-label">${escapeHtml(typeLabel)} (${count})</span>`;
+            html += `<span class="tree-badge ${type}-badge">${type}</span>`;
+            html += '</div>';
+            if (typeElements.length > 0) {
+                html += '<div class="tree-children">';
+                typeElements.slice(0, 30).forEach((el, idx) => {
+                    let text = String(el.text || el.content || '');
+                    // Ensure proper spacing in text display
+                    // Replace multiple spaces with single space, but preserve intentional spacing
+                    text = text.replace(/\s+/g, ' ').trim();
+                    const preview = text.length > 80 ? text.substring(0, 80) + '...' : text;
+                    const page = el.page || '?';
+                    html += '<div class="tree-item">';
+                    html += '<div class="tree-item-header" style="padding-left: 30px; font-size: 13px; cursor: default;">';
+                    html += `<span class="tree-label" title="${escapeHtml(text)}">`;
+                    html += `<span style="color: #6b7280; margin-right: 8px;">[${page}]</span>`;
+                    html += `${idx + 1}. ${escapeHtml(preview || `Element ${idx + 1}`)}`;
+                    html += '</span>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                if (typeElements.length > 30) {
+                    html += `<div style="padding: 10px 30px; color: #6b7280; font-size: 12px; font-style: italic;">... and ${typeElements.length - 30} more elements</div>`;
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        });
+    } else {
+        html += '<div class="tree-item">';
+        html += '<div class="tree-item-header">';
+        html += '<span class="tree-label" style="color: #6b7280;">No structure data available</span>';
+        html += '</div></div>';
+    }
+
+    html += '</div></div></div>';
+    structureView.innerHTML = html;
+
+    // Re-initialize tree toggle for new elements
+    initTreeToggle();
+}
+
+/**
+ * Normalize text to ensure proper spacing between words
+ */
+function normalizeTextForDisplay(text) {
+    if (!text) return text;
+
+    // Add space between lowercase letter and uppercase letter (word boundary)
+    text = text.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+    // Add space between letter and number (if not already spaced)
+    text = text.replace(/([a-zA-Z])(\d)/g, '$1 $2');
+    text = text.replace(/(\d)([a-zA-Z])/g, '$1 $2');
+
+    // Clean up multiple spaces
+    text = text.replace(/ +/g, ' ');
+
+    return text.trim();
+}
+
+/**
+ * Update text view
+ */
+function updateTextView(result) {
+    const textView = document.getElementById('textView');
+    if (!textView) return;
+
+    const textContent = textView.querySelector('.text-content');
+    if (!textContent) return;
+
+    const textBlocks = result.text_blocks || [];
+    const fullText = result.full_text || '';
+
+    // Try to extract text from layout elements if text_blocks is empty
+    let extractedText = '';
+    if (textBlocks.length === 0 && !fullText) {
+        const layout = result.layout || {};
+        const elements = layout.elements || [];
+        const textElements = elements.filter(el => el.text && el.type !== 'table');
+        if (textElements.length > 0) {
+            extractedText = textElements.map(el => normalizeTextForDisplay(el.text || '')).join('\n\n');
+        }
+    }
+
+    if (textBlocks.length === 0 && !fullText && !extractedText) {
+        textContent.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No text extracted</div>';
+        return;
+    }
+
+    let html = '';
+    if (textBlocks.length > 0) {
+        textBlocks.slice(0, 50).forEach((block, index) => {
+            // Normalize text to ensure proper spacing
+            const normalizedText = normalizeTextForDisplay(block.text || '');
+            html += '<div class="text-block">';
+            html += '<div class="text-block-header">';
+            html += `<span class="block-type">Text Block ${index + 1}</span>`;
+            if (block.confidence !== undefined) {
+                html += `<span class="block-confidence">Confidence: ${(block.confidence * 100).toFixed(1)}%</span>`;
+            }
+            html += '</div>';
+            html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(normalizedText)}</p>`;
+            html += '</div>';
+        });
+        if (textBlocks.length > 50) {
+            html += `<div style="padding: 20px; text-align: center; color: #6b7280;">... and ${textBlocks.length - 50} more blocks</div>`;
+        }
+    } else if (fullText) {
+        const normalizedText = normalizeTextForDisplay(fullText);
+        html += '<div class="text-block">';
+        html += '<div class="text-block-header">';
+        html += '<span class="block-type">Full Text</span>';
+        html += '</div>';
+        const displayText = normalizedText.length > 10000 ? normalizedText.substring(0, 10000) + '...' : normalizedText;
+        html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(displayText)}</p>`;
+        html += '</div>';
+    } else if (extractedText) {
+        html += '<div class="text-block">';
+        html += '<div class="text-block-header">';
+        html += '<span class="block-type">Extracted Text (from layout)</span>';
+        html += '</div>';
+        const displayText = extractedText.length > 10000 ? extractedText.substring(0, 10000) + '...' : extractedText;
+        html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(displayText)}</p>`;
+        html += '</div>';
+    }
+
+    textContent.innerHTML = html;
+}
+
+/**
+ * Update table view - Only show tables from table extraction service
+ */
+function updateTableView(result) {
+    const tableView = document.getElementById('tableView');
+    if (!tableView) return;
+
+    const tableList = tableView.querySelector('.table-list');
+    if (!tableList) return;
+
+    // ONLY use tables from table extraction service, not from layout elements
+    const extractedTables = result.tables || [];
+
+    let tables = [];
+
+    if (extractedTables.length > 0) {
+        // Use extracted table data from Table Extraction service
+        tables = extractedTables.map((table, idx) => ({
+            id: table.id || `table_${idx + 1}`,
+            data: table.data || [],
+            html: table.html || null,
+            html_structure: table.html_structure || null,
+            page: table.page || table.page_number || '?',
+            rows: table.rows || 0,
+            columns: table.columns || 0,
+            confidence: table.confidence || 0
+        }));
+    }
+
+    if (tables.length === 0) {
+        tableList.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">No tables extracted</div>';
+        return;
+    }
+
+    // Add navigation controls if multiple tables
+    let html = '';
+    if (tables.length > 1) {
+        html += '<div class="table-navigation" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md);">';
+        html += '<button class="table-nav-btn" id="prevTableBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+        html += 'Previous</button>';
+        html += `<span style="color: var(--text-primary); font-weight: 500;">Table <span id="currentTableIndex">1</span> of ${tables.length}</span>`;
+        html += '<button class="table-nav-btn" id="nextTableBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
+        html += 'Next<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"></polyline></svg></button>';
+        html += '</div>';
+    }
+
+    // Store tables data globally for navigation
+    window.currentTables = tables;
+    window.currentTableIndex = 0;
+
+    // Render first table
+    html += renderTableCard(tables[0], 0, tables.length);
+
+    tableList.innerHTML = html;
+
+    // Add navigation event listeners if multiple tables
+    if (tables.length > 1) {
+        const prevBtn = document.getElementById('prevTableBtn');
+        const nextBtn = document.getElementById('nextTableBtn');
+        const currentIndexSpan = document.getElementById('currentTableIndex');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (window.currentTableIndex > 0) {
+                    window.currentTableIndex--;
+                    currentIndexSpan.textContent = window.currentTableIndex + 1;
+                    const tableCard = tableList.querySelector('.table-card');
+                    if (tableCard) {
+                        tableCard.outerHTML = renderTableCard(tables[window.currentTableIndex], window.currentTableIndex, tables.length);
+                    }
+                    updateNavButtons();
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (window.currentTableIndex < tables.length - 1) {
+                    window.currentTableIndex++;
+                    currentIndexSpan.textContent = window.currentTableIndex + 1;
+                    const tableCard = tableList.querySelector('.table-card');
+                    if (tableCard) {
+                        tableCard.outerHTML = renderTableCard(tables[window.currentTableIndex], window.currentTableIndex, tables.length);
+                    }
+                    updateNavButtons();
+                }
+            });
+        }
+
+        function updateNavButtons() {
+            if (prevBtn) {
+                prevBtn.disabled = window.currentTableIndex === 0;
+                prevBtn.style.opacity = window.currentTableIndex === 0 ? '0.5' : '1';
+                prevBtn.style.cursor = window.currentTableIndex === 0 ? 'not-allowed' : 'pointer';
+            }
+            if (nextBtn) {
+                nextBtn.disabled = window.currentTableIndex === tables.length - 1;
+                nextBtn.style.opacity = window.currentTableIndex === tables.length - 1 ? '0.5' : '1';
+                nextBtn.style.cursor = window.currentTableIndex === tables.length - 1 ? 'not-allowed' : 'pointer';
+            }
+        }
+
+        updateNavButtons();
+    }
+}
+
+/**
+ * Render a single table card with proper merge cell support
+ * Only renders table content, not other page content
+ */
+function renderTableCard(table, index, total) {
+    const tableData = table.data || [];
+    const rows = table.rows || tableData.length || 0;
+    const columns = table.columns || (tableData[0] ? tableData[0].length : 0);
+    const page = table.page || '?';
+    const confidence = table.confidence || 0;
+    const tableHtml = table.html || null;
+    const htmlStructure = table.html_structure || null;
+
+    let html = '<div class="table-card">';
+    html += '<div class="table-card-header">';
+    html += `<span class="table-name">Table ${index + 1}${total > 1 ? ` of ${total}` : ''}${page !== '?' ? ` (Page ${page})` : ''}`;
+    if (confidence > 0) {
+        html += ` <span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(confidence * 100).toFixed(1)}%</span>`;
+    }
+    html += '</span>';
+    html += '<div class="table-actions">';
+    html += '<button class="table-action-btn" title="Export CSV">';
+    html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+    html += '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>';
+    html += '<polyline points="7 10 12 15 17 10"></polyline>';
+    html += '<line x1="12" y1="15" x2="12" y2="3"></line>';
+    html += '</svg></button></div></div>';
+    html += '<div class="table-preview" style="overflow-x: auto;">';
+
+    let tableRendered = false;
+
+    // Strategy 1: Use HTML structure if available (most reliable)
+    if (!tableRendered && htmlStructure && htmlStructure.rows && htmlStructure.rows.length > 0) {
+        html += '<table class="extracted-table">';
+        let inThead = false;
+        let inTbody = false;
+
+        htmlStructure.rows.forEach((row, rowIdx) => {
+            const isHeaderRow = row.cells.some(c => c.is_header);
+
+            if (rowIdx === 0 && isHeaderRow && !inThead) {
+                html += '<thead>';
+                inThead = true;
+            } else if (rowIdx === 0 && !isHeaderRow && !inTbody) {
+                html += '<tbody>';
+                inTbody = true;
+            } else if (rowIdx > 0 && inThead && !isHeaderRow) {
+                html += '</thead><tbody>';
+                inThead = false;
+                inTbody = true;
+            } else if (rowIdx > 0 && !inTbody) {
+                html += '<tbody>';
+                inTbody = true;
+            }
+
+            html += '<tr>';
+            row.cells.forEach(cell => {
+                const tag = cell.is_header ? 'th' : 'td';
+                const attrs = [];
+                if (cell.rowspan > 1) attrs.push(`rowspan="${cell.rowspan}"`);
+                if (cell.colspan > 1) attrs.push(`colspan="${cell.colspan}"`);
+                const attrStr = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+                const cellText = normalizeTextForDisplay(cell.text || '');
+                html += `<${tag}${attrStr}>${escapeHtml(cellText)}</${tag}>`;
+            });
+            html += '</tr>';
+        });
+
+        if (inThead) html += '</thead>';
+        if (inTbody) html += '</tbody>';
+        html += '</table>';
+        tableRendered = true;
+    }
+
+    // Strategy 2: Parse and clean HTML (only extract table element, ignore all other content)
+    if (!tableRendered && tableHtml) {
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(tableHtml, 'text/html');
+            const tableElement = doc.querySelector('table');
+            if (tableElement) {
+                // Clone table and add class
+                const cleanTable = tableElement.cloneNode(true);
+                cleanTable.className = 'extracted-table';
+                // Remove any text nodes or elements outside of table cells
+                // Only keep tr, th, td elements
+                const rows = cleanTable.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td, th');
+                    cells.forEach(cell => {
+                        // Remove nested tables if any
+                        const nestedTables = cell.querySelectorAll('table');
+                        nestedTables.forEach(nt => nt.remove());
+                        // Normalize text in cells
+                        const cellText = cell.textContent || '';
+                        const normalizedText = normalizeTextForDisplay(cellText.trim());
+                        cell.textContent = normalizedText;
+                    });
+                });
+                html += cleanTable.outerHTML;
+                tableRendered = true;
+            } else {
+                // No table tag found in HTML, this is invalid - skip to data array
+                console.warn('Table HTML does not contain <table> tag, using data array instead');
+            }
+        } catch (e) {
+            console.warn('Failed to parse table HTML:', e);
+        }
+    }
+
+    // Strategy 3: Render from data array (validate it looks like a table)
+    if (!tableRendered && tableData.length > 0 && Array.isArray(tableData[0])) {
+        // Filter out empty rows and validate table structure
+        const validRows = tableData.filter(row => {
+            if (!Array.isArray(row)) return false;
+            // Check if row has reasonable number of cells (2-20 columns typical for tables)
+            const cellCount = row.filter(cell => cell && String(cell).trim()).length;
+            return cellCount >= 2 && cellCount <= 20;
+        });
+
+        // Additional validation: check if data looks like a table
+        // Tables typically have consistent column counts across rows
+        if (validRows.length > 0) {
+            const firstRowCols = validRows[0].length;
+            const consistentRows = validRows.filter(row => {
+                const rowCols = row.length;
+                // Allow some variation (within 2 columns) for merged cells
+                return Math.abs(rowCols - firstRowCols) <= 2;
+            });
+
+            // Only render if we have at least 2 rows with consistent structure
+            if (consistentRows.length >= 2) {
+                html += '<table class="extracted-table">';
+                const hasHeaders = consistentRows.length > 1 &&
+                    consistentRows[0].every(cell => cell && String(cell).trim()) &&
+                    consistentRows[0].length <= 15; // Reasonable header count
+
+                if (hasHeaders && consistentRows.length > 1) {
+                    html += '<thead><tr>';
+                    consistentRows[0].forEach(cell => {
+                        const cellText = normalizeTextForDisplay(String(cell || ''));
+                        html += `<th>${escapeHtml(cellText)}</th>`;
+                    });
+                    html += '</tr></thead><tbody>';
+                    consistentRows.slice(1).forEach(row => {
+                        if (Array.isArray(row)) {
+                            html += '<tr>';
+                            row.forEach(cell => {
+                                const cellText = normalizeTextForDisplay(String(cell || ''));
+                                html += `<td>${escapeHtml(cellText)}</td>`;
+                            });
+                            html += '</tr>';
+                        }
+                    });
+                    html += '</tbody>';
+                } else {
+                    html += '<tbody>';
+                    consistentRows.forEach(row => {
+                        if (Array.isArray(row)) {
+                            html += '<tr>';
+                            row.forEach(cell => {
+                                const cellText = normalizeTextForDisplay(String(cell || ''));
+                                html += `<td>${escapeHtml(cellText)}</td>`;
+                            });
+                            html += '</tr>';
+                        }
+                    });
+                    html += '</tbody>';
+                }
+                html += '</table>';
+                tableRendered = true;
+            }
+        }
+    }
+
+    // If nothing rendered, show empty state
+    if (!tableRendered) {
+        html += '<div class="empty-state" style="padding: 20px; text-align: center; color: var(--text-tertiary);">No table data available</div>';
+    }
+
+    html += '</div></div>';
+    return html;
+}
+
+/**
+ * Update keywords display
+ */
+function updateKeywords(result) {
+    const keywordsList = document.getElementById('keywordsList');
+    if (!keywordsList) return;
+
+    const keywords = result.keywords || [];
+    const keywordsDetailed = result.keywords_detailed || [];
+
+    if (keywords.length === 0 && keywordsDetailed.length === 0) {
+        keywordsList.innerHTML = '<span class="empty-hint">No keywords extracted</span>';
+        return;
+    }
+
+    // Use detailed keywords if available (with scores), otherwise use simple list
+    const keywordsToShow = keywordsDetailed.length > 0 ? keywordsDetailed : keywords.map(kw => ({ keyword: kw, score: 0 }));
+
+    keywordsList.innerHTML = keywordsToShow.map(kw => {
+        const keyword = typeof kw === 'string' ? kw : kw.keyword;
+        const score = typeof kw === 'object' ? (kw.score || 0) : 0;
+        return `<span class="keyword-tag" data-score="${score.toFixed(2)}">${escapeHtml(keyword)}</span>`;
+    }).join('');
+}
+
+/**
+ * Update entities display
+ */
+function updateEntities(result) {
+    const entitiesList = document.getElementById('entitiesList');
+    if (!entitiesList) return;
+
+    const entities = result.entities || [];
+    const entitiesGrouped = result.entities_grouped || {};
+
+    if (entities.length === 0 && Object.keys(entitiesGrouped).length === 0) {
+        entitiesList.innerHTML = '<div class="empty-hint">No entities extracted</div>';
+        return;
+    }
+
+    let html = '';
+
+    // Use grouped entities if available
+    if (Object.keys(entitiesGrouped).length > 0) {
+        Object.entries(entitiesGrouped).forEach(([label, items]) => {
+            html += '<div class="entity-group">';
+            html += `<span class="entity-label ${label.toLowerCase()}">${label}</span>`;
+            html += '<div class="entity-items">';
+            items.forEach(item => {
+                const text = typeof item === 'string' ? item : (item.text || item.entity || '');
+                html += `<span class="entity-tag">${escapeHtml(text)}</span>`;
+            });
+            html += '</div></div>';
+        });
+    } else if (entities.length > 0) {
+        // Group entities by label
+        const grouped = {};
+        entities.forEach(entity => {
+            const label = entity.label || entity.type || 'OTHER';
+            if (!grouped[label]) {
+                grouped[label] = [];
+            }
+            grouped[label].push(entity.text || entity.entity || entity);
+        });
+
+        Object.entries(grouped).forEach(([label, items]) => {
+            html += '<div class="entity-group">';
+            html += `<span class="entity-label ${label.toLowerCase()}">${label}</span>`;
+            html += '<div class="entity-items">';
+            items.forEach(item => {
+                const text = typeof item === 'string' ? item : (item.text || item.entity || '');
+                html += `<span class="entity-tag">${escapeHtml(text)}</span>`;
+            });
+            html += '</div></div>';
+        });
+    }
+
+    entitiesList.innerHTML = html;
+}
+
+/**
+ * Update extract view
+ */
+function updateExtractView(result) {
+    const extractView = document.getElementById('extractView');
+    if (!extractView) return;
+
+    const extractSummary = extractView.querySelector('.extract-summary');
+    if (!extractSummary) return;
+
+    // Get template extraction data if available
+    const templateExtraction = result.template_extraction || {};
+    const extractedFields = templateExtraction.fields || {};
+
+    // If no template extraction, show summary from document
+    if (Object.keys(extractedFields).length === 0) {
+        const docInfo = result.document_info || {};
+        const layout = result.layout || {};
+        const elements = layout.elements || [];
+        const textBlocks = result.text_blocks || [];
+
+        // Create a simple summary
+        let html = '';
+        if (docInfo.file_name) {
+            html += '<div class="extract-card">';
+            html += '<div class="extract-card-header">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+            html += '<span>File Name</span></div>';
+            html += `<div class="extract-card-value">${escapeHtml(docInfo.file_name)}</div>`;
+            html += '</div>';
+        }
+
+        if (docInfo.pages) {
+            html += '<div class="extract-card">';
+            html += '<div class="extract-card-header">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect></svg>';
+            html += '<span>Pages</span></div>';
+            html += `<div class="extract-card-value">${docInfo.pages}</div>`;
+            html += '</div>';
+        }
+
+        const titleCount = elements.filter(e => e.type === 'title' || e.type === 'text_title').length;
+        const textCount = elements.filter(e => e.type === 'text' || e.type === 'paragraph').length;
+        const tableCount = elements.filter(e => e.type === 'table').length;
+
+        if (titleCount > 0) {
+            html += '<div class="extract-card">';
+            html += '<div class="extract-card-header">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path></svg>';
+            html += '<span>Titles</span></div>';
+            html += `<div class="extract-card-value">${titleCount}</div>`;
+            html += '</div>';
+        }
+
+        if (textCount > 0) {
+            html += '<div class="extract-card">';
+            html += '<div class="extract-card-header">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>';
+            html += '<span>Text Blocks</span></div>';
+            html += `<div class="extract-card-value">${textCount}</div>`;
+            html += '</div>';
+        }
+
+        if (tableCount > 0) {
+            html += '<div class="extract-card">';
+            html += '<div class="extract-card-header">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"></path></svg>';
+            html += '<span>Tables</span></div>';
+            html += `<div class="extract-card-value highlight">${tableCount}</div>`;
+            html += '</div>';
+        }
+
+        extractSummary.innerHTML = html || '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No extracted data available</div>';
+    } else {
+        // Display template extracted fields
+        let html = '';
+        Object.entries(extractedFields).forEach(([key, value]) => {
+            html += '<div class="extract-card">';
+            html += '<div class="extract-card-header">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+            html += `<span>${escapeHtml(key)}</span></div>`;
+            html += `<div class="extract-card-value">${escapeHtml(String(value))}</div>`;
+            html += '</div>';
+        });
+        extractSummary.innerHTML = html;
+    }
+}
+
+/**
+ * Get icon for element type
+ */
+function getElementIcon(type) {
+    const icons = {
+        'header': '🏷️',
+        'title': '📝',
+        'paragraph': '📄',
+        'text': '📄',
+        'text_title': '📝',
+        'table': '📊',
+        'table_caption': '📊',
+        'list': '📑',
+        'figure': '🖼️',
+        'footer': '🏷️'
+    };
+    return icons[type.toLowerCase()] || '📄';
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    // Handle null, undefined, or non-string types
+    if (text == null) {
+        return '';
+    }
+    if (typeof text !== 'string') {
+        text = String(text);
+    }
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Show floating progress card
+ */
+function showFloatingProgressCard(taskInfo) {
+    const card = document.getElementById('floatingProgressCard');
+    if (!card) return;
+
+    const fileNameEl = card.querySelector('.floating-card-filename');
+    const stepEl = card.querySelector('.floating-card-step');
+    const progressFill = card.querySelector('#floatingCardProgressFill');
+    const progressText = card.querySelector('#floatingCardProgressText');
+
+    if (fileNameEl && taskInfo.fileName) {
+        fileNameEl.textContent = taskInfo.fileName;
+    }
+    if (stepEl && taskInfo.step) {
+        stepEl.textContent = taskInfo.step;
+    }
+    if (progressFill && taskInfo.progress !== undefined) {
+        progressFill.style.width = `${taskInfo.progress}%`;
+    }
+    if (progressText && taskInfo.progress !== undefined) {
+        progressText.textContent = `${taskInfo.progress}%`;
+    }
+
+    card.style.display = 'block';
+
+    // Setup cancel button
+    const cancelBtn = document.getElementById('cancelFloatingCardBtn');
+    if (cancelBtn) {
+        cancelBtn.onclick = () => {
+            // Find the processing item and cancel it
+            const processingItem = document.querySelector('.queue-item.processing');
+            if (processingItem && processingItem.dataset.taskId) {
+                fetch(`${API_BASE_URL}/tasks/${processingItem.dataset.taskId}/cancel`, {
+                    method: 'POST'
+                }).catch(console.error);
+            }
+        };
+    }
+
+    // Setup close button
+    const closeBtn = document.getElementById('closeFloatingCardBtn');
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            hideFloatingProgressCard();
+        };
+    }
+}
+
+/**
+ * Update floating progress
+ */
+function updateFloatingProgress(progress, step) {
+    const card = document.getElementById('floatingProgressCard');
+    if (!card || card.style.display === 'none') return;
+
+    const stepEl = card.querySelector('.floating-card-step');
+    const progressFill = card.querySelector('#floatingCardProgressFill');
+    const progressText = card.querySelector('#floatingCardProgressText');
+
+    if (stepEl && step) {
+        stepEl.textContent = step;
+    }
+    if (progressFill && progress !== undefined) {
+        progressFill.style.width = `${progress}%`;
+    }
+    if (progressText && progress !== undefined) {
+        progressText.textContent = `${progress}%`;
+    }
+}
+
+/**
+ * Hide floating progress card
+ */
+function hideFloatingProgressCard() {
+    const card = document.getElementById('floatingProgressCard');
+    if (card) {
+        card.style.display = 'none';
+    }
+}
+
+/**
+ * Fail processing
+ */
+function failProcessing(item, message) {
+    item.classList.remove('processing');
+    item.classList.add('failed');
+
+    // Update status bar
+    updateStatusBar('default');
+
+    const icon = item.querySelector('.queue-item-icon');
+    icon.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+    `;
+
+    const status = item.querySelector('.queue-item-status');
+    status.textContent = `Failed: ${message}`;
+
+    const progressBar = item.querySelector('.progress-bar');
+    if (progressBar) {
+        progressBar.remove();
+    }
+
+    showNotification(`Processing failed: ${message}`, 'error');
+
+    // Update status bar
+    updateStatusBar();
+    // Promote next queued item if any
+    promoteNextQueued();
+}
+
+/**
+ * Update status bar
+ */
+function updateStatusBar(status = 'default', data = {}) {
+    const statusDefault = document.getElementById('statusDefault');
+    const statusProcessing = document.getElementById('statusProcessing');
+    const statusCompleted = document.getElementById('statusCompleted');
+
+    // Hide all states
+    if (statusDefault) statusDefault.style.display = 'none';
+    if (statusProcessing) statusProcessing.style.display = 'none';
+    if (statusCompleted) statusCompleted.style.display = 'none';
+
+    switch (status) {
+        case 'processing':
+            if (statusProcessing) {
+                // Force show the element
+                statusProcessing.style.display = 'flex';
+                statusProcessing.style.visibility = 'visible';
+                statusProcessing.style.opacity = '1';
+
+                const stepEl = statusProcessing.querySelector('.processing-step');
+
+                // Only update step text (server terminal output)
+                if (stepEl && data.step) {
+                    stepEl.textContent = data.step;
+                    // Force immediate reflow and repaint to ensure the update is visible
+                    void statusProcessing.offsetHeight;
+                    // Use requestAnimationFrame to ensure browser renders the update immediately
+                    requestAnimationFrame(() => {
+                        if (stepEl && data.step) {
+                            stepEl.textContent = data.step; // Update again in next frame to force render
+                        }
+                    });
+                    console.log(`[StatusBar] Updated processing step: ${data.step.substring(0, 50)}...`);
+                    console.log(`[StatusBar] Element display: ${statusProcessing.style.display}, visibility: ${statusProcessing.style.visibility}`);
+                } else {
+                    if (!stepEl) {
+                        console.warn('[StatusBar] .processing-step element not found');
+                    }
+                    if (!data.step) {
+                        console.warn('[StatusBar] No step data provided');
+                    }
+                }
+            } else {
+                console.warn('[StatusBar] statusProcessing element not found');
+            }
+            break;
+        case 'completed':
+            if (statusCompleted) {
+                statusCompleted.style.display = 'flex';
+                const completedText = statusCompleted.querySelector('.completed-text');
+                if (completedText && data.summary) {
+                    completedText.textContent = data.summary;
+                }
+            }
+            break;
+        default:
+            if (statusDefault) {
+                statusDefault.style.display = 'block';
+            }
+            break;
+    }
+}
+
+/**
+ * Export results
+ */
+async function exportResults(format) {
+    // Sample data for export
+    const mockData = {
+        document: {
+            name: 'financial_report.pdf',
+            pages: 5,
+            processedAt: new Date().toISOString()
+        },
+        layout: {
+            headers: 1,
+            titles: 3,
+            paragraphs: 3,
+            tables: 1,
+            figures: 1
+        },
+        text: [
+            { type: 'title', content: 'TechCorp Industries Ltd.', confidence: 0.985 },
+            { type: 'subtitle', content: 'Annual Financial Report 2024', confidence: 0.972 }
+        ],
+        tables: [
+            {
+                name: 'Financial Summary',
+                rows: 4,
+                columns: 4,
+                data: [
+                    ['Item', '2024', '2023', 'Growth'],
+                    ['Revenue', '$52.8M', '$41.5M', '+27.2%'],
+                    ['Net Profit', '$8.92M', '$6.80M', '+31.2%'],
+                    ['R&D Investment', '$10.56M', '$8.30M', '+27.2%']
+                ]
+            }
+        ],
+        keywords: ['Artificial Intelligence', 'High-tech', 'R&D', 'Financial Report', 'Revenue', 'Net Profit']
+    };
+
+    let content, filename, mimeType;
+
+    format = format.toLowerCase();
+
+    switch (format) {
+        case 'json':
+            content = JSON.stringify(mockData, null, 2);
+            filename = 'document_result.json';
+            mimeType = 'application/json';
+            break;
+        case 'csv':
+            content = convertToCSV(mockData.tables[0].data);
+            filename = 'table_data.csv';
+            mimeType = 'text/csv';
+            break;
+        case 'markdown':
+            content = convertToMarkdown(mockData);
+            filename = 'document_result.md';
+            mimeType = 'text/markdown';
+            break;
+        case 'docx':
+        case 'word':
+            showNotification('Word export requires backend support', 'info');
+            return;
+        default:
+            showNotification(`Unknown format: ${format}`, 'error');
+            return;
+    }
+
+    // Download file
+    downloadFile(content, filename, mimeType);
+    showNotification(`Exported ${format.toUpperCase()} file successfully`, 'success');
+}
+
+/**
+ * Convert to CSV format
+ */
+function convertToCSV(data) {
+    return data.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+}
+
+/**
+ * Convert to Markdown format
+ */
+function convertToMarkdown(data) {
+    let md = `# ${data.document.name}\n\n`;
+    md += `**Processed At**: ${data.document.processedAt}\n\n`;
+    md += `**Total Pages**: ${data.document.pages}\n\n`;
+
+    md += `## Document Structure\n\n`;
+    md += `- Headers: ${data.layout.headers}\n`;
+    md += `- Titles: ${data.layout.titles}\n`;
+    md += `- Paragraphs: ${data.layout.paragraphs}\n`;
+    md += `- Tables: ${data.layout.tables}\n`;
+    md += `- Figures: ${data.layout.figures}\n\n`;
+
+    md += `## Extracted Tables\n\n`;
+    if (data.tables.length > 0) {
+        const table = data.tables[0];
+        md += `### ${table.name}\n\n`;
+        md += '| ' + table.data[0].join(' | ') + ' |\n';
+        md += '| ' + table.data[0].map(() => '---').join(' | ') + ' |\n';
+        table.data.slice(1).forEach(row => {
+            md += '| ' + row.join(' | ') + ' |\n';
+        });
+    }
+
+    md += `\n## Keywords\n\n`;
+    md += data.keywords.map(k => `- ${k}`).join('\n');
+
+    return md;
+}
+
+/**
+ * Download file
+ */
+function downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Show notification
+ */
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existing = document.querySelector('.notification');
+    if (existing) {
+        existing.remove();
+    }
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-icon">
+            ${getNotificationIcon(type)}
+        </div>
+        <div class="notification-message">${message}</div>
+    `;
+
+    // Add styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 20px;
+        background: ${getNotificationColor(type)};
+        border-radius: 10px;
+        color: white;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 9999;
+        animation: slideIn 0.3s ease-out;
+    `;
+
+    document.body.appendChild(notification);
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out forwards';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+/**
+ * Get notification icon
+ */
+function getNotificationIcon(type) {
+    const icons = {
+        success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+        error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+        warning: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+        info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
+    };
+    return icons[type] || icons.info;
+}
+
+/**
+ * Get notification color
+ */
+function getNotificationColor(type) {
+    const colors = {
+        success: 'linear-gradient(135deg, #22c55e, #16a34a)',
+        error: 'linear-gradient(135deg, #f43f5e, #e11d48)',
+        warning: 'linear-gradient(135deg, #f59e0b, #d97706)',
+        info: 'linear-gradient(135deg, #6366f1, #4f46e5)'
+    };
+    return colors[type] || colors.info;
+}
+
+// ============================================
+// P2 Features: Batch Processing
+// ============================================
+
+/**
+ * Initialize batch processing features
+ */
+function initBatchProcessing() {
+    // Batch processing state
+    window.batchState = {
+        batches: [],
+        currentBatch: null
+    };
+}
+
+/**
+ * Create a new batch job
+ */
+async function createBatch(name, files) {
+    try {
+        const formData = new FormData();
+        formData.append('name', name);
+
+        files.forEach(file => {
+            formData.append('files', file);
+        });
+
+        formData.append('options', JSON.stringify(getProcessingOptions()));
+
+        const response = await fetch(`${API_BASE_URL}/batch`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            const batch = await response.json();
+            showNotification(`Batch "${name}" created with ${batch.total_tasks} files`, 'success');
+            return batch;
+        } else {
+            throw new Error('Failed to create batch');
+        }
+    } catch (error) {
+        showNotification(`Batch creation failed: ${error.message}`, 'error');
+        return null;
+    }
+}
+
+/**
+ * Start batch processing
+ */
+async function startBatch(batchId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/batch/${batchId}/start`, {
+            method: 'POST'
+        });
+
+        if (response.ok) {
+            showNotification('Batch processing started', 'success');
+            pollBatchStatus(batchId);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        showNotification(`Failed to start batch: ${error.message}`, 'error');
+        return false;
+    }
+}
+
+/**
+ * Poll batch status
+ */
+async function pollBatchStatus(batchId) {
+    const pollInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/batch/${batchId}`);
+            const batch = await response.json();
+
+            updateBatchUI(batch);
+
+            if (batch.status === 'completed' || batch.status === 'failed' || batch.status === 'cancelled') {
+                clearInterval(pollInterval);
+                showNotification(`Batch ${batch.status}: ${batch.completed_tasks}/${batch.total_tasks} completed`,
+                    batch.status === 'completed' ? 'success' : 'warning');
+            }
+        } catch (error) {
+            clearInterval(pollInterval);
+        }
+    }, 2000);
+}
+
+/**
+ * Update batch UI
+ */
+function updateBatchUI(batch) {
+    // Update progress display if on batch tab
+    console.log('Batch status:', batch.status, 'Progress:', batch.progress);
+}
+
+/**
+ * Pause batch
+ */
+async function pauseBatch(batchId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/batch/${batchId}/pause`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            showNotification('Batch paused', 'info');
+        }
+    } catch (error) {
+        showNotification(`Failed to pause: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Resume batch
+ */
+async function resumeBatch(batchId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/batch/${batchId}/resume`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            showNotification('Batch resumed', 'success');
+        }
+    } catch (error) {
+        showNotification(`Failed to resume: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Cancel batch
+ */
+async function cancelBatch(batchId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/batch/${batchId}/cancel`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            showNotification('Batch cancelled', 'warning');
+        }
+    } catch (error) {
+        showNotification(`Failed to cancel: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Get batch results
+ */
+async function getBatchResults(batchId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/batch/${batchId}/results`);
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        showNotification(`Failed to get results: ${error.message}`, 'error');
+        return null;
+    }
+}
+
+// ============================================
+// P2 Features: NLP Analysis
+// ============================================
+
+/**
+ * Initialize NLP features
+ */
+function initNLPFeatures() {
+    // NLP state
+    window.nlpState = {
+        keywords: [],
+        entities: []
+    };
+}
+
+/**
+ * Analyze text with NLP
+ */
+async function analyzeTextNLP(text, topK = 10) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/nlp/analyze`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                top_k_keywords: topK,
+                engine: document.getElementById('nlpEngineSelect')?.value || 'spacy'
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            window.nlpState.keywords = result.keywords || [];
+            window.nlpState.entities = result.entities || [];
+            return result;
+        }
+        return null;
+    } catch (error) {
+        console.error('NLP analysis failed:', error);
+        return null;
+    }
+}
+
+/**
+ * Extract keywords only
+ */
+async function extractKeywords(text, topK = 10) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/nlp/keywords`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                top_k_keywords: topK
+            })
+        });
+
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        console.error('Keyword extraction failed:', error);
+        return null;
+    }
+}
+
+/**
+ * Extract named entities
+ */
+async function extractEntities(text) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/nlp/entities`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text
+            })
+        });
+
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        console.error('Entity extraction failed:', error);
+        return null;
+    }
+}
+
+// ============================================
+// P2 Features: Template Management
+// ============================================
+
+/**
+ * Get available templates
+ */
+async function getTemplates(category = null) {
+    try {
+        let url = `${API_BASE_URL}/templates`;
+        if (category) {
+            url += `?category=${category}`;
+        }
+
+        const response = await fetch(url);
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        console.error('Failed to get templates:', error);
+        return null;
+    }
+}
+
+/**
+ * Get template details
+ */
+async function getTemplateDetails(templateId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/templates/${templateId}`);
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        console.error('Failed to get template:', error);
+        return null;
+    }
+}
+
+/**
+ * Create custom template
+ */
+async function createTemplate(templateData) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/templates`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(templateData)
+        });
+
+        if (response.ok) {
+            const template = await response.json();
+            showNotification(`Template "${template.name}" created`, 'success');
+            return template;
+        }
+        return null;
+    } catch (error) {
+        showNotification(`Failed to create template: ${error.message}`, 'error');
+        return null;
+    }
+}
+
+/**
+ * Extract fields using template
+ */
+async function extractWithTemplate(templateId, text) {
+    try {
+        const formData = new FormData();
+        formData.append('text', text);
+
+        const response = await fetch(`${API_BASE_URL}/templates/${templateId}/extract`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        console.error('Template extraction failed:', error);
+        return null;
+    }
+}
+
+/**
+ * Auto-detect template and extract
+ */
+async function autoExtractTemplate(text) {
+    try {
+        const formData = new FormData();
+        formData.append('text', text);
+
+        const response = await fetch(`${API_BASE_URL}/templates/auto-extract`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        console.error('Auto extraction failed:', error);
+        return null;
+    }
+}
+
+/**
+ * Match templates against text
+ */
+async function matchTemplates(text) {
+    try {
+        const formData = new FormData();
+        formData.append('text', text);
+
+        const response = await fetch(`${API_BASE_URL}/templates/match`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            return await response.json();
+        }
+        return null;
+    } catch (error) {
+        console.error('Template matching failed:', error);
+        return null;
+    }
+}
+
+/**
+ * Initialize panel resize functionality
+ */
+function initPanelResize() {
+    const rightPanel = document.getElementById('rightPanel');
+    const resizeHandle = document.getElementById('panelResizeHandle');
+
+    if (!rightPanel || !resizeHandle) return;
+
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = rightPanel.offsetWidth;
+        resizeHandle.classList.add('resizing');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        const diff = startX - e.clientX; // Reverse because we're resizing from left
+        const newWidth = startWidth + diff;
+        const minWidth = 250;
+        const maxWidth = 800;
+
+        if (newWidth >= minWidth && newWidth <= maxWidth) {
+            rightPanel.style.width = `${newWidth}px`;
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            resizeHandle.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+    });
+}
+
+/**
+ * Initialize JSON view buttons
+ */
+function initJsonViewButtons() {
+    const copyBtn = document.getElementById('copyJsonBtn');
+    const downloadBtn = document.getElementById('downloadJsonBtn');
+
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            const jsonCode = document.getElementById('jsonCode');
+            if (jsonCode) {
+                navigator.clipboard.writeText(jsonCode.textContent).then(() => {
+                    showNotification('JSON copied to clipboard', 'success');
+                }).catch(() => {
+                    showNotification('Failed to copy JSON', 'error');
+                });
+            }
+        });
+    }
+
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+            const jsonCode = document.getElementById('jsonCode');
+            if (jsonCode) {
+                const blob = new Blob([jsonCode.textContent], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `docuvision_result_${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showNotification('JSON downloaded', 'success');
+            }
+        });
+    }
+}
+
+/**
+ * Update Content Text view
+ */
+function updateContentText(result) {
+    const contentTextContent = document.getElementById('contentTextContent');
+    if (!contentTextContent) return;
+
+    const textBlocks = result.text_blocks || [];
+    const fullText = result.full_text || '';
+    const layout = result.layout || {};
+    const elements = layout.elements || [];
+
+    // Extract text from layout elements (titles, paragraphs, etc.)
+    const textElements = elements.filter(el => {
+        const type = el.type || '';
+        return el.text && (type === 'title' || type === 'text' || type === 'paragraph');
+    });
+
+    let html = '';
+
+    if (textElements.length > 0) {
+        // Group by type and display
+        const titles = textElements.filter(el => el.type === 'title');
+        const paragraphs = textElements.filter(el => el.type === 'text' || el.type === 'paragraph');
+
+        if (titles.length > 0) {
+            html += '<div class="text-section">';
+            html += '<h4 class="text-section-title">Titles</h4>';
+            titles.forEach((el, idx) => {
+                const normalizedText = normalizeTextForDisplay(el.text || '');
+                html += '<div class="text-block">';
+                html += '<div class="text-block-header">';
+                html += `<span class="block-type">Title ${idx + 1}</span>`;
+                if (el.confidence !== undefined) {
+                    html += `<span class="block-confidence">Confidence: ${(el.confidence * 100).toFixed(1)}%</span>`;
+                }
+                html += '</div>';
+                html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(normalizedText)}</p>`;
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+
+        if (paragraphs.length > 0) {
+            html += '<div class="text-section">';
+            html += '<h4 class="text-section-title">Paragraphs</h4>';
+            paragraphs.forEach((el, idx) => {
+                const normalizedText = normalizeTextForDisplay(el.text || '');
+                html += '<div class="text-block">';
+                html += '<div class="text-block-header">';
+                html += `<span class="block-type">Paragraph ${idx + 1}</span>`;
+                if (el.confidence !== undefined) {
+                    html += `<span class="block-confidence">Confidence: ${(el.confidence * 100).toFixed(1)}%</span>`;
+                }
+                html += '</div>';
+                html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(normalizedText)}</p>`;
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+    } else if (textBlocks.length > 0) {
+        textBlocks.slice(0, 50).forEach((block, index) => {
+            const normalizedText = normalizeTextForDisplay(block.text || '');
+            html += '<div class="text-block">';
+            html += '<div class="text-block-header">';
+            html += `<span class="block-type">Text Block ${index + 1}</span>`;
+            if (block.confidence !== undefined) {
+                html += `<span class="block-confidence">Confidence: ${(block.confidence * 100).toFixed(1)}%</span>`;
+            }
+            html += '</div>';
+            html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(normalizedText)}</p>`;
+            html += '</div>';
+        });
+    } else if (fullText) {
+        const normalizedText = normalizeTextForDisplay(fullText);
+        html += '<div class="text-block">';
+        html += '<div class="text-block-header">';
+        html += '<span class="block-type">Full Text</span>';
+        html += '</div>';
+        const displayText = normalizedText.length > 10000 ? normalizedText.substring(0, 10000) + '...' : normalizedText;
+        html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(displayText)}</p>`;
+        html += '</div>';
+    }
+
+    if (!html) {
+        html = '<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">No text extracted</div>';
+    }
+
+    contentTextContent.innerHTML = html;
+}
+
+/**
+ * Update Content Tables view
+ */
+function updateContentTables(result) {
+    const contentTableList = document.getElementById('contentTableList');
+    if (!contentTableList) return;
+
+    // Use the same logic as updateTableView but render to contentTableList
+    let extractedTables = result.tables || [];
+
+    // Fallback: Layout-only mode can contain table HTML in result.layout.elements
+    if (extractedTables.length === 0) {
+        const layoutTables = (result.layout?.elements || []).filter(el => {
+            const t = String(el.type || el.element_type || '').toLowerCase();
+            return t === 'table' && !!el.html;
+        });
+
+        if (layoutTables.length > 0) {
+            extractedTables = layoutTables.map((el, idx) => ({
+                id: el.id || el.element_id || `layout_table_${idx + 1}`,
+                page: el.page || el.page_number || 1,
+                html: el.html,
+                data: el.data || [],
+                rows: el.rows || 0,
+                columns: el.columns || 0,
+                confidence: typeof el.confidence === 'number' ? el.confidence : 0,
+                bbox: el.bbox || null,
+            }));
+        }
+    }
+
+    if (extractedTables.length === 0) {
+        contentTableList.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">No tables extracted</div>';
+        return;
+    }
+
+    // Store tables data globally for navigation
+    window.currentTables = extractedTables.map((table, idx) => ({
+        id: table.id || `table_${idx + 1}`,
+        data: table.data || [],
+        html: table.html || null,
+        html_structure: table.html_structure || null,
+        page: table.page || table.page_number || '?',
+        rows: table.rows || 0,
+        columns: table.columns || 0,
+        confidence: table.confidence || 0
+    }));
+
+    window.currentTableIndex = 0;
+
+    let html = '';
+    if (window.currentTables.length > 1) {
+        html += '<div class="table-navigation" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md);">';
+        html += '<button class="table-nav-btn" id="contentPrevTableBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+        html += 'Previous</button>';
+        html += `<span style="color: var(--text-primary); font-weight: 500;">Table <span id="contentCurrentTableIndex">1</span> of ${window.currentTables.length}</span>`;
+        html += '<button class="table-nav-btn" id="contentNextTableBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
+        html += 'Next<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"></polyline></svg></button>';
+        html += '</div>';
+    }
+
+    html += renderTableCard(window.currentTables[0], 0, window.currentTables.length);
+    contentTableList.innerHTML = html;
+
+    // Add navigation event listeners
+    if (window.currentTables.length > 1) {
+        const prevBtn = document.getElementById('contentPrevTableBtn');
+        const nextBtn = document.getElementById('contentNextTableBtn');
+        const currentIndexSpan = document.getElementById('contentCurrentTableIndex');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (window.currentTableIndex > 0) {
+                    window.currentTableIndex--;
+                    currentIndexSpan.textContent = window.currentTableIndex + 1;
+                    const tableCard = contentTableList.querySelector('.table-card');
+                    if (tableCard) {
+                        tableCard.outerHTML = renderTableCard(window.currentTables[window.currentTableIndex], window.currentTableIndex, window.currentTables.length);
+                    }
+                    updateContentNavButtons();
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (window.currentTableIndex < window.currentTables.length - 1) {
+                    window.currentTableIndex++;
+                    currentIndexSpan.textContent = window.currentTableIndex + 1;
+                    const tableCard = contentTableList.querySelector('.table-card');
+                    if (tableCard) {
+                        tableCard.outerHTML = renderTableCard(window.currentTables[window.currentTableIndex], window.currentTableIndex, window.currentTables.length);
+                    }
+                    updateContentNavButtons();
+                }
+            });
+        }
+
+        function updateContentNavButtons() {
+            if (prevBtn) {
+                prevBtn.disabled = window.currentTableIndex === 0;
+                prevBtn.style.opacity = window.currentTableIndex === 0 ? '0.5' : '1';
+                prevBtn.style.cursor = window.currentTableIndex === 0 ? 'not-allowed' : 'pointer';
+            }
+            if (nextBtn) {
+                nextBtn.disabled = window.currentTableIndex === window.currentTables.length - 1;
+                nextBtn.style.opacity = window.currentTableIndex === window.currentTables.length - 1 ? '0.5' : '1';
+                nextBtn.style.cursor = window.currentTableIndex === window.currentTables.length - 1 ? 'not-allowed' : 'pointer';
+            }
+        }
+
+        updateContentNavButtons();
+    }
+}
+
+/**
+ * Update Content Figures view
+ */
+function updateContentFigures(result) {
+    const contentFiguresList = document.getElementById('contentFiguresList');
+    if (!contentFiguresList) return;
+
+    const layout = result.layout || {};
+    const elements = layout.elements || [];
+    const figures = elements.filter(el => el.type === 'figure' || el.type === 'figure_caption');
+
+    if (figures.length === 0) {
+        contentFiguresList.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">No figures detected</div>';
+        return;
+    }
+
+    let html = '';
+    figures.forEach((figure, index) => {
+        html += '<div class="figure-card">';
+        html += '<div class="figure-card-header">';
+        html += `<span class="figure-name">Figure ${index + 1}${figure.page ? ` (Page ${figure.page})` : ''}</span>`;
+        if (figure.confidence !== undefined) {
+            html += `<span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(figure.confidence * 100).toFixed(1)}%</span>`;
+        }
+        html += '</div>';
+        html += '<div class="figure-preview">';
+        if (figure.text) {
+            html += `<p style="color: var(--text-secondary); font-style: italic;">${escapeHtml(normalizeTextForDisplay(figure.text))}</p>`;
+        } else {
+            html += '<p style="color: var(--text-tertiary);">Figure detected (no caption available)</p>';
+        }
+        html += '</div>';
+        html += '</div>';
+    });
+
+    contentFiguresList.innerHTML = html;
+}
+
+/**
+ * Update Result JSON view
+ */
+function updateResultJson(result) {
+    const jsonCode = document.getElementById('jsonCode');
+    if (!jsonCode) return;
+
+    try {
+        // Format JSON with indentation (similar to Azure format)
+        const formattedJson = JSON.stringify(result, null, 2);
+        jsonCode.textContent = formattedJson;
+    } catch (e) {
+        jsonCode.textContent = 'Error formatting JSON: ' + e.message;
+    }
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+    }
+
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+    }
+
+    .queue-item.failed .queue-item-icon {
+        color: #f43f5e;
+    }
+
+    .option-badge.new {
+        background: linear-gradient(135deg, #06b6d4, #0891b2);
+    }
+`;
+document.head.appendChild(style);
+
+/**
+ * Adjust document size to fit container - show full page without scrollbar
+ */
+function adjustDocumentSize() {
+    const documentImage = document.getElementById('documentImage');
+    const previewContainer = document.querySelector('.preview-container');
+    const documentPage = document.getElementById('documentPage');
+    const documentPreviewContent = document.querySelector('.document-preview-content');
+
+    if (!previewContainer) return;
+
+    // Calculate available space (account for padding: 8px on each side = 16px total)
+    const containerWidth = previewContainer.clientWidth - 16;
+    const containerHeight = previewContainer.clientHeight - 16;
+
+    // Ensure container dimensions are valid
+    if (containerWidth <= 0 || containerHeight <= 0) {
+        setTimeout(adjustDocumentSize, 100);
+        return;
+    }
+
+    if (documentImage) {
+        // Adjust image size to fit container exactly
+        // Use natural dimensions if available, otherwise wait for image to load
+        if (documentImage.complete && documentImage.naturalWidth > 0) {
+            const imgWidth = documentImage.naturalWidth;
+            const imgHeight = documentImage.naturalHeight;
+
+            // Calculate scale to fit container (maintain aspect ratio)
+            const scaleX = containerWidth / imgWidth;
+            const scaleY = containerHeight / imgHeight;
+            const scale = Math.min(scaleX, scaleY); // Fit to container, can scale down
+
+            const displayWidth = imgWidth * scale;
+            const displayHeight = imgHeight * scale;
+
+            // Set image size to fit exactly within container
+            documentImage.style.width = `${displayWidth}px`;
+            documentImage.style.height = `${displayHeight}px`;
+            documentImage.style.maxWidth = `${containerWidth}px`;
+            documentImage.style.maxHeight = `${containerHeight}px`;
+            documentImage.style.objectFit = 'contain';
+            documentImage.style.display = 'block';
+
+            // Set container sizes to match image size (not container size) to eliminate whitespace
+            if (documentPage) {
+                documentPage.style.width = `${displayWidth}px`;
+                documentPage.style.height = `${displayHeight}px`;
+                documentPage.style.maxWidth = `${containerWidth}px`;
+                documentPage.style.maxHeight = `${containerHeight}px`;
+                documentPage.style.overflow = 'hidden';
+            }
+
+            if (documentPreviewContent) {
+                documentPreviewContent.style.width = `${displayWidth}px`;
+                documentPreviewContent.style.height = `${displayHeight}px`;
+                documentPreviewContent.style.maxWidth = `${containerWidth}px`;
+                documentPreviewContent.style.maxHeight = `${containerHeight}px`;
+                documentPreviewContent.style.overflow = 'hidden';
+            }
+        } else {
+            // Image not loaded yet, wait for it
+            const img = new Image();
+            img.onload = function() {
+                const imgWidth = this.naturalWidth || this.width;
+                const imgHeight = this.naturalHeight || this.height;
+
+                if (imgWidth <= 0 || imgHeight <= 0) return;
+
+                // Calculate scale to fit container (maintain aspect ratio)
+                const scaleX = containerWidth / imgWidth;
+                const scaleY = containerHeight / imgHeight;
+                const scale = Math.min(scaleX, scaleY); // Fit to container, can scale down
+
+                const displayWidth = imgWidth * scale;
+                const displayHeight = imgHeight * scale;
+
+                // Set image size to fit exactly within container
+                documentImage.style.width = `${displayWidth}px`;
+                documentImage.style.height = `${displayHeight}px`;
+                documentImage.style.maxWidth = `${containerWidth}px`;
+                documentImage.style.maxHeight = `${containerHeight}px`;
+                documentImage.style.objectFit = 'contain';
+                documentImage.style.display = 'block';
+
+                // Set container sizes to match image size (not container size) to eliminate whitespace
+                if (documentPage) {
+                    documentPage.style.width = `${displayWidth}px`;
+                    documentPage.style.height = `${displayHeight}px`;
+                    documentPage.style.maxWidth = `${containerWidth}px`;
+                    documentPage.style.maxHeight = `${containerHeight}px`;
+                    documentPage.style.overflow = 'hidden';
+                }
+
+                if (documentPreviewContent) {
+                    documentPreviewContent.style.width = `${displayWidth}px`;
+                    documentPreviewContent.style.height = `${displayHeight}px`;
+                    documentPreviewContent.style.maxWidth = `${containerWidth}px`;
+                    documentPreviewContent.style.maxHeight = `${containerHeight}px`;
+                    documentPreviewContent.style.overflow = 'hidden';
+                }
+            };
+            img.src = documentImage.src;
+        }
+    }
+}
+
+// Adjust document size on window resize
+window.addEventListener('resize', () => {
+    setTimeout(adjustDocumentSize, 100);
+});
+
+/**
+ * Load and display unified layout analysis with canvas annotation
+ */
+async function loadUnifiedLayoutAnalysis() {
+    try {
+        if (!currentTaskId) {
+            console.log('[Layout] No task ID available for layout analysis');
+            return;
+        }
+
+        console.log(`[Layout] Fetching unified layout analysis for task: ${currentTaskId}`);
+
+        // Fetch unified layout analysis
+        const response = await fetch(`${API_BASE_URL}/tasks/${currentTaskId}/layout`);
+        if (!response.ok) {
+            console.error(`[Layout] ❌ Failed to fetch: ${response.status} ${response.statusText}`);
+            try {
+                const errText = await response.text();
+                console.error('[Layout] Error response:', errText);
+            } catch (e) {}
+            return;
+        }
+
+        const layoutResult = await response.json();
+        console.log('[Layout] Response received:', layoutResult);
+
+        // Validate response structure
+        if (!layoutResult) {
+            console.error('[Layout] ❌ Empty layout result');
+            return;
+        }
+
+        if (!layoutResult.elements || !Array.isArray(layoutResult.elements)) {
+            console.warn('[Layout] ⚠️ Invalid layout result structure: no elements array');
+            console.log('[Layout] Response structure:', Object.keys(layoutResult));
+            return;
+        }
+
+        if (layoutResult.elements.length === 0) {
+            console.log('[Layout] No layout elements in result (empty layout)');
+            return;
+        }
+
+        console.log(`[Layout] ✓ Found ${layoutResult.elements.length} layout elements`);
+
+        // Wait for documentImage to be ready
+        console.log('[Layout] Waiting for image element...');
+        let documentImage = document.getElementById('documentImage');
+
+        if (!documentImage) {
+            // Wait up to 3 seconds for image to appear
+            console.log('[Layout] Image not found immediately, waiting...');
+            for (let i = 0; i < 30; i++) {
+                await new Promise(r => setTimeout(r, 100));
+                documentImage = document.getElementById('documentImage');
+                if (documentImage) {
+                    console.log('[Layout] ✓ Image element found');
+                    break;
+                }
+            }
+        }
+
+        if (!documentImage) {
+            console.error('[Layout] ❌ Document image element not found after waiting');
+            return;
+        }
+
+        // Wait for image to load
+        if (!documentImage.complete || !documentImage.naturalWidth) {
+            console.log('[Layout] Image not loaded yet, waiting for load event...');
+            await new Promise((resolve) => {
+                if (documentImage.complete && documentImage.naturalWidth > 0) {
+                    resolve();
+                } else {
+                    documentImage.onload = () => {
+                        console.log('[Layout] ✓ Image loaded');
+                        resolve();
+                    };
+                    documentImage.onerror = () => {
+                        console.error('[Layout] ❌ Image failed to load');
+                        resolve();
+                    };
+                }
+            });
+        } else {
+            console.log(`[Layout] ✓ Image already loaded: ${documentImage.naturalWidth}x${documentImage.naturalHeight}`);
+        }
+
+        if (!documentImage.naturalWidth || !documentImage.naturalHeight) {
+            console.error('[Layout] ❌ Image has invalid dimensions');
+            return;
+        }
+
+        // Create canvas overlay if it doesn't exist
+        console.log('[Layout] Setting up canvas overlay...');
+        let canvas = document.getElementById('layoutAnnotationCanvas');
+        if (!canvas) {
+            const documentPage = document.getElementById('documentPage');
+            if (!documentPage) {
+                console.error('[Layout] ❌ Document page container not found');
+                return;
+            }
+
+            console.log('[Layout] Creating canvas wrapper...');
+
+            // Get or create wrapper
+            let wrapper = documentPage.querySelector('.canvas-wrapper');
+            if (!wrapper) {
+                wrapper = document.createElement('div');
+                wrapper.className = 'canvas-wrapper';
+                wrapper.style.cssText = `
+                    position: relative;
+                    display: inline-block;
+                    width: 100%;
+                    max-width: 100%;
+                `;
+
+                // Move image into wrapper if not already there
+                if (documentImage.parentElement !== wrapper) {
+                    const originalParent = documentImage.parentElement;
+                    originalParent.insertBefore(wrapper, documentImage);
+                    wrapper.appendChild(documentImage);
+                }
+            }
+
+            console.log('[Layout] Creating canvas element...');
+            canvas = document.createElement('canvas');
+            canvas.id = 'layoutAnnotationCanvas';
+            canvas.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                z-index: 100;
+                cursor: crosshair;
+                display: block;
+            `;
+            wrapper.appendChild(canvas);
+        }
+
+        if (!canvas) {
+            console.error('[Layout] ❌ Failed to create canvas for annotations');
+            return;
+        }
+
+        console.log('[Layout] ✓ Canvas element ready:', canvas.id);
+
+        // Initialize the LayoutAnnotator (defensive)
+        console.log('[Layout] Initializing LayoutAnnotator...');
+        let annotator = null;
+        try {
+            annotator = new LayoutAnnotator('layoutAnnotationCanvas', 'documentImage', {
+                drawBbox: true,
+                showLabels: true,
+                showConfidence: true,
+                highlightHover: true,
+                enableInteraction: true,
+                labelOffset: 12,
+                borderWidth: 2
+            });
+            console.log('[Layout] ✓ LayoutAnnotator created');
+        } catch (e) {
+            console.error('[Layout] Failed to create LayoutAnnotator:', e);
+            return;
+        }
+
+        // Resize canvas to match image with a small delay (defensive)
+        console.log('[Layout] Resizing canvas...');
+        setTimeout(() => {
+            try {
+                if (annotator && typeof annotator.resizeCanvasToImage === 'function') {
+                    annotator.resizeCanvasToImage();
+                    console.log(`[Layout] ✓ Canvas resized to ${annotator.canvas?.width}x${annotator.canvas?.height} (internal) / ${annotator.canvas?.offsetWidth}x${annotator.canvas?.offsetHeight} (CSS)`);
+                }
+            } catch (e) {
+                console.error('[Layout] Error resizing canvas:', e);
+            }
+        }, 50);
+
+        // Load the layout analysis result
+        console.log('[Layout] Loading layout analysis result...');
+        try {
+            annotator.loadLayoutAnalysis(layoutResult);
+            console.log(`[Layout] ✓ Layout loaded with ${layoutResult.elements.length} elements`);
+        } catch (e) {
+            console.error('[Layout] Error loading layout into annotator:', e, layoutResult);
+        }
+
+        // Create control panel if it doesn't exist
+        let controlPanel = document.getElementById('layoutControlPanel');
+        if (!controlPanel) {
+            console.log('[Layout] Creating control panel...');
+            // Find a suitable container for the control panel
+            const rightSidebar = document.querySelector('.right-sidebar') ||
+                                  document.querySelector('.sidebar-content') ||
+                                  document.querySelector('[class*="results"]') ||
+                                  document.querySelector('[class*="panel"]');
+
+            if (rightSidebar) {
+                controlPanel = document.createElement('div');
+                controlPanel.id = 'layoutControlPanel';
+                controlPanel.style.cssText = `
+                    padding: 15px;
+                    border-top: 1px solid #e5e7eb;
+                    overflow-y: auto;
+                    max-height: 300px;
+                `;
+
+                // Try to insert at the beginning or end of the sidebar
+                if (rightSidebar.firstChild) {
+                    rightSidebar.insertBefore(controlPanel, rightSidebar.firstChild);
+                } else {
+                    rightSidebar.appendChild(controlPanel);
+                }
+
+                // Initialize control panel
+                new LayoutControlPanel('layoutControlPanel', annotator);
+                console.log('[Layout] ✓ Control panel initialized');
+            } else {
+                console.warn('[Layout] ⚠️ Right sidebar not found, control panel not created');
+            }
+        } else {
+            console.log('[Layout] Control panel already exists');
+        }
+
+        // Listen for element selection events
+        canvas.addEventListener('elementSelected', (e) => {
+            const element = e.detail;
+            console.log('[Layout] Element selected:', element);
+        });
+
+        console.log('[Layout] ✅ Unified Layout Analysis initialized successfully!');
+
+    } catch (error) {
+        console.error('[Layout] ❌ Error loading unified layout analysis:', error);
+        console.error('[Layout] Stack:', error.stack);
+    }
+}
+

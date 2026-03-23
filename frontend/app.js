@@ -37,6 +37,8 @@ let isProcessingQueue = false;
 let lastStatusMessage = '';
 let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
+let showOcrFineGrainedOverlay = false;
+let lastRenderedAnalysisResult = null;
 
 /**
  * Check if a status message should be displayed
@@ -158,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initExportButtons();
     initBatchProcessing();
     initNLPFeatures();
+    initOverlayOptions();
 
     // Insert a lightweight skeleton placeholder to avoid initial flash
     if (typeof insertInitialSkeleton === 'function') {
@@ -979,6 +982,25 @@ function initAnalysisView() {
 }
 
 /**
+ * Initialize overlay options for annotation density control.
+ */
+function initOverlayOptions() {
+    const toggle = document.getElementById('showOcrFineGrainedToggle');
+    if (!toggle) return;
+
+    toggle.checked = false;
+    showOcrFineGrainedOverlay = false;
+
+    toggle.addEventListener('change', () => {
+        showOcrFineGrainedOverlay = !!toggle.checked;
+
+        if (lastRenderedAnalysisResult) {
+            renderDocumentWithAnnotations(lastRenderedAnalysisResult);
+        }
+    });
+}
+
+/**
  * Initialize export buttons
  */
 function initExportButtons() {
@@ -1790,6 +1812,8 @@ function promoteNextQueued() {
 function updateResultsDisplay(result) {
     if (!result) return;
 
+    lastRenderedAnalysisResult = result;
+
     // Keep a single interactive annotation layer (HTML overlay) to avoid
     // pointer/event conflicts and visual offsets from dual overlays.
     clearCanvasLayoutOverlay();
@@ -1954,54 +1978,102 @@ function bboxFromPolygon(polygon) {
     return { x: x1, y: y1, width: Math.max(0, x2 - x1), height: Math.max(0, y2 - y1) };
 }
 
-function getRenderableAnnotationElements(result) {
+function isTextLikeLayoutType(type) {
+    const t = String(type || '').toLowerCase();
+    return [
+        'title', 'subtitle', 'text', 'paragraph', 'text_block',
+        'section_header', 'header', 'footer', 'page_header', 'page_footer',
+        'reference', 'list_item', 'list', 'equation', 'figure_caption'
+    ].includes(t);
+}
+
+function shouldExcludeOverlayElement(element) {
+    const type = String(element.type || element.type_name || '').toLowerCase();
+    if (type === 'table' && (element.inferred_bbox || element.overlay_excluded)) {
+        return true;
+    }
+    return !!element.overlay_excluded;
+}
+
+function mapSemanticBlockToOverlayElement(block, idx) {
+    return {
+        id: block.id || `semantic_${idx}`,
+        page: block.page || 1,
+        type: block.type || 'paragraph',
+        bbox: block.bbox || block.bounding_box || { x: 0, y: 0, width: 0, height: 0 },
+        confidence: typeof block.confidence === 'number' ? block.confidence : 0,
+        text: block.text || block.content || '',
+        source: 'semantic_block'
+    };
+}
+
+function getRenderableAnnotationElements(result, options = {}) {
+    const includeOcrFineGrained = !!options.includeOcrFineGrained;
+    const semanticTextBlocks = (result.semantic_text_blocks || []).filter(el => el && typeof el === 'object');
     const layoutElements = (result.layout?.elements || []).filter(el => el && typeof el === 'object');
+
     if (layoutElements.length > 0) {
-        return layoutElements;
+        const filteredLayoutElements = layoutElements.filter(el => !shouldExcludeOverlayElement(el));
+
+        if (!includeOcrFineGrained && semanticTextBlocks.length > 0) {
+            const nonTextElements = filteredLayoutElements.filter(el => {
+                const type = String(el.type || el.type_name || '').toLowerCase();
+                return !isTextLikeLayoutType(type);
+            });
+
+            const semanticOverlayElements = semanticTextBlocks.map((block, idx) => mapSemanticBlockToOverlayElement(block, idx));
+            return [...nonTextElements, ...semanticOverlayElements];
+        }
+
+        return filteredLayoutElements;
     }
 
     const fallbackElements = [];
-    const docInfo = result.document_info || {};
-    const docWidth = Number(docInfo.width) || Number(docInfo.image_width) || 0;
-    const docHeight = Number(docInfo.height) || Number(docInfo.image_height) || 0;
+
+    if (semanticTextBlocks.length > 0) {
+        semanticTextBlocks.forEach((block, idx) => {
+            fallbackElements.push(mapSemanticBlockToOverlayElement(block, idx));
+        });
+    }
 
     // OCR-only fallback: map text_blocks to annotation elements
-    const textBlocks = result.text_blocks || [];
-    textBlocks.forEach((block, idx) => {
-        const polyBbox = bboxFromPolygon(block.polygon);
-        const bbox = polyBbox || normalizeAnnotationBbox(block.bbox || block.bounding_box);
-        if (bbox.width <= 0 || bbox.height <= 0) return;
-        fallbackElements.push({
-            id: `ocr_text_${idx}`,
-            page: block.page || 1,
-            type: 'text',
-            bbox,
-            polygon: block.polygon || [],
-            confidence: typeof block.confidence === 'number' ? block.confidence : 0,
-            text: block.text || ''
+    if (includeOcrFineGrained) {
+        const textBlocks = result.text_blocks || [];
+        textBlocks.forEach((block, idx) => {
+            const polyBbox = bboxFromPolygon(block.polygon);
+            const bbox = polyBbox || normalizeAnnotationBbox(block.bbox || block.bounding_box);
+            if (bbox.width <= 0 || bbox.height <= 0) return;
+            fallbackElements.push({
+                id: `ocr_text_${idx}`,
+                page: block.page || 1,
+                type: 'text_block',
+                bbox,
+                polygon: block.polygon || [],
+                confidence: typeof block.confidence === 'number' ? block.confidence : 0,
+                text: block.text || '',
+                source: 'ocr_fine_grained'
+            });
         });
-    });
+    }
 
     // Table-only fallback: map tables to annotation elements
     const tables = result.tables || [];
     tables.forEach((table, idx) => {
         let bbox = normalizeAnnotationBbox(table.bbox || table.bounding_box);
-        let inferredBbox = false;
         if (bbox.width <= 0 || bbox.height <= 0) {
-            // Fallback to page-size bbox when table coordinates are unavailable.
-            const width = docWidth > 0 ? docWidth : 1000;
-            const height = docHeight > 0 ? docHeight : 1400;
-            bbox = { x: 0, y: 0, width, height };
-            inferredBbox = true;
+            // Never render inferred full-page table boxes on main overlay.
+            return;
         }
         fallbackElements.push({
             id: table.id || `table_${idx}`,
             page: table.page || table.page_number || 1,
             type: 'table',
             bbox,
-            inferred_bbox: inferredBbox,
+            inferred_bbox: false,
             confidence: typeof table.confidence === 'number' ? table.confidence : 0,
             html: table.html,
+            rows: table.rows,
+            columns: table.columns,
             text: table.title || 'Table detected'
         });
     });
@@ -2016,9 +2088,13 @@ async function renderDocumentWithAnnotations(result) {
     const documentPage = document.getElementById('documentPage');
     if (!documentPage) return;
 
+    lastRenderedAnalysisResult = result;
+
     const docInfo = result.document_info || {};
     const fileName = docInfo.file_name || 'Document';
-    const elements = getRenderableAnnotationElements(result);
+    const elements = getRenderableAnnotationElements(result, {
+        includeOcrFineGrained: showOcrFineGrainedOverlay
+    });
 
     // Use the same HTML structure as initial loading for consistency
     let html = '<div class="document-preview-content">';
@@ -2071,7 +2147,10 @@ async function renderDocumentWithAnnotations(result) {
             const confidencePercent = confidence > 1 ? confidence : (confidence * 100);
 
             // Extract text content
-            const text = element.text || element.content || (element.type === 'table' ? 'Table detected' : '');
+            const text =
+                (typeof element.text === 'string' ? element.text : '') ||
+                (typeof element.content === 'string' ? element.content : '') ||
+                (element.type === 'table' ? 'Table detected' : '');
             // Limit text length for display
             const displayText = text.length > 100 ? text.substring(0, 100) + '...' : text;
 
@@ -4016,21 +4095,44 @@ function updateContentText(result) {
     if (!contentTextContent) return;
 
     const textBlocks = result.text_blocks || [];
+    const semanticTextBlocks = result.semantic_text_blocks || [];
     const fullText = result.full_text || '';
     const layout = result.layout || {};
     const elements = layout.elements || [];
 
-    // Keep type richness closer to Azure (Title/SectionHeading/Paragraph/...)
+    // Keep type richness closer to Azure (Title/SectionHeading/Paragraph/...) and
+    // prioritize semantic blocks (backend-aggregated) over OCR text lines.
     const textLikeTypes = new Set([
         'title', 'subtitle', 'text', 'paragraph', 'text_block',
         'section_header', 'header', 'footer', 'page_header', 'page_footer',
         'reference', 'list_item', 'list', 'equation', 'figure_caption'
     ]);
 
-    const textElements = elements.filter(el => {
+    const layoutTextElements = elements.filter(el => {
         const type = String(el.type || el.type_name || '').toLowerCase();
-        return !!el.text && textLikeTypes.has(type);
+        const textValue =
+            (typeof el.text === 'string' ? el.text : '') ||
+            (typeof el.content === 'string' ? el.content : '');
+        return !!textValue && textLikeTypes.has(type);
     });
+
+    const semanticElements = semanticTextBlocks
+        .filter(el => el && typeof el === 'object')
+        .map((el, idx) => ({
+            id: el.id || `semantic_${idx}`,
+            type: String(el.type || 'paragraph').toLowerCase(),
+            text: (typeof el.text === 'string' ? el.text : '') || (typeof el.content === 'string' ? el.content : ''),
+            confidence: el.confidence,
+            page: el.page
+        }))
+        .filter(el => !!el.text);
+
+    const textElements = semanticElements.length > 0 ? semanticElements : layoutTextElements.map(el => ({
+        type: String(el.type || el.type_name || 'paragraph').toLowerCase(),
+        text: (typeof el.text === 'string' ? el.text : '') || (typeof el.content === 'string' ? el.content : ''),
+        confidence: el.confidence,
+        page: el.page
+    }));
 
     const ocrCandidates = textBlocks
         .map(b => normalizeTextForDisplay(b.text || ''))
@@ -4049,7 +4151,7 @@ function updateContentText(result) {
                 groups[typeLabel] = [];
             }
 
-            let rawText = String(el.text || '');
+            let rawText = String(el.text || el.content || '');
             if (isLikelyCollapsedText(rawText) && ocrCandidates.length > 0) {
                 const better = ocrCandidates.find(candidate => candidate.length >= rawText.length * 0.65);
                 if (better) {

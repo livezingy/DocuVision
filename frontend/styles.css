@@ -1191,6 +1191,20 @@ body.show-analysis .analyzed-region {
     border-color: var(--primary-500);
 }
 
+.overlay-toggle {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    user-select: none;
+}
+
+.overlay-toggle input[type="checkbox"] {
+    accent-color: var(--primary-500);
+}
+
 /* Main views */
 .result-main-view {
     display: none;

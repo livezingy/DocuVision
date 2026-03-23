@@ -350,11 +350,12 @@ class PPStructureEngine(BaseLayoutEngine):
                     "type": "table",
                     "type_name": self.LAYOUT_TYPES.get("table", "Table"),
                     "bbox": page_bbox,
-                    "confidence": 0.0,
+                    "confidence": 0.01,
                     "text": self._extract_table_summary_text(table_html),
                     "html": table_html,
                     "table_key": table_key,
                     "inferred_bbox": True,
+                    "overlay_excluded": True,
                 })
 
             if table_idx > 0:
@@ -1134,3 +1135,268 @@ class LayoutService:
                     raise
 
         raise RuntimeError(f"All layout engines failed. Last error: {last_error}")
+
+    def _intersection_over_child(self, parent_bbox: Dict[str, float], child_bbox: Dict[str, float]) -> float:
+        px1 = float(parent_bbox.get("x", 0.0))
+        py1 = float(parent_bbox.get("y", 0.0))
+        px2 = px1 + float(parent_bbox.get("width", 0.0))
+        py2 = py1 + float(parent_bbox.get("height", 0.0))
+
+        cx1 = float(child_bbox.get("x", 0.0))
+        cy1 = float(child_bbox.get("y", 0.0))
+        cx2 = cx1 + float(child_bbox.get("width", 0.0))
+        cy2 = cy1 + float(child_bbox.get("height", 0.0))
+
+        inter_x1 = max(px1, cx1)
+        inter_y1 = max(py1, cy1)
+        inter_x2 = min(px2, cx2)
+        inter_y2 = min(py2, cy2)
+        if inter_x2 <= inter_x1 or inter_y2 <= inter_y1:
+            return 0.0
+
+        inter_area = (inter_x2 - inter_x1) * (inter_y2 - inter_y1)
+        child_area = max((cx2 - cx1) * (cy2 - cy1), 1e-6)
+        return inter_area / child_area
+
+    def _recover_english_spacing(self, text: str) -> str:
+        if not text:
+            return text
+
+        import re
+
+        # Optional lightweight dictionary-based splitter when available.
+        # This keeps dependency optional and avoids breaking environments.
+        def split_token(tok: str) -> str:
+            if len(tok) < 14 or not tok.isalpha() or any(ch.isupper() for ch in tok):
+                return tok
+            try:
+                import wordninja  # type: ignore
+                parts = wordninja.split(tok)
+                if len(parts) >= 2:
+                    return " ".join(parts)
+            except Exception:
+                pass
+            return tok
+
+        tokens = re.split(r"(\s+)", text)
+        tokens = [split_token(t) if t and not t.isspace() else t for t in tokens]
+        fixed = "".join(tokens)
+        fixed = re.sub(r"([a-z])([A-Z])", r"\1 \2", fixed)
+        fixed = re.sub(r"([A-Za-z])(\d)", r"\1 \2", fixed)
+        fixed = re.sub(r"(\d)([A-Za-z])", r"\1 \2", fixed)
+        fixed = re.sub(r"\s+", " ", fixed).strip()
+        return fixed
+
+    def _normalize_semantic_text(self, text: str) -> str:
+        if not text:
+            return text
+
+        import re
+
+        normalized = text
+        normalized = re.sub(r"[ \t]+", " ", normalized)
+        normalized = re.sub(r"\n\s*\n", "\n\n", normalized)
+        normalized = re.sub(r"[ \t]*\n[ \t]*", " ", normalized)
+        normalized = re.sub(r"([a-z])([A-Z])", r"\1 \2", normalized)
+        normalized = re.sub(r"([A-Za-z])(\d)", r"\1 \2", normalized)
+        normalized = re.sub(r"(\d)([A-Za-z])", r"\1 \2", normalized)
+        normalized = re.sub(r" +", " ", normalized)
+        normalized = re.sub(r"\n\n+", "\n\n", normalized)
+        normalized = normalized.strip()
+
+        return self._recover_english_spacing(normalized)
+
+    def _group_remaining_ocr_to_paragraphs(self, ocr_blocks: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+        if not ocr_blocks:
+            return []
+
+        sorted_blocks = sorted(
+            ocr_blocks,
+            key=lambda b: (int(b.get("page", 1)), float((b.get("bbox") or {}).get("y", 0.0)), float((b.get("bbox") or {}).get("x", 0.0))),
+        )
+
+        groups: List[List[Dict[str, Any]]] = []
+        current: List[Dict[str, Any]] = []
+
+        for block in sorted_blocks:
+            bbox = block.get("bbox") or {}
+            page = int(block.get("page", 1))
+            y = float(bbox.get("y", 0.0))
+            h = max(float(bbox.get("height", 0.0)), 1.0)
+            x = float(bbox.get("x", 0.0))
+
+            if not current:
+                current = [block]
+                continue
+
+            prev = current[-1]
+            prev_bbox = prev.get("bbox") or {}
+            prev_page = int(prev.get("page", 1))
+            prev_y = float(prev_bbox.get("y", 0.0))
+            prev_h = max(float(prev_bbox.get("height", 0.0)), 1.0)
+            prev_x = float(prev_bbox.get("x", 0.0))
+
+            y_gap = y - (prev_y + prev_h)
+            x_shift = abs(x - prev_x)
+            line_gap_threshold = max(16.0, prev_h * 0.9, h * 0.9)
+
+            if page == prev_page and y_gap <= line_gap_threshold and x_shift <= 120.0:
+                current.append(block)
+            else:
+                groups.append(current)
+                current = [block]
+
+        if current:
+            groups.append(current)
+
+        return groups
+
+    def build_semantic_text_blocks(
+        self,
+        ocr_text_blocks: List[Dict[str, Any]],
+        layout_elements: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Build paragraph/section-level semantic text blocks from OCR lines.
+
+        Strategy:
+        1) Prefer layout text-like regions as semantic containers.
+        2) Aggregate OCR lines by bbox overlap for each semantic container.
+        3) Group remaining OCR lines into paragraph-level blocks.
+        """
+        if not ocr_text_blocks:
+            return []
+
+        text_like_types = {
+            "title", "subtitle", "text", "paragraph", "text_block", "section_header",
+            "header", "footer", "page_header", "page_footer", "reference",
+            "list_item", "list", "equation", "figure_caption",
+        }
+
+        semantic_blocks: List[Dict[str, Any]] = []
+        used_ocr_ids: set[str] = set()
+
+        indexed_ocr: List[Dict[str, Any]] = []
+        for idx, block in enumerate(ocr_text_blocks):
+            if not isinstance(block, dict):
+                continue
+            bbox = block.get("bbox") or {}
+            if float(bbox.get("width", 0.0)) <= 0 or float(bbox.get("height", 0.0)) <= 0:
+                continue
+            text = str(block.get("text") or "").strip()
+            if not text:
+                continue
+            block_copy = dict(block)
+            block_copy["_id"] = f"ocr_{idx}"
+            indexed_ocr.append(block_copy)
+
+        layout_elements = layout_elements or []
+        for idx, elem in enumerate(layout_elements):
+            if not isinstance(elem, dict):
+                continue
+
+            elem_type = str(elem.get("type") or elem.get("type_name") or "").lower()
+            if elem_type not in text_like_types:
+                continue
+
+            elem_bbox = elem.get("bbox") or {}
+            if float(elem_bbox.get("width", 0.0)) <= 0 or float(elem_bbox.get("height", 0.0)) <= 0:
+                continue
+
+            matches: List[Dict[str, Any]] = []
+            for block in indexed_ocr:
+                if self._intersection_over_child(elem_bbox, block.get("bbox") or {}) >= 0.55:
+                    matches.append(block)
+
+            matches.sort(key=lambda b: (int(b.get("page", 1)), float((b.get("bbox") or {}).get("y", 0.0)), float((b.get("bbox") or {}).get("x", 0.0))))
+
+            elem_text = str(elem.get("text") or elem.get("content") or "").strip()
+            ocr_text = " ".join([str(m.get("text") or "").strip() for m in matches if str(m.get("text") or "").strip()])
+
+            chosen_text = elem_text
+            if ocr_text and (not elem_text or len(ocr_text) > len(elem_text) * 1.1):
+                chosen_text = ocr_text
+
+            chosen_text = self._normalize_semantic_text(chosen_text)
+            if not chosen_text:
+                continue
+
+            for m in matches:
+                used_ocr_ids.add(str(m.get("_id")))
+
+            confidence = float(elem.get("confidence") or 0.0)
+            if confidence <= 0 and matches:
+                confs = [float(m.get("confidence") or 0.0) for m in matches if float(m.get("confidence") or 0.0) > 0]
+                confidence = (sum(confs) / len(confs)) if confs else 0.0
+
+            semantic_blocks.append(
+                {
+                    "id": str(elem.get("id") or f"semantic_layout_{idx}"),
+                    "page": int(elem.get("page") or 1),
+                    "type": elem_type or "paragraph",
+                    "bbox": dict(elem_bbox),
+                    "confidence": confidence,
+                    "text": chosen_text,
+                    "source": "layout+ocr",
+                }
+            )
+
+        remaining_ocr = [b for b in indexed_ocr if str(b.get("_id")) not in used_ocr_ids]
+        paragraph_groups = self._group_remaining_ocr_to_paragraphs(remaining_ocr)
+
+        for g_idx, group in enumerate(paragraph_groups):
+            if not group:
+                continue
+
+            xs, ys, x2s, y2s = [], [], [], []
+            texts: List[str] = []
+            confs: List[float] = []
+            page = int(group[0].get("page", 1))
+
+            for block in group:
+                bbox = block.get("bbox") or {}
+                x = float(bbox.get("x", 0.0))
+                y = float(bbox.get("y", 0.0))
+                w = float(bbox.get("width", 0.0))
+                h = float(bbox.get("height", 0.0))
+                xs.append(x)
+                ys.append(y)
+                x2s.append(x + w)
+                y2s.append(y + h)
+                t = str(block.get("text") or "").strip()
+                if t:
+                    texts.append(t)
+                c = float(block.get("confidence") or 0.0)
+                if c > 0:
+                    confs.append(c)
+
+            merged_text = self._normalize_semantic_text(" ".join(texts))
+            if not merged_text:
+                continue
+
+            semantic_blocks.append(
+                {
+                    "id": f"semantic_ocr_{page}_{g_idx}",
+                    "page": page,
+                    "type": "paragraph",
+                    "bbox": {
+                        "x": min(xs) if xs else 0.0,
+                        "y": min(ys) if ys else 0.0,
+                        "width": (max(x2s) - min(xs)) if xs and x2s else 0.0,
+                        "height": (max(y2s) - min(ys)) if ys and y2s else 0.0,
+                    },
+                    "confidence": (sum(confs) / len(confs)) if confs else 0.0,
+                    "text": merged_text,
+                    "source": "ocr_grouped",
+                }
+            )
+
+        semantic_blocks.sort(
+            key=lambda b: (
+                int(b.get("page", 1)),
+                float((b.get("bbox") or {}).get("y", 0.0)),
+                float((b.get("bbox") or {}).get("x", 0.0)),
+            )
+        )
+
+        return semantic_blocks

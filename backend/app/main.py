@@ -576,7 +576,7 @@ async def analyze_document(
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif']:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
-    
+
     # CRITICAL FIX: FastAPI parses "1"/"0" as True/False for bool Form fields
     # "true"/"false" strings will cause validation errors
     logger.info(f"Analyze endpoint received - enable_layout={enable_layout}, enable_ocr={enable_ocr}, enable_table={enable_table}")
@@ -773,6 +773,16 @@ async def process_document(task_id: str):
                 result["ocr_engine_used"] = ocr_result.get("engine_used")
                 result["full_text"] = ocr_result.get("full_text", "")
 
+                # Build semantic paragraph-level blocks from OCR as early fallback.
+                try:
+                    result["semantic_text_blocks"] = layout_service.build_semantic_text_blocks(
+                        result.get("text_blocks", []),
+                        layout_elements=[]
+                    )
+                except Exception as e:
+                    logger.warning(f"Task {task_id}: Failed to build OCR semantic blocks: {e}")
+                    result["semantic_text_blocks"] = []
+
                 # Calculate average confidence
                 text_blocks = ocr_result.get("text_blocks", [])
                 avg_confidence = 0.0
@@ -846,6 +856,15 @@ async def process_document(task_id: str):
                             result["layout"] = layout_result
                     except Exception as e:
                         logger.warning(f"Failed to supplement text from OCR: {e}")
+
+                # Build semantic blocks with layout-aware OCR aggregation (preferred path).
+                try:
+                    result["semantic_text_blocks"] = layout_service.build_semantic_text_blocks(
+                        result.get("text_blocks", []),
+                        layout_elements=elements
+                    )
+                except Exception as e:
+                    logger.warning(f"Task {task_id}: Failed to build layout semantic blocks: {e}")
 
                 elements_count = len(elements)
 

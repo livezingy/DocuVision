@@ -518,7 +518,7 @@ body {
     background: var(--bg-hover);
 }
 
-.option-item input[type="checkbox"] {
+.option-item input {
     display: none;
 }
 

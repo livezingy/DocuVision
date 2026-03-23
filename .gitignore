@@ -207,3 +207,8 @@ test_data/**/*.tif
 !test_data/
 !test_data/**/
 
+# User-requested: never track these folders
+scripts/
+Azure/AzureDocs/
+test_data/Azure/AzureDocs/
+

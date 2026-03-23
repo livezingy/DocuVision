@@ -174,7 +174,7 @@
             <aside class="right-panel" id="rightPanel">
                 <!-- Resize handle -->
                 <div class="panel-resize-handle" id="panelResizeHandle"></div>
-                
+
                 <div class="result-header">
                     <h3 class="result-title">Processing Results</h3>
                     <div class="result-main-tabs">
@@ -197,7 +197,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Content View -->
                 <div class="result-main-view active" id="contentView">
                     <div class="content-sub-tabs">
@@ -228,7 +228,7 @@
                             Figures
                         </button>
                     </div>
-                    
+
                     <!-- Content sub-views -->
                     <div class="content-view active" id="contentTextView">
                         <div class="text-toolbar">
@@ -251,20 +251,20 @@
                             <!-- Text content will be populated here -->
                         </div>
                     </div>
-                    
+
                     <div class="content-view" id="contentTablesView">
                         <div class="table-list" id="contentTableList">
                             <!-- Tables will be populated here -->
                         </div>
                     </div>
-                    
+
                     <div class="content-view" id="contentFiguresView">
                         <div class="figures-list" id="contentFiguresList">
                             <!-- Figures will be populated here -->
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Result View (JSON) -->
                 <div class="result-main-view" id="resultView">
                     <div class="result-view-toolbar">
@@ -288,7 +288,7 @@
                         <pre class="json-viewer"><code id="jsonCode">No result data available</code></pre>
                     </div>
                 </div>
-                
+
                 <!-- Legacy views (kept for backward compatibility, will be hidden) -->
                 <div class="result-content" id="resultContent" style="display: none;">
 
@@ -752,50 +752,50 @@
                     <button class="modal-tab" data-tab="engines">Engines</button>
                     <button class="modal-tab" data-tab="advanced">Advanced</button>
                 </div>
-                
+
                 <!-- Processing Tab -->
                 <div class="modal-tab-content active" id="processingTab">
                     <div class="options-list">
                         <label class="option-item">
-                            <input type="checkbox" id="optLayout" checked>
+                            <input type="radio" name="processingMode" id="optLayout" value="layout" checked>
                             <span class="checkbox-custom"></span>
                             <span class="option-label">Layout Analysis</span>
                             <span class="option-badge">Core</span>
                         </label>
                         <label class="option-item">
-                            <input type="checkbox" id="optOCR" checked>
+                            <input type="radio" name="processingMode" id="optOCR" value="ocr">
                             <span class="checkbox-custom"></span>
                             <span class="option-label">OCR Recognition</span>
                             <span class="option-badge">Core</span>
                         </label>
                         <label class="option-item">
-                            <input type="checkbox" id="optTable" checked>
+                            <input type="radio" name="processingMode" id="optTable" value="table">
                             <span class="checkbox-custom"></span>
                             <span class="option-label">Table Extraction</span>
                         </label>
                         <label class="option-item">
-                            <input type="checkbox" id="optFormula">
+                            <input type="radio" name="processingMode" id="optFormula" value="formula">
                             <span class="checkbox-custom"></span>
                             <span class="option-label">Formula Recognition</span>
                         </label>
                         <label class="option-item">
-                            <input type="checkbox" id="optStamp">
+                            <input type="radio" name="processingMode" id="optStamp" value="stamp">
                             <span class="checkbox-custom"></span>
                             <span class="option-label">Stamp Detection</span>
                         </label>
                         <label class="option-item">
-                            <input type="checkbox" id="optNLP">
+                            <input type="radio" name="processingMode" id="optNLP" value="nlp">
                             <span class="checkbox-custom"></span>
                             <span class="option-label">NLP Analysis</span>
                         </label>
                         <label class="option-item">
-                            <input type="checkbox" id="optTemplate">
+                            <input type="radio" name="processingMode" id="optTemplate" value="template">
                             <span class="checkbox-custom"></span>
                             <span class="option-label">Template Matching</span>
                         </label>
                     </div>
                 </div>
-                
+
                 <!-- Engines Tab -->
                 <div class="modal-tab-content" id="enginesTab">
                     <div class="engine-selector">
@@ -822,7 +822,7 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <!-- Advanced Tab -->
                 <div class="modal-tab-content" id="advancedTab">
                     <div class="template-selector" id="dialogTemplateSelector" style="display: none;">

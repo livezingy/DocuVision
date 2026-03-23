@@ -529,12 +529,6 @@ class LayoutControlPanel {
         // 清空面板
         this.panel.innerHTML = '';
 
-        // 标题
-        const title = document.createElement('h3');
-        title.textContent = 'Layout Elements';
-        title.style.marginTop = '0';
-        this.panel.appendChild(title);
-
         // 统计信息
         const stats = document.createElement('div');
         stats.style.cssText = 'margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px;';

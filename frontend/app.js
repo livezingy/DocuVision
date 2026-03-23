@@ -1002,7 +1002,7 @@ function initAnalysisOptionsDialog() {
     const saveBtn = document.getElementById('saveOptionsBtn');
     const resetBtn = document.getElementById('resetOptionsBtn');
     const modalTabs = document.querySelectorAll('.modal-tab');
-    const templateCheckbox = document.getElementById('optTemplate');
+    const processingRadios = document.querySelectorAll('input[name="processingMode"]');
     const templateSelector = document.getElementById('dialogTemplateSelector');
 
     // Tab switching
@@ -1022,11 +1022,18 @@ function initAnalysisOptionsDialog() {
         });
     });
 
-    // Template selector visibility
-    if (templateCheckbox && templateSelector) {
-        templateCheckbox.addEventListener('change', () => {
-            templateSelector.style.display = templateCheckbox.checked ? 'block' : 'none';
+    // Template selector visibility (only when template processing is selected)
+    if (processingRadios.length > 0 && templateSelector) {
+        const updateTemplateVisibility = () => {
+            const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value;
+            templateSelector.style.display = selectedMode === 'template' ? 'block' : 'none';
+        };
+
+        processingRadios.forEach(radio => {
+            radio.addEventListener('change', updateTemplateVisibility);
         });
+
+        updateTemplateVisibility();
     }
 
     // Close handlers
@@ -1083,8 +1090,8 @@ function saveAnalysisOptions() {
  */
 function resetAnalysisOptions() {
     document.getElementById('optLayout').checked = true;
-    document.getElementById('optOCR').checked = true;
-    document.getElementById('optTable').checked = true;
+    document.getElementById('optOCR').checked = false;
+    document.getElementById('optTable').checked = false;
     document.getElementById('optFormula').checked = false;
     document.getElementById('optStamp').checked = false;
     document.getElementById('optNLP').checked = false;
@@ -1092,6 +1099,7 @@ function resetAnalysisOptions() {
     document.getElementById('dialogOcrEngineSelect').value = 'paddleocr';
     document.getElementById('dialogLayoutEngineSelect').value = 'ppstructure';
     document.getElementById('dialogNlpEngineSelect').value = 'spacy';
+    document.getElementById('dialogTemplateSelect').value = '';
     document.getElementById('dialogTemplateSelector').style.display = 'none';
     showNotification('Options reset to defaults', 'info');
 }
@@ -1100,22 +1108,29 @@ function resetAnalysisOptions() {
  * Get current processing options from dialog
  */
 function getProcessingOptions() {
+    const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
+
     const options = {
-        enable_layout: document.getElementById('optLayout')?.checked ?? true,
-        enable_ocr: document.getElementById('optOCR')?.checked ?? true,
-        enable_table: document.getElementById('optTable')?.checked ?? true,
-        enable_formula: document.getElementById('optFormula')?.checked ?? false,
-        enable_stamp: document.getElementById('optStamp')?.checked ?? false,
-        enable_nlp: document.getElementById('optNLP')?.checked ?? true,
+        enable_layout: selectedMode === 'layout',
+        enable_ocr: selectedMode === 'ocr',
+        enable_table: selectedMode === 'table',
+        enable_formula: selectedMode === 'formula',
+        enable_stamp: selectedMode === 'stamp',
+        enable_nlp: selectedMode === 'nlp',
         template_id: null,
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
         layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure',
         nlp_engine: document.getElementById('dialogNlpEngineSelect')?.value || 'spacy'
     };
 
-    // Get template if template matching is enabled
-    const templateEnabled = document.getElementById('optTemplate')?.checked ?? false;
-    if (templateEnabled) {
+    // Get template if template matching is selected
+    if (selectedMode === 'template') {
+        options.enable_layout = false;
+        options.enable_ocr = false;
+        options.enable_table = false;
+        options.enable_formula = false;
+        options.enable_stamp = false;
+        options.enable_nlp = false;
         options.template_id = document.getElementById('dialogTemplateSelect')?.value || null;
     }
 
@@ -1775,11 +1790,12 @@ function promoteNextQueued() {
 function updateResultsDisplay(result) {
     if (!result) return;
 
+    // Keep a single interactive annotation layer (HTML overlay) to avoid
+    // pointer/event conflicts and visual offsets from dual overlays.
+    clearCanvasLayoutOverlay();
+
     // Update document preview
     updateDocumentPreview(result);
-
-    // Load and display unified layout analysis
-    loadUnifiedLayoutAnalysis();
 
     // Update Content views
     updateContentText(result);
@@ -1796,6 +1812,55 @@ function updateResultsDisplay(result) {
     updateExtractView(result);
     updateKeywords(result);
     updateEntities(result);
+}
+
+/**
+ * Remove legacy canvas-based layout overlay to keep hover behavior consistent.
+ */
+function clearCanvasLayoutOverlay() {
+    const canvas = document.getElementById('layoutAnnotationCanvas');
+    if (canvas && canvas.parentElement) {
+        canvas.parentElement.removeChild(canvas);
+    }
+
+    const controlPanel = document.getElementById('layoutControlPanel');
+    if (controlPanel && controlPanel.parentElement) {
+        controlPanel.parentElement.removeChild(controlPanel);
+    }
+}
+
+function formatAzureRoleLabel(type) {
+    const normalized = String(type || 'paragraph').toLowerCase();
+    const roleMap = {
+        page_header: 'PageHeader',
+        page_footer: 'PageFooter',
+        section_header: 'SectionHeading',
+        table_header: 'TableHeader',
+        figure_caption: 'FigureCaption',
+        list_item: 'ListItem',
+        text_block: 'Paragraph',
+        text: 'Paragraph',
+        paragraph: 'Paragraph',
+        title: 'Title',
+        subtitle: 'Subtitle',
+        table: 'Table',
+        figure: 'Figure',
+        image: 'Figure',
+        header: 'PageHeader',
+        footer: 'PageFooter',
+        reference: 'Reference',
+        equation: 'Formula',
+        list: 'ListItem'
+    };
+
+    if (roleMap[normalized]) {
+        return roleMap[normalized];
+    }
+
+    return normalized
+        .split('_')
+        .map(p => p ? p.charAt(0).toUpperCase() + p.slice(1) : '')
+        .join('');
 }
 
 /**
@@ -2056,11 +2121,13 @@ async function renderDocumentWithAnnotations(result) {
 
             // Store tooltip data in dataset for global tooltip
             const tooltipData = {
-                role: type,
+                role: formatAzureRoleLabel(type),
                 content: text,
                 displayContent: displayText,
                 polygon: polygonText,
-                confidence: confidencePercent
+                confidence: confidencePercent,
+                rows: Number(element.table_rows || element.rows || 0),
+                columns: Number(element.table_cols || element.columns || 0)
             };
 
             html += `<div class="annotation-overlay ${annotationClass}${inferredClass}"
@@ -2281,6 +2348,7 @@ function initAnnotationInteractions() {
                     <div class="tooltip-line"><strong>Role:</strong> ${escapeHtml(tooltipData.role)}</div>
                     <div class="tooltip-line"><strong>Content:</strong> ${tooltipData.displayContent ? escapeHtml(tooltipData.displayContent) : '(empty)'}</div>
                     <div class="tooltip-line"><strong>Polygon:</strong> ${escapeHtml(tooltipData.polygon)}</div>
+                    ${tooltipData.rows > 0 || tooltipData.columns > 0 ? `<div class="tooltip-line"><strong>Rows:</strong> ${tooltipData.rows || '?'} <strong style="margin-left: 12px;">Columns:</strong> ${tooltipData.columns || '?'}</div>` : ''}
                     <div class="tooltip-line"><strong>Confidence:</strong> ${tooltipData.confidence.toFixed(1)}%</div>
                 `;
 
@@ -2467,6 +2535,56 @@ function normalizeTextForDisplay(text) {
     text = text.replace(/ +/g, ' ');
 
     return text.trim();
+}
+
+function isLikelyCollapsedText(text) {
+    const value = String(text || '');
+    if (!value) return false;
+
+    const noSpaceLength = value.replace(/\s+/g, '').length;
+    const spaceCount = (value.match(/\s/g) || []).length;
+
+    // Long text with almost no spaces is usually collapsed OCR text.
+    if (noSpaceLength >= 40 && spaceCount <= 1) {
+        return true;
+    }
+
+    // Long alpha chunks without spacing are suspicious.
+    if (/[A-Za-z]{25,}/.test(value)) {
+        return true;
+    }
+
+    return false;
+}
+
+function toAzureTypeLabel(type) {
+    const normalized = String(type || 'paragraph').toLowerCase();
+    const map = {
+        page_header: 'PageHeader',
+        page_footer: 'PageFooter',
+        section_header: 'SectionHeading',
+        table_header: 'TableHeader',
+        figure_caption: 'FigureCaption',
+        list_item: 'ListItem',
+        text: 'Paragraph',
+        paragraph: 'Paragraph',
+        text_block: 'Paragraph',
+        title: 'Title',
+        subtitle: 'Subtitle',
+        table: 'Table',
+        figure: 'Figure',
+        image: 'Figure',
+        header: 'PageHeader',
+        footer: 'PageFooter',
+        equation: 'Formula',
+        list: 'ListItem',
+        reference: 'Reference'
+    };
+
+    return map[normalized] || normalized
+        .split('_')
+        .map(p => p ? p.charAt(0).toUpperCase() + p.slice(1) : '')
+        .join('');
 }
 
 /**
@@ -3902,54 +4020,80 @@ function updateContentText(result) {
     const layout = result.layout || {};
     const elements = layout.elements || [];
 
-    // Extract text from layout elements (titles, paragraphs, etc.)
+    // Keep type richness closer to Azure (Title/SectionHeading/Paragraph/...)
+    const textLikeTypes = new Set([
+        'title', 'subtitle', 'text', 'paragraph', 'text_block',
+        'section_header', 'header', 'footer', 'page_header', 'page_footer',
+        'reference', 'list_item', 'list', 'equation', 'figure_caption'
+    ]);
+
     const textElements = elements.filter(el => {
-        const type = el.type || '';
-        return el.text && (type === 'title' || type === 'text' || type === 'paragraph');
+        const type = String(el.type || el.type_name || '').toLowerCase();
+        return !!el.text && textLikeTypes.has(type);
     });
+
+    const ocrCandidates = textBlocks
+        .map(b => normalizeTextForDisplay(b.text || ''))
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length);
 
     let html = '';
 
     if (textElements.length > 0) {
-        // Group by type and display
-        const titles = textElements.filter(el => el.type === 'title');
-        const paragraphs = textElements.filter(el => el.type === 'text' || el.type === 'paragraph');
+        const groups = {};
+        textElements.forEach(el => {
+            const rawType = String(el.type || el.type_name || 'paragraph').toLowerCase();
+            const typeLabel = toAzureTypeLabel(rawType);
 
-        if (titles.length > 0) {
+            if (!groups[typeLabel]) {
+                groups[typeLabel] = [];
+            }
+
+            let rawText = String(el.text || '');
+            if (isLikelyCollapsedText(rawText) && ocrCandidates.length > 0) {
+                const better = ocrCandidates.find(candidate => candidate.length >= rawText.length * 0.65);
+                if (better) {
+                    rawText = better;
+                }
+            }
+
+            groups[typeLabel].push({
+                text: normalizeTextForDisplay(rawText),
+                confidence: el.confidence
+            });
+        });
+
+        const preferredOrder = [
+            'PageHeader', 'Title', 'Subtitle', 'SectionHeading',
+            'Paragraph', 'Reference', 'FigureCaption', 'Formula',
+            'ListItem', 'PageFooter'
+        ];
+        const allTypes = Object.keys(groups);
+        const sortedTypes = [
+            ...preferredOrder.filter(t => allTypes.includes(t)),
+            ...allTypes.filter(t => !preferredOrder.includes(t)).sort()
+        ];
+
+        sortedTypes.forEach(typeLabel => {
             html += '<div class="text-section">';
-            html += '<h4 class="text-section-title">Titles</h4>';
-            titles.forEach((el, idx) => {
-                const normalizedText = normalizeTextForDisplay(el.text || '');
+            html += `<h4 class="text-section-title">${escapeHtml(typeLabel)}</h4>`;
+
+            groups[typeLabel].forEach((item) => {
                 html += '<div class="text-block">';
                 html += '<div class="text-block-header">';
-                html += `<span class="block-type">Title ${idx + 1}</span>`;
-                if (el.confidence !== undefined) {
-                    html += `<span class="block-confidence">Confidence: ${(el.confidence * 100).toFixed(1)}%</span>`;
+                html += `<span class="block-type">${escapeHtml(typeLabel)}</span>`;
+                if (item.confidence !== undefined) {
+                    const confidence = Number(item.confidence || 0);
+                    const confidencePercent = confidence > 1 ? confidence : confidence * 100;
+                    html += `<span class="block-confidence">Confidence: ${confidencePercent.toFixed(1)}%</span>`;
                 }
                 html += '</div>';
-                html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(normalizedText)}</p>`;
+                html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(item.text)}</p>`;
                 html += '</div>';
             });
-            html += '</div>';
-        }
 
-        if (paragraphs.length > 0) {
-            html += '<div class="text-section">';
-            html += '<h4 class="text-section-title">Paragraphs</h4>';
-            paragraphs.forEach((el, idx) => {
-                const normalizedText = normalizeTextForDisplay(el.text || '');
-                html += '<div class="text-block">';
-                html += '<div class="text-block-header">';
-                html += `<span class="block-type">Paragraph ${idx + 1}</span>`;
-                if (el.confidence !== undefined) {
-                    html += `<span class="block-confidence">Confidence: ${(el.confidence * 100).toFixed(1)}%</span>`;
-                }
-                html += '</div>';
-                html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(normalizedText)}</p>`;
-                html += '</div>';
-            });
             html += '</div>';
-        }
+        });
     } else if (textBlocks.length > 0) {
         textBlocks.slice(0, 50).forEach((block, index) => {
             const normalizedText = normalizeTextForDisplay(block.text || '');

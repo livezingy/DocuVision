@@ -39,9 +39,6 @@ let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
 let showOcrFineGrainedOverlay = false;
 let lastRenderedAnalysisResult = null;
-let currentPreviewMode = 'interactive';
-let currentPreviewPage = 1;
-let currentPreviewImageUrl = null;
 
 /**
  * Check if a status message should be displayed
@@ -160,7 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initTreeToggle();
     initTemplateSelector();
     initAnalysisView();
-    initPreviewControls();
     initExportButtons();
     initBatchProcessing();
     initNLPFeatures();
@@ -495,11 +491,9 @@ async function handleQueueItemDeletion(item) {
             if (currentOriginalFileUrl) {
                 URL.revokeObjectURL(currentOriginalFileUrl);
             }
-            revokeCurrentPreviewImageUrl();
             currentOriginalFileUrl = null;
             currentTaskId = null;
             currentQueueItem = null;
-            currentPreviewPage = 1;
 
             // Find next available queue item
             const queueList = document.getElementById('queueList');
@@ -629,171 +623,6 @@ let currentOriginalFileUrl = null;
 let currentTaskId = null;
 let currentQueueItem = null; // Track currently selected queue item
 
-function revokeCurrentPreviewImageUrl() {
-    if (currentPreviewImageUrl) {
-        URL.revokeObjectURL(currentPreviewImageUrl);
-        currentPreviewImageUrl = null;
-    }
-}
-
-function getStoredPreviewResult() {
-    const documentPage = document.getElementById('documentPage');
-    if (!documentPage || !documentPage.dataset.currentResult) return null;
-
-    try {
-        return JSON.parse(documentPage.dataset.currentResult);
-    } catch (error) {
-        console.warn('Failed to parse stored preview result:', error);
-        return null;
-    }
-}
-
-function updatePreviewModeButtons() {
-    document.querySelectorAll('.preview-mode-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.previewMode === currentPreviewMode);
-    });
-}
-
-function updatePaginationState(totalPages = 1) {
-    const safeTotalPages = Math.max(Number(totalPages) || 1, 1);
-    currentPreviewPage = Math.min(Math.max(currentPreviewPage, 1), safeTotalPages);
-
-    const pageInput = document.querySelector('.page-input');
-    const pageTotal = document.querySelector('.page-total');
-    const prevPageBtn = document.getElementById('prevPage');
-    const nextPageBtn = document.getElementById('nextPage');
-
-    if (pageInput) {
-        pageInput.max = safeTotalPages;
-        pageInput.value = currentPreviewPage;
-    }
-
-    if (pageTotal) {
-        pageTotal.textContent = ` / ${safeTotalPages}`;
-    }
-
-    if (prevPageBtn) {
-        prevPageBtn.disabled = currentPreviewPage <= 1;
-    }
-
-    if (nextPageBtn) {
-        nextPageBtn.disabled = currentPreviewPage >= safeTotalPages;
-    }
-}
-
-function getTotalPagesFromResult(result) {
-    if (!result) return 1;
-    const docInfo = result.document_info || {};
-    return docInfo.pages || result.layout?.total_pages || result.page_count || 1;
-}
-
-function renderPreviewEmptyState(message) {
-    const documentPage = document.getElementById('documentPage');
-    if (!documentPage) return;
-
-    clearCanvasLayoutOverlay();
-    revokeCurrentPreviewImageUrl();
-    documentPage.innerHTML = `<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">${escapeHtml(message)}</div>`;
-}
-
-async function renderSourcePreview(pageNum = 1) {
-    const documentPage = document.getElementById('documentPage');
-    if (!documentPage) return;
-
-    clearCanvasLayoutOverlay();
-    revokeCurrentPreviewImageUrl();
-
-    if (!currentOriginalFileUrl) {
-        renderPreviewEmptyState('Original document not available. Please upload a document first.');
-        return;
-    }
-
-    let fileName = 'Document';
-    const storedResult = getStoredPreviewResult();
-    if (storedResult?.document_info?.file_name) {
-        fileName = storedResult.document_info.file_name;
-    } else if (documentPage.dataset.currentFileName) {
-        fileName = documentPage.dataset.currentFileName;
-    } else if (currentQueueItem) {
-        fileName = currentQueueItem.dataset.fileName || fileName;
-    }
-
-    const fileExt = fileName.toLowerCase().split('.').pop();
-
-    if (fileExt === 'pdf') {
-        if (!currentTaskId) {
-            renderPreviewEmptyState('Preparing PDF preview...');
-            return;
-        }
-
-        try {
-            documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><div class="spinner" style="margin: 0 auto 16px; width: 32px; height: 32px; border: 3px solid rgba(99, 102, 241, 0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;"></div><p style="margin-top: 16px; font-size: 0.875rem;">Loading PDF page...</p></div>';
-            currentPreviewImageUrl = await getPdfPageImage(currentTaskId, pageNum);
-            documentPage.innerHTML = `<div class="document-preview-content"><img id="documentImage" src="${currentPreviewImageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()" onerror="this.parentElement.innerHTML='<div class=\'empty-state\' style=\'padding: 40px; text-align: center; color: #f43f5e;\'>Failed to load PDF image. Please try again.</div>'"></div>`;
-            setTimeout(adjustDocumentSize, 100);
-        } catch (error) {
-            console.error('Failed to load source PDF preview:', error);
-            renderPreviewEmptyState('Failed to load PDF preview. Please try again.');
-        }
-        return;
-    }
-
-    documentPage.innerHTML = `<div class="document-preview-content"><img id="documentImage" src="${currentOriginalFileUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()"></div>`;
-    setTimeout(adjustDocumentSize, 100);
-}
-
-async function getPaddleNativePageImage(taskId, pageNum = 1) {
-    const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/paddle-native/${pageNum}`);
-    if (!response.ok) {
-        throw new Error(`Failed to get Paddle Native page image: ${response.status}`);
-    }
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-}
-
-async function renderPaddleNativePreview(pageNum = 1) {
-    const documentPage = document.getElementById('documentPage');
-    if (!documentPage) return;
-
-    clearCanvasLayoutOverlay();
-    revokeCurrentPreviewImageUrl();
-
-    if (!currentTaskId) {
-        renderPreviewEmptyState('Paddle Native view is available after layout analysis completes.');
-        return;
-    }
-
-    try {
-        documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><div class="spinner" style="margin: 0 auto 16px; width: 32px; height: 32px; border: 3px solid rgba(99, 102, 241, 0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;"></div><p style="margin-top: 16px; font-size: 0.875rem;">Loading Paddle Native preview...</p></div>';
-        currentPreviewImageUrl = await getPaddleNativePageImage(currentTaskId, pageNum);
-        documentPage.innerHTML = `<div class="document-preview-content paddle-native-preview"><img id="documentImage" src="${currentPreviewImageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Paddle Native Preview" onload="adjustDocumentSize()"></div>`;
-        setTimeout(adjustDocumentSize, 100);
-    } catch (error) {
-        console.error('Failed to load Paddle Native preview:', error);
-        renderPreviewEmptyState('Paddle Native view is not available for this document yet.');
-    }
-}
-
-async function renderCurrentPreview() {
-    updatePreviewModeButtons();
-
-    const result = getStoredPreviewResult();
-    const totalPages = getTotalPagesFromResult(result);
-    updatePaginationState(totalPages);
-
-    if (currentPreviewMode === 'paddle-native') {
-        await renderPaddleNativePreview(currentPreviewPage);
-        return;
-    }
-
-    if (currentPreviewMode === 'interactive' && result) {
-        await renderDocumentWithAnnotations(result, currentPreviewPage);
-        return;
-    }
-
-    await renderSourcePreview(currentPreviewPage);
-}
-
 /**
  * Upload file to backend for preview (PDF only)
  * Returns taskId for immediate preview without processing
@@ -858,10 +687,8 @@ async function switchToQueueItem(queueItem) {
     if (currentOriginalFileUrl) {
         URL.revokeObjectURL(currentOriginalFileUrl);
     }
-    revokeCurrentPreviewImageUrl();
     currentOriginalFileUrl = URL.createObjectURL(file);
     currentTaskId = taskId || null;
-    currentPreviewPage = 1;
 
     // Update document page
     const documentPage = document.getElementById('documentPage');
@@ -881,7 +708,7 @@ async function switchToQueueItem(queueItem) {
 
         uploadFileForPreview(file, queueItem).then((newTaskId) => {
             currentTaskId = newTaskId;
-            renderCurrentPreview();
+            updatePreviewView('original');
         }).catch((error) => {
             console.error('Failed to upload file for preview:', error);
             if (documentPage) {
@@ -889,11 +716,12 @@ async function switchToQueueItem(queueItem) {
             }
         });
     } else {
+        // Image file or PDF with existing taskId, display directly
+        updatePreviewView('original');
+
+        // If there's result data, also display it
         if (queueItem.result) {
             updateResultsDisplay(queueItem.result);
-        } else {
-            // Image file or PDF with existing taskId, display directly
-            renderCurrentPreview();
         }
     }
 }
@@ -919,18 +747,116 @@ async function getPdfPageImage(taskId, pageNum = 1) {
  * Update preview view
  */
 async function updatePreviewView(viewType) {
-    if (viewType === 'original') {
-        await renderSourcePreview(currentPreviewPage);
-        return;
-    }
+    const documentPage = document.getElementById('documentPage');
+    if (!documentPage) return;
 
-    if (viewType === 'analyzed') {
-        await renderCurrentPreview();
-        return;
-    }
+    switch (viewType) {
+        case 'original':
+            // Display original document (PDF or image) - can show even without result
+            if (currentOriginalFileUrl) {
+                // Try to get file name from result or queue item
+                let fileName = 'Document';
+                const resultJson = documentPage.dataset.currentResult;
+                if (resultJson) {
+                    try {
+                        const result = JSON.parse(resultJson);
+                        const docInfo = result.document_info || {};
+                        fileName = docInfo.file_name || 'Document';
+                    } catch (e) {
+                        // Use default
+                    }
+                } else {
+                    // Try to get from documentPage dataset or queue item
+                    if (documentPage.dataset.currentFileName) {
+                        fileName = documentPage.dataset.currentFileName;
+                    } else {
+                        const queueItem = document.querySelector('.queue-item.pending, .queue-item.processing, .queue-item.completed');
+                        if (queueItem) {
+                            fileName = queueItem.dataset.fileName || queueItem.querySelector('.queue-item-name')?.textContent || 'Document';
+                        }
+                    }
+                }
 
-    if (viewType === 'compare') {
-        showNotification('Compare view coming soon...', 'info');
+                const fileExt = fileName.toLowerCase().split('.').pop();
+
+                // For PDF files, we need taskId to get the image
+                if (fileExt === 'pdf') {
+                    if (!currentTaskId) {
+                        // Show loading state while uploading
+                        documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><div class="spinner" style="margin: 0 auto 16px; width: 32px; height: 32px; border: 3px solid rgba(99, 102, 241, 0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;"></div><p style="margin-top: 16px; font-size: 0.875rem;">Preparing PDF preview...</p></div>';
+                        return;
+                    }
+
+                    // Get PDF page image from backend
+                    try {
+                        // Show loading state while fetching image
+                        documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><div class="spinner" style="margin: 0 auto 16px; width: 32px; height: 32px; border: 3px solid rgba(99, 102, 241, 0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;"></div><p style="margin-top: 16px; font-size: 0.875rem;">Loading PDF page...</p></div>';
+
+                        let html = '<div class="document-preview-content">';
+                        const imageUrl = await getPdfPageImage(currentTaskId, 1);
+                        html += `<img id="documentImage" src="${imageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()" onerror="this.parentElement.innerHTML=\'<div class=\\\'empty-state\\\' style=\\\'padding: 40px; text-align: center; color: #f43f5e;\\\'>Failed to load PDF image. Please try again.</div>\'">`;
+                        html += '</div>';
+                        documentPage.innerHTML = html;
+
+                        // Adjust document size after rendering
+                        setTimeout(() => {
+                            adjustDocumentSize();
+                        }, 100);
+                    } catch (error) {
+                        console.error('Failed to get PDF page image:', error);
+                        documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><p style="margin-bottom: 8px; color: #f43f5e;">⚠️ Failed to load PDF preview</p><p style="font-size: 0.875rem; color: #94a3b8;">Please try running analysis or refresh the page.</p></div>';
+                    }
+                } else {
+                    // For image files, display directly
+                    let html = '<div class="document-preview-content">';
+                    html += `<img id="documentImage" src="${currentOriginalFileUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()">`;
+                    html += '</div>';
+                    documentPage.innerHTML = html;
+
+                    // Adjust document size after rendering
+                    setTimeout(() => {
+                        adjustDocumentSize();
+                    }, 100);
+                }
+            } else {
+                documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">Original document not available. Please upload a document first.</div>';
+            }
+            break;
+        case 'analyzed':
+            // Display extracted text and analysis results
+            const resultJson = documentPage.dataset.currentResult;
+            if (resultJson) {
+                try {
+                    const result = JSON.parse(resultJson);
+                    updateDocumentPreview(result);
+                    // Add visual highlights for analyzed regions if available
+                    setTimeout(() => {
+                        const regions = documentPage.querySelectorAll('.analyzed-region');
+                        regions.forEach(r => {
+                            const type = r.dataset.type;
+                            const colors = {
+                                header: '#8b5cf6',
+                                title: '#3b82f6',
+                                paragraph: '#10b981',
+                                table: '#f59e0b',
+                                list: '#06b6d4',
+                                figure: '#ec4899',
+                                footer: '#6b7280'
+                            };
+                            r.style.outline = `2px solid ${colors[type] || '#6366f1'}`;
+                            r.style.outlineOffset = '4px';
+                        });
+                    }, 100);
+                } catch (e) {
+                    documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">Analysis results not available yet. Processing in progress...</div>';
+                }
+            } else {
+                documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">Analysis results not available yet. Processing in progress...</div>';
+            }
+            break;
+        case 'compare':
+            showNotification('Compare view coming soon...', 'info');
+            break;
     }
 }
 
@@ -1053,64 +979,6 @@ function initAnalysisView() {
             startProcessing();
         });
     }
-}
-
-function initPreviewControls() {
-    const previewModeButtons = document.querySelectorAll('.preview-mode-btn');
-    previewModeButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const nextMode = btn.dataset.previewMode;
-            if (!nextMode || nextMode === currentPreviewMode) return;
-
-            currentPreviewMode = nextMode;
-            renderCurrentPreview();
-        });
-    });
-
-    const prevPageBtn = document.getElementById('prevPage');
-    const nextPageBtn = document.getElementById('nextPage');
-    const pageInput = document.querySelector('.page-input');
-
-    if (prevPageBtn) {
-        prevPageBtn.addEventListener('click', () => {
-            if (currentPreviewPage <= 1) return;
-            currentPreviewPage -= 1;
-            renderCurrentPreview();
-        });
-    }
-
-    if (nextPageBtn) {
-        nextPageBtn.addEventListener('click', () => {
-            const maxPage = Number(pageInput?.max) || 1;
-            if (currentPreviewPage >= maxPage) return;
-            currentPreviewPage += 1;
-            renderCurrentPreview();
-        });
-    }
-
-    if (pageInput) {
-        const applyPageInput = () => {
-            const maxPage = Number(pageInput.max) || 1;
-            const nextPage = Math.min(Math.max(Number(pageInput.value) || 1, 1), maxPage);
-            pageInput.value = nextPage;
-            if (nextPage === currentPreviewPage) {
-                updatePaginationState(maxPage);
-                return;
-            }
-            currentPreviewPage = nextPage;
-            renderCurrentPreview();
-        };
-
-        pageInput.addEventListener('change', applyPageInput);
-        pageInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                applyPageInput();
-            }
-        });
-    }
-
-    updatePreviewModeButtons();
-    updatePaginationState(1);
 }
 
 /**
@@ -2030,14 +1898,27 @@ function updateDocumentPreview(result) {
     const fileName = docInfo.file_name || 'Document';
     const pages = docInfo.pages || result.layout?.total_pages || result.page_count || 1;
 
-    updatePaginationState(pages);
+    // Update pagination controls with actual page count
+    const pageInput = document.querySelector('.page-input');
+    const pageTotal = document.querySelector('.page-total');
+    if (pageInput) {
+        pageInput.max = pages;
+        pageInput.value = 1;
+    }
+    if (pageTotal) {
+        pageTotal.textContent = ` / ${pages}`;
+    }
 
     // Store current result for preview switching
     documentPage.dataset.currentResult = JSON.stringify(result);
 
+
+    // Always prioritize showing source image when available.
+    // Annotation data may come from layout, OCR, or table-only paths.
     if (currentOriginalFileUrl) {
-        renderCurrentPreview();
+        renderDocumentWithAnnotations(result);
     } else {
+        // Fallback to text preview only when source image is unavailable.
         renderTextPreview(result);
     }
 }
@@ -2203,7 +2084,7 @@ function getRenderableAnnotationElements(result, options = {}) {
 /**
  * Render document with annotations overlay
  */
-async function renderDocumentWithAnnotations(result, pageNum = 1) {
+async function renderDocumentWithAnnotations(result) {
     const documentPage = document.getElementById('documentPage');
     if (!documentPage) return;
 
@@ -2226,13 +2107,11 @@ async function renderDocumentWithAnnotations(result, pageNum = 1) {
         // For PDF, get first page as image from backend using the same method as initial loading
         if (fileExt === 'pdf') {
             try {
-                revokeCurrentPreviewImageUrl();
-                currentPreviewImageUrl = await getPdfPageImage(currentTaskId, pageNum);
-                imageUrl = currentPreviewImageUrl;
+                imageUrl = await getPdfPageImage(currentTaskId, 1);
             } catch (error) {
                 console.error('Failed to get PDF page image in renderDocumentWithAnnotations:', error);
                 // Fallback to API URL
-                imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/${pageNum}`;
+                imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/1`;
             }
         }
 

@@ -544,8 +544,7 @@ async def upload_file(file: UploadFile = File(...)):
         "file_path": file_path,
         "file_name": file.filename,
         "options": {},
-        "result": None,
-        "paddle_native_pages": []
+        "result": None
     }
     tasks[task_id] = task
 
@@ -614,8 +613,7 @@ async def analyze_document(
         "file_path": file_path,
         "file_name": file.filename,
         "options": options,
-        "result": None,
-        "paddle_native_pages": []
+        "result": None
     }
     tasks[task_id] = task
 
@@ -844,7 +842,6 @@ async def process_document(task_id: str):
 
                 result["layout"] = layout_result
                 result["layout_engine_used"] = layout_result.get("engine_used")
-                task["paddle_native_pages"] = layout_result.pop("_native_page_images", [])
                 elements = layout_result.get("elements", [])
 
                 # Supplement text from OCR results if available
@@ -902,7 +899,6 @@ async def process_document(task_id: str):
             except Exception as e:
                 logger.warning(f"Task {task_id}: Layout failed: {e}")
                 result["layout"] = {"elements": [], "summary": {}}
-                task["paddle_native_pages"] = []
                 task["message"] = f"Layout analysis failed: {str(e)}"
                 await _send_event(task_id, "log", task["message"], 45)
 
@@ -1456,33 +1452,6 @@ async def get_page_image(task_id: str, page_num: int = 1):
     except Exception as e:
         logger.error(f"Error converting page to image: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to convert page to image: {str(e)}")
-
-
-@app.get("/api/v1/tasks/{task_id}/paddle-native/{page_num}")
-async def get_paddle_native_page_image(task_id: str, page_num: int = 1):
-    """Return Paddle native visualization image for a processed page."""
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    native_pages = task.get("paddle_native_pages") or []
-    if not native_pages:
-        raise HTTPException(status_code=404, detail="Paddle native visualization not available")
-
-    if page_num < 1 or page_num > len(native_pages):
-        raise HTTPException(status_code=400, detail=f"Page number {page_num} out of range (1-{len(native_pages)})")
-
-    image_bytes = native_pages[page_num - 1]
-    if not image_bytes:
-        raise HTTPException(status_code=404, detail="Paddle native visualization not available for this page")
-
-    return Response(
-        content=image_bytes,
-        media_type="image/png",
-        headers={
-            "Content-Disposition": f"inline; filename=paddle_native_page_{page_num}.png"
-        }
-    )
 
 
 @app.get("/api/v1/tasks/{task_id}/export/{format}")

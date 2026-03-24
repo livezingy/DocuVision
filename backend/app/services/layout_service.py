@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 from loguru import logger
 import os
 import paddle
-from io import BytesIO
 
 # Import compatibility patches FIRST
 from app.compatibility_patches import apply_all_patches
@@ -121,64 +120,6 @@ class PPStructureEngine(BaseLayoutEngine):
             # PPStructure (2.x) uses direct call
             return self._engine(img_path)
 
-    def _encode_visualization_to_png(self, vis_obj: Any) -> Optional[bytes]:
-        """Convert a PaddleX/PaddleOCR visualization object to PNG bytes."""
-        if vis_obj is None:
-            return None
-
-        try:
-            from PIL import Image
-        except Exception:
-            return None
-
-        image_obj = vis_obj
-        if isinstance(image_obj, dict) and image_obj:
-            image_obj = next(iter(image_obj.values()))
-
-        try:
-            if hasattr(image_obj, "save"):
-                pil_image = image_obj
-            elif hasattr(image_obj, "shape"):
-                pil_image = Image.fromarray(image_obj)
-            elif isinstance(image_obj, (bytes, bytearray)):
-                return bytes(image_obj)
-            else:
-                return None
-
-            buffer = BytesIO()
-            if getattr(pil_image, "mode", "RGB") not in ("RGB", "RGBA"):
-                pil_image = pil_image.convert("RGB")
-            pil_image.save(buffer, format="PNG")
-            return buffer.getvalue()
-        except Exception as e:
-            logger.debug(f"Failed to encode native visualization image: {e}")
-            return None
-
-    def _extract_native_visualization_png(self, result: Any) -> Optional[bytes]:
-        """Best-effort extraction of the native Paddle visualization for one page."""
-        if not result or len(result) == 0:
-            return None
-
-        first_item = result[0]
-
-        try:
-            if hasattr(first_item, 'img'):
-                png_bytes = self._encode_visualization_to_png(getattr(first_item, 'img'))
-                if png_bytes:
-                    return png_bytes
-        except Exception as e:
-            logger.debug(f"Failed to read native visualization from attribute img: {e}")
-
-        try:
-            if isinstance(first_item, dict) and 'img' in first_item:
-                png_bytes = self._encode_visualization_to_png(first_item.get('img'))
-                if png_bytes:
-                    return png_bytes
-        except Exception as e:
-            logger.debug(f"Failed to read native visualization from dict img: {e}")
-
-        return None
-
     async def analyze(self, file_path: str) -> Dict[str, Any]:
         if not self._ready:
             raise RuntimeError("PP-Structure engine not ready")
@@ -199,7 +140,6 @@ class PPStructureEngine(BaseLayoutEngine):
         page_count = len(doc)  # 保存页数，避免关闭后访问
         all_elements = []
         page_layouts = []
-        native_page_images: List[bytes] = []
 
         try:
             for page_num in range(page_count):
@@ -219,8 +159,6 @@ class PPStructureEngine(BaseLayoutEngine):
                     pix.save(img_path)
 
                 result = self._call_engine(img_path)
-                native_vis = self._extract_native_visualization_png(result)
-                native_page_images.append(native_vis or b"")
 
                 page_elements = self._parse_result(result, page_num + 1)
                 all_elements.extend(page_elements)
@@ -239,8 +177,7 @@ class PPStructureEngine(BaseLayoutEngine):
             "total_pages": len(page_layouts),
             "elements": all_elements,
             "page_layouts": page_layouts,
-            "summary": self._get_document_summary(all_elements),
-            "_native_page_images": native_page_images,
+            "summary": self._get_document_summary(all_elements)
         }
 
     async def _analyze_image(self, img_path: str) -> Dict[str, Any]:
@@ -268,7 +205,6 @@ class PPStructureEngine(BaseLayoutEngine):
             else:
                 result = self._call_engine(img_path)
 
-        native_vis = self._extract_native_visualization_png(result)
         elements = self._parse_result(result, 1)
 
         return {
@@ -276,8 +212,7 @@ class PPStructureEngine(BaseLayoutEngine):
             "total_pages": 1,
             "elements": elements,
             "page_layouts": [{"page": 1, **self._get_page_summary(elements)}],
-            "summary": self._get_document_summary(elements),
-            "_native_page_images": [native_vis or b""],
+            "summary": self._get_document_summary(elements)
         }
 
     def _parse_result(self, result: List[Dict], page_num: int) -> List[Dict[str, Any]]:

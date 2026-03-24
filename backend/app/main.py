@@ -1416,15 +1416,34 @@ async def remap_task_canonical(task_id: str, body: RemappingRequest):
         if body.invalidate_cache:
             invalidate_rule_cache()
 
-        doc = _load_canonical_document(canonical_raw)
-        updated_doc = remap_canonical_doc(doc, rules_path=body.rules_path, doc_type_hint=body.doc_type_hint)
+        # remap_canonical_doc currently expects a serialised dict payload and
+        # returns (updated_dict, changed_count).
+        if isinstance(canonical_raw, dict):
+            canonical_dict = canonical_raw
+        else:
+            canonical_dict = _load_canonical_document(canonical_raw).to_dict(include_raw_payload=True)
 
-        result["canonical"] = updated_doc.to_dict(include_raw_payload=True)
+        current_taxonomy = str(canonical_dict.get("taxonomy_version", "azure-like-v1"))
+        updated_canonical, changed_blocks = remap_canonical_doc(
+            canonical_dict=canonical_dict,
+            new_taxonomy_version=current_taxonomy,
+            doc_type=body.doc_type_hint,
+            rules_path=body.rules_path,
+        )
+
+        from app.models.canonical_document import CanonicalDocument
+        updated_doc = CanonicalDocument.from_dict(updated_canonical)
+
+        result["canonical"] = updated_canonical
         result["canonical_summary"] = updated_doc.summary()
-        logger.info(f"Task {task_id}: Remapping completed | {updated_doc.summary()}")
+        logger.info(
+            f"Task {task_id}: Remapping completed | changed_blocks={changed_blocks} | "
+            f"summary={updated_doc.summary()}"
+        )
         return {
             "task_id": task_id,
             "status": "ok",
+            "changed_blocks": changed_blocks,
             "canonical_summary": updated_doc.summary(),
         }
     except Exception as e:

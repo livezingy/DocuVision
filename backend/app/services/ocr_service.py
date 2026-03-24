@@ -191,8 +191,11 @@ class PaddleOCREngine(BaseOCREngine):
 
     def _save_visualization_outputs(self, result: Any, img_path: str) -> None:
         """Best-effort save_to_img for PaddleOCR prediction outputs."""
-        output_root = r"D:\3_PROJECTS\DocuVision\outputs"
-        output_dir = os.path.join(output_root, "paddleocr_visualizations")
+        # Use file-relative path to support both local and cloud environments
+        # __file__ points to: {project_root}/backend/app/services/ocr_service.py
+        # We need to go up 3 levels to reach project_root
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        output_dir = os.path.join(project_root, "outputs", "paddleocr_visualizations")
 
         try:
             os.makedirs(output_dir, exist_ok=True)

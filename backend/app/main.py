@@ -253,6 +253,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Gzip compression for all responses >= 500 bytes
+from fastapi.middleware.gzip import GZIPMiddleware
+app.add_middleware(GZIPMiddleware, minimum_size=500)
+
 # Frontend static files (served by backend for simple deployments, e.g. AI Studio)
 try:
     backend_dir = Path(__file__).resolve().parent.parent
@@ -896,6 +900,31 @@ async def process_document(task_id: str):
                            f"Engine: {layout_result.get('engine_used')} | Types: {type_stats}")
                 if confidence_stats:
                     logger.info(f"Task {task_id}: Layout confidence by type | {' | '.join(confidence_stats)}")
+
+                # ── Canonical conversion (Phase 2) ──────────────────────────
+                try:
+                    from app.services.canonical_converter import CanonicalConverter
+                    _converter = CanonicalConverter()
+                    _src_type = "pdf" if str(file_path).lower().endswith(".pdf") else "image"
+                    canonical_doc = _converter.convert(
+                        task_id=task_id,
+                        source_type=_src_type,
+                        layout_result=layout_result,
+                        ocr_result=result.get("ocr"),
+                        doc_type_hint=options.get("doc_type", "unknown"),
+                        file_path=file_path,
+                    )
+                    result["canonical"] = canonical_doc.to_dict(include_raw_payload=True)
+                    result["canonical_summary"] = canonical_doc.summary()
+                    logger.info(
+                        f"Task {task_id}: Canonical conversion done | "
+                        f"pages={canonical_doc.summary().get('total_pages')} "
+                        f"blocks={canonical_doc.summary().get('total_blocks')}"
+                    )
+                except Exception as _ce:
+                    logger.warning(f"Task {task_id}: Canonical conversion failed (non-fatal): {_ce}")
+                # ────────────────────────────────────────────────────────────
+
             except Exception as e:
                 logger.warning(f"Task {task_id}: Layout failed: {e}")
                 result["layout"] = {"elements": [], "summary": {}}
@@ -1310,7 +1339,82 @@ async def get_task_result(task_id: str):
     return task["result"]
 
 
-@app.get("/api/v1/tasks/{task_id}/layout")
+@app.get("/api/v1/tasks/{task_id}/canonical")
+async def get_canonical_result(task_id: str, include_raw: bool = False, include_ocr_lines: bool = False):
+    """
+    Return the CanonicalDocument for a completed task.
+    Query params:
+      include_raw=true         – embed the full PaddleOCR raw payload
+      include_ocr_lines=true   – embed per-block OCR line details
+    """
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task["status"] != "completed":
+        raise HTTPException(status_code=400, detail="Task not completed")
+
+    result = task.get("result", {})
+    canonical_raw = result.get("canonical")
+    if not canonical_raw:
+        raise HTTPException(status_code=404, detail="Canonical document not available for this task")
+
+    # If the caller wants a stripped-down view, rebuild from the stored dict
+    try:
+        from app.models.canonical_document import CanonicalDocument
+        doc = CanonicalDocument.from_json(canonical_raw)
+        return doc.to_dict(include_raw_payload=include_raw, include_ocr_lines=include_ocr_lines)
+    except Exception as e:
+        logger.warning(f"Task {task_id}: Failed to deserialise canonical doc, returning raw: {e}")
+        return canonical_raw
+
+
+class RemappingRequest(BaseModel):
+    rules_path: str | None = None   # Optional override path to a YAML rules file
+    doc_type_hint: str | None = None  # e.g. "invoice", "contract", "unknown"
+    invalidate_cache: bool = False   # Force reload of cached rule set
+
+
+@app.post("/api/v1/tasks/{task_id}/remapping")
+async def remap_task_canonical(task_id: str, body: RemappingRequest):
+    """
+    Re-apply semantic mapping rules to a previously processed task without
+    re-running OCR/layout.  Useful after editing semantic_mapping_base.yaml.
+    Returns the updated canonical summary.
+    """
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task["status"] != "completed":
+        raise HTTPException(status_code=400, detail="Task not completed (only completed tasks can be remapped)")
+
+    result = task.get("result", {})
+    canonical_raw = result.get("canonical")
+    if not canonical_raw:
+        raise HTTPException(status_code=404, detail="No canonical document stored for this task — run full analysis first")
+
+    try:
+        from app.models.canonical_document import CanonicalDocument
+        from app.services.canonical_converter import remap_canonical_doc, invalidate_rule_cache
+        if body.invalidate_cache:
+            invalidate_rule_cache()
+
+        doc = CanonicalDocument.from_json(canonical_raw)
+        updated_doc = remap_canonical_doc(doc, rules_path=body.rules_path, doc_type_hint=body.doc_type_hint)
+
+        result["canonical"] = updated_doc.to_dict(include_raw_payload=True)
+        result["canonical_summary"] = updated_doc.summary()
+        logger.info(f"Task {task_id}: Remapping completed | {updated_doc.summary()}")
+        return {
+            "task_id": task_id,
+            "status": "ok",
+            "canonical_summary": updated_doc.summary(),
+        }
+    except Exception as e:
+        logger.error(f"Task {task_id}: Remapping failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Remapping failed: {str(e)}")
+
+
+
 async def get_unified_layout_analysis(task_id: str, page_number: int = 1):
     """
     获取统一格式的版面分析结果

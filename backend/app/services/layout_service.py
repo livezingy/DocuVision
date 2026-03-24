@@ -111,14 +111,44 @@ class PPStructureEngine(BaseLayoutEngine):
     def get_name(self) -> str:
         return "PP-StructureV3"
 
+    def _save_visualization_outputs(self, result: Any, img_path: str) -> None:
+        """Best-effort save_to_img for PPStructureV3 prediction outputs."""
+        output_root = r"D:\3_PROJECTS\DocuVision\outputs"
+        output_dir = os.path.join(output_root, "ppstructure_visualizations")
+
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except Exception as e:
+            logger.warning(f"Failed to create PPStructure output directory {output_dir}: {e}")
+            return
+
+        candidates: List[Any] = result if isinstance(result, list) else [result]
+        saved_any = False
+
+        for idx, item in enumerate(candidates):
+            if not hasattr(item, "save_to_img"):
+                continue
+            try:
+                # save_to_img accepts a directory path and writes visualization files there.
+                item.save_to_img(save_path=output_dir)
+                saved_any = True
+            except Exception as e:
+                logger.debug(f"PPStructure save_to_img failed for candidate {idx}: {e}")
+
+        if saved_any:
+            logger.info(f"PPStructure visualization saved to: {output_dir} | source={img_path}")
+
     def _call_engine(self, img_path: str):
         """Call engine with version-compatible method"""
         if hasattr(self, '_is_v3') and self._is_v3:
             # PPStructureV3 uses predict() method
-            return self._engine.predict(img_path)
+            result = self._engine.predict(img_path)
         else:
             # PPStructure (2.x) uses direct call
-            return self._engine(img_path)
+            result = self._engine(img_path)
+
+        self._save_visualization_outputs(result, img_path)
+        return result
 
     async def analyze(self, file_path: str) -> Dict[str, Any]:
         if not self._ready:

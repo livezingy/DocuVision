@@ -189,11 +189,43 @@ class PaddleOCREngine(BaseOCREngine):
 
         return items
 
+    def _save_visualization_outputs(self, result: Any, img_path: str) -> None:
+        """Best-effort save_to_img for PaddleOCR prediction outputs."""
+        output_root = r"D:\3_PROJECTS\DocuVision\outputs"
+        output_dir = os.path.join(output_root, "paddleocr_visualizations")
+
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except Exception as e:
+            logger.warning(f"Failed to create PaddleOCR output directory {output_dir}: {e}")
+            return
+
+        candidates: List[Any] = []
+        if isinstance(result, list):
+            candidates = result
+        else:
+            candidates = [result]
+
+        saved_any = False
+        for idx, item in enumerate(candidates):
+            if not hasattr(item, "save_to_img"):
+                continue
+            try:
+                # save_to_img accepts a directory path and writes visualization files there.
+                item.save_to_img(save_path=output_dir)
+                saved_any = True
+            except Exception as e:
+                logger.debug(f"PaddleOCR save_to_img failed for candidate {idx}: {e}")
+
+        if saved_any:
+            logger.info(f"PaddleOCR visualization saved to: {output_dir} | source={img_path}")
+
     def _call_ocr(self, img_path: str):
         """Call OCR using PaddleOCR 3.x predict() method"""
         try:
             # PaddleOCR 3.x predict() method
             result = self._ocr.predict(img_path)
+            self._save_visualization_outputs(result, img_path)
 
             # PaddleOCR 3.x may return a dict with `rec_texts/rec_scores/rec_polys`.
             if isinstance(result, dict):

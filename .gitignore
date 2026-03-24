@@ -158,9 +158,11 @@ site/
 .vscode/
 docker/
 docs/
-tests/
-backend/tests/
-frontend/tests/
+# Tests: ignore __pycache__ and result artefacts but commit source files
+tests/**/__pycache__/
+backend/tests/__pycache__/
+frontend/tests/e2e/test-results/
+frontend/tests/e2e/playwright-report/
 test_data/Azure/
 
 # DocuVision Project Specific

@@ -254,13 +254,16 @@ app.add_middleware(
 )
 
 # Gzip compression for all responses >= 500 bytes
-# fastapi.middleware.gzip re-exports from starlette but some older cloud builds
-# ship an incomplete fastapi.middleware.gzip stub — import directly from starlette.
+# Starlette's canonical name is GZipMiddleware (mixed case). Newer starlette/fastapi
+# versions also export GZIPMiddleware (all-caps). Try all known spellings in order.
 try:
-    from starlette.middleware.gzip import GZIPMiddleware
+    from starlette.middleware.gzip import GZipMiddleware as _GzipMW  # starlette canonical
 except ImportError:
-    from fastapi.middleware.gzip import GZIPMiddleware  # type: ignore[no-redef]
-app.add_middleware(GZIPMiddleware, minimum_size=500)
+    try:
+        from starlette.middleware.gzip import GZIPMiddleware as _GzipMW  # type: ignore[assignment]
+    except ImportError:
+        from fastapi.middleware.gzip import GZIPMiddleware as _GzipMW  # type: ignore[assignment]
+app.add_middleware(_GzipMW, minimum_size=500)
 
 # Frontend static files (served by backend for simple deployments, e.g. AI Studio)
 try:

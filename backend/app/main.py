@@ -1347,6 +1347,18 @@ async def get_task_result(task_id: str):
     return task["result"]
 
 
+def _load_canonical_document(canonical_raw: Any):
+    """Load CanonicalDocument from either dict (current) or JSON string (legacy)."""
+    from app.models.canonical_document import CanonicalDocument
+
+    if isinstance(canonical_raw, dict):
+        return CanonicalDocument.from_dict(canonical_raw)
+    if isinstance(canonical_raw, str):
+        return CanonicalDocument.from_json(canonical_raw)
+
+    raise TypeError(f"Unsupported canonical payload type: {type(canonical_raw).__name__}")
+
+
 @app.get("/api/v1/tasks/{task_id}/canonical")
 async def get_canonical_result(task_id: str, include_raw: bool = False, include_ocr_lines: bool = False):
     """
@@ -1368,8 +1380,7 @@ async def get_canonical_result(task_id: str, include_raw: bool = False, include_
 
     # If the caller wants a stripped-down view, rebuild from the stored dict
     try:
-        from app.models.canonical_document import CanonicalDocument
-        doc = CanonicalDocument.from_json(canonical_raw)
+        doc = _load_canonical_document(canonical_raw)
         return doc.to_dict(include_raw_payload=include_raw, include_ocr_lines=include_ocr_lines)
     except Exception as e:
         logger.warning(f"Task {task_id}: Failed to deserialise canonical doc, returning raw: {e}")
@@ -1401,12 +1412,11 @@ async def remap_task_canonical(task_id: str, body: RemappingRequest):
         raise HTTPException(status_code=404, detail="No canonical document stored for this task — run full analysis first")
 
     try:
-        from app.models.canonical_document import CanonicalDocument
         from app.services.canonical_converter import remap_canonical_doc, invalidate_rule_cache
         if body.invalidate_cache:
             invalidate_rule_cache()
 
-        doc = CanonicalDocument.from_json(canonical_raw)
+        doc = _load_canonical_document(canonical_raw)
         updated_doc = remap_canonical_doc(doc, rules_path=body.rules_path, doc_type_hint=body.doc_type_hint)
 
         result["canonical"] = updated_doc.to_dict(include_raw_payload=True)

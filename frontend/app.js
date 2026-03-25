@@ -1978,6 +1978,22 @@ function bboxFromPolygon(polygon) {
     return { x: x1, y: y1, width: Math.max(0, x2 - x1), height: Math.max(0, y2 - y1) };
 }
 
+function isLikelyNormalizedBbox(bbox) {
+    if (!bbox || typeof bbox !== 'object') return false;
+
+    const x = Number(bbox.x);
+    const y = Number(bbox.y);
+    const width = Number(bbox.width);
+    const height = Number(bbox.height);
+
+    if (![x, y, width, height].every(Number.isFinite)) {
+        return false;
+    }
+
+    // Heuristic: all values in [0, 1] (with a small tolerance)
+    return x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1.05 && y <= 1.05 && width <= 1.05 && height <= 1.05;
+}
+
 function isTextLikeLayoutType(type) {
     const t = String(type || '').toLowerCase();
     return [
@@ -2131,8 +2147,14 @@ async function renderDocumentWithAnnotations(result) {
             let width = bbox.width || 0;
             let height = bbox.height || 0;
 
+            const isNormalized = isLikelyNormalizedBbox({ x, y, width, height });
+
             // Skip invalid or near-zero boxes to avoid misplaced overlays.
-            if (width <= 1 || height <= 1) {
+            if (width <= 0 || height <= 0) {
+                return;
+            }
+            // Keep normalized bboxes (<=1) and scale them later when image dimensions are known.
+            if (!isNormalized && (width <= 1 || height <= 1)) {
                 return;
             }
 
@@ -2217,6 +2239,7 @@ async function renderDocumentWithAnnotations(result) {
                          data-y="${y}"
                          data-width="${width}"
                          data-height="${height}"
+                         data-is-normalized="${isNormalized ? '1' : '0'}"
                          style="position: absolute; left: ${x}px; top: ${y}px; width: ${width}px; height: ${height}px;">
                      </div>`;
         });
@@ -2278,16 +2301,26 @@ function adjustAnnotationPositions() {
     // Adjust each annotation position
     const annotations = overlayContainer.querySelectorAll('.annotation-overlay');
     annotations.forEach(annotation => {
-        const x = parseFloat(annotation.dataset.x || 0);
-        const y = parseFloat(annotation.dataset.y || 0);
-        const width = parseFloat(annotation.dataset.width || 100);
-        const height = parseFloat(annotation.dataset.height || 50);
+        try {
+            const x = parseFloat(annotation.dataset.x || 0);
+            const y = parseFloat(annotation.dataset.y || 0);
+            const width = parseFloat(annotation.dataset.width || 100);
+            const height = parseFloat(annotation.dataset.height || 50);
+            const isNormalized = annotation.dataset.isNormalized === '1';
 
-        // Scale coordinates to match displayed image size
-        annotation.style.left = `${x * scaleX}px`;
-        annotation.style.top = `${y * scaleY}px`;
-        annotation.style.width = `${width * scaleX}px`;
-        annotation.style.height = `${height * scaleY}px`;
+            const baseX = isNormalized ? (x * originalWidth) : x;
+            const baseY = isNormalized ? (y * originalHeight) : y;
+            const baseWidth = isNormalized ? (width * originalWidth) : width;
+            const baseHeight = isNormalized ? (height * originalHeight) : height;
+
+            // Scale coordinates to match displayed image size
+            annotation.style.left = `${baseX * scaleX}px`;
+            annotation.style.top = `${baseY * scaleY}px`;
+            annotation.style.width = `${baseWidth * scaleX}px`;
+            annotation.style.height = `${baseHeight * scaleY}px`;
+        } catch (error) {
+            console.error('Failed to position annotation overlay:', error);
+        }
     });
 
     // Re-adjust on window resize - ensure adjustDocumentSize is called first

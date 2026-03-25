@@ -39,6 +39,7 @@ let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
 let showOcrFineGrainedOverlay = false;
 let lastRenderedAnalysisResult = null;
+let enableOverlaySha256Validation = false;
 const overlayLayerVisibility = {
     text: true,
     table: true,
@@ -1014,6 +1015,27 @@ function initOverlayOptions() {
     const wrapper = document.createElement('div');
     wrapper.id = 'overlayLayerToggles';
     wrapper.className = 'overlay-layer-toggles';
+
+    const shaLabel = document.createElement('label');
+    shaLabel.className = 'overlay-layer-toggle';
+
+    const shaInput = document.createElement('input');
+    shaInput.type = 'checkbox';
+    shaInput.checked = !!enableOverlaySha256Validation;
+
+    const shaText = document.createElement('span');
+    shaText.textContent = 'SHA256 Verify';
+
+    shaInput.addEventListener('change', () => {
+        enableOverlaySha256Validation = !!shaInput.checked;
+        if (lastRenderedAnalysisResult) {
+            renderDocumentWithAnnotations(lastRenderedAnalysisResult);
+        }
+    });
+
+    shaLabel.appendChild(shaInput);
+    shaLabel.appendChild(shaText);
+    wrapper.appendChild(shaLabel);
 
     const layerDefs = [
         { key: 'text', label: 'Text', color: '#10b981' },
@@ -2032,20 +2054,86 @@ function bboxFromPolygon(polygon) {
     return { x: x1, y: y1, width: Math.max(0, x2 - x1), height: Math.max(0, y2 - y1) };
 }
 
-function isLikelyNormalizedBbox(bbox) {
-    if (!bbox || typeof bbox !== 'object') return false;
+function normalizeCoordSpace(value) {
+    const v = String(value || '').trim().toLowerCase();
+    if (v === 'image_abs_px') return 'image_abs_px';
+    if (v === 'image_norm') return 'image_norm';
+    return '';
+}
 
-    const x = Number(bbox.x);
-    const y = Number(bbox.y);
-    const width = Number(bbox.width);
-    const height = Number(bbox.height);
+function getPageImageMeta(result, pageNum = 1) {
+    const docInfo = (result && result.document_info) ? result.document_info : {};
+    const meta = docInfo.page_image_meta;
+    if (!meta || typeof meta !== 'object') return null;
 
-    if (![x, y, width, height].every(Number.isFinite)) {
+    if (Array.isArray(meta.pages)) {
+        const match = meta.pages.find(p => Number(p.page || 1) === Number(pageNum));
+        return match || null;
+    }
+
+    return meta;
+}
+
+async function computeImageSha256Hex(image) {
+    const src = image?.currentSrc || image?.src || '';
+    if (!src || !window.crypto || !window.crypto.subtle) return '';
+
+    const response = await fetch(src, { cache: 'no-store' });
+    if (!response.ok) return '';
+
+    const buffer = await response.arrayBuffer();
+    const digest = await window.crypto.subtle.digest('SHA-256', buffer);
+    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function validateImageCoordinateBinding(image, result, pageNum = 1) {
+    if (!image || !result) return true;
+
+    const expected = getPageImageMeta(result, pageNum);
+    if (!expected) return true;
+
+    const expectedWidth = Number(expected.width_px || 0);
+    const expectedHeight = Number(expected.height_px || 0);
+    if (expectedWidth <= 0 || expectedHeight <= 0) return true;
+
+    const actualWidth = Number(image.naturalWidth || 0);
+    const actualHeight = Number(image.naturalHeight || 0);
+
+    if (actualWidth !== expectedWidth || actualHeight !== expectedHeight) {
+        console.error(
+            `[Layout] Image binding mismatch: expected ${expectedWidth}x${expectedHeight}, got ${actualWidth}x${actualHeight}`,
+            expected
+        );
+        showNotification('Image size does not match coordinate metadata. Skipping overlays to avoid offset.', 'warning');
         return false;
     }
 
-    // Heuristic: all values in [0, 1] (with a small tolerance)
-    return x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1.05 && y <= 1.05 && width <= 1.05 && height <= 1.05;
+    if (!enableOverlaySha256Validation) {
+        return true;
+    }
+
+    const expectedSha = String(expected.sha256 || '').trim().toLowerCase();
+    if (!expectedSha) {
+        return true;
+    }
+
+    try {
+        const actualSha = (await computeImageSha256Hex(image)).toLowerCase();
+        if (!actualSha) {
+            showNotification('Unable to compute image SHA256. Skipping SHA verification.', 'info');
+            return true;
+        }
+        if (actualSha !== expectedSha) {
+            console.error(`[Layout] Image SHA256 mismatch: expected=${expectedSha}, actual=${actualSha}`);
+            showNotification('Image SHA256 mismatch with coordinate metadata. Skipping overlays.', 'warning');
+            return false;
+        }
+    } catch (error) {
+        console.warn('[Layout] SHA256 verification failed:', error);
+        showNotification('SHA256 verification failed. Proceeding with size validation only.', 'info');
+    }
+
+    return true;
 }
 
 function getOverlayLayerType(type) {
@@ -2176,6 +2264,13 @@ async function renderDocumentWithAnnotations(result) {
 
     const docInfo = result.document_info || {};
     const fileName = docInfo.file_name || 'Document';
+    const pageImageMeta = getPageImageMeta(result, 1) || {};
+    const pageCoordSpace = normalizeCoordSpace(pageImageMeta.coord_space);
+    const hasExplicitCoordSpace = !!pageCoordSpace;
+    if (!hasExplicitCoordSpace) {
+        console.warn('[Layout] Missing or invalid coord_space in page_image_meta. Overlay rendering is skipped.');
+        showNotification('Missing coord_space metadata. Overlay rendering skipped.', 'warning');
+    }
     const elements = getRenderableAnnotationElements(result, {
         includeOcrFineGrained: showOcrFineGrainedOverlay
     });
@@ -2200,7 +2295,7 @@ async function renderDocumentWithAnnotations(result) {
         }
 
         // Create image with same style as initial loading, and add onload handler
-        html += `<img id="documentImage" src="${imageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize(); adjustAnnotationPositions();">`;
+        html += `<img id="documentImage" src="${imageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize();">`;
 
         // Create annotation overlay container - positioned relative to image
         html += '<div class="annotation-overlay-container" id="annotationOverlayContainer" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;">';
@@ -2215,7 +2310,11 @@ async function renderDocumentWithAnnotations(result) {
             let width = bbox.width || 0;
             let height = bbox.height || 0;
 
-            const isNormalized = isLikelyNormalizedBbox({ x, y, width, height });
+            if (!hasExplicitCoordSpace) {
+                return;
+            }
+
+            const isNormalized = pageCoordSpace === 'image_norm';
 
             // Skip invalid or near-zero boxes to avoid misplaced overlays.
             if (width <= 0 || height <= 0) {
@@ -2314,8 +2413,10 @@ async function renderDocumentWithAnnotations(result) {
                          data-y="${y}"
                          data-width="${width}"
                          data-height="${height}"
+                         data-page="${Number(element.page || 1)}"
+                         data-coord-space="${pageCoordSpace}"
                          data-is-normalized="${isNormalized ? '1' : '0'}"
-                         style="position: absolute; left: ${x}px; top: ${y}px; width: ${width}px; height: ${height}px;">
+                         style="position: absolute; left: 0px; top: 0px; width: 0px; height: 0px;">
                      </div>`;
         });
 
@@ -2331,13 +2432,17 @@ async function renderDocumentWithAnnotations(result) {
     if (image) {
         if (image.complete) {
             adjustDocumentSize();
-            adjustAnnotationPositions();
-            initAnnotationInteractions();
-        } else {
-            image.addEventListener('load', () => {
-                adjustDocumentSize();
+            if (await validateImageCoordinateBinding(image, result, 1)) {
                 adjustAnnotationPositions();
                 initAnnotationInteractions();
+            }
+        } else {
+            image.addEventListener('load', async () => {
+                adjustDocumentSize();
+                if (await validateImageCoordinateBinding(image, result, 1)) {
+                    adjustAnnotationPositions();
+                    initAnnotationInteractions();
+                }
             });
         }
     } else {
@@ -2356,22 +2461,21 @@ function adjustAnnotationPositions() {
     const overlayContainer = document.getElementById('annotationOverlayContainer');
     if (!image || !overlayContainer) return;
 
-    // Get actual displayed image dimensions (after adjustDocumentSize has been called)
+    // Single transform path: keep geometry in image-space, apply one container scale.
     const displayedWidth = image.offsetWidth || image.clientWidth;
     const displayedHeight = image.offsetHeight || image.clientHeight;
     const originalWidth = image.naturalWidth || displayedWidth;
     const originalHeight = image.naturalHeight || displayedHeight;
 
-    // Calculate scale factors: bbox coordinates are in original document pixels
-    // We need to scale them to displayed size
     const scaleX = originalWidth > 0 ? (displayedWidth / originalWidth) : 1;
     const scaleY = originalHeight > 0 ? (displayedHeight / originalHeight) : 1;
 
-    // Update overlay container to match displayed image dimensions exactly
-    overlayContainer.style.width = `${displayedWidth}px`;
-    overlayContainer.style.height = `${displayedHeight}px`;
+    overlayContainer.style.width = `${originalWidth}px`;
+    overlayContainer.style.height = `${originalHeight}px`;
     overlayContainer.style.top = '0';
     overlayContainer.style.left = '0';
+    overlayContainer.style.transformOrigin = 'top left';
+    overlayContainer.style.transform = `scale(${scaleX}, ${scaleY})`;
 
     // Adjust each annotation position
     const annotations = overlayContainer.querySelectorAll('.annotation-overlay');
@@ -2381,18 +2485,19 @@ function adjustAnnotationPositions() {
             const y = parseFloat(annotation.dataset.y || 0);
             const width = parseFloat(annotation.dataset.width || 100);
             const height = parseFloat(annotation.dataset.height || 50);
-            const isNormalized = annotation.dataset.isNormalized === '1';
+            const coordSpace = String(annotation.dataset.coordSpace || 'image_abs_px').toLowerCase();
 
-            const baseX = isNormalized ? (x * originalWidth) : x;
-            const baseY = isNormalized ? (y * originalHeight) : y;
-            const baseWidth = isNormalized ? (width * originalWidth) : width;
-            const baseHeight = isNormalized ? (height * originalHeight) : height;
+            const useNormalized = coordSpace === 'image_norm';
 
-            // Scale coordinates to match displayed image size
-            annotation.style.left = `${baseX * scaleX}px`;
-            annotation.style.top = `${baseY * scaleY}px`;
-            annotation.style.width = `${baseWidth * scaleX}px`;
-            annotation.style.height = `${baseHeight * scaleY}px`;
+            const baseX = useNormalized ? (x * originalWidth) : x;
+            const baseY = useNormalized ? (y * originalHeight) : y;
+            const baseWidth = useNormalized ? (width * originalWidth) : width;
+            const baseHeight = useNormalized ? (height * originalHeight) : height;
+
+            annotation.style.left = `${baseX}px`;
+            annotation.style.top = `${baseY}px`;
+            annotation.style.width = `${baseWidth}px`;
+            annotation.style.height = `${baseHeight}px`;
         } catch (error) {
             console.error('Failed to position annotation overlay:', error);
         }

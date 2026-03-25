@@ -47,6 +47,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any, Set
 import uuid
 import shutil
+import hashlib
 from datetime import datetime
 from loguru import logger
 from importlib import metadata as _metadata
@@ -98,6 +99,59 @@ def _truthy_env(name: str, default: bool = False) -> bool:
     if raw is None:
         return default
     return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1) -> Dict[str, Any]:
+    """
+    Build stable page image metadata for front-end coordinate binding checks.
+
+    Coordinates are declared in original image pixel space (image_abs_px).
+    For PDF we render with the same 2x matrix used by /page-image to keep
+    dimensions aligned with the preview image endpoint.
+    """
+    meta: Dict[str, Any] = {
+        "page": int(page_num),
+        "width_px": 0,
+        "height_px": 0,
+        "sha256": "",
+        "coord_space": "image_abs_px",
+    }
+
+    if task_id:
+        meta["image_url"] = f"/api/v1/tasks/{task_id}/page-image/{page_num}"
+
+    try:
+        if not file_path or not os.path.exists(file_path):
+            return meta
+
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext == ".pdf":
+            import fitz  # PyMuPDF
+
+            doc = fitz.open(file_path)
+            try:
+                if page_num < 1 or page_num > len(doc):
+                    return meta
+
+                page = doc[page_num - 1]
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                meta["width_px"] = int(pix.width)
+                meta["height_px"] = int(pix.height)
+                meta["sha256"] = hashlib.sha256(pix.tobytes("png")).hexdigest()
+                return meta
+            finally:
+                doc.close()
+
+        from PIL import Image as PILImage
+        with PILImage.open(file_path) as img:
+            meta["width_px"] = int(img.width)
+            meta["height_px"] = int(img.height)
+        with open(file_path, "rb") as f:
+            meta["sha256"] = hashlib.sha256(f.read()).hexdigest()
+    except Exception as e:
+        logger.warning(f"Failed to build page image meta for {file_path}: {e}")
+
+    return meta
 
 
 def _detect_aistudio_environment() -> bool:
@@ -757,7 +811,8 @@ async def process_document(task_id: str):
             "document_info": {
                 "file_name": task["file_name"],
                 "pages": 0,
-                "processed_at": datetime.now().isoformat()
+                "processed_at": datetime.now().isoformat(),
+                "page_image_meta": _build_page_image_meta(file_path, task_id=task_id, page_num=1),
             }
         }
 
@@ -1902,7 +1957,8 @@ async def start_batch(batch_id: str, background_tasks: BackgroundTasks):
             "document_info": {
                 "file_name": temp_task["file_name"],
                 "pages": 0,
-                "processed_at": datetime.now().isoformat()
+                "processed_at": datetime.now().isoformat(),
+                "page_image_meta": _build_page_image_meta(file_path, page_num=1),
             }
         }
 

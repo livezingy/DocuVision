@@ -40,6 +40,7 @@ const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates 
 let showOcrFineGrainedOverlay = false;
 let lastRenderedAnalysisResult = null;
 let enableOverlaySha256Validation = false;
+let forcePureLayoutBboxOverlay = false;
 const overlayLayerVisibility = {
     text: true,
     table: true,
@@ -1036,6 +1037,27 @@ function initOverlayOptions() {
     shaLabel.appendChild(shaInput);
     shaLabel.appendChild(shaText);
     wrapper.appendChild(shaLabel);
+
+    const pureLayoutLabel = document.createElement('label');
+    pureLayoutLabel.className = 'overlay-layer-toggle';
+
+    const pureLayoutInput = document.createElement('input');
+    pureLayoutInput.type = 'checkbox';
+    pureLayoutInput.checked = !!forcePureLayoutBboxOverlay;
+
+    const pureLayoutText = document.createElement('span');
+    pureLayoutText.textContent = 'Pure Layout BBox';
+
+    pureLayoutInput.addEventListener('change', () => {
+        forcePureLayoutBboxOverlay = !!pureLayoutInput.checked;
+        if (lastRenderedAnalysisResult) {
+            renderDocumentWithAnnotations(lastRenderedAnalysisResult);
+        }
+    });
+
+    pureLayoutLabel.appendChild(pureLayoutInput);
+    pureLayoutLabel.appendChild(pureLayoutText);
+    wrapper.appendChild(pureLayoutLabel);
 
     const layerDefs = [
         { key: 'text', label: 'Text', color: '#10b981' },
@@ -2246,11 +2268,17 @@ function mapSemanticBlockToOverlayElement(block, idx) {
 
 function getRenderableAnnotationElements(result, options = {}) {
     const includeOcrFineGrained = !!options.includeOcrFineGrained;
+    const forcePureLayoutBbox = !!options.forcePureLayoutBbox;
     const semanticTextBlocks = (result.semantic_text_blocks || []).filter(el => el && typeof el === 'object');
     const layoutElements = (result.layout?.elements || []).filter(el => el && typeof el === 'object');
 
     if (layoutElements.length > 0) {
         const filteredLayoutElements = layoutElements.filter(el => !shouldExcludeOverlayElement(el));
+
+        // Diagnostic mode: bypass semantic replacement and render pure layout bboxes.
+        if (forcePureLayoutBbox) {
+            return filteredLayoutElements;
+        }
 
         if (!includeOcrFineGrained && semanticTextBlocks.length > 0) {
             const nonTextElements = filteredLayoutElements.filter(el => {
@@ -2343,7 +2371,8 @@ async function renderDocumentWithAnnotations(result) {
         showNotification('Missing coord_space metadata. Overlay rendering skipped.', 'warning');
     }
     const elements = getRenderableAnnotationElements(result, {
-        includeOcrFineGrained: showOcrFineGrainedOverlay
+        includeOcrFineGrained: showOcrFineGrainedOverlay,
+        forcePureLayoutBbox: forcePureLayoutBboxOverlay
     });
 
     // Use the same HTML structure as initial loading for consistency

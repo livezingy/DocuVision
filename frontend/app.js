@@ -2061,6 +2061,71 @@ function normalizeCoordSpace(value) {
     return '';
 }
 
+function normalizeBboxToImageMatrix(matrix, coordSpace, imageWidth, imageHeight) {
+    const srcSpace = normalizeCoordSpace(coordSpace);
+
+    if (matrix && typeof matrix === 'object') {
+        const sx = Number(matrix.scale_x);
+        const sy = Number(matrix.scale_y);
+        const ox = Number(matrix.offset_x);
+        const oy = Number(matrix.offset_y);
+        if ([sx, sy, ox, oy].every(Number.isFinite)) {
+            return {
+                src_space: String(matrix.src_space || srcSpace || 'image_abs_px').toLowerCase(),
+                dst_space: String(matrix.dst_space || 'image_abs_px').toLowerCase(),
+                scale_x: sx,
+                scale_y: sy,
+                offset_x: ox,
+                offset_y: oy,
+            };
+        }
+    }
+
+    if (srcSpace === 'image_norm' && imageWidth > 0 && imageHeight > 0) {
+        return {
+            src_space: 'image_norm',
+            dst_space: 'image_abs_px',
+            scale_x: imageWidth,
+            scale_y: imageHeight,
+            offset_x: 0,
+            offset_y: 0,
+        };
+    }
+
+    return {
+        src_space: srcSpace || 'image_abs_px',
+        dst_space: 'image_abs_px',
+        scale_x: 1,
+        scale_y: 1,
+        offset_x: 0,
+        offset_y: 0,
+    };
+}
+
+function remapBboxToImageSpace(x, y, width, height, matrix) {
+    const sx = Number(matrix?.scale_x ?? 1);
+    const sy = Number(matrix?.scale_y ?? 1);
+    const ox = Number(matrix?.offset_x ?? 0);
+    const oy = Number(matrix?.offset_y ?? 0);
+
+    const x1 = sx * x + ox;
+    const y1 = sy * y + oy;
+    const x2 = sx * (x + width) + ox;
+    const y2 = sy * (y + height) + oy;
+
+    const left = Math.min(x1, x2);
+    const top = Math.min(y1, y2);
+    const w = Math.max(Math.abs(x2 - x1), 0);
+    const h = Math.max(Math.abs(y2 - y1), 0);
+
+    return {
+        x: left,
+        y: top,
+        width: w,
+        height: h,
+    };
+}
+
 function getPageImageMeta(result, pageNum = 1) {
     const docInfo = (result && result.document_info) ? result.document_info : {};
     const meta = docInfo.page_image_meta;
@@ -2266,6 +2331,12 @@ async function renderDocumentWithAnnotations(result) {
     const fileName = docInfo.file_name || 'Document';
     const pageImageMeta = getPageImageMeta(result, 1) || {};
     const pageCoordSpace = normalizeCoordSpace(pageImageMeta.coord_space);
+    const bboxToImageMatrix = normalizeBboxToImageMatrix(
+        pageImageMeta.bbox_to_image_matrix,
+        pageCoordSpace,
+        Number(pageImageMeta.width_px || 0),
+        Number(pageImageMeta.height_px || 0)
+    );
     const hasExplicitCoordSpace = !!pageCoordSpace;
     if (!hasExplicitCoordSpace) {
         console.warn('[Layout] Missing or invalid coord_space in page_image_meta. Overlay rendering is skipped.');
@@ -2415,6 +2486,10 @@ async function renderDocumentWithAnnotations(result) {
                          data-height="${height}"
                          data-page="${Number(element.page || 1)}"
                          data-coord-space="${pageCoordSpace}"
+                         data-matrix-scale-x="${bboxToImageMatrix.scale_x}"
+                         data-matrix-scale-y="${bboxToImageMatrix.scale_y}"
+                         data-matrix-offset-x="${bboxToImageMatrix.offset_x}"
+                         data-matrix-offset-y="${bboxToImageMatrix.offset_y}"
                          data-is-normalized="${isNormalized ? '1' : '0'}"
                          style="position: absolute; left: 0px; top: 0px; width: 0px; height: 0px;">
                      </div>`;
@@ -2485,19 +2560,19 @@ function adjustAnnotationPositions() {
             const y = parseFloat(annotation.dataset.y || 0);
             const width = parseFloat(annotation.dataset.width || 100);
             const height = parseFloat(annotation.dataset.height || 50);
-            const coordSpace = String(annotation.dataset.coordSpace || 'image_abs_px').toLowerCase();
+            const matrix = {
+                scale_x: parseFloat(annotation.dataset.matrixScaleX || 1),
+                scale_y: parseFloat(annotation.dataset.matrixScaleY || 1),
+                offset_x: parseFloat(annotation.dataset.matrixOffsetX || 0),
+                offset_y: parseFloat(annotation.dataset.matrixOffsetY || 0),
+            };
 
-            const useNormalized = coordSpace === 'image_norm';
+            const mapped = remapBboxToImageSpace(x, y, width, height, matrix);
 
-            const baseX = useNormalized ? (x * originalWidth) : x;
-            const baseY = useNormalized ? (y * originalHeight) : y;
-            const baseWidth = useNormalized ? (width * originalWidth) : width;
-            const baseHeight = useNormalized ? (height * originalHeight) : height;
-
-            annotation.style.left = `${baseX}px`;
-            annotation.style.top = `${baseY}px`;
-            annotation.style.width = `${baseWidth}px`;
-            annotation.style.height = `${baseHeight}px`;
+            annotation.style.left = `${mapped.x}px`;
+            annotation.style.top = `${mapped.y}px`;
+            annotation.style.width = `${mapped.width}px`;
+            annotation.style.height = `${mapped.height}px`;
         } catch (error) {
             console.error('Failed to position annotation overlay:', error);
         }

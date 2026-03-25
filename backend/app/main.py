@@ -115,6 +115,14 @@ def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1)
         "height_px": 0,
         "sha256": "",
         "coord_space": "image_abs_px",
+        "bbox_to_image_matrix": {
+            "src_space": "image_abs_px",
+            "dst_space": "image_abs_px",
+            "scale_x": 1.0,
+            "scale_y": 1.0,
+            "offset_x": 0.0,
+            "offset_y": 0.0,
+        },
     }
 
     if task_id:
@@ -138,6 +146,27 @@ def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1)
                 meta["width_px"] = int(pix.width)
                 meta["height_px"] = int(pix.height)
                 meta["sha256"] = hashlib.sha256(pix.tobytes("png")).hexdigest()
+
+                # Explicit PDF-page-points -> rendered-image-px transform.
+                # Useful when a downstream pipeline emits PDF-native coords.
+                rect = page.rect
+                rect_w = float(getattr(rect, "width", 0.0) or 0.0)
+                rect_h = float(getattr(rect, "height", 0.0) or 0.0)
+                if rect_w > 0 and rect_h > 0:
+                    pdf_to_img_scale_x = float(pix.width) / rect_w
+                    pdf_to_img_scale_y = float(pix.height) / rect_h
+                else:
+                    pdf_to_img_scale_x = 1.0
+                    pdf_to_img_scale_y = 1.0
+
+                meta["pdf_page_to_image_matrix"] = {
+                    "src_space": "pdf_page_points",
+                    "dst_space": "image_abs_px",
+                    "scale_x": pdf_to_img_scale_x,
+                    "scale_y": pdf_to_img_scale_y,
+                    "offset_x": 0.0,
+                    "offset_y": 0.0,
+                }
                 return meta
             finally:
                 doc.close()

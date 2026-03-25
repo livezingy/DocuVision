@@ -1205,6 +1205,34 @@ body.show-analysis .analyzed-region {
     accent-color: var(--primary-500);
 }
 
+.overlay-layer-toggles {
+    margin-left: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.overlay-layer-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    user-select: none;
+}
+
+.overlay-layer-toggle input[type="checkbox"] {
+    accent-color: var(--primary-500);
+}
+
+.overlay-layer-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    display: inline-block;
+}
+
 /* Main views */
 .result-main-view {
     display: none;

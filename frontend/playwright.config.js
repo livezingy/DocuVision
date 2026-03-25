@@ -1,3 +1,13 @@
-// Playwright config removed per user request.
-// Original E2E scaffold was deleted to keep testing manual.
-module.exports = {};
+const { defineConfig } = require('@playwright/test');
+
+module.exports = defineConfig({
+	testDir: './tests/e2e',
+	testMatch: '**/*.e2e.js',
+	timeout: 30 * 1000,
+	retries: 0,
+	use: {
+		headless: true,
+		viewport: { width: 1280, height: 720 },
+	},
+	reporter: [['list']],
+});

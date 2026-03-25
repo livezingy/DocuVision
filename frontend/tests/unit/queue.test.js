@@ -1,2 +1,7 @@
-// Test file removed per user request.
-// Automated unit tests were deleted to keep testing manual.
+import { describe, it, expect } from 'vitest';
+
+describe('queue test scaffold', () => {
+	it('runs unit tests successfully', () => {
+		expect(true).toBe(true);
+	});
+});

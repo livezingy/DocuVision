@@ -39,6 +39,13 @@ let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
 let showOcrFineGrainedOverlay = false;
 let lastRenderedAnalysisResult = null;
+const overlayLayerVisibility = {
+    text: true,
+    table: true,
+    figure: true,
+    header_footer: true,
+    list: true,
+};
 
 /**
  * Check if a status message should be displayed
@@ -998,6 +1005,53 @@ function initOverlayOptions() {
             renderDocumentWithAnnotations(lastRenderedAnalysisResult);
         }
     });
+
+    const toolbar = toggle.closest('.text-toolbar');
+    if (!toolbar || document.getElementById('overlayLayerToggles')) {
+        return;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'overlayLayerToggles';
+    wrapper.className = 'overlay-layer-toggles';
+
+    const layerDefs = [
+        { key: 'text', label: 'Text', color: '#10b981' },
+        { key: 'table', label: 'Table', color: '#f59e0b' },
+        { key: 'figure', label: 'Figure', color: '#ec4899' },
+        { key: 'header_footer', label: 'Header/Footer', color: '#8b5cf6' },
+        { key: 'list', label: 'List', color: '#06b6d4' },
+    ];
+
+    layerDefs.forEach((layer) => {
+        const label = document.createElement('label');
+        label.className = 'overlay-layer-toggle';
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = overlayLayerVisibility[layer.key] !== false;
+
+        const dot = document.createElement('span');
+        dot.className = 'overlay-layer-dot';
+        dot.style.backgroundColor = layer.color;
+
+        const text = document.createElement('span');
+        text.textContent = layer.label;
+
+        input.addEventListener('change', () => {
+            overlayLayerVisibility[layer.key] = !!input.checked;
+            if (lastRenderedAnalysisResult) {
+                renderDocumentWithAnnotations(lastRenderedAnalysisResult);
+            }
+        });
+
+        label.appendChild(input);
+        label.appendChild(dot);
+        label.appendChild(text);
+        wrapper.appendChild(label);
+    });
+
+    toolbar.appendChild(wrapper);
 }
 
 /**
@@ -1994,6 +2048,20 @@ function isLikelyNormalizedBbox(bbox) {
     return x >= 0 && y >= 0 && width > 0 && height > 0 && x <= 1.05 && y <= 1.05 && width <= 1.05 && height <= 1.05;
 }
 
+function getOverlayLayerType(type) {
+    const normalized = String(type || '').toLowerCase();
+    if (['table'].includes(normalized)) return 'table';
+    if (['figure', 'image'].includes(normalized)) return 'figure';
+    if (['header', 'footer', 'page_header', 'page_footer'].includes(normalized)) return 'header_footer';
+    if (['list', 'list_item'].includes(normalized)) return 'list';
+    return 'text';
+}
+
+function shouldRenderOverlayType(type) {
+    const layerType = getOverlayLayerType(type);
+    return overlayLayerVisibility[layerType] !== false;
+}
+
 function isTextLikeLayoutType(type) {
     const t = String(type || '').toLowerCase();
     return [
@@ -2159,6 +2227,9 @@ async function renderDocumentWithAnnotations(result) {
             }
 
             const type = element.type || element.type_name || 'paragraph';
+            if (!shouldRenderOverlayType(type)) {
+                return;
+            }
             // Confidence is stored in element.confidence (0-1 range)
             // If confidence is 0, try to get from score or use a default value
             let confidence = element.confidence || element.score || 0;
@@ -2223,9 +2294,13 @@ async function renderDocumentWithAnnotations(result) {
             // Store tooltip data in dataset for global tooltip
             const tooltipData = {
                 role: formatAzureRoleLabel(type),
+                layer: getOverlayLayerType(type),
+                source: element.source || 'layout',
                 content: text,
                 displayContent: displayText,
                 polygon: polygonText,
+                page: Number(element.page || 1),
+                bbox: `${x.toFixed(1)}, ${y.toFixed(1)}, ${width.toFixed(1)} x ${height.toFixed(1)}`,
                 confidence: confidencePercent,
                 rows: Number(element.table_rows || element.rows || 0),
                 columns: Number(element.table_cols || element.columns || 0)
@@ -2458,6 +2533,8 @@ function initAnnotationInteractions() {
 
                 globalTooltip.innerHTML = `
                     <div class="tooltip-line"><strong>Role:</strong> ${escapeHtml(tooltipData.role)}</div>
+                    <div class="tooltip-line"><strong>Layer:</strong> ${escapeHtml(tooltipData.layer)} <strong style="margin-left: 12px;">Source:</strong> ${escapeHtml(tooltipData.source)}</div>
+                    <div class="tooltip-line"><strong>Page:</strong> ${tooltipData.page} <strong style="margin-left: 12px;">BBox:</strong> ${escapeHtml(tooltipData.bbox)}</div>
                     <div class="tooltip-line"><strong>Content:</strong> ${tooltipData.displayContent ? escapeHtml(tooltipData.displayContent) : '(empty)'}</div>
                     <div class="tooltip-line"><strong>Polygon:</strong> ${escapeHtml(tooltipData.polygon)}</div>
                     ${tooltipData.rows > 0 || tooltipData.columns > 0 ? `<div class="tooltip-line"><strong>Rows:</strong> ${tooltipData.rows || '?'} <strong style="margin-left: 12px;">Columns:</strong> ${tooltipData.columns || '?'}</div>` : ''}

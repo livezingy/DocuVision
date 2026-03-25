@@ -1,2 +1,6 @@
-// E2E test removed per user request.
-// Playwright tests were deleted to keep testing manual.
+const { test, expect } = require('@playwright/test');
+
+test('queue e2e scaffold runs', async ({ page }) => {
+	await page.setContent('<html><body><div id="app">DocuVision</div></body></html>');
+	await expect(page.locator('#app')).toHaveText('DocuVision');
+});

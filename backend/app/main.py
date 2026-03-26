@@ -183,6 +183,165 @@ def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1)
     return meta
 
 
+def _resolve_debug_overlay_dir() -> str:
+    """Resolve a cloud-friendly output path for debug overlay images."""
+    override = os.environ.get("DOCUVISION_DEBUG_OVERLAY_DIR", "").strip()
+    if override:
+        return override
+
+    # Prefer mounted cloud drive path when available (e.g., Colab/AI Studio).
+    cloud_root = "/content/drive/My Drive/DocuVision/DocuVision"
+    if os.path.exists(cloud_root):
+        return os.path.join(cloud_root, "outputs", "debug_overlays")
+
+    backend_dir = Path(__file__).resolve().parent.parent
+    project_root = backend_dir.parent
+    return str(project_root / "outputs" / "debug_overlays")
+
+
+def _normalize_bbox_like(raw_bbox: Any) -> Optional[Dict[str, float]]:
+    """Normalize bbox formats into {x, y, width, height}."""
+    if raw_bbox is None:
+        return None
+
+    if isinstance(raw_bbox, dict):
+        if all(k in raw_bbox for k in ("x", "y", "width", "height")):
+            try:
+                return {
+                    "x": float(raw_bbox.get("x", 0.0)),
+                    "y": float(raw_bbox.get("y", 0.0)),
+                    "width": float(raw_bbox.get("width", 0.0)),
+                    "height": float(raw_bbox.get("height", 0.0)),
+                }
+            except Exception:
+                return None
+        if all(k in raw_bbox for k in ("x1", "y1", "x2", "y2")):
+            try:
+                x1 = float(raw_bbox.get("x1", 0.0))
+                y1 = float(raw_bbox.get("y1", 0.0))
+                x2 = float(raw_bbox.get("x2", x1))
+                y2 = float(raw_bbox.get("y2", y1))
+                return {
+                    "x": x1,
+                    "y": y1,
+                    "width": max(0.0, x2 - x1),
+                    "height": max(0.0, y2 - y1),
+                }
+            except Exception:
+                return None
+
+    if isinstance(raw_bbox, (list, tuple)) and len(raw_bbox) >= 4:
+        try:
+            x1 = float(raw_bbox[0])
+            y1 = float(raw_bbox[1])
+            x2 = float(raw_bbox[2])
+            y2 = float(raw_bbox[3])
+            return {
+                "x": x1,
+                "y": y1,
+                "width": max(0.0, x2 - x1),
+                "height": max(0.0, y2 - y1),
+            }
+        except Exception:
+            return None
+
+    return None
+
+
+def _save_debug_overlay_image(
+    file_path: str,
+    task_id: str,
+    stage: str,
+    elements: List[Dict[str, Any]],
+    page_num: int = 1,
+) -> Optional[Dict[str, Any]]:
+    """
+    Render and save a debug overlay image for a specific processing stage.
+
+    Coordinates are treated as image_abs_px for current pipeline.
+    """
+    if not file_path or not os.path.exists(file_path):
+        return None
+
+    try:
+        from PIL import Image as PILImage, ImageDraw
+        import fitz  # PyMuPDF
+    except Exception as e:
+        logger.warning(f"[DebugOverlay] Dependencies unavailable: {e}")
+        return None
+
+    try:
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext == ".pdf":
+            doc = fitz.open(file_path)
+            try:
+                if page_num < 1 or page_num > len(doc):
+                    return None
+                page = doc[page_num - 1]
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                if pix.alpha:
+                    image = PILImage.frombytes("RGBA", [pix.width, pix.height], pix.samples).convert("RGB")
+                else:
+                    image = PILImage.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            finally:
+                doc.close()
+        else:
+            image = PILImage.open(file_path).convert("RGB")
+
+        draw = ImageDraw.Draw(image)
+        width_px = int(image.width)
+        height_px = int(image.height)
+        total = 0
+        valid = 0
+        out_of_bounds = 0
+
+        for idx, el in enumerate(elements or []):
+            if not isinstance(el, dict):
+                continue
+            total += 1
+            bbox = _normalize_bbox_like(el.get("bbox") or el.get("bounding_box"))
+            if not bbox:
+                continue
+
+            x = float(bbox.get("x", 0.0))
+            y = float(bbox.get("y", 0.0))
+            w = float(bbox.get("width", 0.0))
+            h = float(bbox.get("height", 0.0))
+            if w <= 0 or h <= 0:
+                continue
+
+            x1, y1 = x, y
+            x2, y2 = x + w, y + h
+            if x2 < 0 or y2 < 0 or x1 > width_px or y1 > height_px:
+                out_of_bounds += 1
+
+            draw.rectangle([x1, y1, x2, y2], outline=(255, 64, 64), width=2)
+            label = str(el.get("type") or el.get("element_type") or "block")
+            draw.text((x1 + 2, max(0.0, y1 - 12)), label, fill=(255, 64, 64))
+            valid += 1
+
+        output_dir = _resolve_debug_overlay_dir()
+        os.makedirs(output_dir, exist_ok=True)
+        filename = f"{task_id}_{stage}_p{int(page_num)}.png"
+        out_path = os.path.join(output_dir, filename)
+        image.save(out_path, format="PNG")
+
+        return {
+            "stage": stage,
+            "path": out_path,
+            "page": int(page_num),
+            "width_px": width_px,
+            "height_px": height_px,
+            "total_elements": total,
+            "drawn_elements": valid,
+            "out_of_bounds_elements": out_of_bounds,
+            "coord_space": "image_abs_px",
+        }
+    except Exception as e:
+        logger.warning(f"[DebugOverlay] Failed to save overlay ({stage}) for task {task_id}: {e}")
+        return None
+
+
 def _detect_aistudio_environment() -> bool:
     """
     Best-effort detection for Baidu AI Studio runtime.
@@ -842,8 +1001,11 @@ async def process_document(task_id: str):
                 "pages": 0,
                 "processed_at": datetime.now().isoformat(),
                 "page_image_meta": _build_page_image_meta(file_path, task_id=task_id, page_num=1),
+                "debug_artifacts": [],
             }
         }
+
+        debug_overlay_enabled = _truthy_env("DOCUVISION_DEBUG_OVERLAY", True)
 
         # 1. OCR Recognition (25%)
         if options.get("enable_ocr", True):
@@ -940,6 +1102,29 @@ async def process_document(task_id: str):
                 result["layout_engine_used"] = layout_result.get("engine_used")
                 elements = layout_result.get("elements", [])
 
+                # Debug checkpoint A: raw layout elements as returned by layout service.
+                if debug_overlay_enabled:
+                    artifact = _save_debug_overlay_image(
+                        file_path=file_path,
+                        task_id=task_id,
+                        stage="layout_raw",
+                        elements=elements,
+                        page_num=1,
+                    )
+                    if artifact:
+                        result["document_info"].setdefault("debug_artifacts", []).append(artifact)
+                        logger.info(
+                            "[DebugOverlay] task={task_id} stage={stage} path={path} drawn={drawn}/{total} oob={oob} size={w}x{h}",
+                            task_id=task_id,
+                            stage=artifact.get("stage"),
+                            path=artifact.get("path"),
+                            drawn=artifact.get("drawn_elements"),
+                            total=artifact.get("total_elements"),
+                            oob=artifact.get("out_of_bounds_elements"),
+                            w=artifact.get("width_px"),
+                            h=artifact.get("height_px"),
+                        )
+
                 # Supplement text from OCR results if available
                 if result.get("text_blocks") and layout_service.is_ready():
                     try:
@@ -961,6 +1146,48 @@ async def process_document(task_id: str):
                     )
                 except Exception as e:
                     logger.warning(f"Task {task_id}: Failed to build layout semantic blocks: {e}")
+
+                # Debug checkpoint B: pre-frontend semantic blocks after internal aggregation.
+                if debug_overlay_enabled:
+                    semantic_blocks = result.get("semantic_text_blocks", [])
+                    artifact = _save_debug_overlay_image(
+                        file_path=file_path,
+                        task_id=task_id,
+                        stage="pre_frontend_semantic",
+                        elements=semantic_blocks,
+                        page_num=1,
+                    )
+                    if artifact:
+                        result["document_info"].setdefault("debug_artifacts", []).append(artifact)
+                        logger.info(
+                            "[DebugOverlay] task={task_id} stage={stage} path={path} drawn={drawn}/{total} oob={oob} size={w}x{h}",
+                            task_id=task_id,
+                            stage=artifact.get("stage"),
+                            path=artifact.get("path"),
+                            drawn=artifact.get("drawn_elements"),
+                            total=artifact.get("total_elements"),
+                            oob=artifact.get("out_of_bounds_elements"),
+                            w=artifact.get("width_px"),
+                            h=artifact.get("height_px"),
+                        )
+
+                # Coordinate-contract debug fields for front-end validation.
+                try:
+                    pim = result.get("document_info", {}).get("page_image_meta", {}) or {}
+                    mx = pim.get("bbox_to_image_matrix", {}) or {}
+                    logger.info(
+                        "[CoordMeta] task={task_id} coord_space={coord_space} img={w}x{h} matrix=({sx},{sy},{ox},{oy})",
+                        task_id=task_id,
+                        coord_space=pim.get("coord_space", ""),
+                        w=pim.get("width_px", 0),
+                        h=pim.get("height_px", 0),
+                        sx=mx.get("scale_x", 1.0),
+                        sy=mx.get("scale_y", 1.0),
+                        ox=mx.get("offset_x", 0.0),
+                        oy=mx.get("offset_y", 0.0),
+                    )
+                except Exception as _meta_e:
+                    logger.warning(f"Task {task_id}: Failed to emit coord meta debug log: {_meta_e}")
 
                 elements_count = len(elements)
 

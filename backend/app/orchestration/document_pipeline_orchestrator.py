@@ -117,6 +117,20 @@ async def layout_step(ctx: PipelineContext) -> None:
     ctx["result"]["layout"] = layout_result
     ctx["result"]["layout_engine_used"] = layout_result.get("engine_used")
 
+    # When PaddleOCR applied unwarping, bboxes live in output_img space.
+    # Update page_image_meta dimensions and store the preprocessed image path
+    # so the /page-image endpoint serves the correct image.
+    prep_path = layout_result.get("preprocessed_image_path")
+    if prep_path:
+        ctx["result"]["document_info"]["page_image_meta"]["width_px"] = int(
+            layout_result.get("preprocessed_image_width") or 0
+        )
+        ctx["result"]["document_info"]["page_image_meta"]["height_px"] = int(
+            layout_result.get("preprocessed_image_height") or 0
+        )
+        ctx["task"]["preprocessed_image_path"] = prep_path
+        logger.info(f"Task {task_id}: preprocessed image stored for bbox alignment: {prep_path}")
+
     try:
         from app.services.canonical_converter import CanonicalConverter
 

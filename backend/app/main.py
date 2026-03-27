@@ -1362,6 +1362,13 @@ async def get_page_image(task_id: str, page_num: int = 1):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    # When PaddleOCR performed unwarping during processing, serve the preprocessed
+    # image so that bbox coordinates (which are in output_img space) align with
+    # the image visible in the frontend.
+    preprocessed_path = task.get("preprocessed_image_path")
+    if preprocessed_path and os.path.exists(preprocessed_path):
+        return FileResponse(preprocessed_path, media_type="image/png")
+
     file_path = task.get("file_path")
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")

@@ -415,15 +415,49 @@ class PPStructureEngine(BaseLayoutEngine):
             else:
                 result = self._call_engine(img_path, vis_src_path=img_path)
 
+        # Extract preprocessed output image when PaddleOCR applied unwarping.
+        # This image must be served to the frontend so that bbox coordinates
+        # (which live in output_img space) align with the displayed image.
+        preprocessed_path = None
+        preprocessed_w = None
+        preprocessed_h = None
+        try:
+            _first = result[0] if result else None
+            if _first is not None:
+                _doc_pre2 = _first.get('doc_preprocessor_res') if hasattr(_first, 'get') else None
+                if _doc_pre2 is not None:
+                    _ms2 = _doc_pre2.get('model_settings', {}) or {}
+                    if bool(_ms2.get('use_doc_unwarping', False)):
+                        _out_img = _doc_pre2.get('output_img')
+                        if _out_img is not None:
+                            prep_path = f"{img_path}_preprocessed.png"
+                            if _out_img.shape[2] == 3:
+                                cv2.imwrite(prep_path, cv2.cvtColor(_out_img, cv2.COLOR_RGB2BGR))
+                            else:
+                                cv2.imwrite(prep_path, _out_img)
+                            preprocessed_path = prep_path
+                            preprocessed_h, preprocessed_w = _out_img.shape[:2]
+                            logger.info(
+                                f"[Preprocess] Saved unwarped output_img: {prep_path} "
+                                f"({preprocessed_w}x{preprocessed_h})"
+                            )
+        except Exception as _exc2:
+            logger.debug(f"[Preprocess] Failed to save preprocessed image: {_exc2}")
+
         elements = self._parse_result(result, 1)
 
-        return {
+        result_dict: Dict[str, Any] = {
             "engine": "PP-StructureV3",
             "total_pages": 1,
             "elements": elements,
             "page_layouts": [{"page": 1, **self._get_page_summary(elements)}],
             "summary": self._get_document_summary(elements)
         }
+        if preprocessed_path:
+            result_dict["preprocessed_image_path"] = preprocessed_path
+            result_dict["preprocessed_image_width"] = preprocessed_w
+            result_dict["preprocessed_image_height"] = preprocessed_h
+        return result_dict
 
     def _parse_result(self, result: List[Dict], page_num: int) -> List[Dict[str, Any]]:
         """
@@ -476,6 +510,30 @@ class PPStructureEngine(BaseLayoutEngine):
             parsing_blocks = first_item.get('parsing_res_list') or []
             table_res_list = first_item.get('table_res_list') or []
 
+            # Build inverse rotation matrix for coordinate correction (rotation-only case).
+            # When use_doc_unwarping=True, bboxes are already in output_img space and the
+            # preprocessed image will be served to the frontend — no inverse warp map exists.
+            _matrix_inv = None
+            try:
+                _doc_pre = first_item.get('doc_preprocessor_res')
+                if _doc_pre is not None:
+                    _model_settings = _doc_pre.get('model_settings', {}) or {}
+                    _use_unwarping = bool(_model_settings.get('use_doc_unwarping', False))
+                    _angle = float(_doc_pre.get('angle', -1) or -1)
+                    if not _use_unwarping and _angle > 1e-7:
+                        _orig_img = _doc_pre.get('input_img')
+                        if _orig_img is not None:
+                            _orig_h, _orig_w = _orig_img.shape[:2]
+                            _mat, _, _ = self._build_rotation_matrix(_angle, _orig_h, _orig_w)
+                            if _mat is not None:
+                                _matrix_inv = cv2.invertAffineTransform(_mat)
+                                logger.debug(
+                                    f"[ParseResult] page={page_num} rotation angle={_angle:.1f} "
+                                    f"inverse matrix built for bbox correction"
+                                )
+            except Exception as _exc:
+                logger.debug(f"[ParseResult] Rotation matrix extraction failed: {_exc}")
+
             # Build stable table html list ordered by table_region_id.
             table_html_map = {}
             for t in table_res_list:
@@ -510,12 +568,16 @@ class PPStructureEngine(BaseLayoutEngine):
                 if not bbox or len(bbox) < 4:
                     continue
 
+                raw_bbox = list(map(float, bbox[:4]))
+                if _matrix_inv is not None:
+                    raw_bbox = list(self._transform_bbox_inv(tuple(raw_bbox), _matrix_inv))
+
                 element = {
                     "id": f"p{page_num}_e{block_index}",
                     "page": page_num,
                     "type": element_type,
                     "type_name": self.LAYOUT_TYPES.get(element_type, element_type),
-                    "bbox": self._extract_bbox(bbox),
+                    "bbox": self._extract_bbox(raw_bbox),
                     "confidence": 0.9,
                 }
 

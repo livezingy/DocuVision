@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from loguru import logger
 import os
 import paddle
+import cv2
 
 # Import compatibility patches FIRST
 from app.compatibility_patches import apply_all_patches
@@ -111,13 +112,124 @@ class PPStructureEngine(BaseLayoutEngine):
     def get_name(self) -> str:
         return "PP-StructureV3"
 
+    def save_pp_structure_v3_block_vis(self, results, src_image_path: str, out_image_path: str) -> Dict[str, Any]:
+        """
+        Draw PP-StructureV3 blocks on source image and save visualization.
+
+        Args:
+            results: Output of pipeline.predict(...)
+            src_image_path: Source image path used by pipeline.predict
+            out_image_path: Destination visualization image path
+
+        Returns:
+            Dict containing output path and per-class counts.
+        """
+        img = cv2.imread(src_image_path)
+        if img is None:
+            raise ValueError(f"Unable to read source image: {src_image_path}")
+        h, w = img.shape[:2]
+
+        if not isinstance(results, (list, tuple)):
+            results = list(results)
+        if len(results) == 0:
+            raise ValueError("results is empty")
+
+        res = results[0]
+
+        blocks = res.get("parsing_res_list", [])
+        use_parsing_blocks = True
+        if not blocks:
+            use_parsing_blocks = False
+            blocks = res.get("layout_det_res", {}).get("boxes", [])
+
+        text_labels = {
+            "text", "doc_title", "paragraph_title", "abstract", "content",
+            "reference", "algorithm", "formula", "abstract_title",
+            "reference_title", "content_title", "header", "footer",
+            "footnote", "aside_text", "number", "title"
+        }
+        table_labels = {"table"}
+        image_labels = {"image", "figure", "chart", "flowchart", "seal"}
+
+        color_map = {
+            "text": (0, 255, 0),
+            "table": (255, 0, 0),
+            "image": (0, 165, 255),
+        }
+
+        cnt_text, cnt_table, cnt_image = 0, 0, 0
+
+        for b in blocks:
+            if use_parsing_blocks:
+                label = getattr(b, "label", None)
+                bbox = getattr(b, "bbox", None)
+                if isinstance(b, dict):
+                    label = b.get("label", label)
+                    bbox = b.get("bbox", bbox)
+            else:
+                label = b.get("label", None) if isinstance(b, dict) else getattr(b, "label", None)
+                bbox = b.get("coordinate", None) if isinstance(b, dict) else getattr(b, "coordinate", None)
+
+            if not label or bbox is None or len(bbox) != 4:
+                continue
+
+            x1, y1, x2, y2 = [int(v) for v in bbox]
+            x1 = max(0, min(x1, w - 1))
+            y1 = max(0, min(y1, h - 1))
+            x2 = max(0, min(x2, w - 1))
+            y2 = max(0, min(y2, h - 1))
+            if x2 <= x1 or y2 <= y1:
+                continue
+
+            if label in text_labels:
+                cls = "text"
+                cnt_text += 1
+            elif label in table_labels:
+                cls = "table"
+                cnt_table += 1
+            elif label in image_labels:
+                cls = "image"
+                cnt_image += 1
+            else:
+                continue
+
+            color = color_map[cls]
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+            tag = f"{cls}:{label}"
+            ty = y1 - 8 if y1 - 8 > 10 else y1 + 18
+            cv2.putText(
+                img,
+                tag,
+                (x1, ty),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                color,
+                2,
+                cv2.LINE_AA,
+            )
+
+        out_dir = os.path.dirname(out_image_path)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+        ok = cv2.imwrite(out_image_path, img)
+        if not ok:
+            raise RuntimeError(f"Failed to save visualization image: {out_image_path}")
+
+        return {
+            "out_image_path": out_image_path,
+            "text_count": cnt_text,
+            "table_count": cnt_table,
+            "image_count": cnt_image,
+            "used_parsing_blocks": use_parsing_blocks,
+        }
+
     def _save_visualization_outputs(self, result: Any, img_path: str) -> None:
-        """Best-effort save_to_img for PPStructureV3 prediction outputs."""
+        """Best-effort save block visualization for PPStructureV3 prediction outputs."""
         # Use file-relative path to support both local and cloud environments
         # __file__ points to: {project_root}/backend/app/services/layout_service.py
         # We need to go up 3 levels to reach project_root
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        output_dir = os.path.join(project_root, "outputs", "ppstructure_visualizations")
+        output_dir = os.path.join(project_root, "outputs", "ppstructure_visualizations", "blocks")
 
         try:
             os.makedirs(output_dir, exist_ok=True)
@@ -125,23 +237,25 @@ class PPStructureEngine(BaseLayoutEngine):
             logger.warning(f"Failed to create PPStructure output directory {output_dir}: {e}")
             return
 
-        candidates: List[Any] = result if isinstance(result, list) else [result]
-        saved_any = False
+        image_stem = os.path.splitext(os.path.basename(img_path))[0]
+        out_image_path = os.path.join(output_dir, f"{image_stem}_ppv3_blocks.png")
 
-        for idx, item in enumerate(candidates):
-            if not hasattr(item, "save_to_img"):
-                continue
-            try:
-                # save_to_img accepts a directory path and writes visualization files there.
-                item.save_to_img(save_path=output_dir)
-                saved_any = True
-            except Exception as e:
-                logger.debug(f"PPStructure save_to_img failed for candidate {idx}: {e}")
+        try:
+            vis_info = self.save_pp_structure_v3_block_vis(
+                results=result,
+                src_image_path=img_path,
+                out_image_path=out_image_path,
+            )
+            logger.info(
+                "PPStructure block visualization saved: "
+                f"{vis_info['out_image_path']} | text={vis_info['text_count']} "
+                f"table={vis_info['table_count']} image={vis_info['image_count']} "
+                f"use_parsing={vis_info['used_parsing_blocks']}"
+            )
+        except Exception as e:
+            logger.debug(f"PPStructure block visualization failed for {img_path}: {e}")
 
-        if saved_any:
-            logger.info(f"PPStructure visualization saved to: {output_dir} | source={img_path}")
-
-    def _call_engine(self, img_path: str):
+    def _call_engine(self, img_path: str, vis_src_path: Optional[str] = None):
         """Call engine with version-compatible method"""
         if hasattr(self, '_is_v3') and self._is_v3:
             # PPStructureV3 uses predict() method
@@ -150,7 +264,7 @@ class PPStructureEngine(BaseLayoutEngine):
             # PPStructure (2.x) uses direct call
             result = self._engine(img_path)
 
-        self._save_visualization_outputs(result, img_path)
+        self._save_visualization_outputs(result, vis_src_path or img_path)
         return result
 
     async def analyze(self, file_path: str) -> Dict[str, Any]:
@@ -191,7 +305,7 @@ class PPStructureEngine(BaseLayoutEngine):
                 else:
                     pix.save(img_path)
 
-                result = self._call_engine(img_path)
+                result = self._call_engine(img_path, vis_src_path=img_path)
 
                 page_elements = self._parse_result(result, page_num + 1)
                 all_elements.extend(page_elements)
@@ -224,7 +338,7 @@ class PPStructureEngine(BaseLayoutEngine):
             rgb_img.paste(img, mask=img.split()[3])  # 使用 alpha 通道作为 mask
             temp_path = f"{img_path}_rgb.png"
             rgb_img.save(temp_path)
-            result = self._call_engine(temp_path)
+            result = self._call_engine(temp_path, vis_src_path=temp_path)
             if os.path.exists(temp_path):
                 os.remove(temp_path)
         else:
@@ -232,11 +346,11 @@ class PPStructureEngine(BaseLayoutEngine):
                 img = img.convert('RGB')
                 temp_path = f"{img_path}_rgb.png"
                 img.save(temp_path)
-                result = self._call_engine(temp_path)
+                result = self._call_engine(temp_path, vis_src_path=temp_path)
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
             else:
-                result = self._call_engine(img_path)
+                result = self._call_engine(img_path, vis_src_path=img_path)
 
         elements = self._parse_result(result, 1)
 

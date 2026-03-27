@@ -2398,15 +2398,14 @@ async function renderDocumentWithAnnotations(result) {
     const fileName = docInfo.file_name || 'Document';
 
     let imageUrl = currentOriginalFileUrl;
-    if (currentOriginalFileUrl && currentTaskId) {
-        const fileExt = fileName.toLowerCase().split('.').pop();
-        if (fileExt === 'pdf') {
-            try {
-                imageUrl = await getPdfPageImage(currentTaskId, 1);
-            } catch (error) {
-                console.error('Failed to get PDF page image:', error);
-                imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/1`;
-            }
+    if (currentTaskId) {
+        try {
+            // Always use backend page-image endpoint after analysis so the displayed
+            // image stays in the same coordinate space as /blocks bboxes.
+            imageUrl = await getPdfPageImage(currentTaskId, 1);
+        } catch (error) {
+            console.error('Failed to get backend page image:', error);
+            imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/1`;
         }
     }
 

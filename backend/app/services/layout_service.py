@@ -8,6 +8,7 @@ from loguru import logger
 import os
 import paddle
 import cv2
+import numpy as np
 
 # Import compatibility patches FIRST
 from app.compatibility_patches import apply_all_patches
@@ -112,41 +113,116 @@ class PPStructureEngine(BaseLayoutEngine):
     def get_name(self) -> str:
         return "PP-StructureV3"
 
+    @staticmethod
+    def _build_rotation_matrix(angle, orig_h, orig_w):
+        """
+        Rebuild the affine matrix used by rotate_image (including padding offset).
+        angle = -1 or 0 returns None (no rotation).
+        """
+        if angle < 1e-7:
+            return None, orig_w, orig_h
+        center = (orig_w / 2, orig_h / 2)
+        matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
+        cos = np.abs(matrix[0, 0])
+        sin = np.abs(matrix[0, 1])
+        new_w = int((orig_h * sin) + (orig_w * cos))
+        new_h = int((orig_h * cos) + (orig_w * sin))
+        matrix[0, 2] += (new_w - orig_w) / 2
+        matrix[1, 2] += (new_h - orig_h) / 2
+        return matrix, new_w, new_h
+
+    @staticmethod
+    def _transform_bbox_inv(bbox, matrix_inv):
+        """
+        Map [x1,y1,x2,y2] back to original coordinates via inverse affine matrix.
+        """
+        x1, y1, x2, y2 = bbox
+        corners = np.array(
+            [
+                [x1, y1, 1],
+                [x2, y1, 1],
+                [x2, y2, 1],
+                [x1, y2, 1],
+            ],
+            dtype=np.float64,
+        )
+        transformed = corners @ matrix_inv.T
+        x_coords = transformed[:, 0]
+        y_coords = transformed[:, 1]
+        return (
+            float(np.min(x_coords)),
+            float(np.min(y_coords)),
+            float(np.max(x_coords)),
+            float(np.max(y_coords)),
+        )
+
     def save_pp_structure_v3_block_vis(self, results, src_image_path: str, out_image_path: str) -> Dict[str, Any]:
         """
-        Draw PP-StructureV3 blocks on source image and save visualization.
-
-        Args:
-            results: Output of pipeline.predict(...)
-            src_image_path: Source image path used by pipeline.predict
-            out_image_path: Destination visualization image path
-
-        Returns:
-            Dict containing output path and per-class counts.
+        Draw block bounding boxes from pipeline.predict results and save visualization.
+        Automatically handles coordinate offsets caused by document preprocessing:
+          - Rotation only: invert affine matrix and map boxes back to original coordinates.
+          - Unwarping enabled: no exact inverse warp map, draw on output_img instead.
         """
-        img = cv2.imread(src_image_path)
-        if img is None:
-            raise ValueError(f"Unable to read source image: {src_image_path}")
-        h, w = img.shape[:2]
-
         if not isinstance(results, (list, tuple)):
             results = list(results)
-        if len(results) == 0:
+        if not results:
             raise ValueError("results is empty")
 
         res = results[0]
 
+        doc_pre = res.get("doc_preprocessor_res", None)
+        use_unwarping = False
+        angle = -1
+        orig_h, orig_w = None, None
+
+        if doc_pre is not None:
+            model_settings = doc_pre.get("model_settings", {})
+            use_unwarping = model_settings.get("use_doc_unwarping", False)
+            angle = doc_pre.get("angle", -1)
+            orig_img = doc_pre["input_img"]
+            orig_h, orig_w = orig_img.shape[:2]
+
+        if doc_pre is None:
+            base_img = cv2.imread(src_image_path)
+            if base_img is None:
+                raise ValueError(f"Unable to read source image: {src_image_path}")
+            matrix_inv = None
+            warn_msg = None
+        elif use_unwarping:
+            output_img = doc_pre["output_img"]
+            if output_img.shape[2] == 3:
+                base_img = cv2.cvtColor(output_img, cv2.COLOR_RGB2BGR)
+            else:
+                base_img = output_img.copy()
+            matrix_inv = None
+            warn_msg = (
+                "[WARN] use_doc_unwarping=True: no inverse warp map available; "
+                "boxes are drawn on preprocessed output_img, not on original input image."
+            )
+        else:
+            if orig_img.shape[2] == 3:
+                base_img = cv2.cvtColor(orig_img, cv2.COLOR_RGB2BGR)
+            else:
+                base_img = orig_img.copy()
+            matrix, _, _ = self._build_rotation_matrix(angle, orig_h, orig_w)
+            matrix_inv = cv2.invertAffineTransform(matrix) if matrix is not None else None
+            warn_msg = None
+
+        if warn_msg:
+            logger.warning(warn_msg)
+
+        h_canvas, w_canvas = base_img.shape[:2]
+
         blocks = res.get("parsing_res_list", [])
-        use_parsing_blocks = True
-        if not blocks:
-            use_parsing_blocks = False
+        use_parsing_blocks = bool(blocks)
+        if not use_parsing_blocks:
             blocks = res.get("layout_det_res", {}).get("boxes", [])
 
         text_labels = {
             "text", "doc_title", "paragraph_title", "abstract", "content",
             "reference", "algorithm", "formula", "abstract_title",
             "reference_title", "content_title", "header", "footer",
-            "footnote", "aside_text", "number", "title"
+            "footnote", "aside_text", "number",
         }
         table_labels = {"table"}
         image_labels = {"image", "figure", "chart", "flowchart", "seal"}
@@ -157,70 +233,60 @@ class PPStructureEngine(BaseLayoutEngine):
             "image": (0, 165, 255),
         }
 
-        cnt_text, cnt_table, cnt_image = 0, 0, 0
+        cnt = {"text": 0, "table": 0, "image": 0}
 
         for b in blocks:
             if use_parsing_blocks:
                 label = getattr(b, "label", None)
                 bbox = getattr(b, "bbox", None)
-                if isinstance(b, dict):
-                    label = b.get("label", label)
-                    bbox = b.get("bbox", bbox)
             else:
-                label = b.get("label", None) if isinstance(b, dict) else getattr(b, "label", None)
-                bbox = b.get("coordinate", None) if isinstance(b, dict) else getattr(b, "coordinate", None)
+                label = b.get("label", None)
+                bbox = b.get("coordinate", None)
 
             if not label or bbox is None or len(bbox) != 4:
                 continue
 
-            x1, y1, x2, y2 = [int(v) for v in bbox]
-            x1 = max(0, min(x1, w - 1))
-            y1 = max(0, min(y1, h - 1))
-            x2 = max(0, min(x2, w - 1))
-            y2 = max(0, min(y2, h - 1))
-            if x2 <= x1 or y2 <= y1:
-                continue
-
             if label in text_labels:
                 cls = "text"
-                cnt_text += 1
             elif label in table_labels:
                 cls = "table"
-                cnt_table += 1
             elif label in image_labels:
                 cls = "image"
-                cnt_image += 1
             else:
                 continue
 
+            x1, y1, x2, y2 = map(float, bbox)
+            if matrix_inv is not None:
+                x1, y1, x2, y2 = self._transform_bbox_inv((x1, y1, x2, y2), matrix_inv)
+
+            x1 = max(0, min(int(x1), w_canvas - 1))
+            y1 = max(0, min(int(y1), h_canvas - 1))
+            x2 = max(0, min(int(x2), w_canvas - 1))
+            y2 = max(0, min(int(y2), h_canvas - 1))
+            if x2 <= x1 or y2 <= y1:
+                continue
+
             color = color_map[cls]
-            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+            cv2.rectangle(base_img, (x1, y1), (x2, y2), color, 2)
             tag = f"{cls}:{label}"
             ty = y1 - 8 if y1 - 8 > 10 else y1 + 18
-            cv2.putText(
-                img,
-                tag,
-                (x1, ty),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                color,
-                2,
-                cv2.LINE_AA,
-            )
+            cv2.putText(base_img, tag, (x1, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2, cv2.LINE_AA)
+            cnt[cls] += 1
 
         out_dir = os.path.dirname(out_image_path)
         if out_dir:
             os.makedirs(out_dir, exist_ok=True)
-        ok = cv2.imwrite(out_image_path, img)
-        if not ok:
+        if not cv2.imwrite(out_image_path, base_img):
             raise RuntimeError(f"Failed to save visualization image: {out_image_path}")
 
         return {
             "out_image_path": out_image_path,
-            "text_count": cnt_text,
-            "table_count": cnt_table,
-            "image_count": cnt_image,
+            "text_count": cnt["text"],
+            "table_count": cnt["table"],
+            "image_count": cnt["image"],
             "used_parsing_blocks": use_parsing_blocks,
+            "has_unwarping": use_unwarping,
+            "rotation_angle": angle,
         }
 
     def _save_visualization_outputs(self, result: Any, img_path: str) -> None:

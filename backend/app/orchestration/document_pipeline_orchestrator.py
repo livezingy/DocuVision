@@ -29,7 +29,7 @@ async def _run_progressed_step(
 
 async def ocr_step(ctx: PipelineContext) -> None:
     options = ctx["options"]
-    if not options.get("enable_ocr", True):
+    if not options.get("enable_ocr", False):
         return
 
     task_id = ctx["task_id"]

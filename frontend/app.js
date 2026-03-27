@@ -1233,7 +1233,7 @@ function getProcessingOptions() {
 
     const options = {
         enable_layout: selectedMode === 'layout',
-        enable_ocr: true,
+        enable_ocr: false,
         enable_table: selectedMode === 'table',
         enable_formula: selectedMode === 'formula',
         enable_stamp: selectedMode === 'stamp',

@@ -556,7 +556,7 @@ task_event_counters: Dict[str, int] = {}
 
 class ProcessingOptions(BaseModel):
     enable_layout: bool = True
-    enable_ocr: bool = True
+    enable_ocr: bool = False
     enable_table: bool = True
     enable_formula: bool = False
     enable_barcode: bool = False  # New: Barcode recognition
@@ -800,7 +800,7 @@ async def analyze_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     enable_layout: bool = Form(True),
-    enable_ocr: bool = Form(True),
+    enable_ocr: bool = Form(False),
     enable_table: bool = Form(True),
     enable_nlp: bool = Form(True),
     template_id: Optional[str] = Form(None),
@@ -1745,7 +1745,7 @@ async def start_batch(batch_id: str, background_tasks: BackgroundTasks):
         }
 
         # OCR
-        if options.get("enable_ocr", True):
+        if options.get("enable_ocr", False):
             ocr_result = await call_maybe_async(
                 ocr_service.recognize,
                 file_path,

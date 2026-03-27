@@ -231,12 +231,18 @@ class PPStructureEngine:
                     label = block.get('label', 'unknown')
                     bbox = block.get('bbox', [])
                     content = block.get('content', '') or ''
+                    text_field = block.get('text', '') or ''
                     block_index = block.get('index', idx)
                 else:
                     label = getattr(block, 'label', 'unknown')
                     bbox = getattr(block, 'bbox', [])
                     content = getattr(block, 'content', '') or ''
+                    text_field = getattr(block, 'text', '') or ''
                     block_index = getattr(block, 'index', idx)
+
+                # Log the structured block text/content for debugging
+                debug_text = text_field or content
+                logger.info(f"[StructuredBlock] Page {page_num} Block {idx} ({label}): text='{text_field[:100]}' | content='{content[:100]}'")
 
                 if not bbox or len(bbox) < 4:
                     logger.debug(f"Page {page_num} block {idx}: Skipping invalid bbox {bbox}")

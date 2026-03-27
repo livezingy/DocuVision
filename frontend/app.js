@@ -1707,45 +1707,45 @@ async function fetchTaskResult(taskId, item) {
         console.error('Error fetching task result:', error);
         showNotification('Document processing completed, but result fetch failed', 'warning');
         failProcessing(item, `Failed to fetch result: ${error.message}`);
+    }
+}
 
-    /**
-     * Fetch flat blocks from the /blocks endpoint for SVG overlay rendering.
-     */
-    async function fetchTaskBlocks(taskId) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/blocks`);
-            if (!response.ok) return null;
-            return await response.json();
-        } catch (e) {
-            console.warn('[Blocks] Failed to fetch blocks:', e);
-            return null;
-        }
+/**
+ * Fetch flat blocks from the /blocks endpoint for SVG overlay rendering.
+ */
+async function fetchTaskBlocks(taskId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/blocks`);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (e) {
+        console.warn('[Blocks] Failed to fetch blocks:', e);
+        return null;
     }
+}
 
-    /**
-     * Return SVG stroke/fill colors for a given block type.
-     */
-    function getSvgAnnotationColors(type) {
-        const colorMap = {
-            title:       { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.10)' },
-            subtitle:    { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.10)' },
-            heading:     { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.10)' },
-            paragraph:   { stroke: '#10b981', fill: 'rgba(16,185,129,0.08)' },
-            text:        { stroke: '#10b981', fill: 'rgba(16,185,129,0.08)' },
-            text_block:  { stroke: '#10b981', fill: 'rgba(16,185,129,0.08)' },
-            table:       { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.10)' },
-            figure:      { stroke: '#ec4899', fill: 'rgba(236,72,153,0.10)' },
-            image:       { stroke: '#ec4899', fill: 'rgba(236,72,153,0.10)' },
-            header:      { stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.08)' },
-            page_header: { stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.08)' },
-            footer:      { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' },
-            page_footer: { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' },
-            list:        { stroke: '#06b6d4', fill: 'rgba(6,182,212,0.08)'  },
-            list_item:   { stroke: '#06b6d4', fill: 'rgba(6,182,212,0.08)'  },
-        };
-        return colorMap[type] || { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' };
-    }
-    }
+/**
+ * Return SVG stroke/fill colors for a given block type.
+ */
+function getSvgAnnotationColors(type) {
+    const colorMap = {
+        title:       { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.10)' },
+        subtitle:    { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.10)' },
+        heading:     { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.10)' },
+        paragraph:   { stroke: '#10b981', fill: 'rgba(16,185,129,0.08)' },
+        text:        { stroke: '#10b981', fill: 'rgba(16,185,129,0.08)' },
+        text_block:  { stroke: '#10b981', fill: 'rgba(16,185,129,0.08)' },
+        table:       { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.10)' },
+        figure:      { stroke: '#ec4899', fill: 'rgba(236,72,153,0.10)' },
+        image:       { stroke: '#ec4899', fill: 'rgba(236,72,153,0.10)' },
+        header:      { stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.08)' },
+        page_header: { stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.08)' },
+        footer:      { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' },
+        page_footer: { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' },
+        list:        { stroke: '#06b6d4', fill: 'rgba(6,182,212,0.08)'  },
+        list_item:   { stroke: '#06b6d4', fill: 'rgba(6,182,212,0.08)'  },
+    };
+    return colorMap[type] || { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' };
 }
 
 /**

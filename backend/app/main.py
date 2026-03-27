@@ -53,11 +53,6 @@ from loguru import logger
 from importlib import metadata as _metadata
 from pathlib import Path
 
-# CRITICAL FIX: Apply all compatibility patches BEFORE any imports
-# These patches fix compatibility issues between PaddleOCR 3.1.x and PaddlePaddle 3.0.0
-
-
-
 
 def _get_dist_version(dist_names: List[str]) -> str:
     """Get installed package version without importing the package."""
@@ -456,17 +451,6 @@ import json
 import asyncio
 import inspect
 
-# CRITICAL: Apply compatibility patches BEFORE importing services
-# This ensures PaddleX is initialized only once, avoiding "PDX has already been initialized" errors
-from app.compatibility_patches import apply_all_patches
-apply_all_patches()
-
-from app.services.ocr_service import OCRService
-# ... 其余导入保持不变
-import json
-import asyncio
-import inspect
-
 from app.services.ocr_service import OCRService
 from app.services.layout_service import LayoutService
 from app.services.table_service import TableService
@@ -475,6 +459,7 @@ from app.services.nlp_service import NLPService
 from app.services.template_service import TemplateService
 from app.services.batch_service import BatchService, BatchStatus
 from app.services.unified_layout_service import UnifiedLayoutService
+from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
 from app.core.config import settings
 
 # Initialize FastAPI application
@@ -958,578 +943,29 @@ async def call_maybe_async(func, *args, **kwargs):
 
 
 async def process_document(task_id: str):
-    """Background document processing with P2 features"""
+    """Background document processing delegates execution to orchestrator."""
     task = tasks.get(task_id)
     if not task:
         return
 
-    # Check if task was cancelled before starting
-    if task_cancellation_flags.get(task_id, False):
-        task["status"] = "cancelled"
-        task["message"] = "Task cancelled"
-        return
+    orchestrator = DocumentPipelineOrchestrator(
+        services={
+            "ocr_service": ocr_service,
+            "layout_service": layout_service,
+            "table_service": table_service,
+            "nlp_service": nlp_service,
+            "template_service": template_service,
+        },
+        send_event=_send_event,
+        is_cancelled=lambda tid: task_cancellation_flags.get(tid, False),
+        call_maybe_async=call_maybe_async,
+        build_page_image_meta=_build_page_image_meta,
+        save_debug_overlay=_save_debug_overlay_image,
+    )
 
     try:
-        task["status"] = "processing"
-        task["message"] = "Processing document..."
-        await _send_event(task_id, "status", "Processing document...", 0)
-        # Give client a short window to connect their WebSocket so they receive live events
-        try:
-            wait_for_ws_seconds = float(os.environ.get('DOCUVISION_WS_WAIT', 2.0))
-        except Exception:
-            wait_for_ws_seconds = 2.0
-        wait_interval = 0.1
-        elapsed = 0.0
-        if wait_for_ws_seconds > 0:
-            logger.debug(f"Task {task_id}: Waiting up to {wait_for_ws_seconds}s for WebSocket connection")
-            while elapsed < wait_for_ws_seconds:
-                if task_id in task_websockets and task_websockets[task_id]:
-                    logger.debug(f"Task {task_id}: WebSocket connected, continuing processing")
-                    break
-                await asyncio.sleep(wait_interval)
-                elapsed += wait_interval
-            if elapsed >= wait_for_ws_seconds:
-                logger.debug(f"Task {task_id}: No WebSocket connected after {wait_for_ws_seconds}s, continue processing")
-        logger.info(f"Task {task_id}: Started processing document")
-
-        file_path = task["file_path"]
-        options = task["options"]
-
-        result = {
-            "document_info": {
-                "file_name": task["file_name"],
-                "pages": 0,
-                "processed_at": datetime.now().isoformat(),
-                "page_image_meta": _build_page_image_meta(file_path, task_id=task_id, page_num=1),
-                "debug_artifacts": [],
-            }
-        }
-
-        debug_overlay_enabled = _truthy_env("DOCUVISION_DEBUG_OVERLAY", True)
-
-        # 1. OCR Recognition (25%)
-        if options.get("enable_ocr", True):
-            task["progress"] = 5
-            engine_name = options.get("ocr_engine") or "paddleocr"
-            if engine_name:
-                task["message"] = f"Trying OCR with {engine_name.title()}..."
-            else:
-                task["message"] = "Trying OCR with default engine..."
-            await _send_event(task_id, "log", task["message"], 5)
-            logger.info(f"Task {task_id}: Starting OCR recognition...")
-
-            try:
-                ocr_result = await call_maybe_async(
-                    ocr_service.recognize,
-                    file_path,
-                    language=options.get("language", "en"),
-                    engine=options.get("ocr_engine"),
-                    fallback=True
-                )
-                result["text_blocks"] = ocr_result["text_blocks"]
-                result["document_info"]["pages"] = ocr_result["page_count"]
-                result["ocr_engine_used"] = ocr_result.get("engine_used")
-                result["full_text"] = ocr_result.get("full_text", "")
-
-                # Build semantic paragraph-level blocks from OCR as early fallback.
-                try:
-                    result["semantic_text_blocks"] = layout_service.build_semantic_text_blocks(
-                        result.get("text_blocks", []),
-                        layout_elements=[]
-                    )
-                except Exception as e:
-                    logger.warning(f"Task {task_id}: Failed to build OCR semantic blocks: {e}")
-                    result["semantic_text_blocks"] = []
-
-                # Calculate average confidence
-                text_blocks = ocr_result.get("text_blocks", [])
-                avg_confidence = 0.0
-                if text_blocks:
-                    confidences = [b.get("confidence", 0) for b in text_blocks if b.get("confidence")]
-                    if confidences:
-                        avg_confidence = sum(confidences) / len(confidences)
-
-                # Update message with detailed completion info
-                engine_used = ocr_result.get("engine_used", "unknown")
-                task["message"] = f"OCR completed | Pages: {ocr_result['page_count']} | Text blocks: {len(ocr_result['text_blocks'])} | Engine: {engine_used} | Avg confidence: {avg_confidence:.2%}"
-                await _send_event(task_id, "log", task["message"], 25)
-
-                logger.info(f"Task {task_id}: OCR completed | Pages: {ocr_result['page_count']} | "
-                           f"Text blocks: {len(ocr_result['text_blocks'])} | Engine: {ocr_result.get('engine_used')} | "
-                           f"Avg confidence: {avg_confidence:.2%}")
-            except Exception as e:
-                logger.warning(f"Task {task_id}: OCR failed: {e}")
-                result["text_blocks"] = []
-                result["full_text"] = ""
-                task["message"] = f"OCR failed: {str(e)}"
-                await _send_event(task_id, "log", task["message"], 25)
-
-            task["progress"] = 25
-
-        # 2. Layout Analysis (20%)
-        if options.get("enable_layout", True):
-            # Check cancellation
-            if task_cancellation_flags.get(task_id, False):
-                task["status"] = "cancelled"
-                task["message"] = "Task cancelled"
-                await _send_event(task_id, "cancelled", "Task cancelled")
-                return
-
-            engine_name = options.get("layout_engine") or "ppstructure"
-            if engine_name:
-                task["message"] = f"Trying layout analysis with {engine_name.title()}..."
-            else:
-                task["message"] = "Trying layout analysis with default engine..."
-            await _send_event(task_id, "log", task["message"], 25)
-            logger.info(f"Task {task_id}: Starting layout analysis...")
-
-            try:
-                layout_result = await call_maybe_async(
-                    layout_service.analyze,
-                    file_path,
-                    engine=options.get("layout_engine"),
-                    fallback=True
-                )
-
-                # Check cancellation after layout
-                if task_cancellation_flags.get(task_id, False):
-                    task["status"] = "cancelled"
-                    task["message"] = "Task cancelled"
-                    await _send_event(task_id, "cancelled", "Task cancelled")
-                    return
-
-                result["layout"] = layout_result
-                result["layout_engine_used"] = layout_result.get("engine_used")
-                elements = layout_result.get("elements", [])
-
-                # Debug checkpoint A: raw layout elements as returned by layout service.
-                if debug_overlay_enabled:
-                    artifact = _save_debug_overlay_image(
-                        file_path=file_path,
-                        task_id=task_id,
-                        stage="layout_raw",
-                        elements=elements,
-                        page_num=1,
-                    )
-                    if artifact:
-                        result["document_info"].setdefault("debug_artifacts", []).append(artifact)
-                        logger.info(
-                            "[DebugOverlay] task={task_id} stage={stage} path={path} drawn={drawn}/{total} oob={oob} size={w}x{h}",
-                            task_id=task_id,
-                            stage=artifact.get("stage"),
-                            path=artifact.get("path"),
-                            drawn=artifact.get("drawn_elements"),
-                            total=artifact.get("total_elements"),
-                            oob=artifact.get("out_of_bounds_elements"),
-                            w=artifact.get("width_px"),
-                            h=artifact.get("height_px"),
-                        )
-
-                # Supplement text from OCR results if available
-                if result.get("text_blocks") and layout_service.is_ready():
-                    try:
-                        # Get the layout engine to access supplement method
-                        engine = layout_service.get_engine(layout_result.get("engine_used"))
-                        if hasattr(engine, '_supplement_text_from_ocr'):
-                            elements = engine._supplement_text_from_ocr(elements, result.get("text_blocks", []))
-                            # Update layout result with supplemented elements
-                            layout_result["elements"] = elements
-                            result["layout"] = layout_result
-                    except Exception as e:
-                        logger.warning(f"Failed to supplement text from OCR: {e}")
-
-                # Build semantic blocks with layout-aware OCR aggregation (preferred path).
-                try:
-                    result["semantic_text_blocks"] = layout_service.build_semantic_text_blocks(
-                        result.get("text_blocks", []),
-                        layout_elements=elements
-                    )
-                except Exception as e:
-                    logger.warning(f"Task {task_id}: Failed to build layout semantic blocks: {e}")
-
-                # Debug checkpoint B: pre-frontend semantic blocks after internal aggregation.
-                if debug_overlay_enabled:
-                    semantic_blocks = result.get("semantic_text_blocks", [])
-                    artifact = _save_debug_overlay_image(
-                        file_path=file_path,
-                        task_id=task_id,
-                        stage="pre_frontend_semantic",
-                        elements=semantic_blocks,
-                        page_num=1,
-                    )
-                    if artifact:
-                        result["document_info"].setdefault("debug_artifacts", []).append(artifact)
-                        logger.info(
-                            "[DebugOverlay] task={task_id} stage={stage} path={path} drawn={drawn}/{total} oob={oob} size={w}x{h}",
-                            task_id=task_id,
-                            stage=artifact.get("stage"),
-                            path=artifact.get("path"),
-                            drawn=artifact.get("drawn_elements"),
-                            total=artifact.get("total_elements"),
-                            oob=artifact.get("out_of_bounds_elements"),
-                            w=artifact.get("width_px"),
-                            h=artifact.get("height_px"),
-                        )
-
-                # Coordinate-contract debug fields for front-end validation.
-                try:
-                    pim = result.get("document_info", {}).get("page_image_meta", {}) or {}
-                    mx = pim.get("bbox_to_image_matrix", {}) or {}
-                    logger.info(
-                        "[CoordMeta] task={task_id} coord_space={coord_space} img={w}x{h} matrix=({sx},{sy},{ox},{oy})",
-                        task_id=task_id,
-                        coord_space=pim.get("coord_space", ""),
-                        w=pim.get("width_px", 0),
-                        h=pim.get("height_px", 0),
-                        sx=mx.get("scale_x", 1.0),
-                        sy=mx.get("scale_y", 1.0),
-                        ox=mx.get("offset_x", 0.0),
-                        oy=mx.get("offset_y", 0.0),
-                    )
-                except Exception as _meta_e:
-                    logger.warning(f"Task {task_id}: Failed to emit coord meta debug log: {_meta_e}")
-
-                elements_count = len(elements)
-
-                # Calculate element type counts and average confidence
-                type_counts = {}
-                confidences_by_type = {}
-                for elem in elements:
-                    elem_type = elem.get("type", "unknown")
-                    type_counts[elem_type] = type_counts.get(elem_type, 0) + 1
-                    confidence = elem.get("confidence", 0)
-                    if confidence > 0:
-                        if elem_type not in confidences_by_type:
-                            confidences_by_type[elem_type] = []
-                        confidences_by_type[elem_type].append(confidence)
-
-                # Log detailed statistics
-                type_stats = ", ".join([f"{k}: {v}" for k, v in type_counts.items()])
-                confidence_stats = []
-                for elem_type, confs in confidences_by_type.items():
-                    avg_conf = sum(confs) / len(confs) if confs else 0
-                    confidence_stats.append(f"{elem_type}: {avg_conf:.2%}")
-
-                # Update message with detailed completion info
-                engine_used = layout_result.get("engine_used", "unknown")
-                task["message"] = f"Layout analysis completed | Elements: {elements_count} | Engine: {engine_used} | Types: {type_stats}"
-                await _send_event(task_id, "log", task["message"], 45)
-
-                logger.info(f"Task {task_id}: Layout analysis completed | Elements: {elements_count} | "
-                           f"Engine: {layout_result.get('engine_used')} | Types: {type_stats}")
-                if confidence_stats:
-                    logger.info(f"Task {task_id}: Layout confidence by type | {' | '.join(confidence_stats)}")
-
-                # ── Canonical conversion (Phase 2) ──────────────────────────
-                try:
-                    from app.services.canonical_converter import CanonicalConverter
-                    _converter = CanonicalConverter()
-                    _src_type = "pdf" if str(file_path).lower().endswith(".pdf") else "image"
-                    canonical_doc = _converter.convert(
-                        task_id=task_id,
-                        source_type=_src_type,
-                        layout_result=layout_result,
-                        ocr_result=result.get("ocr"),
-                        doc_type_hint=options.get("doc_type", "unknown"),
-                        file_path=file_path,
-                    )
-                    result["canonical"] = canonical_doc.to_dict(include_raw_payload=True)
-                    result["canonical_summary"] = canonical_doc.summary()
-                    logger.info(
-                        f"Task {task_id}: Canonical conversion done | "
-                        f"pages={canonical_doc.summary().get('total_pages')} "
-                        f"blocks={canonical_doc.summary().get('total_blocks')}"
-                    )
-                except Exception as _ce:
-                    logger.warning(f"Task {task_id}: Canonical conversion failed (non-fatal): {_ce}")
-                # ────────────────────────────────────────────────────────────
-
-            except Exception as e:
-                logger.warning(f"Task {task_id}: Layout failed: {e}")
-                result["layout"] = {"elements": [], "summary": {}}
-                task["message"] = f"Layout analysis failed: {str(e)}"
-                await _send_event(task_id, "log", task["message"], 45)
-
-            task["progress"] = 45
-
-        # 3. Table Extraction (20%)
-        if options.get("enable_table", True):
-            # Check cancellation
-            if task_cancellation_flags.get(task_id, False):
-                task["status"] = "cancelled"
-                task["message"] = "Task cancelled"
-                await _send_event(task_id, "cancelled", "Task cancelled")
-                return
-
-            engine_name = options.get("table_engine") or "ppstructure"
-            if engine_name:
-                task["message"] = f"Trying table extraction with {engine_name.title()}..."
-            else:
-                task["message"] = "Trying table extraction with default engine..."
-            await _send_event(task_id, "log", task["message"], 45)
-            logger.info(f"Task {task_id}: Starting table extraction...")
-
-            try:
-                # Extract tables from layout elements if available (preferred method)
-                # This avoids duplicate PP-Structure calls and uses already-detected table elements
-                layout_elements = result.get("layout", {}).get("elements", []) if result.get("layout") else None
-
-                table_result = await call_maybe_async(
-                    table_service.extract,
-                    file_path,
-                    engine=options.get("table_engine"),
-                    fallback=True,
-                    layout_elements=layout_elements,
-                    ocr_text_blocks=result.get("text_blocks", [])
-                )
-
-                # Check cancellation after table extraction
-                if task_cancellation_flags.get(task_id, False):
-                    task["status"] = "cancelled"
-                    task["message"] = "Task cancelled"
-                    await _send_event(task_id, "cancelled", "Task cancelled")
-                    return
-
-                result["tables"] = table_result
-                tables_count = len(table_result) if isinstance(table_result, list) else 0
-
-                # Log table details
-                if isinstance(table_result, list) and table_result:
-                    table_details = []
-                    for idx, table in enumerate(table_result):
-                        rows = table.get("rows", 0)
-                        cols = table.get("columns", 0)
-                        page = table.get("page", "?")
-                        confidence = table.get("confidence", 0)
-                        table_details.append(f"Table {idx+1}: {rows}x{cols} (Page {page}, Confidence: {confidence:.2%})")
-
-                    # Update message with table extraction info
-                    task["message"] = f"Table extraction completed | Tables: {tables_count}"
-                    if table_details:
-                        task["message"] += f" | {table_details[0]}"  # Show first table details
-                    await _send_event(task_id, "log", task["message"], 65)
-
-                    logger.info(f"Task {task_id}: Table extraction completed | Tables: {tables_count} | "
-                               f"Details: {' | '.join(table_details)}")
-                else:
-                    task["message"] = f"Table extraction completed | Tables: {tables_count}"
-                    await _send_event(task_id, "log", task["message"], 65)
-                    logger.info(f"Task {task_id}: Table extraction completed | Tables: {tables_count}")
-            except Exception as e:
-                logger.warning(f"Task {task_id}: Table extraction failed: {e}")
-                result["tables"] = []
-                task["message"] = f"Table extraction failed: {str(e)}"
-                await _send_event(task_id, "log", task["message"], 65)
-
-            task["progress"] = 65
-
-        # 4. Barcode Recognition (5%)
-        if options.get("enable_barcode", False):
-            # Check cancellation
-            if task_cancellation_flags.get(task_id, False):
-                task["status"] = "cancelled"
-                task["message"] = "Task cancelled"
-                return
-
-            task["message"] = "Barcode recognition..."
-            logger.info(f"Task {task_id}: Starting barcode recognition...")
-
-            try:
-                # Import and initialize barcode module
-                from app.modules.barcode_recognition import BarcodeRecognitionModule
-                barcode_module = BarcodeRecognitionModule(config={
-                    "engine": options.get("barcode_engine", "pyzbar")
-                })
-                barcode_module.initialize()
-
-                if barcode_module.is_ready():
-                    barcode_result = await call_maybe_async(
-                        barcode_module.process,
-                        file_path,
-                        engine=options.get("barcode_engine"),
-                        fallback=True
-                    )
-                    result["barcodes"] = barcode_result.get("barcodes", [])
-                    result["barcode_count"] = barcode_result.get("count", 0)
-                    logger.info(f"Task {task_id}: Barcode recognition completed | Barcodes: {barcode_result.get('count', 0)}")
-                else:
-                    logger.warning(f"Task {task_id}: Barcode module not ready")
-                    result["barcodes"] = []
-                    result["barcode_count"] = 0
-            except Exception as e:
-                logger.warning(f"Task {task_id}: Barcode recognition failed: {e}")
-                result["barcodes"] = []
-                result["barcode_count"] = 0
-
-            task["progress"] = 70
-
-        # 5. NLP Analysis - Keywords & Entities (15%)
-        if options.get("enable_nlp", True):
-            # Check cancellation
-            if task_cancellation_flags.get(task_id, False):
-                task["status"] = "cancelled"
-                task["message"] = "Task cancelled"
-                await _send_event(task_id, "cancelled", "Task cancelled")
-                return
-
-            engine_name = options.get("nlp_engine") or "spacy"
-            if engine_name:
-                task["message"] = f"NLP analysis with {engine_name.title()}..."
-            else:
-                task["message"] = "NLP analysis with default engine..."
-            await _send_event(task_id, "log", task["message"], 65)
-
-            full_text = result.get("full_text", "")
-            if not full_text:
-                full_text = " ".join([b.get("text", "") for b in result.get("text_blocks", [])])
-
-            if full_text and nlp_service:
-                try:
-                    nlp_result = await call_maybe_async(
-                        nlp_service.analyze_text,
-                        full_text,
-                        top_k_keywords=15,
-                        engine=options.get("nlp_engine")
-                    )
-
-                    # Check cancellation after NLP
-                    if task_cancellation_flags.get(task_id, False):
-                        task["status"] = "cancelled"
-                        task["message"] = "Task cancelled"
-                        await _send_event(task_id, "cancelled", "Task cancelled")
-                        return
-
-                    result["keywords"] = [kw["keyword"] for kw in nlp_result.get("keywords", [])]
-                    result["keywords_detailed"] = nlp_result.get("keywords", [])
-                    result["entities"] = nlp_result.get("entities", [])
-                    result["entities_grouped"] = nlp_result.get("entities_grouped", {})
-                    result["nlp_engines_used"] = nlp_result.get("engines_used")
-
-                    # Log NLP details
-                    keywords = nlp_result.get("keywords", [])
-                    entities = nlp_result.get("entities", [])
-                    entities_grouped = nlp_result.get("entities_grouped", {})
-
-                    keyword_details = ", ".join([f"{kw.get('keyword')} ({kw.get('score', 0):.2f})"
-                                                 for kw in keywords[:5]])
-                    entity_counts = ", ".join([f"{k}: {len(v)}" for k, v in entities_grouped.items()])
-
-                    # Update message with NLP completion info
-                    engines_used = nlp_result.get('engines_used', 'unknown')
-                    task["message"] = f"NLP analysis completed | Engine: {engines_used} | Keywords: {len(keywords)} | Entities: {len(entities)}"
-                    if entity_counts:
-                        task["message"] += f" | Entity types: {entity_counts}"
-                    await _send_event(task_id, "log", task["message"], 85)
-
-                    logger.info(f"Task {task_id}: NLP analysis completed | Engine: {nlp_result.get('engines_used')} | "
-                               f"Keywords: {len(keywords)} | Entities: {len(entities)} | "
-                               f"Entity types: {entity_counts}")
-                    if keyword_details:
-                        logger.info(f"Task {task_id}: Top keywords: {keyword_details}")
-                except Exception as e:
-                    logger.warning(f"NLP failed: {e}")
-                    result["keywords"] = []
-                    result["entities"] = []
-                    task["message"] = f"NLP analysis failed: {str(e)}"
-                    await _send_event(task_id, "log", task["message"], 85)
-            else:
-                result["keywords"] = []
-                result["entities"] = []
-                task["message"] = "NLP analysis skipped (no text content)"
-                await _send_event(task_id, "log", task["message"], 85)
-
-            task["progress"] = 85
-
-        # 6. Template Extraction (15%)
-        template_id = options.get("template_id")
-        # Check if template_id is valid (not None, not empty string, not "null")
-        if template_id and template_id.strip() and template_id.lower() != "null":
-            task["message"] = "Template extraction..."
-
-            try:
-                full_text = result.get("full_text", "")
-                template_result = await call_maybe_async(
-                    template_service.extract_fields,
-                    template_id,
-                    full_text,
-                    result.get("text_blocks"),
-                    result.get("tables"),
-                    result.get("layout", {}).get("elements")
-                )
-                result["template_extraction"] = template_result
-            except Exception as e:
-                logger.warning(f"Template extraction failed: {e}")
-                result["template_extraction"] = {"error": str(e)}
-
-        # Or auto-detect template
-        elif options.get("enable_nlp", True):
-            task["message"] = "Auto-detecting template..."
-
-            try:
-                full_text = result.get("full_text", "")
-                if full_text:
-                    auto_result = await call_maybe_async(
-                        template_service.auto_extract,
-                        full_text,
-                        result.get("text_blocks"),
-                        result.get("tables")
-                    )
-                    if auto_result.get("success"):
-                        result["template_extraction"] = auto_result["result"]
-                        result["template_matches"] = auto_result.get("matches", [])
-            except Exception as e:
-                logger.warning(f"Auto template failed: {e}")
-
-        # Final cancellation check
-        if task_cancellation_flags.get(task_id, False):
-            task["status"] = "cancelled"
-            task["message"] = "Task cancelled"
-            return
-
-        task["progress"] = 100
-        task["status"] = "completed"
-        task["message"] = "Processing completed"
-        task["completed_at"] = datetime.now()
-        task["result"] = result
-
-        # Send completion event
-        await _send_event(task_id, "completed", "Processing completed", 100)
-
-        # Log completion details
-        doc_info = result.get("document_info", {})
-        file_name = doc_info.get("file_name", "unknown")
-        pages = doc_info.get("pages", 0)
-        text_blocks = len(result.get("text_blocks", []))
-        tables = len(result.get("tables", []))
-        layout_elements = len(result.get("layout", {}).get("elements", []))
-        keywords = len(result.get("keywords", []))
-        entities = len(result.get("entities", []))
-
-        logger.info(f"Task completed: {task_id} | File: {file_name} | Pages: {pages} | "
-                   f"Text blocks: {text_blocks} | Tables: {tables} | Layout elements: {layout_elements} | "
-                   f"Keywords: {keywords} | Entities: {entities}")
-
-        # Clean up event history after a delay (allow clients to receive final event)
-        # Keep history for 60 seconds after completion
-        async def cleanup_history():
-            await asyncio.sleep(60)
-            task_event_history.pop(task_id, None)
-        asyncio.create_task(cleanup_history())
-
-    except Exception as e:
-        # Don't mark as failed if cancelled
-        if task_cancellation_flags.get(task_id, False):
-            task["status"] = "cancelled"
-            task["message"] = "Task cancelled"
-        else:
-            file_name = task.get("file_name", "unknown")
-            error_msg = str(e)
-            logger.error(f"Task failed: {task_id} | File: {file_name} | Error: {error_msg}")
-            logger.exception(e)  # Log full traceback
-            task["status"] = "failed"
-            task["message"] = f"Processing failed: {error_msg}"
+        await orchestrator.run(task_id, task)
     finally:
-        # Clean up cancellation flag
         task_cancellation_flags.pop(task_id, None)
 
 
@@ -1762,7 +1198,7 @@ async def remap_task_canonical(task_id: str, body: RemappingRequest):
         raise HTTPException(status_code=500, detail=f"Remapping failed: {str(e)}")
 
 
-
+@app.get("/api/v1/tasks/{task_id}/layout")
 async def get_unified_layout_analysis(task_id: str, page_number: int = 1):
     """
     获取统一格式的版面分析结果
@@ -1830,6 +1266,89 @@ async def get_unified_layout_analysis(task_id: str, page_number: int = 1):
     except Exception as e:
         logger.error(f"[Layout API] ❌ Error getting unified layout analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+def _normalize_flat_bbox(raw_bbox: Any) -> List[float]:
+    """Normalize heterogeneous bbox formats to [x1, y1, x2, y2]."""
+    if isinstance(raw_bbox, dict):
+        x = float(raw_bbox.get("x", 0))
+        y = float(raw_bbox.get("y", 0))
+        w = float(raw_bbox.get("width", 0))
+        h = float(raw_bbox.get("height", 0))
+        return [x, y, x + w, y + h]
+    if isinstance(raw_bbox, (list, tuple)) and len(raw_bbox) >= 4:
+        return [
+            float(raw_bbox[0]),
+            float(raw_bbox[1]),
+            float(raw_bbox[2]),
+            float(raw_bbox[3]),
+        ]
+    return [0.0, 0.0, 0.0, 0.0]
+
+
+@app.get("/api/v1/tasks/{task_id}/blocks")
+async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int = 120):
+    """Return frontend-oriented flat blocks payload (blocks-only, no lines/words)."""
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Task not completed")
+
+    result = task.get("result", {}) or {}
+    page_meta = (result.get("document_info", {}) or {}).get("page_image_meta", {}) or {}
+    image_width = int(page_meta.get("width_px", 0) or 0)
+    image_height = int(page_meta.get("height_px", 0) or 0)
+
+    grouped_fields: Dict[str, List[str]] = {}
+    entities_grouped = result.get("entities_grouped") or {}
+    for key, values in entities_grouped.items():
+        grouped_fields[str(key)] = [str(v) for v in values]
+
+    blocks: List[Dict[str, Any]] = []
+    semantic_blocks = result.get("semantic_text_blocks") or []
+    if semantic_blocks:
+        source_blocks = semantic_blocks
+    elif result.get("layout", {}).get("elements"):
+        source_blocks = result.get("layout", {}).get("elements", [])
+    else:
+        source_blocks = result.get("text_blocks", [])
+
+    for idx, block in enumerate(source_blocks):
+        if not isinstance(block, dict):
+            continue
+        page = int(block.get("page", page_number) or page_number)
+        if page != page_number:
+            continue
+        text = str(block.get("text") or block.get("content") or "")
+        bbox = _normalize_flat_bbox(block.get("bbox") or block.get("bounding_box"))
+        score = block.get("score")
+        confidence = float(block.get("confidence", score if score is not None else 0) or 0)
+        role = str(block.get("semantic_role") or block.get("type") or block.get("element_type") or "Paragraph")
+
+        blocks.append(
+            {
+                "id": block.get("id") or block.get("block_id") or f"block_{idx}",
+                "page": page,
+                "role": role,
+                "confidence": confidence,
+                "score": confidence,
+                "bbox": bbox,
+                "text": text,
+                "content": text,
+                "content_truncated": text[:content_limit],
+            }
+        )
+
+    return {
+        "task_id": task_id,
+        "page": page_number,
+        "image_width": image_width,
+        "image_height": image_height,
+        "coord_space": page_meta.get("coord_space", "image_abs_px"),
+        "grouped_fields": grouped_fields,
+        "blocks": blocks,
+    }
 
 
 

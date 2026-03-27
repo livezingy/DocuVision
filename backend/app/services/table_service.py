@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 from loguru import logger
 import os
 import io
-from app.compatibility_patches import apply_all_patches
 
 
 class BaseTableEngine(ABC):
@@ -45,10 +44,7 @@ class PPStructureTableEngine(BaseTableEngine):
 
     def _init_engine(self):
         try:
-            # Apply version-gated compatibility patches (legacy-only).
-            apply_all_patches()
-
-            # Now import PPStructureV3
+            # Import PPStructureV3
             from paddleocr import PPStructureV3
             import paddleocr
 

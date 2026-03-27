@@ -39,6 +39,7 @@ let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
 let showOcrFineGrainedOverlay = false;
 let lastRenderedAnalysisResult = null;
+let lastFetchedBlocks = null;
 let enableOverlaySha256Validation = false;
 let forcePureLayoutBboxOverlay = false;
 const overlayLayerVisibility = {
@@ -1706,6 +1707,44 @@ async function fetchTaskResult(taskId, item) {
         console.error('Error fetching task result:', error);
         showNotification('Document processing completed, but result fetch failed', 'warning');
         failProcessing(item, `Failed to fetch result: ${error.message}`);
+
+    /**
+     * Fetch flat blocks from the /blocks endpoint for SVG overlay rendering.
+     */
+    async function fetchTaskBlocks(taskId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/blocks`);
+            if (!response.ok) return null;
+            return await response.json();
+        } catch (e) {
+            console.warn('[Blocks] Failed to fetch blocks:', e);
+            return null;
+        }
+    }
+
+    /**
+     * Return SVG stroke/fill colors for a given block type.
+     */
+    function getSvgAnnotationColors(type) {
+        const colorMap = {
+            title:       { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.10)' },
+            subtitle:    { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.10)' },
+            heading:     { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.10)' },
+            paragraph:   { stroke: '#10b981', fill: 'rgba(16,185,129,0.08)' },
+            text:        { stroke: '#10b981', fill: 'rgba(16,185,129,0.08)' },
+            text_block:  { stroke: '#10b981', fill: 'rgba(16,185,129,0.08)' },
+            table:       { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.10)' },
+            figure:      { stroke: '#ec4899', fill: 'rgba(236,72,153,0.10)' },
+            image:       { stroke: '#ec4899', fill: 'rgba(236,72,153,0.10)' },
+            header:      { stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.08)' },
+            page_header: { stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.08)' },
+            footer:      { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' },
+            page_footer: { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' },
+            list:        { stroke: '#06b6d4', fill: 'rgba(6,182,212,0.08)'  },
+            list_item:   { stroke: '#06b6d4', fill: 'rgba(6,182,212,0.08)'  },
+        };
+        return colorMap[type] || { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' };
+    }
     }
 }
 
@@ -1912,8 +1951,8 @@ function updateResultsDisplay(result) {
 
     lastRenderedAnalysisResult = result;
 
-    // Keep a single interactive annotation layer (HTML overlay) to avoid
-    // pointer/event conflicts and visual offsets from dual overlays.
+    // Reset cached blocks so the SVG overlay fetches fresh data.
+    lastFetchedBlocks = null;
     clearCanvasLayoutOverlay();
 
     // Update document preview
@@ -2357,269 +2396,121 @@ async function renderDocumentWithAnnotations(result) {
 
     const docInfo = result.document_info || {};
     const fileName = docInfo.file_name || 'Document';
-    const pageImageMeta = getPageImageMeta(result, 1) || {};
-    const pageCoordSpace = normalizeCoordSpace(pageImageMeta.coord_space);
-    const bboxToImageMatrix = normalizeBboxToImageMatrix(
-        pageImageMeta.bbox_to_image_matrix,
-        pageCoordSpace,
-        Number(pageImageMeta.width_px || 0),
-        Number(pageImageMeta.height_px || 0)
-    );
-    const hasExplicitCoordSpace = !!pageCoordSpace;
-    if (!hasExplicitCoordSpace) {
-        console.warn('[Layout] Missing or invalid coord_space in page_image_meta. Overlay rendering is skipped.');
-        showNotification('Missing coord_space metadata. Overlay rendering skipped.', 'warning');
-    }
-    const elements = getRenderableAnnotationElements(result, {
-        includeOcrFineGrained: showOcrFineGrainedOverlay,
-        forcePureLayoutBbox: forcePureLayoutBboxOverlay
-    });
 
-    // Use the same HTML structure as initial loading for consistency
-    let html = '<div class="document-preview-content">';
-
-    // Display original document as image (PDF converted to image via API)
+    let imageUrl = currentOriginalFileUrl;
     if (currentOriginalFileUrl && currentTaskId) {
         const fileExt = fileName.toLowerCase().split('.').pop();
-        let imageUrl = currentOriginalFileUrl;
-
-        // For PDF, get first page as image from backend using the same method as initial loading
         if (fileExt === 'pdf') {
             try {
                 imageUrl = await getPdfPageImage(currentTaskId, 1);
             } catch (error) {
-                console.error('Failed to get PDF page image in renderDocumentWithAnnotations:', error);
-                // Fallback to API URL
+                console.error('Failed to get PDF page image:', error);
                 imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/1`;
             }
         }
-
-        // Create image with same style as initial loading, and add onload handler
-        html += `<img id="documentImage" src="${imageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize();">`;
-
-        // Create annotation overlay container - positioned relative to image
-        html += '<div class="annotation-overlay-container" id="annotationOverlayContainer" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;">';
-
-        elements.forEach((element, index) => {
-            // Bbox can be object/list/polygon-derived in different pipelines.
-            const polyBbox = bboxFromPolygon(element.polygon || []);
-            const bbox = polyBbox || normalizeAnnotationBbox(element.bbox || element.bounding_box || {});
-
-            let x = bbox.x || 0;
-            let y = bbox.y || 0;
-            let width = bbox.width || 0;
-            let height = bbox.height || 0;
-
-            if (!hasExplicitCoordSpace) {
-                return;
-            }
-
-            const isNormalized = pageCoordSpace === 'image_norm';
-
-            // Skip invalid or near-zero boxes to avoid misplaced overlays.
-            if (width <= 0 || height <= 0) {
-                return;
-            }
-            // Keep normalized bboxes (<=1) and scale them later when image dimensions are known.
-            if (!isNormalized && (width <= 1 || height <= 1)) {
-                return;
-            }
-
-            const type = element.type || element.type_name || 'paragraph';
-            if (!shouldRenderOverlayType(type)) {
-                return;
-            }
-            // Confidence is stored in element.confidence (0-1 range)
-            // If confidence is 0, try to get from score or use a default value
-            let confidence = element.confidence || element.score || 0;
-            // If confidence is still 0, use a reasonable default (0.9 = 90%)
-            if (confidence === 0) {
-                confidence = 0.9; // Default confidence for layout elements
-            }
-            const confidencePercent = confidence > 1 ? confidence : (confidence * 100);
-
-            // Extract text content
-            const text =
-                (typeof element.text === 'string' ? element.text : '') ||
-                (typeof element.content === 'string' ? element.content : '') ||
-                (element.type === 'table' ? 'Table detected' : '');
-            // Limit text length for display
-            const displayText = text.length > 100 ? text.substring(0, 100) + '...' : text;
-
-            // Format polygon/bbox location
-            const polygon = element.polygon || [];
-            let polygonText = '';
-            if (polygon.length > 0 && Array.isArray(polygon[0])) {
-                // Format polygon coordinates: [[x1,y1], [x2,y2], ...]
-                polygonText = polygon.map(p => {
-                    if (Array.isArray(p) && p.length >= 2) {
-                        return `(${p[0]?.toFixed(0) || 0}, ${p[1]?.toFixed(0) || 0})`;
-                    }
-                    return '';
-                }).filter(p => p).join(', ');
-            } else if (polygon.length > 0) {
-                // Single array format: [x1, y1, x2, y2, ...]
-                const coords = [];
-                for (let i = 0; i < polygon.length; i += 2) {
-                    if (i + 1 < polygon.length) {
-                        coords.push(`(${polygon[i]?.toFixed(0) || 0}, ${polygon[i + 1]?.toFixed(0) || 0})`);
-                    }
-                }
-                polygonText = coords.join(', ');
-            } else {
-                // Use bbox as polygon representation (top-left and bottom-right corners)
-                polygonText = `(${x.toFixed(0)}, ${y.toFixed(0)}) → (${(x + width).toFixed(0)}, ${(y + height).toFixed(0)})`;
-            }
-
-            // Map element types to annotation classes
-            const typeMap = {
-                'title': 'annotation-title',
-                'heading': 'annotation-title',
-                'text_title': 'annotation-title',
-                'paragraph': 'annotation-paragraph',
-                'text': 'annotation-paragraph',
-                'text_block': 'annotation-paragraph',
-                'table': 'annotation-table',
-                'figure': 'annotation-figure',
-                'image': 'annotation-figure',
-                'header': 'annotation-header',
-                'footer': 'annotation-footer',
-                'list': 'annotation-list'
-            };
-
-            const annotationClass = typeMap[type.toLowerCase()] || 'annotation-paragraph';
-            const inferredClass = element.inferred_bbox ? ' annotation-inferred' : '';
-
-            // Store tooltip data in dataset for global tooltip
-            const tooltipData = {
-                role: formatAzureRoleLabel(type),
-                layer: getOverlayLayerType(type),
-                source: element.source || 'layout',
-                content: text,
-                displayContent: displayText,
-                polygon: polygonText,
-                page: Number(element.page || 1),
-                bbox: `${x.toFixed(1)}, ${y.toFixed(1)}, ${width.toFixed(1)} x ${height.toFixed(1)}`,
-                confidence: confidencePercent,
-                rows: Number(element.table_rows || element.rows || 0),
-                columns: Number(element.table_cols || element.columns || 0)
-            };
-
-            html += `<div class="annotation-overlay ${annotationClass}${inferredClass}"
-                         data-element-index="${index}"
-                         data-element-type="${type}"
-                         data-tooltip-data='${JSON.stringify(tooltipData).replace(/'/g, "&apos;")}'
-                         data-x="${x}"
-                         data-y="${y}"
-                         data-width="${width}"
-                         data-height="${height}"
-                         data-page="${Number(element.page || 1)}"
-                         data-coord-space="${pageCoordSpace}"
-                         data-matrix-scale-x="${bboxToImageMatrix.scale_x}"
-                         data-matrix-scale-y="${bboxToImageMatrix.scale_y}"
-                         data-matrix-offset-x="${bboxToImageMatrix.offset_x}"
-                         data-matrix-offset-y="${bboxToImageMatrix.offset_y}"
-                         data-is-normalized="${isNormalized ? '1' : '0'}"
-                         style="position: absolute; left: 0px; top: 0px; width: 0px; height: 0px;">
-                     </div>`;
-        });
-
-        html += '</div>'; // annotation-overlay-container
     }
 
-    html += '</div>'; // document-preview-content
+    const html = `
+        <div class="document-preview-content">
+            <div class="svg-annotation-wrapper">
+                <img id="documentImage" src="${imageUrl || ''}"
+                     style="display:block; max-width:100%; height:auto; border-radius:8px;"
+                     alt="Document">
+                <svg id="annotationSvgOverlay"
+                     style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"
+                     preserveAspectRatio="none"></svg>
+            </div>
+        </div>`;
 
     documentPage.innerHTML = html;
 
-    // Wait for image to load, then adjust size and annotation positions
     const image = document.getElementById('documentImage');
-    if (image) {
-        if (image.complete) {
-            adjustDocumentSize();
-            if (await validateImageCoordinateBinding(image, result, 1)) {
-                adjustAnnotationPositions();
-                initAnnotationInteractions();
-            }
-        } else {
-            image.addEventListener('load', async () => {
-                adjustDocumentSize();
-                if (await validateImageCoordinateBinding(image, result, 1)) {
-                    adjustAnnotationPositions();
-                    initAnnotationInteractions();
-                }
-            });
+    if (!image) return;
+
+    const renderBlocks = async () => {
+        adjustDocumentSize();
+        if (!currentTaskId) return;
+
+        const blocks = lastFetchedBlocks || await fetchTaskBlocks(currentTaskId);
+        if (!blocks || !Array.isArray(blocks.blocks) || blocks.blocks.length === 0) return;
+        lastFetchedBlocks = blocks;
+
+        const svg = document.getElementById('annotationSvgOverlay');
+        if (!svg) return;
+
+        const imgW = Number(blocks.image_width) || image.naturalWidth || 1;
+        const imgH = Number(blocks.image_height) || image.naturalHeight || 1;
+        svg.setAttribute('viewBox', `0 0 ${imgW} ${imgH}`);
+
+        const svgNS = 'http://www.w3.org/2000/svg';
+        blocks.blocks.forEach((block, idx) => {
+            const bbox = block.bbox || [];
+            const x1 = Number(bbox[0] || 0);
+            const y1 = Number(bbox[1] || 0);
+            const x2 = Number(bbox[2] || 0);
+            const y2 = Number(bbox[3] || 0);
+            const w = Math.max(0, x2 - x1);
+            const h = Math.max(0, y2 - y1);
+            if (w <= 0 || h <= 0) return;
+
+            const type = String(block.type || block.role || 'paragraph').toLowerCase();
+            if (!shouldRenderOverlayType(type)) return;
+
+            const colors = getSvgAnnotationColors(type);
+            const role = formatAzureRoleLabel(type);
+            const text = String(block.text || block.content || '');
+            const displayContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
+            const rawConf = Number(block.confidence || 0);
+            const confidencePercent = rawConf > 1 ? rawConf : rawConf * 100;
+            const bboxStr = `${x1.toFixed(0)}, ${y1.toFixed(0)}, ${w.toFixed(0)} × ${h.toFixed(0)}`;
+
+            const tooltipData = { role, content: text, displayContent, bbox: bboxStr, confidence: confidencePercent };
+
+            const rect = document.createElementNS(svgNS, 'rect');
+            rect.setAttribute('x', x1);
+            rect.setAttribute('y', y1);
+            rect.setAttribute('width', w);
+            rect.setAttribute('height', h);
+            rect.setAttribute('fill', colors.fill);
+            rect.setAttribute('stroke', colors.stroke);
+            rect.setAttribute('stroke-width', '2');
+            rect.setAttribute('rx', '3');
+            rect.classList.add('svg-annotation');
+            rect.dataset.tooltipData = JSON.stringify(tooltipData);
+            rect.dataset.elementType = type;
+            rect.dataset.elementIndex = String(idx);
+            rect.style.pointerEvents = 'auto';
+            rect.style.cursor = 'pointer';
+            svg.appendChild(rect);
+        });
+
+        if (lastRenderedAnalysisResult) {
+            updateContentText(lastRenderedAnalysisResult);
         }
+        initAnnotationInteractions();
+    };
+
+    if (image.complete && image.naturalWidth > 0) {
+        await renderBlocks();
     } else {
-        setTimeout(() => {
-            adjustAnnotationPositions();
-            initAnnotationInteractions();
-        }, 300);
+        image.addEventListener('load', renderBlocks, { once: true });
     }
 }
 
 /**
- * Adjust annotation positions based on actual document dimensions
+ * Adjust annotation positions — SVG viewBox handles coordinate scaling
+ * automatically; this keeps legacy call sites working.
  */
 function adjustAnnotationPositions() {
-    const image = document.getElementById('documentImage');
-    const overlayContainer = document.getElementById('annotationOverlayContainer');
-    if (!image || !overlayContainer) return;
-
-    // Single transform path: keep geometry in image-space, apply one container scale.
-    const displayedWidth = image.offsetWidth || image.clientWidth;
-    const displayedHeight = image.offsetHeight || image.clientHeight;
-    const originalWidth = image.naturalWidth || displayedWidth;
-    const originalHeight = image.naturalHeight || displayedHeight;
-
-    const scaleX = originalWidth > 0 ? (displayedWidth / originalWidth) : 1;
-    const scaleY = originalHeight > 0 ? (displayedHeight / originalHeight) : 1;
-
-    overlayContainer.style.width = `${originalWidth}px`;
-    overlayContainer.style.height = `${originalHeight}px`;
-    overlayContainer.style.top = '0';
-    overlayContainer.style.left = '0';
-    overlayContainer.style.transformOrigin = 'top left';
-    overlayContainer.style.transform = `scale(${scaleX}, ${scaleY})`;
-
-    // Adjust each annotation position
-    const annotations = overlayContainer.querySelectorAll('.annotation-overlay');
-    annotations.forEach(annotation => {
-        try {
-            const x = parseFloat(annotation.dataset.x || 0);
-            const y = parseFloat(annotation.dataset.y || 0);
-            const width = parseFloat(annotation.dataset.width || 100);
-            const height = parseFloat(annotation.dataset.height || 50);
-            const matrix = {
-                scale_x: parseFloat(annotation.dataset.matrixScaleX || 1),
-                scale_y: parseFloat(annotation.dataset.matrixScaleY || 1),
-                offset_x: parseFloat(annotation.dataset.matrixOffsetX || 0),
-                offset_y: parseFloat(annotation.dataset.matrixOffsetY || 0),
-            };
-
-            const mapped = remapBboxToImageSpace(x, y, width, height, matrix);
-
-            annotation.style.left = `${mapped.x}px`;
-            annotation.style.top = `${mapped.y}px`;
-            annotation.style.width = `${mapped.width}px`;
-            annotation.style.height = `${mapped.height}px`;
-        } catch (error) {
-            console.error('Failed to position annotation overlay:', error);
-        }
-    });
-
-    // Re-adjust on window resize - ensure adjustDocumentSize is called first
-    window.removeEventListener('resize', handleResizeForAnnotations);
-    window.addEventListener('resize', handleResizeForAnnotations);
+    adjustDocumentSize();
 }
 
 /**
- * Handle window resize for annotations - ensures document size is adjusted first
+ * Handle window resize — just re-adjust document size.
  */
 function handleResizeForAnnotations() {
     adjustDocumentSize();
-    setTimeout(adjustAnnotationPositions, 100);
 }
-
 /**
  * Render text preview (fallback)
  */
@@ -2697,122 +2588,62 @@ function initGlobalTooltip() {
  * Initialize annotation interactions
  */
 function initAnnotationInteractions() {
-    // Initialize global tooltip
     initGlobalTooltip();
 
-    const annotations = document.querySelectorAll('.annotation-overlay');
+    const svg = document.getElementById('annotationSvgOverlay');
+    if (!svg) return;
 
-    annotations.forEach(annotation => {
-        // Make overlay clickable
-        annotation.style.pointerEvents = 'auto';
+    const rects = svg.querySelectorAll('.svg-annotation');
 
-        // Click handler - highlight in results panel
-        annotation.addEventListener('click', () => {
-            const elementType = annotation.dataset.elementType;
-            const elementIndex = annotation.dataset.elementIndex;
+    const esc = (str) => {
+        const d = document.createElement('div');
+        d.textContent = String(str == null ? '' : str);
+        return d.innerHTML;
+    };
 
-            // Remove previous highlights
-            annotations.forEach(a => a.classList.remove('annotation-active'));
-
-            // Highlight clicked annotation
-            annotation.classList.add('annotation-active');
-
-            // Scroll to corresponding item in results panel
-            highlightResultItem(elementType, elementIndex);
+    rects.forEach(rect => {
+        rect.addEventListener('click', () => {
+            rects.forEach(r => r.classList.remove('svg-annotation-active'));
+            rect.classList.add('svg-annotation-active');
+            highlightResultItem(rect.dataset.elementType, rect.dataset.elementIndex);
         });
 
-        // Hover handler - show global tooltip with fixed positioning
-        annotation.addEventListener('mouseenter', (e) => {
+        rect.addEventListener('mouseenter', () => {
             if (!globalTooltip) return;
-
-            // Get tooltip data from dataset
-            const tooltipDataStr = annotation.dataset.tooltipData;
-            if (!tooltipDataStr) return;
-
+            const raw = rect.dataset.tooltipData;
+            if (!raw) return;
             try {
-                const tooltipData = JSON.parse(tooltipDataStr.replace(/&apos;/g, "'"));
-
-                // Update tooltip content (escapeHtml is defined globally)
-                const escapeHtml = (str) => {
-                    if (typeof str !== 'string') str = String(str);
-                    const div = document.createElement('div');
-                    div.textContent = str;
-                    return div.innerHTML;
-                };
-
+                const d = JSON.parse(raw);
                 globalTooltip.innerHTML = `
-                    <div class="tooltip-line"><strong>Role:</strong> ${escapeHtml(tooltipData.role)}</div>
-                    <div class="tooltip-line"><strong>Layer:</strong> ${escapeHtml(tooltipData.layer)} <strong style="margin-left: 12px;">Source:</strong> ${escapeHtml(tooltipData.source)}</div>
-                    <div class="tooltip-line"><strong>Page:</strong> ${tooltipData.page} <strong style="margin-left: 12px;">BBox:</strong> ${escapeHtml(tooltipData.bbox)}</div>
-                    <div class="tooltip-line"><strong>Content:</strong> ${tooltipData.displayContent ? escapeHtml(tooltipData.displayContent) : '(empty)'}</div>
-                    <div class="tooltip-line"><strong>Polygon:</strong> ${escapeHtml(tooltipData.polygon)}</div>
-                    ${tooltipData.rows > 0 || tooltipData.columns > 0 ? `<div class="tooltip-line"><strong>Rows:</strong> ${tooltipData.rows || '?'} <strong style="margin-left: 12px;">Columns:</strong> ${tooltipData.columns || '?'}</div>` : ''}
-                    <div class="tooltip-line"><strong>Confidence:</strong> ${tooltipData.confidence.toFixed(1)}%</div>
+                    <div class="tooltip-line"><strong>Role:</strong> ${esc(d.role)}</div>
+                    <div class="tooltip-line"><strong>BBox:</strong> ${esc(d.bbox)}</div>
+                    <div class="tooltip-line"><strong>Content:</strong> ${d.displayContent ? esc(d.displayContent) : '(empty)'}</div>
+                    <div class="tooltip-line"><strong>Confidence:</strong> ${Number(d.confidence || 0).toFixed(1)}%</div>
                 `;
 
-                // Get element position in viewport
-                const rect = annotation.getBoundingClientRect();
-
-                // Show tooltip temporarily to get its dimensions
+                const vr = rect.getBoundingClientRect();
                 globalTooltip.style.display = 'block';
                 globalTooltip.style.left = '0';
                 globalTooltip.style.top = '0';
-                const tooltipRect = globalTooltip.getBoundingClientRect();
-                const tooltipWidth = tooltipRect.width;
-                const tooltipHeight = tooltipRect.height;
+                const tr = globalTooltip.getBoundingClientRect();
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
 
-                // Calculate best position (relative to viewport)
-                let left = rect.right + 10;  // Default: right side
-                let top = rect.top;
+                let left = vr.right + 10;
+                let top = vr.top;
+                if (left + tr.width > vw - 10) left = Math.max(10, vr.left - tr.width - 10);
+                if (top + tr.height > vh - 10) top = Math.max(10, vh - tr.height - 10);
 
-                // Calculate available space
-                const viewportWidth = window.innerWidth;
-                const viewportHeight = window.innerHeight;
-                const spaceRight = viewportWidth - rect.right;
-                const spaceLeft = rect.left;
-                const spaceBottom = viewportHeight - rect.bottom;
-                const spaceTop = rect.top;
-
-                // Smart positioning: choose best location
-                // Try right side first
-                if (spaceRight < tooltipWidth + 10) {
-                    // Not enough space on right, try left
-                    if (spaceLeft >= tooltipWidth + 10) {
-                        left = rect.left - tooltipWidth - 10;
-                    } else {
-                        // Not enough space on either side, use right and adjust
-                        left = Math.max(10, viewportWidth - tooltipWidth - 10);
-                    }
-                }
-
-                // Adjust vertical position
-                if (top + tooltipHeight > viewportHeight - 10) {
-                    // Not enough space below, try above
-                    if (spaceTop >= tooltipHeight + 10) {
-                        top = rect.top - tooltipHeight - 10;
-                    } else {
-                        // Not enough space above or below, adjust to fit
-                        top = Math.max(10, viewportHeight - tooltipHeight - 10);
-                    }
-                }
-
-                // Ensure tooltip stays within viewport
-                left = Math.max(10, Math.min(left, viewportWidth - tooltipWidth - 10));
-                top = Math.max(10, Math.min(top, viewportHeight - tooltipHeight - 10));
-
-                // Set final position (relative to viewport)
-                globalTooltip.style.left = `${left}px`;
-                globalTooltip.style.top = `${top}px`;
-            } catch (error) {
-                console.error('Error parsing tooltip data:', error);
+                globalTooltip.style.left = `${Math.max(10, left)}px`;
+                globalTooltip.style.top = `${Math.max(10, top)}px`;
+            } catch (err) {
+                console.error('Tooltip parse error:', err);
                 globalTooltip.style.display = 'none';
             }
         });
 
-        annotation.addEventListener('mouseleave', () => {
-            if (globalTooltip) {
-                globalTooltip.style.display = 'none';
-            }
+        rect.addEventListener('mouseleave', () => {
+            if (globalTooltip) globalTooltip.style.display = 'none';
         });
     });
 }
@@ -4413,8 +4244,24 @@ function updateContentText(result) {
     const contentTextContent = document.getElementById('contentTextContent');
     if (!contentTextContent) return;
 
+    // Prefer flat /blocks data when already fetched; fall back to result fields.
+    const blocksData = lastFetchedBlocks;
     const textBlocks = result.text_blocks || [];
-    const semanticTextBlocks = result.semantic_text_blocks || [];
+    const semanticTextBlocks = blocksData
+        ? blocksData.blocks.filter(b => {
+              const t = String(b.type || b.role || '').toLowerCase();
+              return ['title','subtitle','paragraph','text','text_block','section_header',
+                      'header','footer','page_header','page_footer','reference',
+                      'list_item','list','equation','figure_caption'].includes(t)
+                  && !!(b.text || b.content);
+          }).map((b, i) => ({
+              id: b.id || `block_${i}`,
+              type: String(b.type || b.role || 'paragraph').toLowerCase(),
+              text: b.text || b.content || '',
+              confidence: b.confidence,
+              page: b.page || 1
+          }))
+        : result.semantic_text_blocks || [];
     const fullText = result.full_text || '';
     const layout = result.layout || {};
     const elements = layout.elements || [];

@@ -10,9 +10,6 @@ import paddle
 import cv2
 import numpy as np
 
-# Import compatibility patches FIRST
-from app.compatibility_patches import apply_all_patches
-apply_all_patches()
 
 
 class BaseLayoutEngine(ABC):

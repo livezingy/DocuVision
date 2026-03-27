@@ -2699,6 +2699,27 @@ body.show-analysis .analyzed-region {
     z-index: 10;
 }
 
+/* ---- SVG Block Overlay ---- */
+.svg-annotation-wrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    line-height: 0;
+}
+
+.svg-annotation {
+    transition: opacity 0.15s;
+}
+
+.svg-annotation:hover {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 3px rgba(99,102,241,0.5));
+}
+
+.svg-annotation-active {
+    filter: drop-shadow(0 0 4px rgba(99,102,241,0.8));
+}
+
 .annotation-overlay {
     position: absolute;
     border: 2px solid;

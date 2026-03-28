@@ -55,11 +55,12 @@ class PPStructureEngine(BaseLayoutEngine):
     - Active community support from Baidu
     """
 
-    def __init__(self, use_gpu: bool = False, recovery: bool = True):
+    def __init__(self, use_gpu: bool = False, recovery: bool = True, lang: str = "en"):
         self._engine = None
         self._ready = False
         self._use_gpu = use_gpu
         self._recovery = recovery
+        self._lang = lang
         self._init_engine()
 
     def _init_engine(self):
@@ -77,7 +78,8 @@ class PPStructureEngine(BaseLayoutEngine):
             # PPStructureV3 (3.x) initialization
             # Use minimal parameters to match test script
             init_params = {
-                "device": "gpu" if self._use_gpu else "cpu"
+                "device": "gpu" if self._use_gpu else "cpu",
+                "lang": self._lang
             }
 
             # Note: use_doc_orientation_classify may cause initialization errors in 3.1.1
@@ -87,7 +89,7 @@ class PPStructureEngine(BaseLayoutEngine):
             self._is_v3 = True
 
             self._ready = True
-            logger.info("PPStructureV3 layout engine initialized successfully")
+            logger.info(f"PPStructureV3 layout engine initialized successfully (lang={self._lang})")
         except ImportError as e:
             logger.warning(f"PaddleOCR/PPStructure not installed: {e}")
             self._ready = False

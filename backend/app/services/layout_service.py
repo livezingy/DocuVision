@@ -558,12 +558,21 @@ class PPStructureEngine(BaseLayoutEngine):
                     element_type = str(block.get('label', 'unknown')).lower()
                     bbox = block.get('bbox', [])
                     content = block.get('content', '')
+                    block_text = block.get('text', '')
                     block_index = block.get('index', idx)
                 else:
                     element_type = str(getattr(block, 'label', 'unknown')).lower()
                     bbox = getattr(block, 'bbox', [])
                     content = getattr(block, 'content', '')
+                    block_text = getattr(block, 'text', '')
                     block_index = getattr(block, 'index', idx)
+
+                block_text_str = str(block_text or "")
+                content_str = str(content or "")
+                logger.info(
+                    f"[StructuredBlock] Page {page_num} Block {idx} ({element_type}): "
+                    f"text='{block_text_str[:100]}' | content='{content_str[:100]}'"
+                )
 
                 if not bbox or len(bbox) < 4:
                     continue

@@ -2,8 +2,7 @@
 DocuVision - Intelligent Document Processing System
 FastAPI Backend Main Entry
 
-P1 Features: OCR, Layout Analysis, Table Extraction, Export
-P2 Features: Template System, Batch Processing, Keyword Extraction (NLP)
+Core Features: OCR, Layout Analysis, Table Extraction, Export, Batch Processing
 """
 
 # CRITICAL: Set environment variables FIRST
@@ -28,7 +27,7 @@ print(f"[Paddle] Version: {paddle.__version__}, Compiled with CUDA: {paddle.is_c
 
 import paddlex
 
-# 验证 PaddleX 实际使用的 home 目录
+# 验证 PaddleX 实际使用�?home 目录
 try:
     # PaddleX 3.x 中可能有 get_home_dir() 方法，如果没有则跳过
     if hasattr(paddlex.utils, 'get_home_dir'):
@@ -455,8 +454,6 @@ from app.services.ocr_service import OCRService
 from app.services.layout_service import LayoutService
 from app.services.table_service import TableService
 from app.services.export_service import ExportService
-from app.services.nlp_service import NLPService
-from app.services.template_service import TemplateService
 from app.services.batch_service import BatchService, BatchStatus
 from app.services.unified_layout_service import UnifiedLayoutService
 from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
@@ -528,16 +525,12 @@ if use_gpu:
         use_gpu = False
 
 # Initialize Services
-ocr_service = OCRService(use_gpu=use_gpu)
+ocr_service = OCRService(use_gpu=use_gpu, lang=settings.OCR_LANG)
 layout_service = LayoutService(use_gpu=use_gpu)
 table_service = TableService(use_gpu=use_gpu)
 export_service = ExportService()
-# PaddleOCR-only version: NLP service disabled (no spaCy/HanLP dependencies)
-nlp_service = None  # NLPService(language=settings.OCR_LANG)
-template_service = TemplateService(templates_dir=os.path.join(settings.UPLOAD_DIR, "templates"))
 batch_service = BatchService(max_concurrent=3)
-unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服务
-
+unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服�?
 # Task Storage
 tasks: Dict[str, Dict[str, Any]] = {}
 # Task cancellation flags
@@ -554,21 +547,139 @@ task_event_counters: Dict[str, int] = {}
 # Data Models
 # ============================================
 
+# ============================================
+# Phase 1 API - Response Models (Envelope Structure)
+# ============================================
+
+class PreprocessingMetadata(BaseModel):
+    """Preprocessing layer: input/output dimensions, rotation, coordinate space strategy"""
+    input_size: Dict[str, int] = {}  # {"width": int, "height": int}
+    output_size: Dict[str, int] = {}  # {"width": int, "height": int}
+    use_doc_orientation_classify: bool = False
+    use_doc_unwarping: bool = True
+    angle_deg: float = 0.0
+    coordinate_space: str = "preprocessed"  # "original" or "preprocessed"
+
+
+class RawLayer(BaseModel):
+    """Raw layer: engine outputs without transformation"""
+    pp_structure_v3: Dict[str, Any] = {}  # Full PP-StructureV3 output
+    paddleocr_blocks: Dict[str, Any] = {}  # Per-block OCR results keyed by element id
+
+
+class FusedBlock(BaseModel):
+    """A single block in the fused layer after text fusion and coordinate standardization"""
+    block_id: str
+    type: str  # "text", "table", "figure", "image", "formula", etc.
+    bbox_preprocessed: List[float] = []  # [x0, y0, x1, y1]
+    polygon_preprocessed: List[float] = []  # [x0,y0,x1,y0,x1,y1,x0,y1] flat in preprocessed coords
+    processing_status: str = "succeeded"  # "succeeded", "replaced", "no_match", "low_confidence", "suspicious"
+    source: str = "pp_structure_v3"  # "pp_structure_v3", "paddleocr"
+    confidence: float = 0.0
+    payload: Dict[str, Any] = {}  # Polymorphic by type
+    provenance: Dict[str, Any] = {}  # {"structure_text": str, "ocr_text": str, "ocr_lines": [...], ...}
+
+
+class FusedPage(BaseModel):
+    """A page in the fused layer"""
+    page_num: int
+    width_preprocessed: int = 0
+    height_preprocessed: int = 0
+    blocks: List[FusedBlock] = []
+
+
+class FusedLayer(BaseModel):
+    """Fused layer: layout blocks with per-block OCR text fusion and coordinate standardization"""
+    pages: List[FusedPage] = []
+
+
+class ViewElement(BaseModel):
+    """A single element in the view layer (coordinate-transformed and reading-ordered)"""
+    id: str
+    kind: str  # "paragraph", "table", "figure", "image", "formula", etc.
+    polygon: List[float] = []  # [x0,y0,x1,y0,x1,y1,x0,y1] flat in coordinate_space
+    reading_order: int = 0
+    source: str = "pp_structure_v3"
+    processing_status: str = "succeeded"
+    payload: Dict[str, Any] = {}
+
+
+class ViewContent(BaseModel):
+    """Content collections for a page in the view layer"""
+    paragraphs: List[ViewElement] = []
+    tables: List[ViewElement] = []
+    figures: List[ViewElement] = []
+
+
+class ViewPage(BaseModel):
+    """A page in the view layer"""
+    page_num: int
+    width: int = 0
+    height: int = 0
+    elements: List[ViewElement] = []
+    content: str = ""
+    selection_marks: List[Any] = []  # Azure compat placeholder
+    words: List[Any] = []            # Azure compat placeholder
+
+
+class ViewLayer(BaseModel):
+    """View layer: reading-order-sorted elements with coordinate transformation applied"""
+    pages: List[ViewPage] = []
+    paragraphs: List[ViewElement] = []  # Aggregated across all pages
+    tables: List[ViewElement] = []  # Aggregated across all pages
+    figures: List[ViewElement] = []  # Aggregated across all pages
+    formulas: List[ViewElement] = []  # Placeholder, empty for Phase 1.1
+    seals: List[ViewElement] = []  # Placeholder, empty for Phase 1.1
+    fields: Dict[str, Any] = {}  # Placeholder, empty for Phase 1.1
+    sections: List[Any] = []  # Azure compat placeholder
+    styles: List[Any] = []    # Azure compat placeholder
+
+
+class QualityLayer(BaseModel):
+    """Quality metrics layer"""
+    processing_time_ms: int = 0
+    text_blocks_total: int = 0
+    text_blocks_replaced: int = 0
+    text_blocks_no_match: int = 0
+    text_blocks_low_confidence: int = 0
+    table_blocks_total: int = 0
+    figure_blocks_total: int = 0
+    ocr_lines_total: int = 0
+    avg_text_confidence: float = 0.0
+    engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3", "paddleocr", ...]
+
+
+class JobEnvelope(BaseModel):
+    """Phase 1 API response envelope: unified document processing result"""
+    job_id: str
+    status: str  # "running", "succeeded", "failed", "cancelled"
+    version: str = "1.0"
+    preprocessing: PreprocessingMetadata = PreprocessingMetadata()
+    raw: RawLayer = RawLayer()
+    fused: FusedLayer = FusedLayer()
+    view: ViewLayer = ViewLayer()
+    quality: QualityLayer = QualityLayer()
+    error: Optional[str] = None
+
+
+class JobStatus(BaseModel):
+    """Job status response (minimal, returned during processing)"""
+    job_id: str
+    status: str  # "running", "succeeded", "failed", "cancelled"
+    progress: float = 0.0
+    message: str = ""
+    created_at: datetime = None
+    completed_at: Optional[datetime] = None
+
+
 class ProcessingOptions(BaseModel):
     enable_layout: bool = True
     enable_ocr: bool = False
     enable_table: bool = True
-    enable_formula: bool = False
-    enable_barcode: bool = False  # New: Barcode recognition
-    enable_stamp: bool = False
-    enable_nlp: bool = True
-    template_id: Optional[str] = None
     language: str = "en"
     ocr_engine: Optional[str] = None
     layout_engine: Optional[str] = None
     table_engine: Optional[str] = None
-    nlp_engine: Optional[str] = None
-    barcode_engine: Optional[str] = None  # New: Barcode engine option
 
 
 class TaskStatus(BaseModel):
@@ -620,7 +731,7 @@ async def root():
         "name": "DocuVision API",
         "version": "1.1.0",
         "status": "running",
-        "features": ["P1: OCR/Layout/Table/Export", "P2: Template/Batch/NLP"],
+        "features": ["OCR/Layout/Table/Export", "Batch Processing"],
         "docs": "/docs"
     }
 
@@ -642,14 +753,6 @@ async def health_check():
             "table": {
                 "ready": table_service.is_ready(),
                 "engines": table_service.get_available_engines()
-            },
-            "nlp": {
-                "ready": nlp_service.is_ready() if nlp_service else False,
-                "engines": nlp_service.get_available_engines() if nlp_service else []
-            },
-            "template": {
-                "ready": True,
-                "template_count": len(template_service.templates)
             },
             "batch": {
                 "ready": True,
@@ -687,15 +790,6 @@ async def list_engines():
                 "ppstructure": {"name": "PP-Structure-Table", "is_primary": True},
                 "camelot": {"name": "Camelot", "is_primary": False},
                 "tabula": {"name": "Tabula", "is_primary": False}
-            }
-        },
-        "nlp": {
-            "available": nlp_service.get_available_engines() if nlp_service else [],
-            "default": "spacy",
-            "engines": {
-                "spacy": {"name": "spaCy", "is_primary": True, "features": ["NER", "Keywords"]},
-                "hanlp": {"name": "HanLP", "is_primary": False, "features": ["Chinese NLP"]},
-                "simple": {"name": "SimpleNLP", "is_primary": False, "features": ["Regex-based"]}
             }
         }
     }
@@ -802,13 +896,10 @@ async def analyze_document(
     enable_layout: bool = Form(True),
     enable_ocr: bool = Form(False),
     enable_table: bool = Form(True),
-    enable_nlp: bool = Form(True),
-    template_id: Optional[str] = Form(None),
     language: str = Form("en"),
     ocr_engine: Optional[str] = Form(None),
     layout_engine: Optional[str] = Form(None),
-    table_engine: Optional[str] = Form(None),
-    nlp_engine: Optional[str] = Form(None)
+    table_engine: Optional[str] = Form(None)
 ):
     """Upload and analyze a single document"""
     # Validate file
@@ -833,13 +924,10 @@ async def analyze_document(
         "enable_layout": enable_layout,
         "enable_ocr": enable_ocr,
         "enable_table": enable_table,
-        "enable_nlp": enable_nlp,
-        "template_id": template_id,
         "language": language,
         "ocr_engine": ocr_engine,
         "layout_engine": layout_engine,
-        "table_engine": table_engine,
-        "nlp_engine": nlp_engine
+        "table_engine": table_engine
     }
 
     task = {
@@ -953,8 +1041,6 @@ async def process_document(task_id: str):
             "ocr_service": ocr_service,
             "layout_service": layout_service,
             "table_service": table_service,
-            "nlp_service": nlp_service,
-            "template_service": template_service,
         },
         send_event=_send_event,
         is_cancelled=lambda tid: task_cancellation_flags.get(tid, False),
@@ -968,6 +1054,201 @@ async def process_document(task_id: str):
     finally:
         task_cancellation_flags.pop(task_id, None)
 
+
+# ============================================
+# Phase 1 API Routes - Job-Based Endpoints
+# ============================================
+
+@app.post("/api/v1/documents:analyze", response_model=JobStatus)
+async def analyze_document_v1(
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+):
+    """
+    Phase 1 API: Submit a document for analysis.
+    Returns job_id and status. Use /api/v1/jobs/{job_id} to poll status,
+    and /api/v1/jobs/{job_id}/result to fetch the Envelope result.
+
+    Request: multipart/form-data with 'file' field
+    Response: JobStatus with job_id
+    """
+    # Validate file
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif']:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+
+    job_id = str(uuid.uuid4())
+    upload_dir = os.path.join(settings.UPLOAD_DIR, job_id)
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, file.filename)
+
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    # Phase 1 uses default options: layout=true, table=true, ocr=false for layout blocks
+    options = {
+        "enable_layout": True,
+        "enable_ocr": False,
+        "enable_table": True,
+        "language": "en",
+        "use_doc_unwarping": settings.USE_DOC_UNWARPING,
+        "debug_mode": settings.DEBUG_MODE,
+    }
+
+    task = {
+        "task_id": job_id,
+        "status": "pending",
+        "progress": 0,
+        "message": "Job created",
+        "created_at": datetime.now(),
+        "completed_at": None,
+        "file_path": file_path,
+        "file_name": file.filename,
+        "options": options,
+        "result": None,
+        "envelope": None,  # Will be populated by phase1_envelope_step
+    }
+    tasks[job_id] = task
+
+    background_tasks.add_task(process_document, job_id)
+
+    return JobStatus(
+        job_id=job_id,
+        status="running",
+        progress=0,
+        message="Job created",
+        created_at=datetime.now(),
+    )
+
+
+@app.get("/api/v1/jobs/{job_id}", response_model=JobStatus)
+async def get_job_status(job_id: str):
+    """
+    Phase 1 API: Get current job status and progress.
+    """
+    task = tasks.get(job_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    return JobStatus(
+        job_id=job_id,
+        status=task.get("status"),
+        progress=task.get("progress", 0),
+        message=task.get("message", ""),
+        created_at=task.get("created_at"),
+        completed_at=task.get("completed_at"),
+    )
+
+
+@app.get("/api/v1/jobs/{job_id}/result", response_model=JobEnvelope)
+async def get_job_result(job_id: str):
+    """
+    Phase 1 API: Get the completed Envelope result.
+    Returns 404 if job not found or not completed.
+    Returns JobEnvelope with preprocessing, raw, fused, view, quality layers.
+    """
+    task = tasks.get(job_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if task.get("status") not in ("succeeded", "completed"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job not completed. Current status: {task.get('status')}"
+        )
+
+    envelope_dict = task.get("envelope")
+    if not envelope_dict:
+        raise HTTPException(
+            status_code=500,
+            detail="Job result envelope not found"
+        )
+
+    # Convert dict to JobEnvelope model
+    return JobEnvelope(**envelope_dict)
+
+
+@app.get("/api/v1/jobs/{job_id}/debug")
+async def get_job_debug(job_id: str):
+    """
+    Phase 1 API: Get debug artifacts (preprocessing, raw, fused, quality JSON + images).
+
+    Returns 404 if:
+    - Job not found
+    - DEBUG_MODE is disabled
+    - Job not completed
+
+    Returns a manifest with debug artifact paths and metadata.
+    """
+    if not settings.DEBUG_MODE:
+        raise HTTPException(
+            status_code=404,
+            detail="Debug mode is disabled"
+        )
+
+    task = tasks.get(job_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if task.get("status") != "succeeded":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job not completed. Current status: {task.get('status')}"
+        )
+
+    debug_dir = os.path.join(settings.DEBUG_OUTPUT_DIR, job_id)
+    if not os.path.exists(debug_dir):
+        raise HTTPException(
+            status_code=404,
+            detail="Debug artifacts not found"
+        )
+
+    # List debug files
+    debug_files = []
+    for filename in os.listdir(debug_dir):
+        filepath = os.path.join(debug_dir, filename)
+        if os.path.isfile(filepath):
+            debug_files.append({
+                "filename": filename,
+                "path": f"/api/v1/jobs/{job_id}/debug/{filename}",
+                "size": os.path.getsize(filepath),
+            })
+
+    return {
+        "job_id": job_id,
+        "debug_dir": debug_dir,
+        "artifacts": debug_files,
+    }
+
+
+@app.get("/api/v1/jobs/{job_id}/debug/{filename}")
+async def get_job_debug_file(job_id: str, filename: str):
+    """
+    Phase 1 API: Download a specific debug artifact file.
+    """
+    if not settings.DEBUG_MODE:
+        raise HTTPException(status_code=404, detail="Debug mode is disabled")
+
+    task = tasks.get(job_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    filepath = os.path.join(settings.DEBUG_OUTPUT_DIR, job_id, filename)
+
+    # Security: prevent directory traversal
+    if not os.path.abspath(filepath).startswith(os.path.abspath(settings.DEBUG_OUTPUT_DIR)):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(filepath)
+
+
+# ============================================
+# Legacy API Routes (Task-based, deprecated for Phase 1.1)
+# ============================================
 
 @app.get("/api/v1/tasks/{task_id}", response_model=TaskStatus)
 async def get_task_status(task_id: str):
@@ -1089,120 +1370,14 @@ async def get_task_result(task_id: str):
     task = tasks.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    if task["status"] != "completed":
+    if task.get("status") not in ("succeeded", "completed"):
         raise HTTPException(status_code=400, detail="Task not completed")
     return task["result"]
-
-
-def _load_canonical_document(canonical_raw: Any):
-    """Load CanonicalDocument from either dict (current) or JSON string (legacy)."""
-    from app.models.canonical_document import CanonicalDocument
-
-    if isinstance(canonical_raw, dict):
-        return CanonicalDocument.from_dict(canonical_raw)
-    if isinstance(canonical_raw, str):
-        return CanonicalDocument.from_json(canonical_raw)
-
-    raise TypeError(f"Unsupported canonical payload type: {type(canonical_raw).__name__}")
-
-
-@app.get("/api/v1/tasks/{task_id}/canonical")
-async def get_canonical_result(task_id: str, include_raw: bool = False, include_ocr_lines: bool = False):
-    """
-    Return the CanonicalDocument for a completed task.
-    Query params:
-      include_raw=true         – embed the full PaddleOCR raw payload
-      include_ocr_lines=true   – embed per-block OCR line details
-    """
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    if task["status"] != "completed":
-        raise HTTPException(status_code=400, detail="Task not completed")
-
-    result = task.get("result", {})
-    canonical_raw = result.get("canonical")
-    if not canonical_raw:
-        raise HTTPException(status_code=404, detail="Canonical document not available for this task")
-
-    # If the caller wants a stripped-down view, rebuild from the stored dict
-    try:
-        doc = _load_canonical_document(canonical_raw)
-        return doc.to_dict(include_raw_payload=include_raw, include_ocr_lines=include_ocr_lines)
-    except Exception as e:
-        logger.warning(f"Task {task_id}: Failed to deserialise canonical doc, returning raw: {e}")
-        return canonical_raw
-
-
-class RemappingRequest(BaseModel):
-    rules_path: str | None = None   # Optional override path to a YAML rules file
-    doc_type_hint: str | None = None  # e.g. "invoice", "contract", "unknown"
-    invalidate_cache: bool = False   # Force reload of cached rule set
-
-
-@app.post("/api/v1/tasks/{task_id}/remapping")
-async def remap_task_canonical(task_id: str, body: RemappingRequest):
-    """
-    Re-apply semantic mapping rules to a previously processed task without
-    re-running OCR/layout.  Useful after editing semantic_mapping_base.yaml.
-    Returns the updated canonical summary.
-    """
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    if task["status"] != "completed":
-        raise HTTPException(status_code=400, detail="Task not completed (only completed tasks can be remapped)")
-
-    result = task.get("result", {})
-    canonical_raw = result.get("canonical")
-    if not canonical_raw:
-        raise HTTPException(status_code=404, detail="No canonical document stored for this task — run full analysis first")
-
-    try:
-        from app.services.canonical_converter import remap_canonical_doc, invalidate_rule_cache
-        if body.invalidate_cache:
-            invalidate_rule_cache()
-
-        # remap_canonical_doc currently expects a serialised dict payload and
-        # returns (updated_dict, changed_count).
-        if isinstance(canonical_raw, dict):
-            canonical_dict = canonical_raw
-        else:
-            canonical_dict = _load_canonical_document(canonical_raw).to_dict(include_raw_payload=True)
-
-        current_taxonomy = str(canonical_dict.get("taxonomy_version", "azure-like-v1"))
-        updated_canonical, changed_blocks = remap_canonical_doc(
-            canonical_dict=canonical_dict,
-            new_taxonomy_version=current_taxonomy,
-            doc_type=body.doc_type_hint,
-            rules_path=body.rules_path,
-        )
-
-        from app.models.canonical_document import CanonicalDocument
-        updated_doc = CanonicalDocument.from_dict(updated_canonical)
-
-        result["canonical"] = updated_canonical
-        result["canonical_summary"] = updated_doc.summary()
-        logger.info(
-            f"Task {task_id}: Remapping completed | changed_blocks={changed_blocks} | "
-            f"summary={updated_doc.summary()}"
-        )
-        return {
-            "task_id": task_id,
-            "status": "ok",
-            "changed_blocks": changed_blocks,
-            "canonical_summary": updated_doc.summary(),
-        }
-    except Exception as e:
-        logger.error(f"Task {task_id}: Remapping failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Remapping failed: {str(e)}")
-
 
 @app.get("/api/v1/tasks/{task_id}/layout")
 async def get_unified_layout_analysis(task_id: str, page_number: int = 1):
     """
-    获取统一格式的版面分析结果
-    Returns unified layout analysis result in standard format
+    获取统一格式的版面分析结�?    Returns unified layout analysis result in standard format
     """
     task = tasks.get(task_id)
     if not task:
@@ -1238,8 +1413,7 @@ async def get_unified_layout_analysis(task_id: str, page_number: int = 1):
 
         if not layout_result:
             logger.warning(f"[Layout API] No layout data in result for task {task_id}")
-            # 返回空结果而不是错误
-            from app.models.layout_result import LayoutAnalysisResult
+            # 返回空结果而不是错�?            from app.models.layout_result import LayoutAnalysisResult
             empty_result = LayoutAnalysisResult()
             return empty_result.to_dict()
 
@@ -1253,7 +1427,7 @@ async def get_unified_layout_analysis(task_id: str, page_number: int = 1):
                 page_number=page_number
             )
 
-            logger.info(f"[Layout API] ✓ Successfully analyzed layout with {len(unified_result.elements)} elements")
+            logger.info(f"[Layout API] �?Successfully analyzed layout with {len(unified_result.elements)} elements")
             return unified_result.to_dict()
 
         except Exception as e:
@@ -1264,7 +1438,7 @@ async def get_unified_layout_analysis(task_id: str, page_number: int = 1):
             return empty_result.to_dict()
 
     except Exception as e:
-        logger.error(f"[Layout API] ❌ Error getting unified layout analysis: {e}", exc_info=True)
+        logger.error(f"[Layout API] �?Error getting unified layout analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
@@ -1288,46 +1462,91 @@ def _normalize_flat_bbox(raw_bbox: Any) -> List[float]:
 
 @app.get("/api/v1/tasks/{task_id}/blocks")
 async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int = 120):
-    """Return frontend-oriented flat blocks payload (blocks-only, no lines/words)."""
+    """Return frontend-oriented flat blocks payload from the view layer."""
     task = tasks.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    if task.get("status") != "completed":
+    if task.get("status") not in ("succeeded", "completed"):
         raise HTTPException(status_code=400, detail="Task not completed")
 
-    result = task.get("result", {}) or {}
-    page_meta = (result.get("document_info", {}) or {}).get("page_image_meta", {}) or {}
-    image_width = int(page_meta.get("width_px", 0) or 0)
-    image_height = int(page_meta.get("height_px", 0) or 0)
+    # Primary source: view layer from Phase 1 envelope
+    envelope = task.get("envelope") or {}
+    view_layer = envelope.get("view") or {}
+    preprocessing = envelope.get("preprocessing") or {}
 
-    grouped_fields: Dict[str, List[str]] = {}
-    entities_grouped = result.get("entities_grouped") or {}
-    for key, values in entities_grouped.items():
-        grouped_fields[str(key)] = [str(v) for v in values]
+    # Derive image dimensions from preprocessing metadata
+    coord_space = preprocessing.get("coordinate_space", "preprocessed")
+    if coord_space == "original":
+        size_dict = preprocessing.get("input_size") or {}
+    else:
+        size_dict = preprocessing.get("output_size") or preprocessing.get("input_size") or {}
+    image_width = int(size_dict.get("width", 0) or 0)
+    image_height = int(size_dict.get("height", 0) or 0)
+
+    # Fallback to legacy page_image_meta when envelope not present
+    if image_width == 0 or image_height == 0:
+        result = task.get("result", {}) or {}
+        page_meta = (result.get("document_info", {}) or {}).get("page_image_meta", {}) or {}
+        image_width = image_width or int(page_meta.get("width_px", 0) or 0)
+        image_height = image_height or int(page_meta.get("height_px", 0) or 0)
 
     blocks: List[Dict[str, Any]] = []
-    semantic_blocks = result.get("semantic_text_blocks") or []
-    if semantic_blocks:
-        source_blocks = semantic_blocks
-    elif result.get("layout", {}).get("elements"):
-        source_blocks = result.get("layout", {}).get("elements", [])
+
+    # Build blocks from view layer pages
+    view_pages = view_layer.get("pages", [])
+    view_page = next((p for p in view_pages if p.get("page_num", 1) == page_number), None)
+
+    if view_page is not None:
+        # Use page-level dimensions if available
+        image_width = image_width or int(view_page.get("width", 0) or 0)
+        image_height = image_height or int(view_page.get("height", 0) or 0)
+        for elem in view_page.get("elements", []):
+            if not isinstance(elem, dict):
+                continue
+            polygon = elem.get("polygon") or []
+            # Convert flat polygon [x0,y0,x1,y0,x1,y1,x0,y1] → bbox [x0,y0,x1,y1]
+            if len(polygon) >= 4:
+                xs = [polygon[i] for i in range(0, len(polygon), 2)]
+                ys = [polygon[i] for i in range(1, len(polygon), 2)]
+                bbox = [min(xs), min(ys), max(xs), max(ys)]
+            else:
+                bbox = [0.0, 0.0, 0.0, 0.0]
+            payload = elem.get("payload") or {}
+            text = str(payload.get("text") or "")
+            confidence = float(payload.get("confidence", 0) or 0)
+            blocks.append({
+                "id": elem.get("id") or f"block_{len(blocks)}",
+                "page": page_number,
+                "role": elem.get("kind", "paragraph"),
+                "confidence": confidence,
+                "score": confidence,
+                "bbox": bbox,
+                "text": text,
+                "content": text,
+                "content_truncated": text[:content_limit],
+                "processing_status": elem.get("processing_status", "succeeded"),
+            })
     else:
-        source_blocks = result.get("text_blocks", [])
-
-    for idx, block in enumerate(source_blocks):
-        if not isinstance(block, dict):
-            continue
-        page = int(block.get("page", page_number) or page_number)
-        if page != page_number:
-            continue
-        text = str(block.get("text") or block.get("content") or "")
-        bbox = _normalize_flat_bbox(block.get("bbox") or block.get("bounding_box"))
-        score = block.get("score")
-        confidence = float(block.get("confidence", score if score is not None else 0) or 0)
-        role = str(block.get("semantic_role") or block.get("type") or block.get("element_type") or "Paragraph")
-
-        blocks.append(
-            {
+        # Fallback: read from legacy result layout elements
+        result = task.get("result", {}) or {}
+        source_blocks = (
+            result.get("semantic_text_blocks")
+            or result.get("layout", {}).get("elements")
+            or result.get("text_blocks")
+            or []
+        )
+        for idx, block in enumerate(source_blocks):
+            if not isinstance(block, dict):
+                continue
+            page = int(block.get("page", page_number) or page_number)
+            if page != page_number:
+                continue
+            text = str(block.get("text") or block.get("content") or "")
+            bbox = _normalize_flat_bbox(block.get("bbox") or block.get("bounding_box"))
+            score = block.get("score")
+            confidence = float(block.get("confidence", score if score is not None else 0) or 0)
+            role = str(block.get("semantic_role") or block.get("type") or block.get("element_type") or "Paragraph")
+            blocks.append({
                 "id": block.get("id") or block.get("block_id") or f"block_{idx}",
                 "page": page,
                 "role": role,
@@ -1337,16 +1556,14 @@ async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int
                 "text": text,
                 "content": text,
                 "content_truncated": text[:content_limit],
-            }
-        )
+            })
 
     return {
         "task_id": task_id,
         "page": page_number,
         "image_width": image_width,
         "image_height": image_height,
-        "coord_space": page_meta.get("coord_space", "image_abs_px"),
-        "grouped_fields": grouped_fields,
+        "coord_space": coord_space,
         "blocks": blocks,
     }
 
@@ -1438,7 +1655,7 @@ async def export_result(task_id: str, format: str):
     task = tasks.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    if task["status"] != "completed":
+    if task.get("status") not in ("succeeded", "completed"):
         raise HTTPException(status_code=400, detail="Task not completed")
 
     result = task["result"]
@@ -1479,7 +1696,7 @@ async def cancel_task(task_id: str):
     task = tasks[task_id]
     status = task.get("status")
 
-    if status in ["completed", "failed", "cancelled"]:
+    if status in ["succeeded", "completed", "failed", "cancelled"]:
         raise HTTPException(status_code=400, detail=f"Cannot cancel task with status: {status}")
 
     # Set cancellation flag
@@ -1523,134 +1740,78 @@ async def delete_task(task_id: str):
 # API Routes - NLP (P2)
 # ============================================
 
-@app.post("/api/v1/nlp/analyze")
+def _raise_deprecated_route(path: str) -> None:
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            f"Route '{path}' has been deprecated and is no longer available in the service-only profile. "
+            "Supported core routes are OCR/Layout/Table and Batch processing."
+        ),
+    )
+
+
+@app.post("/api/v1/nlp/analyze", deprecated=True)
 async def analyze_text_nlp(request: NLPAnalysisRequest):
-    """Analyze text for keywords and entities"""
-    try:
-        result = await call_maybe_async(
-            nlp_service.analyze_text,
-            request.text,
-            top_k_keywords=request.top_k_keywords,
-            engine=request.engine
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Deprecated: NLP route is no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/nlp/analyze")
 
 
-@app.post("/api/v1/nlp/keywords")
+@app.post("/api/v1/nlp/keywords", deprecated=True)
 async def extract_keywords(request: NLPAnalysisRequest):
-    """Extract keywords from text"""
-    if not nlp_service:
-        raise HTTPException(status_code=503, detail="NLP service is not available in PaddleOCR-only version")
-    try:
-        result = await call_maybe_async(
-            nlp_service.extract_keywords,
-            request.text,
-            top_k=request.top_k_keywords,
-            engine=request.engine
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Deprecated: NLP route is no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/nlp/keywords")
 
 
-@app.post("/api/v1/nlp/entities")
+@app.post("/api/v1/nlp/entities", deprecated=True)
 async def extract_entities(request: NLPAnalysisRequest):
-    """Extract named entities from text"""
-    if not nlp_service:
-        raise HTTPException(status_code=503, detail="NLP service is not available in PaddleOCR-only version")
-    try:
-        result = await call_maybe_async(
-            nlp_service.extract_entities,
-            request.text,
-            engine=request.engine
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Deprecated: NLP route is no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/nlp/entities")
 
 
 # ============================================
 # API Routes - Templates (P2)
 # ============================================
 
-@app.get("/api/v1/templates")
+@app.get("/api/v1/templates", deprecated=True)
 async def list_templates(category: Optional[str] = None):
-    """List all available templates"""
-    return {
-        "templates": template_service.list_templates(category),
-        "categories": ["financial", "identity", "contact", "legal", "custom"]
-    }
+    """Deprecated: template routes are no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/templates")
 
 
-@app.get("/api/v1/templates/{template_id}")
+@app.get("/api/v1/templates/{template_id}", deprecated=True)
 async def get_template(template_id: str):
-    """Get template details"""
-    template = template_service.get_template(template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return template.to_dict()
+    """Deprecated: template routes are no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/templates/{template_id}")
 
 
-@app.post("/api/v1/templates")
+@app.post("/api/v1/templates", deprecated=True)
 async def create_template(template_data: CreateTemplateModel):
-    """Create a custom template"""
-    try:
-        data = template_data.dict()
-        data["fields"] = [{"name": f.name, "label": f.label, "field_type": f.field_type,
-                          "required": f.required, "patterns": f.patterns,
-                          "description": f.description} for f in template_data.fields]
-        template = template_service.create_template(data)
-        return template.to_dict()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Deprecated: template routes are no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/templates")
 
 
-@app.delete("/api/v1/templates/{template_id}")
+@app.delete("/api/v1/templates/{template_id}", deprecated=True)
 async def delete_template(template_id: str):
-    """Delete a custom template"""
-    try:
-        success = template_service.delete_template(template_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="Template not found")
-        return {"message": "Template deleted", "template_id": template_id}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    """Deprecated: template routes are no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/templates/{template_id}")
 
 
-@app.post("/api/v1/templates/{template_id}/extract")
+@app.post("/api/v1/templates/{template_id}/extract", deprecated=True)
 async def extract_with_template(template_id: str, text: str = Form(...)):
-    """Extract fields using a specific template"""
-    try:
-        result = await call_maybe_async(template_service.extract_fields, template_id, text)
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Deprecated: template routes are no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/templates/{template_id}/extract")
 
 
-@app.post("/api/v1/templates/auto-extract")
+@app.post("/api/v1/templates/auto-extract", deprecated=True)
 async def auto_extract_template(text: str = Form(...)):
-    """Auto-detect template and extract fields"""
-    try:
-        result = await call_maybe_async(template_service.auto_extract, text)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Deprecated: template routes are no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/templates/auto-extract")
 
 
-@app.post("/api/v1/templates/match")
+@app.post("/api/v1/templates/match", deprecated=True)
 async def match_templates(text: str = Form(...)):
-    """Match text against templates"""
-    matches = template_service.match_template(text)
-    return {
-        "matches": [
-            {"template_id": tid, "score": score}
-            for tid, score in matches
-        ]
-    }
+    """Deprecated: template routes are no longer available in service-only profile."""
+    _raise_deprecated_route("/api/v1/templates/match")
 
 
 # ============================================
@@ -1777,14 +1938,6 @@ async def start_batch(batch_id: str, background_tasks: BackgroundTasks):
             )
             result["tables"] = table_result
 
-        # NLP
-        if options.get("enable_nlp", True) and nlp_service:
-            full_text = result.get("full_text", "")
-            if full_text:
-                nlp_result = await call_maybe_async(nlp_service.analyze_text, full_text)
-                result["keywords"] = [kw["keyword"] for kw in nlp_result.get("keywords", [])]
-                result["entities"] = nlp_result.get("entities", [])
-
         return result
 
     try:
@@ -1883,14 +2036,11 @@ async def startup_event():
     except Exception:
         # Avoid failing startup due to logging issues
         pass
-    logger.info(f"P1 Features: OCR, Layout, Table, Export")
-    logger.info(f"P2 Features: Template, Batch, NLP")
+    logger.info(f"Features: OCR, Layout, Table, Export, Batch")
     logger.info("-" * 60)
     logger.info(f"OCR Engines: {ocr_service.get_available_engines()}")
     logger.info(f"Layout Engines: {layout_service.get_available_engines()}")
     logger.info(f"Table Engines: {table_service.get_available_engines()}")
-    logger.info(f"NLP Engines: {nlp_service.get_available_engines() if nlp_service else 'N/A (disabled in PaddleOCR-only version)'}")
-    logger.info(f"Templates: {len(template_service.templates)} available")
     logger.info("=" * 60)
 
 

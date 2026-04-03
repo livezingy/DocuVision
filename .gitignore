@@ -154,10 +154,13 @@ site/
 # User-requested local-only directories
 .cursor/
 .devcontainer/
-.qcoder/
+.qoder/
 .vscode/
 docker/
-docs/
+docs/*
+!docs/architecture/
+!docs/architecture/智能文档处理系统设计方案.md
+docs/R&D/**
 # Tests: ignore __pycache__ and result artefacts but commit source files
 tests/**/__pycache__/
 backend/tests/__pycache__/

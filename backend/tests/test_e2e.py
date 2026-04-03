@@ -31,7 +31,7 @@ TEST_DATA_DIR = PROJECT_ROOT / "test_data"
 
 class TestUserScenarios:
     """用户场景测试 - 模拟真实用户使用流程"""
-    
+
     @pytest.fixture(autouse=True)
     def setup(self):
         """测试前检查"""
@@ -42,19 +42,19 @@ class TestUserScenarios:
                 pytest.skip("Server not running")
         except:
             pytest.skip("Server not running")
-    
+
     def test_scenario_1_quick_ocr(self):
         """
         用户场景 1: 快速 OCR 文本提取
         用户需求: 上传一张图片，快速提取文本
         """
         print(f"\n{INFO} 场景 1: 快速 OCR 文本提取")
-        
+
         # 查找测试图片
         test_file = TEST_DATA_DIR / "images" / "scanned" / "scanned_page_01.jpg"
         if not test_file.exists():
             pytest.skip(f"Test file not found: {test_file}")
-        
+
         # 用户操作: 上传文件进行 OCR
         with open(test_file, "rb") as f:
             files = {"file": (test_file.name, f, "image/jpeg")}
@@ -63,31 +63,31 @@ class TestUserScenarios:
                 files=files,
                 timeout=30
             )
-        
+
         # 验证结果
         assert response.status_code == 200, f"OCR failed: {response.status_code}"
         data = response.json()
-        
+
         assert "text" in data, "Missing text field"
         assert "engine" in data, "Missing engine field"
         assert len(data.get("text", "")) > 0, "No text extracted"
-        
+
         print(f"{PASS} OCR 成功: 提取了 {len(data['text'])} 个字符")
         print(f"   使用引擎: {data.get('engine', 'unknown')}")
         print(f"   置信度: {data.get('confidence', 0):.2f}")
-    
+
     def test_scenario_2_complete_document_analysis(self):
         """
         用户场景 2: 完整文档分析
         用户需求: 上传 PDF，进行完整的 OCR + Layout + Table + NLP 分析
         """
         print(f"\n{INFO} 场景 2: 完整文档分析")
-        
+
         # 查找测试 PDF
         test_file = TEST_DATA_DIR / "pdf" / "text_based" / "sample_report.pdf"
         if not test_file.exists():
             pytest.skip(f"Test file not found: {test_file}")
-        
+
         # 步骤 1: 用户提交文档分析任务
         with open(test_file, "rb") as f:
             files = {"file": (test_file.name, f, "application/pdf")}
@@ -103,41 +103,41 @@ class TestUserScenarios:
                 data=data,
                 timeout=30
             )
-        
+
         assert response.status_code == 200, f"Analysis failed: {response.status_code}"
         task_data = response.json()
         task_id = task_data["task_id"]
-        
+
         print(f"{INFO} 任务已创建: {task_id}")
         print(f"   初始状态: {task_data['status']}")
-        
+
         # 步骤 2: 用户等待处理完成（轮询状态）
         max_wait = 300  # 最多等待 5 分钟（增加超时时间）
         wait_interval = 3  # 每 3 秒查询一次
         elapsed = 0
         last_status = None
-        
+
         while elapsed < max_wait:
             time.sleep(wait_interval)
             elapsed += wait_interval
-            
+
             try:
                 # 增加超时时间到30秒
                 response = requests.get(f"{API_BASE_URL}/tasks/{task_id}", timeout=30)
                 if response.status_code != 200:
                     print(f"{WARN} 查询任务状态失败: {response.status_code}")
                     continue
-                
+
                 task_status = response.json()
                 status = task_status["status"]
                 progress = task_status.get("progress", 0)
                 message = task_status.get("message", "")
-                
+
                 # 只在状态变化时打印
                 if status != last_status:
                     print(f"   状态: {status}, 进度: {progress}%, 消息: {message}")
                     last_status = status
-                
+
                 if status == "completed":
                     # 步骤 3: 用户获取完整结果
                     result_response = requests.get(
@@ -146,18 +146,18 @@ class TestUserScenarios:
                     )
                     assert result_response.status_code == 200, "Failed to get result"
                     result = result_response.json()
-                    
+
                     # 验证结果完整性
                     assert "document_info" in result, "Missing document_info"
                     assert "text_blocks" in result or "full_text" in result, "Missing text"
-                    
+
                     print(f"{PASS} 文档分析完成")
                     print(f"   页面数: {result.get('document_info', {}).get('pages', 0)}")
                     print(f"   文本块: {len(result.get('text_blocks', []))}")
                     print(f"   表格数: {len(result.get('tables', []))}")
                     print(f"   关键词数: {len(result.get('keywords', []))}")
                     return
-                
+
                 elif status == "failed":
                     error_msg = task_status.get("message", "Unknown error")
                     pytest.fail(f"Task failed: {error_msg}")
@@ -167,21 +167,21 @@ class TestUserScenarios:
             except Exception as e:
                 print(f"{WARN} 查询任务状态异常: {e}")
                 continue
-        
+
         pytest.fail(f"Task not completed within {max_wait} seconds")
-    
+
     def test_scenario_3_invoice_extraction(self):
         """
         用户场景 3: 发票信息提取
         用户需求: 上传发票，提取关键字段（发票号、日期、金额等）
         """
         print(f"\n{INFO} 场景 3: 发票信息提取")
-        
+
         # 查找发票测试文件
         test_file = TEST_DATA_DIR / "templates" / "invoice" / "invoice_sample_01.pdf"
         if not test_file.exists():
             pytest.skip(f"Test file not found: {test_file}")
-        
+
         # 步骤 1: OCR 提取文本
         with open(test_file, "rb") as f:
             files = {"file": (test_file.name, f, "application/pdf")}
@@ -190,35 +190,39 @@ class TestUserScenarios:
                 files=files,
                 timeout=30
             )
-        
+
         assert response.status_code == 200, "OCR failed"
         ocr_result = response.json()
         extracted_text = ocr_result.get("text", "")
-        
+
         if len(extracted_text) == 0:
             pytest.skip("No text extracted from invoice")
-        
+
         print(f"{INFO} OCR 提取了 {len(extracted_text)} 个字符")
-        
+
         # 步骤 2: 模板匹配提取字段
         response = requests.post(
             f"{API_BASE_URL}/templates/match",
             data={"text": extracted_text},
             timeout=10
         )
-        
+
+        # Service-only profile deprecates template APIs with 410 Gone.
+        if response.status_code == 410:
+            pytest.skip("Template APIs are deprecated in service-only profile (HTTP 410)")
+
         assert response.status_code == 200, "Template matching failed"
         match_result = response.json()
-        
+
         # 验证匹配结果
         assert "matches" in match_result, "Missing matches"
         matches = match_result["matches"]
-        
+
         if len(matches) > 0:
             best_match = matches[0]
             print(f"{PASS} 找到匹配模板: {best_match.get('template_id', 'unknown')}")
             print(f"   匹配分数: {best_match.get('score', 0):.2f}")
-            
+
             if "fields" in best_match:
                 fields = best_match["fields"]
                 print(f"   提取字段数: {len(fields)}")
@@ -226,34 +230,34 @@ class TestUserScenarios:
                     print(f"     {key}: {value}")
         else:
             print(f"{WARN} 未找到匹配的模板")
-    
+
     def test_scenario_4_batch_processing(self):
         """
         用户场景 4: 批量处理多个文档
         用户需求: 上传多个文件，批量处理
         """
         print(f"\n{INFO} 场景 4: 批量处理多个文档")
-        
+
         # 查找多个测试文件
         test_files = [
             TEST_DATA_DIR / "pdf" / "text_based" / "sample_report.pdf",
             TEST_DATA_DIR / "images" / "scanned" / "scanned_page_01.jpg",
         ]
-        
+
         existing_files = [f for f in test_files if f.exists()]
         if len(existing_files) < 2:
             pytest.skip(f"Need at least 2 test files, found {len(existing_files)}")
-        
+
         # 步骤 1: 用户创建批量任务
         files = []
         for test_file in existing_files[:2]:  # 只使用前 2 个文件
             files.append(("files", (test_file.name, open(test_file, "rb"), "application/octet-stream")))
-        
+
         data = {
             "name": "E2E Test Batch",
             "options": '{"enable_ocr": true, "enable_layout": true}'
         }
-        
+
         try:
             response = requests.post(
                 f"{API_BASE_URL}/batch",
@@ -261,48 +265,48 @@ class TestUserScenarios:
                 data=data,
                 timeout=30
             )
-            
+
             assert response.status_code == 200, f"Batch creation failed: {response.status_code}"
             batch_data = response.json()
             batch_id = batch_data["batch_id"]
-            
+
             print(f"{INFO} 批量任务已创建: {batch_id}")
             print(f"   文件数: {batch_data.get('total_tasks', 0)}")
-            
+
             # 步骤 2: 启动批量处理
             start_response = requests.post(f"{API_BASE_URL}/batch/{batch_id}/start", timeout=30)
             if start_response.status_code == 200:
                 print(f"{INFO} 批量任务已启动")
             else:
                 print(f"{WARN} 启动批量任务失败: {start_response.status_code}")
-            
+
             # 步骤 3: 用户查询批量任务状态
             max_wait = 300  # 最多等待 5 分钟
             wait_interval = 3
             elapsed = 0
             last_status = None
-            
+
             while elapsed < max_wait:
                 time.sleep(wait_interval)
                 elapsed += wait_interval
-                
+
                 try:
                     response = requests.get(f"{API_BASE_URL}/batch/{batch_id}", timeout=30)
                     if response.status_code != 200:
                         print(f"{WARN} 查询批量状态失败: {response.status_code}")
                         continue
-                    
+
                     batch_status = response.json()
                     status = batch_status["status"]
                     completed = batch_status.get("completed_tasks", 0)
                     total = batch_status.get("total_tasks", 0)
                     progress = batch_status.get("progress", 0)
-                    
+
                     # 只在状态变化时打印
                     if status != last_status:
                         print(f"   状态: {status}, 完成: {completed}/{total} ({progress}%)")
                         last_status = status
-                    
+
                     if status == "completed":
                         # 步骤 4: 用户获取批量结果
                         results_response = requests.get(
@@ -311,7 +315,7 @@ class TestUserScenarios:
                         )
                         assert results_response.status_code == 200, "Failed to get batch results"
                         results = results_response.json()
-                        
+
                         print(f"{PASS} 批量处理完成")
                         print(f"   结果数: {len(results.get('results', []))}")
                         return
@@ -324,27 +328,27 @@ class TestUserScenarios:
                 except Exception as e:
                     print(f"{WARN} 查询批量状态异常: {e}")
                     continue
-            
+
             pytest.fail(f"Batch not completed within {max_wait} seconds")
-        
+
         finally:
             # 关闭文件
             for _, (_, file_obj, _) in files:
                 if hasattr(file_obj, 'close'):
                     file_obj.close()
-    
+
     def test_scenario_5_export_results(self):
         """
         用户场景 5: 导出处理结果
         用户需求: 处理文档后，导出为不同格式（JSON、Excel、Word）
         """
         print(f"\n{INFO} 场景 5: 导出处理结果")
-        
+
         # 查找测试文件
         test_file = TEST_DATA_DIR / "pdf" / "text_based" / "sample_report.pdf"
         if not test_file.exists():
             pytest.skip(f"Test file not found: {test_file}")
-        
+
         # 步骤 1: 处理文档
         with open(test_file, "rb") as f:
             files = {"file": (test_file.name, f, "application/pdf")}
@@ -355,47 +359,47 @@ class TestUserScenarios:
                 data=data,
                 timeout=60  # 增加上传超时时间
             )
-        
+
         assert response.status_code == 200, "Analysis failed"
         task_id = response.json()["task_id"]
-        
+
         # 等待处理完成（增加超时时间）
         max_wait = 300  # 增加到5分钟
         wait_interval = 3
         elapsed = 0
         last_status = None
-        
+
         while elapsed < max_wait:
             time.sleep(wait_interval)
             elapsed += wait_interval
-            
+
             try:
                 response = requests.get(f"{API_BASE_URL}/tasks/{task_id}", timeout=30)
                 if response.status_code != 200:
                     print(f"{WARN} 查询任务状态失败: {response.status_code}")
                     continue
-                
+
                 task_status = response.json()
                 status = task_status["status"]
                 progress = task_status.get("progress", 0)
                 message = task_status.get("message", "")
-                
+
                 # 只在状态变化时打印
                 if status != last_status:
                     print(f"   状态: {status}, 进度: {progress}%, 消息: {message}")
                     last_status = status
-                
+
                 if status == "completed":
                     # 步骤 2: 用户导出为不同格式
                     export_formats = ["json", "xlsx", "docx"]
-                    
+
                     for fmt in export_formats:
                         try:
                             response = requests.get(
                                 f"{API_BASE_URL}/tasks/{task_id}/export/{fmt}",
                                 timeout=30
                             )
-                            
+
                             if response.status_code == 200:
                                 print(f"{PASS} 导出 {fmt.upper()} 成功")
                                 if fmt == "json":
@@ -409,7 +413,7 @@ class TestUserScenarios:
                                 print(f"{WARN} 导出 {fmt.upper()} 失败: {response.status_code}")
                         except Exception as e:
                             print(f"{WARN} 导出 {fmt.upper()} 异常: {e}")
-                    
+
                     return
                 elif status == "failed":
                     error_msg = task_status.get("message", "Unknown error")
@@ -420,13 +424,13 @@ class TestUserScenarios:
             except Exception as e:
                 print(f"{WARN} 查询任务状态异常: {e}")
                 continue
-        
+
         pytest.skip(f"Task not completed within {max_wait} seconds, cannot test export")
 
 
 class TestEndToEndWorkflow:
     """端到端工作流测试 - 完整业务流程"""
-    
+
     def test_full_workflow_document_processing(self):
         """
         完整工作流: 文档处理全流程
@@ -438,14 +442,14 @@ class TestEndToEndWorkflow:
         6. 结果导出
         """
         print(f"\n{INFO} 端到端工作流: 文档处理全流程")
-        
+
         # 步骤 1: 健康检查
         response = requests.get(f"{BASE_URL}/health", timeout=5)
         assert response.status_code == 200, "Health check failed"
         health_data = response.json()
         assert health_data["status"] == "healthy", "Service not healthy"
         print(f"{PASS} 步骤 1: 健康检查通过")
-        
+
         # 步骤 2: 查看可用引擎
         response = requests.get(f"{API_BASE_URL}/engines", timeout=5)
         assert response.status_code == 200, "Engines API failed"
@@ -453,14 +457,14 @@ class TestEndToEndWorkflow:
         print(f"{PASS} 步骤 2: 可用引擎查询成功")
         print(f"   OCR: {engines_data.get('ocr', {}).get('available', [])}")
         print(f"   Layout: {engines_data.get('layout', {}).get('available', [])}")
-        
+
         # 步骤 3: OCR 提取文本（如果有测试文件）
         test_file = TEST_DATA_DIR / "images" / "scanned" / "scanned_page_01.jpg"
         if test_file.exists():
             with open(test_file, "rb") as f:
                 files = {"file": (test_file.name, f, "image/jpeg")}
                 response = requests.post(f"{API_BASE_URL}/ocr", files=files, timeout=30)
-            
+
             if response.status_code == 200:
                 ocr_data = response.json()
                 print(f"{PASS} 步骤 3: OCR 提取成功")
@@ -469,14 +473,20 @@ class TestEndToEndWorkflow:
                 print(f"{WARN} 步骤 3: OCR 提取失败")
         else:
             print(f"{SKIP} 步骤 3: 跳过 OCR（测试文件不存在）")
-        
+
         # 步骤 4: 模板列表
         response = requests.get(f"{API_BASE_URL}/templates", timeout=5)
+        # Service-only profile deprecates template APIs with 410 Gone.
+        if response.status_code == 410:
+            print(f"{SKIP} 步骤 4: 模板接口已在 service-only 配置中弃用 (HTTP 410)")
+            print(f"{PASS} 端到端工作流测试完成")
+            return
+
         assert response.status_code == 200, "Templates API failed"
         templates_data = response.json()
         print(f"{PASS} 步骤 4: 模板列表查询成功")
         print(f"   可用模板数: {len(templates_data.get('templates', []))}")
-        
+
         print(f"{PASS} 端到端工作流测试完成")
 
 
@@ -495,17 +505,17 @@ if __name__ == "__main__":
     print("从用户使用角度测试系统功能")
     print("=" * 60)
     print()
-    
+
     # 检查服务器是否运行
     if not check_server_running():
         print(f"{FAIL} 服务器未运行！")
         print("请先启动服务: python run.py")
         print("然后运行此测试脚本")
         sys.exit(1)
-    
+
     print(f"{PASS} 服务器运行中，开始端到端测试...")
     print()
-    
+
     # 运行所有测试
     pytest.main([__file__, "-v", "-s"])
 

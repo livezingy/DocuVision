@@ -417,34 +417,58 @@ class PPStructureEngine(BaseLayoutEngine):
             else:
                 result = self._call_engine(img_path, vis_src_path=img_path)
 
-        # Extract preprocessed output image when PaddleOCR applied unwarping.
-        # This image must be served to the frontend so that bbox coordinates
-        # (which live in output_img space) align with the displayed image.
+        # Extract preprocessed output image and preprocessing metadata.
+        # Save output_img whenever doc_preprocessor ran (rotation OR unwarping),
+        # so the fused layer always has a stable preprocessed coordinate space.
         preprocessed_path = None
         preprocessed_w = None
         preprocessed_h = None
+        angle_deg = 0.0
+        use_doc_unwarping = False
+        use_doc_orientation_classify = True
+        input_w = 0
+        input_h = 0
         try:
             _first = result[0] if result else None
             if _first is not None:
                 _doc_pre2 = _first.get('doc_preprocessor_res') if hasattr(_first, 'get') else None
                 if _doc_pre2 is not None:
                     _ms2 = _doc_pre2.get('model_settings', {}) or {}
-                    if bool(_ms2.get('use_doc_unwarping', False)):
-                        _out_img = _doc_pre2.get('output_img')
-                        if _out_img is not None:
-                            prep_path = f"{img_path}_preprocessed.png"
-                            if _out_img.shape[2] == 3:
-                                cv2.imwrite(prep_path, cv2.cvtColor(_out_img, cv2.COLOR_RGB2BGR))
-                            else:
-                                cv2.imwrite(prep_path, _out_img)
-                            preprocessed_path = prep_path
-                            preprocessed_h, preprocessed_w = _out_img.shape[:2]
-                            logger.info(
-                                f"[Preprocess] Saved unwarped output_img: {prep_path} "
-                                f"({preprocessed_w}x{preprocessed_h})"
-                            )
+                    use_doc_unwarping = bool(_ms2.get('use_doc_unwarping', False))
+                    use_doc_orientation_classify = bool(_ms2.get('use_doc_orientation_classify', True))
+                    _raw_angle = _doc_pre2.get('angle', -1)
+                    angle_deg = float(_raw_angle) if _raw_angle is not None and float(_raw_angle) >= 0 else 0.0
+                    _in_img = _doc_pre2.get('input_img')
+                    if _in_img is not None:
+                        input_h, input_w = _in_img.shape[:2]
+                    _out_img = _doc_pre2.get('output_img')
+                    if _out_img is not None:
+                        prep_path = f"{img_path}_preprocessed.png"
+                        if _out_img.shape[2] == 3:
+                            cv2.imwrite(prep_path, cv2.cvtColor(_out_img, cv2.COLOR_RGB2BGR))
+                        else:
+                            cv2.imwrite(prep_path, _out_img)
+                        preprocessed_path = prep_path
+                        preprocessed_h, preprocessed_w = _out_img.shape[:2]
+                        logger.info(
+                            f"[Preprocess] Saved output_img: {prep_path} "
+                            f"({preprocessed_w}x{preprocessed_h}) "
+                            f"angle={angle_deg} unwarping={use_doc_unwarping}"
+                        )
         except Exception as _exc2:
-            logger.debug(f"[Preprocess] Failed to save preprocessed image: {_exc2}")
+            logger.debug(f"[Preprocess] Failed to extract preprocessing metadata: {_exc2}")
+
+        # Fallback: if no preprocessed image was saved, use the original image dimensions
+        if input_w == 0 or input_h == 0:
+            try:
+                from PIL import Image as _PILImage
+                with _PILImage.open(img_path) as _img_probe:
+                    input_w, input_h = _img_probe.size
+            except Exception:
+                pass
+        if preprocessed_w is None:
+            preprocessed_w = input_w
+            preprocessed_h = input_h
 
         elements = self._parse_result(result, 1)
 
@@ -453,7 +477,13 @@ class PPStructureEngine(BaseLayoutEngine):
             "total_pages": 1,
             "elements": elements,
             "page_layouts": [{"page": 1, **self._get_page_summary(elements)}],
-            "summary": self._get_document_summary(elements)
+            "summary": self._get_document_summary(elements),
+            # Preprocessing metadata consumed by envelope_builder
+            "angle_deg": angle_deg,
+            "use_doc_unwarping": use_doc_unwarping,
+            "use_doc_orientation_classify": use_doc_orientation_classify,
+            "input_size": {"width": input_w, "height": input_h},
+            "output_size": {"width": preprocessed_w or 0, "height": preprocessed_h or 0},
         }
         if preprocessed_path:
             result_dict["preprocessed_image_path"] = preprocessed_path
@@ -512,29 +542,10 @@ class PPStructureEngine(BaseLayoutEngine):
             parsing_blocks = first_item.get('parsing_res_list') or []
             table_res_list = first_item.get('table_res_list') or []
 
-            # Build inverse rotation matrix for coordinate correction (rotation-only case).
-            # When use_doc_unwarping=True, bboxes are already in output_img space and the
-            # preprocessed image will be served to the frontend — no inverse warp map exists.
-            _matrix_inv = None
-            try:
-                _doc_pre = first_item.get('doc_preprocessor_res')
-                if _doc_pre is not None:
-                    _model_settings = _doc_pre.get('model_settings', {}) or {}
-                    _use_unwarping = bool(_model_settings.get('use_doc_unwarping', False))
-                    _angle = float(_doc_pre.get('angle', -1) or -1)
-                    if not _use_unwarping and _angle > 1e-7:
-                        _orig_img = _doc_pre.get('input_img')
-                        if _orig_img is not None:
-                            _orig_h, _orig_w = _orig_img.shape[:2]
-                            _mat, _, _ = self._build_rotation_matrix(_angle, _orig_h, _orig_w)
-                            if _mat is not None:
-                                _matrix_inv = cv2.invertAffineTransform(_mat)
-                                logger.debug(
-                                    f"[ParseResult] page={page_num} rotation angle={_angle:.1f} "
-                                    f"inverse matrix built for bbox correction"
-                                )
-            except Exception as _exc:
-                logger.debug(f"[ParseResult] Rotation matrix extraction failed: {_exc}")
+            # NOTE: bboxes are kept in preprocessed coordinate space (output_img space).
+            # The inverse rotation / coordinate restoration is handled by view_builder
+            # (envelope_builder), not here.  This keeps the fused layer's
+            # bbox_preprocessed semantically accurate regardless of rotation or unwarping.
 
             # Build stable table html list ordered by table_region_id.
             table_html_map = {}
@@ -580,15 +591,19 @@ class PPStructureEngine(BaseLayoutEngine):
                     continue
 
                 raw_bbox = list(map(float, bbox[:4]))
-                if _matrix_inv is not None:
-                    raw_bbox = list(self._transform_bbox_inv(tuple(raw_bbox), _matrix_inv))
+                # Keep preprocessed-space bbox; view_builder applies inverse transform.
+                bbox_dict = self._extract_bbox(raw_bbox)
+                # Build flat polygon from bbox corners: [x0,y0, x1,y0, x1,y1, x0,y1]
+                x0_p = raw_bbox[0]; y0_p = raw_bbox[1]; x1_p = raw_bbox[2]; y1_p = raw_bbox[3]
+                polygon_prep = [x0_p, y0_p, x1_p, y0_p, x1_p, y1_p, x0_p, y1_p]
 
                 element = {
                     "id": f"p{page_num}_e{block_index}",
                     "page": page_num,
                     "type": element_type,
                     "type_name": self.LAYOUT_TYPES.get(element_type, element_type),
-                    "bbox": self._extract_bbox(raw_bbox),
+                    "bbox": bbox_dict,
+                    "polygon_preprocessed": polygon_prep,
                     "confidence": 0.9,
                 }
 
@@ -627,12 +642,17 @@ class PPStructureEngine(BaseLayoutEngine):
                 if not isinstance(table_html, str) or '<table' not in table_html.lower():
                     continue
                 table_idx += 1
+                _pb = page_bbox
+                _pbx0, _pby0 = float(_pb.get("x", 0)), float(_pb.get("y", 0))
+                _pbx1 = _pbx0 + float(_pb.get("width", 0))
+                _pby1 = _pby0 + float(_pb.get("height", 0))
                 elements.append({
                     "id": f"p{page_num}_table_{table_idx}",
                     "page": page_num,
                     "type": "table",
                     "type_name": self.LAYOUT_TYPES.get("table", "Table"),
                     "bbox": page_bbox,
+                    "polygon_preprocessed": [_pbx0, _pby0, _pbx1, _pby0, _pbx1, _pby1, _pbx0, _pby1],
                     "confidence": 0.01,
                     "text": self._extract_table_summary_text(table_html),
                     "html": table_html,
@@ -721,12 +741,16 @@ class PPStructureEngine(BaseLayoutEngine):
                 logger.debug(f"Element {idx}: Invalid bbox {bbox}")
                 continue
 
+            _bbox_raw = list(map(float, bbox[:4]))
+            _bbox_dict = self._extract_bbox(_bbox_raw)
+            _bx0, _by0, _bx1, _by1 = _bbox_raw[0], _bbox_raw[1], _bbox_raw[2], _bbox_raw[3]
             element = {
                 "id": f"p{page_num}_e{idx}",
                 "page": page_num,
                 "type": element_type,
                 "type_name": self.LAYOUT_TYPES.get(element_type, element_type),
-                "bbox": self._extract_bbox(bbox),
+                "bbox": _bbox_dict,
+                "polygon_preprocessed": [_bx0, _by0, _bx1, _by0, _bx1, _by1, _bx0, _by1],
                 "confidence": float(score) if score else 0.0,
             }
 

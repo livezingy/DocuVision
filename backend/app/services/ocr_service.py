@@ -37,10 +37,11 @@ class PaddleOCREngine(BaseOCREngine):
     - Active community support
     """
 
-    def __init__(self, use_gpu: bool = False):
+    def __init__(self, use_gpu: bool = False, lang: str = "ch"):
         self._ocr = None
         self._ready = False
         self._use_gpu = use_gpu
+        self._lang = lang
         self._init_engine()
 
     def _init_engine(self):
@@ -59,7 +60,7 @@ class PaddleOCREngine(BaseOCREngine):
             # Note: use_textline_orientation removed in 3.1.1 to avoid initialization errors
             # Device format: "cpu" or "gpu" (not "gpu:0")
             init_params = {
-                "lang": 'ch',  # Default Chinese (supports English)
+                "lang": self._lang,
                 "device": "gpu" if self._use_gpu else "cpu"
             }
 
@@ -219,6 +220,28 @@ class PaddleOCREngine(BaseOCREngine):
 
         if saved_any:
             logger.info(f"PaddleOCR visualization saved to: {output_dir} | source={img_path}")
+
+    def recognize_array(self, img_array: "np.ndarray") -> List[Dict[str, Any]]:
+        """Run OCR on an in-memory numpy image array (cropped block).
+
+        Returns a list of line dicts with keys: text, confidence, polygon, bbox.
+        Used for per-block OCR in the Phase 1 pipeline.
+        """
+        if not self._ready or self._ocr is None:
+            return []
+        try:
+            import numpy as np  # local import to avoid top-level dependency issues
+            result = self._ocr.predict(img_array)
+            if isinstance(result, dict):
+                return self._convert_predict_dict(result)
+            if isinstance(result, list) and result:
+                item = result[0]
+                if isinstance(item, dict):
+                    return self._convert_predict_dict(item)
+            return []
+        except Exception as e:
+            logger.warning(f"[PerBlockOCR] recognize_array failed: {e}")
+            return []
 
     def _call_ocr(self, img_path: str):
         """Call OCR using PaddleOCR 3.x predict() method"""
@@ -694,16 +717,17 @@ class OCRService:
     3. EasyOCR (Alternative)
     """
 
-    def __init__(self, use_gpu: bool = False):
+    def __init__(self, use_gpu: bool = False, lang: str = "ch"):
         self.engines: Dict[str, BaseOCREngine] = {}
         self.default_engine = "paddleocr"
         self._use_gpu = use_gpu
+        self._lang = lang
         self._init_engines()
 
     def _init_engines(self):
         """Initialize all available OCR engines"""
         # Primary: PaddleOCR
-        paddle_engine = PaddleOCREngine(use_gpu=self._use_gpu)
+        paddle_engine = PaddleOCREngine(use_gpu=self._use_gpu, lang=self._lang)
         if paddle_engine.is_ready():
             self.engines["paddleocr"] = paddle_engine
 
@@ -789,3 +813,14 @@ class OCRService:
                     raise
 
         raise RuntimeError(f"All OCR engines failed. Last error: {last_error}")
+
+    def recognize_block_array(self, img_array: "np.ndarray") -> List[Dict[str, Any]]:
+        """Run OCR on a numpy image array representing a single cropped block.
+
+        Returns a list of line dicts with keys: text, confidence, polygon, bbox.
+        Delegates to the PaddleOCR engine's recognize_array method.
+        """
+        eng = self.get_engine("paddleocr")
+        if hasattr(eng, "recognize_array"):
+            return eng.recognize_array(img_array)
+        return []

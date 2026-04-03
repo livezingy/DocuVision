@@ -1230,30 +1230,15 @@ function resetAnalysisOptions() {
  */
 function getProcessingOptions() {
     const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
+    const mode = (selectedMode === 'table') ? 'table' : 'layout';
 
     const options = {
-        enable_layout: selectedMode === 'layout',
+        enable_layout: mode === 'layout',
         enable_ocr: false,
-        enable_table: selectedMode === 'table',
-        enable_formula: selectedMode === 'formula',
-        enable_stamp: selectedMode === 'stamp',
-        enable_nlp: selectedMode === 'nlp',
-        template_id: null,
+        enable_table: mode === 'table',
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
-        layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure',
-        nlp_engine: document.getElementById('dialogNlpEngineSelect')?.value || 'spacy'
+        layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure'
     };
-
-    // Get template if template matching is selected
-    if (selectedMode === 'template') {
-        options.enable_layout = false;
-        options.enable_ocr = false;
-        options.enable_table = false;
-        options.enable_formula = false;
-        options.enable_stamp = false;
-        options.enable_nlp = false;
-        options.template_id = document.getElementById('dialogTemplateSelect')?.value || null;
-    }
 
     return options;
 }

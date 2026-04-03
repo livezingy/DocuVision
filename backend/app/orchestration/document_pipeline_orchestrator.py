@@ -131,24 +131,6 @@ async def layout_step(ctx: PipelineContext) -> None:
         ctx["task"]["preprocessed_image_path"] = prep_path
         logger.info(f"Task {task_id}: preprocessed image stored for bbox alignment: {prep_path}")
 
-    try:
-        from app.services.canonical_converter import CanonicalConverter
-
-        converter = CanonicalConverter()
-        source_type = "pdf" if str(ctx["file_path"]).lower().endswith(".pdf") else "image"
-        canonical_doc = converter.convert(
-            task_id=task_id,
-            source_type=source_type,
-            layout_result=layout_result,
-            ocr_result=ctx["result"].get("ocr"),
-            doc_type_hint=options.get("doc_type", "unknown"),
-            file_path=ctx["file_path"],
-        )
-        ctx["result"]["canonical"] = canonical_doc.to_dict(include_raw_payload=True)
-        ctx["result"]["canonical_summary"] = canonical_doc.summary()
-    except Exception as exc:
-        logger.warning(f"Task {task_id}: canonical conversion failed (non-fatal): {exc}")
-
     await orchestrator.update_progress(ctx, 45, "Layout analysis completed")
 
 
@@ -178,122 +160,185 @@ async def table_step(ctx: PipelineContext) -> None:
     await orchestrator.update_progress(ctx, 65, f"Table extraction completed | Tables: {len(ctx['result']['tables'])}")
 
 
-async def barcode_step(ctx: PipelineContext) -> None:
-    options = ctx["options"]
-    if not options.get("enable_barcode", False):
-        return
-
-    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
-    orchestrator.ensure_not_cancelled(ctx)
-
-    await orchestrator.update_progress(ctx, 65, "Barcode recognition...")
-    try:
-        from app.modules.barcode_recognition import BarcodeRecognitionModule
-
-        barcode_module = BarcodeRecognitionModule(config={"engine": options.get("barcode_engine", "pyzbar")})
-        barcode_module.initialize()
-        if barcode_module.is_ready():
-            barcode_result = await orchestrator.call_maybe_async(
-                barcode_module.process,
-                ctx["file_path"],
-                engine=options.get("barcode_engine"),
-                fallback=True,
-            )
-            ctx["result"]["barcodes"] = barcode_result.get("barcodes", [])
-            ctx["result"]["barcode_count"] = barcode_result.get("count", 0)
-        else:
-            ctx["result"]["barcodes"] = []
-            ctx["result"]["barcode_count"] = 0
-    except Exception as exc:
-        logger.warning(f"Task {ctx['task_id']}: barcode recognition failed: {exc}")
-        ctx["result"]["barcodes"] = []
-        ctx["result"]["barcode_count"] = 0
-
-    await orchestrator.update_progress(ctx, 70, "Barcode recognition completed")
-
-
-async def nlp_step(ctx: PipelineContext) -> None:
-    options = ctx["options"]
-    if not options.get("enable_nlp", True):
-        return
-
-    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
-    orchestrator.ensure_not_cancelled(ctx)
-
-    engine_name = options.get("nlp_engine") or "spacy"
-    await orchestrator.update_progress(ctx, 70, f"NLP analysis with {engine_name.title()}...")
-
-    full_text = ctx["result"].get("full_text") or " ".join([b.get("text", "") for b in ctx["result"].get("text_blocks", [])])
-    if full_text and orchestrator.services.get("nlp_service"):
-        nlp_result = await orchestrator.call_maybe_async(
-            orchestrator.services["nlp_service"].analyze_text,
-            full_text,
-            top_k_keywords=15,
-            engine=options.get("nlp_engine"),
-        )
-        orchestrator.ensure_not_cancelled(ctx)
-
-        ctx["result"]["keywords"] = [kw.get("keyword") for kw in nlp_result.get("keywords", [])]
-        ctx["result"]["keywords_detailed"] = nlp_result.get("keywords", [])
-        ctx["result"]["entities"] = nlp_result.get("entities", [])
-        ctx["result"]["entities_grouped"] = nlp_result.get("entities_grouped", {})
-        ctx["result"]["nlp_engines_used"] = nlp_result.get("engines_used")
-
-    await orchestrator.update_progress(ctx, 85, "NLP analysis completed")
-
-
-async def template_step(ctx: PipelineContext) -> None:
-    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
-    options = ctx["options"]
-
-    template_id = options.get("template_id")
-    if template_id and template_id.strip() and template_id.lower() != "null":
-        await orchestrator.update_progress(ctx, 85, "Template extraction...")
-        try:
-            full_text = ctx["result"].get("full_text", "")
-            ctx["result"]["template_extraction"] = await orchestrator.call_maybe_async(
-                orchestrator.services["template_service"].extract_fields,
-                template_id,
-                full_text,
-                ctx["result"].get("text_blocks"),
-                ctx["result"].get("tables"),
-                ctx["result"].get("layout", {}).get("elements"),
-            )
-        except Exception as exc:
-            logger.warning(f"Task {ctx['task_id']}: template extraction failed: {exc}")
-            ctx["result"]["template_extraction"] = {"error": str(exc)}
-        return
-
-    if options.get("enable_nlp", True):
-        full_text = ctx["result"].get("full_text", "")
-        if full_text:
-            await orchestrator.update_progress(ctx, 85, "Auto-detecting template...")
-            try:
-                auto_result = await orchestrator.call_maybe_async(
-                    orchestrator.services["template_service"].auto_extract,
-                    full_text,
-                    ctx["result"].get("text_blocks"),
-                    ctx["result"].get("tables"),
-                )
-                if auto_result.get("success"):
-                    ctx["result"]["template_extraction"] = auto_result.get("result")
-                    ctx["result"]["template_matches"] = auto_result.get("matches", [])
-            except Exception as exc:
-                logger.warning(f"Task {ctx['task_id']}: auto template failed: {exc}")
-
-
 async def finalize_step(ctx: PipelineContext) -> None:
     orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
     orchestrator.ensure_not_cancelled(ctx)
 
     task = ctx["task"]
     task["progress"] = 100
+    # Keep "completed" for frontend compatibility; Phase 1 job routes accept both "succeeded" and "completed"
     task["status"] = "completed"
     task["message"] = "Processing completed"
     task["completed_at"] = datetime.now()
     task["result"] = ctx["result"]
 
     await orchestrator.send_event(ctx["task_id"], "completed", "Processing completed", 100)
+
+
+# ============================================
+# Phase 1 Pipeline Steps - Envelope Building
+# ============================================
+
+async def phase1_preprocessing_step(ctx: PipelineContext) -> None:
+    """Extract and store preprocessing metadata for Phase 1 Envelope."""
+    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
+    task_id = ctx["task_id"]
+
+    layout_result = ctx["result"].get("layout", {})
+    if not layout_result:
+        return
+
+    # Metadata will be built when building envelope; store references for now
+    ctx["phase1_layout_result"] = layout_result
+
+
+async def phase1_envelope_step(ctx: PipelineContext) -> None:
+    """Build Phase 1 Envelope (preprocessing, raw, fused, view, quality layers)."""
+    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
+    task_id = ctx["task_id"]
+
+    await orchestrator.update_progress(ctx, 75, "Building Phase 1 Envelope...")
+
+    try:
+        from app.orchestration.envelope_builder import EnvelopeBuilder
+        from app.core.config import settings
+
+        builder = EnvelopeBuilder(settings)
+
+        layout_result = ctx.get("phase1_layout_result") or ctx["result"].get("layout", {})
+        file_path = ctx["file_path"]
+
+        start_time = ctx.get("start_time", datetime.now())
+        processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+
+        # 1. Build preprocessing metadata
+        preprocessing = builder.build_preprocessing_metadata(
+            layout_result=layout_result,
+            use_doc_unwarping=settings.USE_DOC_UNWARPING,
+        )
+        ctx["phase1_preprocessing"] = preprocessing
+
+        # 2. Build raw layer
+        raw = builder.build_raw_layer(layout_result=layout_result)
+        ctx["phase1_raw"] = raw
+
+        # 3. Per-block OCR: crop each text-type block from the preprocessed image
+        #    and run PaddleOCR on the crop.  Results keyed by element id.
+        import cv2 as _cv2
+
+        preprocessed_image_path = ctx["task"].get("preprocessed_image_path") or file_path
+        _prep_img = None
+        try:
+            _prep_img = _cv2.imread(preprocessed_image_path)
+            if _prep_img is None and preprocessed_image_path != file_path:
+                _prep_img = _cv2.imread(file_path)
+        except Exception as _exc_img:
+            logger.warning(f"Task {task_id}: failed to load image for per-block OCR: {_exc_img}")
+
+        per_block_ocr: Dict[str, Any] = {}
+        if _prep_img is not None:
+            ocr_svc = orchestrator.services.get("ocr_service")
+            _elements = layout_result.get("elements", [])
+            logger.info(f"Task {task_id}: per-block OCR on {len(_elements)} elements")
+            for _elem in _elements:
+                if not isinstance(_elem, dict):
+                    continue
+                if _elem.get("type", "").lower() not in builder._OCR_TEXT_LABELS:
+                    continue
+                _bbox = _elem.get("bbox") or {}
+                _x0 = int(float(_bbox.get("x", 0)))
+                _y0 = int(float(_bbox.get("y", 0)))
+                _x1 = _x0 + int(float(_bbox.get("width", 0)))
+                _y1 = _y0 + int(float(_bbox.get("height", 0)))
+                if _x1 <= _x0 or _y1 <= _y0:
+                    continue
+                _h_img, _w_img = _prep_img.shape[:2]
+                if _elem.get("type", "").lower() == "text":
+                    _pad_x = max(2, int((_x1 - _x0) * 0.06))
+                    _pad_y = max(2, int((_y1 - _y0) * 0.06))
+                    _x0 -= _pad_x
+                    _x1 += _pad_x
+                    _y0 -= _pad_y
+                    _y1 += _pad_y
+                _x0 = max(0, _x0); _y0 = max(0, _y0)
+                _x1 = min(_w_img, _x1); _y1 = min(_h_img, _y1)
+                if _x1 <= _x0 or _y1 <= _y0:
+                    continue
+                _crop = _prep_img[_y0:_y1, _x0:_x1]
+                if _crop.size == 0:
+                    continue
+                try:
+                    _lines = ocr_svc.recognize_block_array(_crop) if ocr_svc else []
+                except Exception as _exc_ocr:
+                    logger.debug(f"Task {task_id}: per-block OCR failed for {_elem.get('id')}: {_exc_ocr}")
+                    _lines = []
+                per_block_ocr[str(_elem.get("id", ""))] = {
+                    "lines": _lines,
+                    "crop_offset": [_x0, _y0],
+                }
+            logger.info(f"Task {task_id}: per-block OCR completed, {len(per_block_ocr)} blocks processed")
+
+        # Keep raw layer aligned with design artifacts
+        raw["paddleocr_blocks"] = per_block_ocr
+
+        # 4. Build fused layer (per-block OCR text fusion)
+        fused = builder.build_fused_layer(
+            layout_result=layout_result,
+            per_block_ocr=per_block_ocr,
+            ocr_confidence_threshold=settings.OCR_MIN_CONFIDENCE,
+            suspicious_length_ratio=settings.OCR_SUSPICIOUS_LENGTH_RATIO,
+        )
+        ctx["phase1_fused"] = fused
+
+        # 5. Build view layer (coordinate transformation + reading order)
+        view = builder.build_view_layer(
+            fused_layer=fused,
+            preprocessing_metadata=preprocessing,
+            original_image_path=file_path,
+            preprocessed_image_path=preprocessed_image_path,
+        )
+        ctx["phase1_view"] = view
+
+        # 6. Build quality layer
+        quality = builder.build_quality_layer(
+            fused_layer=fused,
+            processing_time_ms=processing_time_ms,
+            engines_used=["doc_preprocessor", "pp_structure_v3", "paddleocr"],
+        )
+        ctx["phase1_quality"] = quality
+
+        # 6. Save debug artifacts if enabled
+        if settings.DEBUG_MODE:
+            builder.save_debug_artifacts(
+                job_id=task_id,
+                preprocessing=preprocessing,
+                raw=raw,
+                fused=fused,
+                quality=quality,
+                original_image_path=file_path,
+                preprocessed_image_path=preprocessed_image_path,
+            )
+
+        # 7. Construct Envelope and attach to task
+        # Note: We store as dict; main.py will convert to JobEnvelope when returning
+        envelope_dict = {
+            "job_id": task_id,
+            "status": "succeeded",
+            "version": "1.0",
+            "preprocessing": preprocessing,
+            "raw": raw,
+            "fused": fused,
+            "view": view,
+            "quality": quality,
+        }
+        ctx["task"]["envelope"] = envelope_dict
+
+        await orchestrator.update_progress(ctx, 90, "Phase 1 Envelope built")
+
+    except Exception as e:
+        logger.error(f"Task {task_id}: Phase 1 envelope building failed: {e}")
+        logger.exception(e)
+        raise
 
 
 class DocumentPipelineOrchestrator:
@@ -354,15 +399,15 @@ class DocumentPipelineOrchestrator:
             "result": result,
             "orchestrator": self,
             "debug_overlay_enabled": str(os.environ.get("DOCUVISION_DEBUG_OVERLAY", "1")).strip().lower() in {"1", "true", "yes", "y", "on"},
+            "start_time": datetime.now(),
         }
 
         steps = [
             ocr_step,
             layout_step,
             table_step,
-            barcode_step,
-            nlp_step,
-            template_step,
+            phase1_preprocessing_step,  # Capture preprocessing metadata reference
+            phase1_envelope_step,  # Build Phase 1 Envelope (preprocessing, raw, fused, view, quality)
             finalize_step,
         ]
 

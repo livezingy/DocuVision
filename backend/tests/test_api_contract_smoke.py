@@ -178,26 +178,39 @@ async def run_contract_checks(test_file: Path | None, res: Results) -> None:
         ok = r.status_code == 200 and isinstance(r.json().get("events", []), list)
         res.add("GET missing task events", ok, f"status={r.status_code} events_len={len(r.json().get('events', []))}")
 
+        print(_info("\nStage B2: Phase 1 Job endpoints error-path contract"))
+
+        fake_job_id = f"missing-{uuid.uuid4().hex[:12]}"
+
+        r = await client.get(f"/api/v1/jobs/{fake_job_id}")
+        res.add("GET missing job", r.status_code == 404, f"status={r.status_code}")
+
+        r = await client.get(f"/api/v1/jobs/{fake_job_id}/result")
+        res.add("GET missing job result", r.status_code == 404, f"status={r.status_code}")
+
+        r = await client.get(f"/api/v1/jobs/{fake_job_id}/debug")
+        # Debug endpoint returns 404 for both missing job AND when DEBUG_MODE=false
+        res.add("GET missing job debug (should 404)", r.status_code == 404, f"status={r.status_code}")
+
         print(_info("\nStage C: Template/NLP service contract"))
 
         r = await client.get("/api/v1/templates")
-        ok = r.status_code == 200 and "templates" in r.json() and "categories" in r.json()
+        ok = r.status_code == 410
         res.add("GET /api/v1/templates", ok, f"status={r.status_code}")
 
         missing_template = f"tpl-{uuid.uuid4().hex[:10]}"
         r = await client.get(f"/api/v1/templates/{missing_template}")
-        res.add("GET missing template", r.status_code == 404, f"status={r.status_code}")
+        res.add("GET missing template", r.status_code == 410, f"status={r.status_code}")
 
         r = await client.post("/api/v1/templates/match", data={"text": "Invoice No. 1001 Total 123.45"})
-        ok = r.status_code == 200 and "matches" in r.json()
+        ok = r.status_code == 410
         res.add("POST /api/v1/templates/match", ok, f"status={r.status_code}")
 
         r = await client.post("/api/v1/nlp/keywords", json={"text": "hello world", "top_k_keywords": 5})
-        # PaddleOCR-only mode is expected to return 503
-        res.add("POST /api/v1/nlp/keywords", r.status_code == 503, f"status={r.status_code}")
+        res.add("POST /api/v1/nlp/keywords", r.status_code == 410, f"status={r.status_code}")
 
         r = await client.post("/api/v1/nlp/entities", json={"text": "John in New York"})
-        res.add("POST /api/v1/nlp/entities", r.status_code == 503, f"status={r.status_code}")
+        res.add("POST /api/v1/nlp/entities", r.status_code == 410, f"status={r.status_code}")
 
         if not test_file:
             print(_warn("No --file provided and no default test file found. Skipping upload lifecycle checks."))
@@ -230,6 +243,37 @@ async def run_contract_checks(test_file: Path | None, res: Results) -> None:
 
         r = await client.get(f"/api/v1/tasks/{upload_task_id}")
         res.add("GET deleted task", r.status_code == 404, f"status={r.status_code}")
+
+        print(_info("\nStage E: Phase 1 documents:analyze lifecycle"))
+
+        ext = test_file.suffix.lower().lstrip(".")
+        mime = "application/pdf" if ext == "pdf" else f"image/{ext}"
+
+        with open(test_file, "rb") as fh:
+            r = await client.post("/api/v1/documents:analyze", files={"file": (test_file.name, fh, mime)})
+        analyze_ok = r.status_code == 200
+        analyze_job_id = None
+        if analyze_ok:
+            try:
+                job_data = r.json()
+                analyze_job_id = job_data.get("job_id")
+                has_status = job_data.get("status") in ("running", "pending", "succeeded")
+                analyze_ok = analyze_job_id is not None and has_status
+            except Exception:
+                analyze_ok = False
+        res.add("POST /api/v1/documents:analyze", analyze_ok, f"status={r.status_code} job_id={analyze_job_id}")
+
+        if analyze_job_id:
+            r = await client.get(f"/api/v1/jobs/{analyze_job_id}")
+            job_status_ok = r.status_code == 200 and "job_id" in r.json()
+            res.add("GET /api/v1/jobs/{job_id}", job_status_ok, f"status={r.status_code}")
+
+            # Note: We do not wait for completion in this smoke test (job runs in background)
+            # Simply verify the schema when status is 'running'
+            if r.status_code == 200:
+                job_data = r.json()
+                schema_ok = all(k in job_data for k in ("job_id", "status", "progress", "message"))
+                res.add("Phase 1 JobStatus schema", schema_ok, f"fields={list(job_data.keys())}")
 
 
 def main() -> None:

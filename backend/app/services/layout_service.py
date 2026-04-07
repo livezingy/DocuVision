@@ -399,7 +399,8 @@ class PPStructureEngine(BaseLayoutEngine):
     async def _analyze_image(self, img_path: str) -> Dict[str, Any]:
         from PIL import Image
 
-        # 确保图像�?RGB 格式�?通道�?        img = Image.open(img_path)
+        # 确保图像是 RGB 格式（3 通道）
+        img = Image.open(img_path)
         if img.mode == 'RGBA':
             # 转换�?RGB
             rgb_img = Image.new('RGB', img.size, (255, 255, 255))

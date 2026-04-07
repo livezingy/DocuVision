@@ -53,7 +53,6 @@ class EnvelopeBuilder:
         """Build raw layer with engine outputs."""
         return {
             "pp_structure_v3": layout_result or {},
-            "paddleocr_blocks": {},  # populated by orchestrator after per-block OCR
         }
 
     # Labels eligible for per-block OCR text replacement (all PP-StructureV3 text labels)
@@ -61,42 +60,18 @@ class EnvelopeBuilder:
         "doc_title", "paragraph_title", "abstract_title", "reference_title",
         "content_title", "text", "abstract", "content", "reference",
         "reference_content", "algorithm", "header", "header_image",
-        "footer", "footer_image", "footnote", "figure_table_chart_title",
+        "footer", "footer_image", "footnote", "figure_title",
         "aside_text", "number", "formula_number",
         # legacy / general labels
         "title", "subtitle", "figure_caption", "table_caption",
         "list", "list_item",
     }
 
-    # Unified replacement policy:
-    # - Types in this set always use OCR text when OCR output is available.
-    # - Other text labels keep the guarded confidence/length-ratio replacement logic.
-    _ALWAYS_REPLACE_TYPES: Set[str] = {
-        "text",
-        "paragraph_title",
-        "abstract_title",
-        "reference_title",
-        "content_title",
-        "figure_table_chart_title",
-        "abstract",
-        "content",
-        "reference",
-    }
-
     def build_fused_layer(
         self,
         layout_result: Dict[str, Any],
-        per_block_ocr: Optional[Dict[str, Any]] = None,
-        ocr_confidence_threshold: float = 0.6,
-        suspicious_length_ratio: float = 0.5,
     ) -> Dict[str, Any]:
-        """
-        Build fused layer: layout blocks with per-block OCR text fusion.
-
-        per_block_ocr: dict keyed by element id → {"lines": [...], "crop_offset": [x0, y0]}
-        """
-        if per_block_ocr is None:
-            per_block_ocr = {}
+        """Build fused layer from PPStructureV3 layout results."""
 
         # D6: extract preprocessed image dimensions for fused page metadata
         _output_size = layout_result.get("output_size", {}) or {}
@@ -155,92 +130,9 @@ class EnvelopeBuilder:
                                    "figure_table_chart", "picture"}:
                     fused_block["processing_status"] = "vision_block"
 
-                # --- Text-type blocks: attempt per-block OCR replacement ---
+                # --- Text-type blocks: use PPStructureV3 content directly ---
                 elif elem_type in self._OCR_TEXT_LABELS:
-                    block_data = per_block_ocr.get(elem_id, {})
-                    ocr_lines = block_data.get("lines", [])
-                    crop_offset = block_data.get("crop_offset", [0, 0])
-
-                    if not ocr_lines:
-                        fused_block["processing_status"] = "no_ocr"
-                    else:
-                        # D3: line-gap-aware text join (§5.2)
-                        filtered_lines = [ln for ln in ocr_lines if ln.get("text", "").strip()]
-                        filtered_lines = sorted(
-                            filtered_lines,
-                            key=lambda ln: (
-                                float(ln.get("bbox", {}).get("y", 0))
-                                + 0.5 * float(ln.get("bbox", {}).get("height", 0)),
-                                float(ln.get("bbox", {}).get("x", 0)),
-                            ),
-                        )
-                        if len(filtered_lines) <= 1:
-                            ocr_text = filtered_lines[0].get("text", "") if filtered_lines else ""
-                        else:
-                            heights = [
-                                float(ln.get("bbox", {}).get("height", 0))
-                                for ln in filtered_lines
-                                if float(ln.get("bbox", {}).get("height", 0)) > 0
-                            ]
-                            mean_height = float(np.mean(heights)) if heights else 0.0
-                            parts = [filtered_lines[0].get("text", "")]
-                            for prev_ln, curr_ln in zip(filtered_lines, filtered_lines[1:]):
-                                prev_bottom = (float(prev_ln.get("bbox", {}).get("y", 0))
-                                               + float(prev_ln.get("bbox", {}).get("height", 0)))
-                                curr_top = float(curr_ln.get("bbox", {}).get("y", 0))
-                                gap = curr_top - prev_bottom
-                                sep = "\n\n" if (mean_height > 0 and gap > 1.2 * mean_height) else "\n"
-                                parts.append(sep + curr_ln.get("text", ""))
-                            ocr_text = "".join(parts)
-
-                        valid_confs = [
-                            float(line.get("confidence", 0.0))
-                            for line in ocr_lines
-                            if line.get("text", "").strip()
-                        ]
-                        ocr_confidence = float(np.mean(valid_confs)) if valid_confs else 0.0
-
-                        # D5: enrich each OCR line with crop_offset/crop_polygon for provenance
-                        enriched_lines = []
-                        for ln in ocr_lines:
-                            enriched = dict(ln)
-                            enriched["crop_offset"] = crop_offset
-                            if "crop_polygon" not in enriched:
-                                enriched["crop_polygon"] = self._line_crop_polygon(enriched)
-                            enriched_lines.append(enriched)
-
-                        fused_block["provenance"]["ocr_text"] = ocr_text
-                        fused_block["provenance"]["ocr_confidence"] = ocr_confidence
-                        fused_block["provenance"]["ocr_lines"] = enriched_lines
-                        fused_block["confidence"] = ocr_confidence
-
-                        if elem_type in self._ALWAYS_REPLACE_TYPES:
-                            if ocr_text.strip():
-                                fused_block["payload"]["text"] = ocr_text
-                                fused_block["processing_status"] = "replaced"
-                                fused_block["source"] = "paddleocr"  # D2
-                            else:
-                                fused_block["processing_status"] = "no_ocr"
-                        elif ocr_confidence < ocr_confidence_threshold:
-                            fused_block["processing_status"] = "low_confidence"
-                        else:
-                            orig_words = len(original_text.split()) if original_text.strip() else 0
-                            ocr_words = len(ocr_text.split())
-                            # Accept OCR text when: original was empty OR lengths are similar
-                            if orig_words == 0:
-                                fused_block["payload"]["text"] = ocr_text
-                                fused_block["processing_status"] = "replaced"
-                                fused_block["source"] = "paddleocr"  # D2
-                            else:
-                                ratio = ocr_words / orig_words
-                                low = 1.0 - suspicious_length_ratio
-                                high = 1.0 + suspicious_length_ratio
-                                if low <= ratio <= high:
-                                    fused_block["payload"]["text"] = ocr_text
-                                    fused_block["processing_status"] = "replaced"
-                                    fused_block["source"] = "paddleocr"  # D2
-                                else:
-                                    fused_block["processing_status"] = "suspicious"
+                    fused_block["processing_status"] = "no_ocr"
 
                 fused_blocks.append(fused_block)
 
@@ -376,12 +268,9 @@ class EnvelopeBuilder:
             engines_used = ["doc_preprocessor", "pp_structure_v3"]
 
         text_blocks_total = 0
-        text_blocks_replaced = 0
         text_blocks_no_match = 0
-        text_blocks_low_confidence = 0
         table_blocks_total = 0
         figure_blocks_total = 0
-        ocr_lines_total = 0
         confidences = []
 
         for page in fused_layer.get("pages", []):
@@ -391,21 +280,12 @@ class EnvelopeBuilder:
                 if block_type in EnvelopeBuilder._OCR_TEXT_LABELS:
                     text_blocks_total += 1
                     status = block.get("processing_status", "succeeded")
-                    if status == "replaced":
-                        text_blocks_replaced += 1
-                    elif status in {"no_match", "no_ocr"}:
+                    if status in {"no_match", "no_ocr"}:
                         text_blocks_no_match += 1
-                    elif status == "low_confidence":
-                        text_blocks_low_confidence += 1
 
                     conf = block.get("confidence", 0.0)
                     if conf > 0:
                         confidences.append(conf)
-
-                    # Count OCR lines
-                    provenance = block.get("provenance", {})
-                    ocr_lines = provenance.get("ocr_lines", [])
-                    ocr_lines_total += len(ocr_lines)
 
                 elif block_type == "table":
                     table_blocks_total += 1
@@ -420,12 +300,9 @@ class EnvelopeBuilder:
         return {
             "processing_time_ms": processing_time_ms,
             "text_blocks_total": text_blocks_total,
-            "text_blocks_replaced": text_blocks_replaced,
             "text_blocks_no_match": text_blocks_no_match,
-            "text_blocks_low_confidence": text_blocks_low_confidence,
             "table_blocks_total": table_blocks_total,
             "figure_blocks_total": figure_blocks_total,
-            "ocr_lines_total": ocr_lines_total,
             "avg_text_confidence": float(avg_text_confidence),
             "engines_used": engines_used,
         }
@@ -454,9 +331,6 @@ class EnvelopeBuilder:
 
             with open(os.path.join(debug_dir, "raw_pp_structure_v3.json"), "w") as f:
                 json.dump(raw.get("pp_structure_v3", {}), f, indent=2)
-
-            with open(os.path.join(debug_dir, "raw_paddleocr_blocks.json"), "w") as f:
-                json.dump(raw.get("paddleocr_blocks", {}), f, indent=2)
 
             with open(os.path.join(debug_dir, "fused.json"), "w") as f:
                 json.dump(fused, f, indent=2)
@@ -564,30 +438,27 @@ class EnvelopeBuilder:
 
         return result
 
-    def _line_crop_polygon(self, line: Dict[str, Any]) -> List[float]:
-        """Derive crop-local polygon for an OCR line when unavailable."""
-        bbox = line.get("bbox", {}) or {}
-        x = float(bbox.get("x", 0.0))
-        y = float(bbox.get("y", 0.0))
-        w = float(bbox.get("width", 0.0))
-        h = float(bbox.get("height", 0.0))
-        return [x, y, x + w, y, x + w, y + h, x, y + h]
-
     def _map_block_type_to_kind(self, block_type: str) -> str:
         """Map PP-StructureV3 / layout type to view layer kind."""
         t = block_type.lower()
-        if t in {
-            # PP-StructureV3 text labels
-            "doc_title", "paragraph_title", "abstract_title", "reference_title",
-            "content_title", "text", "abstract", "content", "reference",
-            "reference_content", "algorithm", "header", "header_image",
-            "footer", "footer_image", "footnote", "figure_table_chart_title",
-            "aside_text", "number", "formula_number",
-            # generic / legacy
-            "title", "subtitle", "caption", "figure_caption", "table_caption",
-            "author", "date", "references", "list", "list_item",
+        if t in {"doc_title", "title", "subtitle"}:
+            return "title"
+        elif t in {"paragraph_title", "abstract_title", "reference_title", "content_title", "section_header"}:
+            return "paragraph_title"
+        elif t in {"figure_table_chart_title", "caption", "figure_caption", "table_caption"}:
+            return "figure_title"
+        elif t in {
+            "text", "abstract", "content", "reference", "reference_content",
+            "algorithm", "aside_text", "author", "date", "references",
+            "list", "list_item",
         }:
             return "paragraph"
+        elif t in {"header", "header_image", "page_header"}:
+            return "header"
+        elif t in {"footer", "footer_image", "footnote", "page_footer"}:
+            return "footer"
+        elif t in {"number", "formula_number"}:
+            return "number"
         elif t in {"table"}:
             return "table"
         elif t in {
@@ -600,7 +471,7 @@ class EnvelopeBuilder:
         elif t in {"seal", "stamp"}:
             return "seal"
         else:
-            return "paragraph"
+            return t if t else "paragraph"
 
     def _cleanup_old_debug_artifacts(self) -> None:
         """Keep only the most recent DEBUG_KEEP_LAST_N debug jobs."""

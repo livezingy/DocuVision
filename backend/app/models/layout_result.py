@@ -138,17 +138,4 @@ class LayoutAnalysisResult:
 
         return stats
 
-    def get_elements_by_type(self, element_type: LayoutElementType) -> List[LayoutElement]:
-        """按类型筛选元素"""
-        return [e for e in self.elements if e.element_type == element_type]
 
-    def get_elements_by_page(self, page_number: int) -> List[LayoutElement]:
-        """按页码筛选元素"""
-        return [e for e in self.elements if e.page_number == page_number]
-
-    def get_element_by_id(self, element_id: str) -> Optional[LayoutElement]:
-        """按ID查找元素"""
-        for elem in self.elements:
-            if elem.element_id == element_id:
-                return elem
-        return None

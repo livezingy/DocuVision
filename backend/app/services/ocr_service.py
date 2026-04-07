@@ -1,5 +1,5 @@
 """
-OCR Service - Multi-engine OCR with Primary (PaddleOCR) and Fallback (Tesseract) support
+OCR Service - PaddleOCR primary engine.
 """
 
 from typing import Dict, Any, List, Optional
@@ -57,11 +57,13 @@ class PaddleOCREngine(BaseOCREngine):
                 pass
 
             # PaddleOCR 3.x initialization parameters
-            # Note: use_textline_orientation removed in 3.1.1 to avoid initialization errors
             # Device format: "cpu" or "gpu" (not "gpu:0")
+            # Note: use_doc_preprocessor is invalid; use_angle_cls is deprecated.
+            # use_doc_orientation_classify=False disables doc-level rotation classify.
             init_params = {
                 "lang": self._lang,
-                "device": "gpu" if self._use_gpu else "cpu"
+                "device": "gpu" if self._use_gpu else "cpu",
+                "use_doc_orientation_classify": False,
             }
 
             self._ocr = PaddleOCR(**init_params)
@@ -221,28 +223,6 @@ class PaddleOCREngine(BaseOCREngine):
         if saved_any:
             logger.info(f"PaddleOCR visualization saved to: {output_dir} | source={img_path}")
 
-    def recognize_array(self, img_array: "np.ndarray") -> List[Dict[str, Any]]:
-        """Run OCR on an in-memory numpy image array (cropped block).
-
-        Returns a list of line dicts with keys: text, confidence, polygon, bbox.
-        Used for per-block OCR in the Phase 1 pipeline.
-        """
-        if not self._ready or self._ocr is None:
-            return []
-        try:
-            import numpy as np  # local import to avoid top-level dependency issues
-            result = self._ocr.predict(img_array)
-            if isinstance(result, dict):
-                return self._convert_predict_dict(result)
-            if isinstance(result, list) and result:
-                item = result[0]
-                if isinstance(item, dict):
-                    return self._convert_predict_dict(item)
-            return []
-        except Exception as e:
-            logger.warning(f"[PerBlockOCR] recognize_array failed: {e}")
-            return []
-
     def _call_ocr(self, img_path: str):
         """Call OCR using PaddleOCR 3.x predict() method"""
         try:
@@ -385,336 +365,9 @@ class PaddleOCREngine(BaseOCREngine):
         return blocks
 
 
-class TesseractOCREngine(BaseOCREngine):
-    """
-    Fallback OCR Engine - Tesseract
-
-    Advantages:
-    - Wide language support (100+ languages)
-    - Well-established, mature project
-    - Good for printed text
-    - No GPU required
-    """
-
-    def __init__(self):
-        self._ready = False
-        self._init_engine()
-
-    def _init_engine(self):
-        try:
-            import pytesseract
-            from PIL import Image
-
-            # Test if tesseract is installed
-            pytesseract.get_tesseract_version()
-            self._ready = True
-            logger.info("Tesseract OCR engine initialized successfully")
-        except ImportError as e:
-            logger.warning(f"pytesseract not installed: {e}")
-            self._ready = False
-        except Exception as e:
-            logger.warning(f"Tesseract not available: {e}")
-            self._ready = False
-
-    def is_ready(self) -> bool:
-        return self._ready
-
-    def get_name(self) -> str:
-        return "Tesseract"
-
-    async def recognize(self, file_path: str, language: str = "en") -> Dict[str, Any]:
-        if not self._ready:
-            raise RuntimeError("Tesseract engine not ready")
-
-        import pytesseract
-        from PIL import Image
-
-        # Language mapping
-        lang_map = {
-            "en": "eng",
-            "ch": "chi_sim",
-            "zh": "chi_sim",
-            "ja": "jpn",
-            "ko": "kor",
-            "de": "deu",
-            "fr": "fra",
-            "es": "spa"
-        }
-        tess_lang = lang_map.get(language, "eng")
-
-        ext = os.path.splitext(file_path)[1].lower()
-
-        if ext == '.pdf':
-            return await self._process_pdf(file_path, tess_lang)
-        else:
-            return await self._process_image(file_path, tess_lang)
-
-    async def _process_pdf(self, pdf_path: str, tess_lang: str) -> Dict[str, Any]:
-        import fitz
-        import pytesseract
-        from PIL import Image
-        import io
-
-        doc = fitz.open(pdf_path)
-        page_count = len(doc)  # 保存页数，避免关闭后访问
-        all_blocks = []
-
-        try:
-            for page_num in range(page_count):
-                page = doc[page_num]
-
-                mat = fitz.Matrix(2, 2)
-                pix = page.get_pixmap(matrix=mat)
-
-                # Convert to PIL Image
-                img_data = pix.tobytes("png")
-                img = Image.open(io.BytesIO(img_data))
-
-                # Get detailed OCR data
-                data = pytesseract.image_to_data(img, lang=tess_lang, output_type=pytesseract.Output.DICT)
-
-                blocks = self._parse_tesseract_data(data, page_num + 1)
-                all_blocks.extend(blocks)
-        finally:
-            doc.close()
-
-        return {
-            "engine": "Tesseract",
-            "page_count": page_count,
-            "text_blocks": all_blocks,
-            "full_text": "\n".join([b["text"] for b in all_blocks])
-        }
-
-    async def _process_image(self, img_path: str, tess_lang: str) -> Dict[str, Any]:
-        import pytesseract
-        from PIL import Image
-
-        img = Image.open(img_path)
-        data = pytesseract.image_to_data(img, lang=tess_lang, output_type=pytesseract.Output.DICT)
-
-        blocks = self._parse_tesseract_data(data, 1)
-
-        return {
-            "engine": "Tesseract",
-            "page_count": 1,
-            "text_blocks": blocks,
-            "full_text": "\n".join([b["text"] for b in blocks])
-        }
-
-    def _parse_tesseract_data(self, data: Dict, page_num: int) -> List[Dict[str, Any]]:
-        blocks = []
-        n_boxes = len(data['text'])
-
-        for i in range(n_boxes):
-            text = data['text'][i].strip()
-            if not text:
-                continue
-
-            conf = data['conf'][i]
-            if conf < 0:  # Tesseract returns -1 for non-text blocks
-                continue
-
-            block = {
-                "text": text,
-                "confidence": conf / 100.0,
-                "page": page_num,
-                "bbox": {
-                    "x": data['left'][i],
-                    "y": data['top'][i],
-                    "width": data['width'][i],
-                    "height": data['height'][i]
-                }
-            }
-            blocks.append(block)
-
-        # Merge adjacent words into lines
-        blocks = self._merge_words_to_lines(blocks)
-
-        return blocks
-
-    def _merge_words_to_lines(self, blocks: List[Dict]) -> List[Dict]:
-        if not blocks:
-            return []
-
-        # Simple line merging based on vertical position
-        blocks.sort(key=lambda b: (b["bbox"]["y"], b["bbox"]["x"]))
-
-        merged = []
-        current_line = [blocks[0]]
-
-        for block in blocks[1:]:
-            prev = current_line[-1]
-
-            # Check if on same line (similar y position)
-            y_diff = abs(block["bbox"]["y"] - prev["bbox"]["y"])
-            if y_diff < prev["bbox"]["height"] * 0.5:
-                current_line.append(block)
-            else:
-                # Merge current line
-                merged.append(self._merge_line(current_line))
-                current_line = [block]
-
-        if current_line:
-            merged.append(self._merge_line(current_line))
-
-        return merged
-
-    def _merge_line(self, line_blocks: List[Dict]) -> Dict:
-        if len(line_blocks) == 1:
-            return line_blocks[0]
-
-        text = " ".join([b["text"] for b in line_blocks])
-        avg_conf = sum(b["confidence"] for b in line_blocks) / len(line_blocks)
-
-        min_x = min(b["bbox"]["x"] for b in line_blocks)
-        min_y = min(b["bbox"]["y"] for b in line_blocks)
-        max_x = max(b["bbox"]["x"] + b["bbox"]["width"] for b in line_blocks)
-        max_y = max(b["bbox"]["y"] + b["bbox"]["height"] for b in line_blocks)
-
-        return {
-            "text": text,
-            "confidence": round(avg_conf, 4),
-            "page": line_blocks[0]["page"],
-            "bbox": {
-                "x": min_x,
-                "y": min_y,
-                "width": max_x - min_x,
-                "height": max_y - min_y
-            }
-        }
-
-
-class EasyOCREngine(BaseOCREngine):
-    """
-    Alternative OCR Engine - EasyOCR
-
-    Advantages:
-    - Easy to use
-    - Good multi-language support
-    - GPU acceleration
-    """
-
-    def __init__(self, use_gpu: bool = False):
-        self._reader = None
-        self._ready = False
-        self._use_gpu = use_gpu
-        self._init_engine()
-
-    def _init_engine(self):
-        try:
-            import easyocr
-
-            self._reader = easyocr.Reader(
-                ['en', 'ch_sim'],
-                gpu=self._use_gpu,
-                verbose=False
-            )
-            self._ready = True
-            logger.info("EasyOCR engine initialized successfully")
-        except ImportError as e:
-            logger.warning(f"EasyOCR not installed: {e}")
-            self._ready = False
-        except Exception as e:
-            logger.error(f"EasyOCR initialization failed: {e}")
-            self._ready = False
-
-    def is_ready(self) -> bool:
-        return self._ready
-
-    def get_name(self) -> str:
-        return "EasyOCR"
-
-    async def recognize(self, file_path: str, language: str = "en") -> Dict[str, Any]:
-        if not self._ready:
-            raise RuntimeError("EasyOCR engine not ready")
-
-        ext = os.path.splitext(file_path)[1].lower()
-
-        if ext == '.pdf':
-            return await self._process_pdf(file_path)
-        else:
-            return await self._process_image(file_path)
-
-    async def _process_pdf(self, pdf_path: str) -> Dict[str, Any]:
-        import fitz
-
-        doc = fitz.open(pdf_path)
-        page_count = len(doc)  # 保存页数，避免关闭后访问
-        all_blocks = []
-
-        try:
-            for page_num in range(page_count):
-                page = doc[page_num]
-
-                mat = fitz.Matrix(2, 2)
-                pix = page.get_pixmap(matrix=mat)
-
-                img_path = f"{pdf_path}_easyocr_{page_num}.png"
-                pix.save(img_path)
-
-                result = self._reader.readtext(img_path)
-                blocks = self._parse_result(result, page_num + 1)
-                all_blocks.extend(blocks)
-
-                if os.path.exists(img_path):
-                    os.remove(img_path)
-        finally:
-            doc.close()
-
-        return {
-            "engine": "EasyOCR",
-            "page_count": page_count,
-            "text_blocks": all_blocks,
-            "full_text": "\n".join([b["text"] for b in all_blocks])
-        }
-
-    async def _process_image(self, img_path: str) -> Dict[str, Any]:
-        result = self._reader.readtext(img_path)
-        blocks = self._parse_result(result, 1)
-
-        return {
-            "engine": "EasyOCR",
-            "page_count": 1,
-            "text_blocks": blocks,
-            "full_text": "\n".join([b["text"] for b in blocks])
-        }
-
-    def _parse_result(self, result: List, page_num: int) -> List[Dict[str, Any]]:
-        blocks = []
-
-        for item in result:
-            box, text, confidence = item
-
-            x_coords = [p[0] for p in box]
-            y_coords = [p[1] for p in box]
-
-            block = {
-                "text": text,
-                "confidence": round(confidence, 4),
-                "page": page_num,
-                "bbox": {
-                    "x": min(x_coords),
-                    "y": min(y_coords),
-                    "width": max(x_coords) - min(x_coords),
-                    "height": max(y_coords) - min(y_coords)
-                },
-                "polygon": box
-            }
-            blocks.append(block)
-
-        blocks.sort(key=lambda b: (b["bbox"]["y"], b["bbox"]["x"]))
-
-        return blocks
-
-
 class OCRService:
     """
-    OCR Service with multi-engine support
-
-    Supports automatic fallback:
-    1. PaddleOCR (Primary - Recommended)
-    2. Tesseract (Fallback)
-    3. EasyOCR (Alternative)
+    OCR Service backed by PaddleOCR.
     """
 
     def __init__(self, use_gpu: bool = False, lang: str = "ch"):
@@ -730,17 +383,6 @@ class OCRService:
         paddle_engine = PaddleOCREngine(use_gpu=self._use_gpu, lang=self._lang)
         if paddle_engine.is_ready():
             self.engines["paddleocr"] = paddle_engine
-
-        # PaddleOCR-only version: Tesseract and EasyOCR disabled
-        # Fallback: Tesseract
-        # tess_engine = TesseractOCREngine()
-        # if tess_engine.is_ready():
-        #     self.engines["tesseract"] = tess_engine
-
-        # Alternative: EasyOCR
-        # easy_engine = EasyOCREngine(use_gpu=self._use_gpu)
-        # if easy_engine.is_ready():
-        #     self.engines["easyocr"] = easy_engine
 
         logger.info(f"Available OCR engines: {list(self.engines.keys())}")
 
@@ -791,9 +433,7 @@ class OCRService:
         if engine and engine in self.engines:
             engines_to_try.append(engine)
         else:
-            # PaddleOCR-only version: Only use PaddleOCR
-            # Default order: paddleocr -> tesseract -> easyocr
-            for eng in ["paddleocr"]:  # Only PaddleOCR in PaddleOCR-only version
+            for eng in ["paddleocr"]:
                 if eng in self.engines:
                     engines_to_try.append(eng)
 
@@ -813,14 +453,3 @@ class OCRService:
                     raise
 
         raise RuntimeError(f"All OCR engines failed. Last error: {last_error}")
-
-    def recognize_block_array(self, img_array: "np.ndarray") -> List[Dict[str, Any]]:
-        """Run OCR on a numpy image array representing a single cropped block.
-
-        Returns a list of line dicts with keys: text, confidence, polygon, bbox.
-        Delegates to the PaddleOCR engine's recognize_array method.
-        """
-        eng = self.get_engine("paddleocr")
-        if hasattr(eng, "recognize_array"):
-            return eng.recognize_array(img_array)
-        return []

@@ -4,7 +4,6 @@ DocuVision 配置文件
 
 from pydantic_settings import BaseSettings
 from pydantic import Field
-from typing import Optional
 import os
 
 
@@ -27,22 +26,6 @@ class Settings(BaseSettings):
 
     # OCR 配置
     OCR_LANG: str = "ch"  # ch, en, multi
-    OCR_USE_GPU: bool = False
-    OCR_MODEL_DIR: Optional[str] = None
-
-    # 版面分析配置
-    LAYOUT_MODEL: str = "ppstructure"  # ppstructure, layoutparser
-    LAYOUT_RECOVERY: bool = True
-
-    # 表格识别配置
-    TABLE_MODEL: str = "ppstructure"
-    TABLE_MAX_LEN: int = 488
-
-    # Redis 配置 (用于任务队列)
-    REDIS_URL: str = "redis://localhost:6379/0"
-
-    # 数据库配置
-    DATABASE_URL: str = "sqlite:///./docuvision.db"
 
     # ============================================
     # Phase 1 API - Service-Level Configuration
@@ -59,15 +42,16 @@ class Settings(BaseSettings):
     # Maximum number of debug jobs to retain before cleanup (FIFO)
     DEBUG_KEEP_LAST_N: int = 50
 
+    # Debug overlay images: when enabled, renders bounding-box overlays on source images at each pipeline stage.
+    # Disabled by default to avoid unnecessary disk I/O on production deployments.
+    # env override: APP_ENABLE_DEBUG_OVERLAYS
+    ENABLE_DEBUG_OVERLAYS: bool = Field(default=False, alias="APP_ENABLE_DEBUG_OVERLAYS")
+
     # Coordinate system strategy: if False, view layer applies inverse rotation to restore original image coords
     # If True, view layer uses preprocessed image coordinates directly
     # Must be service-level; all requests use the same strategy
     # env override: APP_USE_DOC_UNWARPING
     USE_DOC_UNWARPING: bool = Field(default=True, alias="APP_USE_DOC_UNWARPING")
-
-    # OCR text fusion thresholds
-    OCR_MIN_CONFIDENCE: float = 0.6  # min OCR text confidence to use for text replacement
-    OCR_SUSPICIOUS_LENGTH_RATIO: float = 0.5  # if OCR text length differs by >50% from original, mark suspicious
 
     class Config:
         env_file = ".env"

@@ -19,8 +19,9 @@ matplotlib.use('Agg')
 
 # Ensure PaddleX is imported only once
 #import paddlex  # 显式导入并初始化
-paddlex_home = os.environ.get('PADDLEX_HOME', '/content/drive/My Drive/DocuVision/DocuVision')
-os.environ['PADDLEX_HOME'] = paddlex_home    # 必须放在这里，确保模型加载前生效
+paddlex_home = os.environ.get('PADDLEX_HOME', '')
+if paddlex_home:
+    os.environ['PADDLEX_HOME'] = paddlex_home    # 必须放在这里，确保模型加载前生效
 # === Import paddle and paddlex BEFORE any patches ===
 import paddle
 print(f"[Paddle] Version: {paddle.__version__}, Compiled with CUDA: {paddle.is_compiled_with_cuda()}")
@@ -63,36 +64,7 @@ def _get_dist_version(dist_names: List[str]) -> str:
     return "0.0.0"
 
 
-def _parse_version_tuple(version_str: str) -> tuple[int, int, int]:
-    """Parse 'X.Y.Z...' into (X, Y, Z). Non-numeric suffixes are ignored."""
-    core_chars: List[str] = []
-    for ch in version_str:
-        if ch.isdigit() or ch == ".":
-            core_chars.append(ch)
-        else:
-            break
-    core = "".join(core_chars)
-    parts = [p for p in core.split(".") if p]
-    nums: List[int] = []
-    for p in parts:
-        try:
-            nums.append(int(p))
-        except Exception:
-            break
-    while len(nums) < 3:
-        nums.append(0)
-    return (nums[0], nums[1], nums[2])
 
-
-
-
-
-def _truthy_env(name: str, default: bool = False) -> bool:
-    """Parse common truthy/falsey environment values."""
-    raw = os.environ.get(name)
-    if raw is None:
-        return default
-    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1) -> Dict[str, Any]:
@@ -177,265 +149,19 @@ def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1)
     return meta
 
 
-def _resolve_debug_overlay_dir() -> str:
-    """Resolve a cloud-friendly output path for debug overlay images."""
-    override = os.environ.get("DOCUVISION_DEBUG_OVERLAY_DIR", "").strip()
-    if override:
-        return override
-
-    # Prefer mounted cloud drive path when available (e.g., Colab/AI Studio).
-    cloud_root = "/content/drive/My Drive/DocuVision/DocuVision"
-    if os.path.exists(cloud_root):
-        return os.path.join(cloud_root, "outputs", "debug_overlays")
-
-    backend_dir = Path(__file__).resolve().parent.parent
-    project_root = backend_dir.parent
-    return str(project_root / "outputs" / "debug_overlays")
-
-
-def _normalize_bbox_like(raw_bbox: Any) -> Optional[Dict[str, float]]:
-    """Normalize bbox formats into {x, y, width, height}."""
-    if raw_bbox is None:
-        return None
-
-    if isinstance(raw_bbox, dict):
-        if all(k in raw_bbox for k in ("x", "y", "width", "height")):
-            try:
-                return {
-                    "x": float(raw_bbox.get("x", 0.0)),
-                    "y": float(raw_bbox.get("y", 0.0)),
-                    "width": float(raw_bbox.get("width", 0.0)),
-                    "height": float(raw_bbox.get("height", 0.0)),
-                }
-            except Exception:
-                return None
-        if all(k in raw_bbox for k in ("x1", "y1", "x2", "y2")):
-            try:
-                x1 = float(raw_bbox.get("x1", 0.0))
-                y1 = float(raw_bbox.get("y1", 0.0))
-                x2 = float(raw_bbox.get("x2", x1))
-                y2 = float(raw_bbox.get("y2", y1))
-                return {
-                    "x": x1,
-                    "y": y1,
-                    "width": max(0.0, x2 - x1),
-                    "height": max(0.0, y2 - y1),
-                }
-            except Exception:
-                return None
-
-    if isinstance(raw_bbox, (list, tuple)) and len(raw_bbox) >= 4:
-        try:
-            x1 = float(raw_bbox[0])
-            y1 = float(raw_bbox[1])
-            x2 = float(raw_bbox[2])
-            y2 = float(raw_bbox[3])
-            return {
-                "x": x1,
-                "y": y1,
-                "width": max(0.0, x2 - x1),
-                "height": max(0.0, y2 - y1),
-            }
-        except Exception:
-            return None
-
-    return None
-
-
-def _save_debug_overlay_image(
-    file_path: str,
-    task_id: str,
-    stage: str,
-    elements: List[Dict[str, Any]],
-    page_num: int = 1,
-) -> Optional[Dict[str, Any]]:
-    """
-    Render and save a debug overlay image for a specific processing stage.
-
-    Coordinates are treated as image_abs_px for current pipeline.
-    """
-    if not file_path or not os.path.exists(file_path):
-        return None
-
-    try:
-        from PIL import Image as PILImage, ImageDraw
-        import fitz  # PyMuPDF
-    except Exception as e:
-        logger.warning(f"[DebugOverlay] Dependencies unavailable: {e}")
-        return None
-
-    try:
-        ext = os.path.splitext(file_path)[1].lower()
-        if ext == ".pdf":
-            doc = fitz.open(file_path)
-            try:
-                if page_num < 1 or page_num > len(doc):
-                    return None
-                page = doc[page_num - 1]
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                if pix.alpha:
-                    image = PILImage.frombytes("RGBA", [pix.width, pix.height], pix.samples).convert("RGB")
-                else:
-                    image = PILImage.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            finally:
-                doc.close()
-        else:
-            image = PILImage.open(file_path).convert("RGB")
-
-        draw = ImageDraw.Draw(image)
-        width_px = int(image.width)
-        height_px = int(image.height)
-        total = 0
-        valid = 0
-        out_of_bounds = 0
-
-        for idx, el in enumerate(elements or []):
-            if not isinstance(el, dict):
-                continue
-            total += 1
-            bbox = _normalize_bbox_like(el.get("bbox") or el.get("bounding_box"))
-            if not bbox:
-                continue
-
-            x = float(bbox.get("x", 0.0))
-            y = float(bbox.get("y", 0.0))
-            w = float(bbox.get("width", 0.0))
-            h = float(bbox.get("height", 0.0))
-            if w <= 0 or h <= 0:
-                continue
-
-            x1, y1 = x, y
-            x2, y2 = x + w, y + h
-            if x2 < 0 or y2 < 0 or x1 > width_px or y1 > height_px:
-                out_of_bounds += 1
-
-            draw.rectangle([x1, y1, x2, y2], outline=(255, 64, 64), width=2)
-            label = str(el.get("type") or el.get("element_type") or "block")
-            draw.text((x1 + 2, max(0.0, y1 - 12)), label, fill=(255, 64, 64))
-            valid += 1
-
-        output_dir = _resolve_debug_overlay_dir()
-        os.makedirs(output_dir, exist_ok=True)
-        filename = f"{task_id}_{stage}_p{int(page_num)}.png"
-        out_path = os.path.join(output_dir, filename)
-        image.save(out_path, format="PNG")
-
-        return {
-            "stage": stage,
-            "path": out_path,
-            "page": int(page_num),
-            "width_px": width_px,
-            "height_px": height_px,
-            "total_elements": total,
-            "drawn_elements": valid,
-            "out_of_bounds_elements": out_of_bounds,
-            "coord_space": "image_abs_px",
-        }
-    except Exception as e:
-        logger.warning(f"[DebugOverlay] Failed to save overlay ({stage}) for task {task_id}: {e}")
-        return None
-
-
-def _detect_aistudio_environment() -> bool:
-    """
-    Best-effort detection for Baidu AI Studio runtime.
-
-    This intentionally avoids importing heavy ML packages.
-    """
-    # Common home path in AI Studio images
-    if os.path.exists("/home/aistudio"):
-        return True
-    # Explicit opt-in
-    if _truthy_env("AISTUDIO", False) or _truthy_env("DOCUVISION_AISTUDIO", False):
-        return True
-    # Other possible signals (non-exhaustive)
-    for key in ("AISTUDIO_PROJECT_NAME", "PADDLE_CLOUD", "PADDLE_PLATFORM"):
-        if os.environ.get(key):
-            return True
-    return False
-
-
 def _dependency_preflight_check() -> Dict[str, str]:
-    """
-    Print Paddle/PaddleOCR/PaddleX versions and optionally enforce expected versions.
-
-    Strict mode:
-    - Enabled by default on AI Studio.
-    - Can be forced on/off by env var DOCUVISION_STRICT_DEP_VERSIONS.
-
-    Expected versions can be overridden by:
-    - DOCUVISION_EXPECTED_PADDLE_VERSION
-    - DOCUVISION_EXPECTED_PADDLEOCR_VERSION
-    - DOCUVISION_EXPECTED_PADDLEX_VERSION
-    """
-    is_aistudio = _detect_aistudio_environment()
-    strict = _truthy_env("DOCUVISION_STRICT_DEP_VERSIONS", default=is_aistudio)
-
+    """Log installed Paddle/PaddleOCR/PaddleX versions at startup."""
     versions = {
         "paddle": _get_dist_version(["paddlepaddle-gpu", "paddlepaddle"]),
         "paddleocr": _get_dist_version(["paddleocr"]),
         "paddlex": _get_dist_version(["paddlex"]),
     }
-
     logger.info(
-        "[Preflight] Dependency versions | paddle={paddle} | paddleocr={paddleocr} | paddlex={paddlex} | strict={strict} | aistudio={is_aistudio}",
+        "[Preflight] Dependency versions | paddle={paddle} | paddleocr={paddleocr} | paddlex={paddlex}",
         paddle=versions["paddle"],
         paddleocr=versions["paddleocr"],
         paddlex=versions["paddlex"],
-        strict=strict,
-        is_aistudio=is_aistudio,
     )
-
-    expected_defaults = {
-        "paddle": "3.3.0",
-        "paddleocr": "3.3.2",
-        "paddlex": "3.3.12",
-    }
-
-    expected = {
-        "paddle": os.environ.get("DOCUVISION_EXPECTED_PADDLE_VERSION", expected_defaults["paddle"] if is_aistudio else ""),
-        "paddleocr": os.environ.get("DOCUVISION_EXPECTED_PADDLEOCR_VERSION", expected_defaults["paddleocr"] if is_aistudio else ""),
-        "paddlex": os.environ.get("DOCUVISION_EXPECTED_PADDLEX_VERSION", expected_defaults["paddlex"] if is_aistudio else ""),
-    }
-
-    if strict:
-        mismatches: List[str] = []
-        for k in ("paddle", "paddleocr", "paddlex"):
-            exp = expected.get(k, "")
-            if not exp:
-                continue
-            if versions.get(k, "0.0.0") != exp:
-                mismatches.append(f"- {k}: expected {exp}, found {versions.get(k)}")
-
-        if mismatches:
-            msg = (
-                "Dependency version mismatch detected.\n"
-                "This project expects the AI Studio preinstalled stack (no venv).\n\n"
-                "Mismatches:\n"
-                + "\n".join(mismatches)
-                + "\n\n"
-                "Fix suggestions:\n"
-                "- Do NOT `pip install`/downgrade paddle/paddleocr/paddlex into the global environment.\n"
-                "- Switch to the correct AI Studio image, or align expected versions via:\n"
-                "  DOCUVISION_EXPECTED_PADDLE_VERSION / DOCUVISION_EXPECTED_PADDLEOCR_VERSION / DOCUVISION_EXPECTED_PADDLEX_VERSION\n"
-                "- To bypass (not recommended on AI Studio), set DOCUVISION_STRICT_DEP_VERSIONS=0\n"
-            )
-            logger.error("[Preflight] " + msg)
-            raise RuntimeError(msg)
-    else:
-        # Non-strict mode: still warn if AI Studio defaults don't match.
-        if is_aistudio:
-            warn_lines: List[str] = []
-            for k in ("paddle", "paddleocr", "paddlex"):
-                exp = expected_defaults[k]
-                if versions.get(k, "0.0.0") != exp:
-                    warn_lines.append(f"- {k}: expected {exp}, found {versions.get(k)}")
-            if warn_lines:
-                logger.warning(
-                    "[Preflight] AI Studio default stack differs from expected.\n{details}",
-                    details="\n".join(warn_lines),
-                )
-
     return versions
 
 
@@ -458,6 +184,7 @@ from app.services.batch_service import BatchService, BatchStatus
 from app.services.unified_layout_service import UnifiedLayoutService
 from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
 from app.core.config import settings
+from app.core.debug_utils import save_debug_overlay_image
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -639,14 +366,12 @@ class QualityLayer(BaseModel):
     """Quality metrics layer"""
     processing_time_ms: int = 0
     text_blocks_total: int = 0
-    text_blocks_replaced: int = 0
+    text_blocks_no_ocr: int = 0
     text_blocks_no_match: int = 0
-    text_blocks_low_confidence: int = 0
     table_blocks_total: int = 0
     figure_blocks_total: int = 0
-    ocr_lines_total: int = 0
-    avg_text_confidence: float = 0.0
-    engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3", "paddleocr", ...]
+    avg_layout_confidence: float = 0.0
+    engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3"]
 
 
 class JobEnvelope(BaseModel):
@@ -1046,7 +771,7 @@ async def process_document(task_id: str):
         is_cancelled=lambda tid: task_cancellation_flags.get(tid, False),
         call_maybe_async=call_maybe_async,
         build_page_image_meta=_build_page_image_meta,
-        save_debug_overlay=_save_debug_overlay_image,
+        save_debug_overlay=save_debug_overlay_image if settings.ENABLE_DEBUG_OVERLAYS else None,
     )
 
     try:
@@ -1500,6 +1225,11 @@ async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int
         # Use page-level dimensions if available
         image_width = image_width or int(view_page.get("width", 0) or 0)
         image_height = image_height or int(view_page.get("height", 0) or 0)
+        _elem_count = len(view_page.get("elements", []))
+        logger.info(
+            f"[Blocks] task={task_id} page={page_number} "
+            f"source=envelope_view elements={_elem_count}"
+        )
         for elem in view_page.get("elements", []):
             if not isinstance(elem, dict):
                 continue
@@ -1513,11 +1243,14 @@ async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int
                 bbox = [0.0, 0.0, 0.0, 0.0]
             payload = elem.get("payload") or {}
             text = str(payload.get("text") or "")
-            confidence = float(payload.get("confidence", 0) or 0)
+            confidence_raw = payload.get("confidence", elem.get("confidence", 0))
+            confidence = float(confidence_raw or 0)
+            role = str(elem.get("kind") or "paragraph")
             blocks.append({
                 "id": elem.get("id") or f"block_{len(blocks)}",
                 "page": page_number,
-                "role": elem.get("kind", "paragraph"),
+                "role": role,
+                "type": role,
                 "confidence": confidence,
                 "score": confidence,
                 "bbox": bbox,
@@ -1535,6 +1268,14 @@ async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int
             or result.get("text_blocks")
             or []
         )
+        _fallback_reason = "envelope_missing" if not envelope else (
+            "view_missing" if not view_layer.get("pages") else "page_not_found"
+        )
+        logger.warning(
+            f"[Blocks] task={task_id} page={page_number} "
+            f"source=legacy_fallback reason={_fallback_reason} "
+            f"source_blocks={len(source_blocks)}"
+        )
         for idx, block in enumerate(source_blocks):
             if not isinstance(block, dict):
                 continue
@@ -1550,6 +1291,7 @@ async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int
                 "id": block.get("id") or block.get("block_id") or f"block_{idx}",
                 "page": page,
                 "role": role,
+                "type": role,
                 "confidence": confidence,
                 "score": confidence,
                 "bbox": bbox,

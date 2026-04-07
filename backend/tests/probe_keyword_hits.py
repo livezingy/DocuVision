@@ -136,6 +136,7 @@ def main() -> int:
         return 1
 
     pages = (((envelope or {}).get("fused") or {}).get("pages") or [])
+    view_pages = (((envelope or {}).get("view") or {}).get("pages") or [])
 
     target_blocks: Dict[str, Dict[str, Any]] = {}
     channels: Dict[str, List[Dict[str, Any]]] = {
@@ -200,6 +201,51 @@ def main() -> int:
         print(repr(data["ocr_text"]))
         print("  payload_text:")
         print(repr(data["payload_text"]))
+
+    print("\n" + "=" * 96)
+    print("VIEW LAYER CHECK")
+    print("=" * 96)
+    if not view_pages:
+        print("[WARN] envelope.view.pages is empty")
+    else:
+        first_page = view_pages[0] or {}
+        elements = first_page.get("elements") or []
+        print(
+            f"[VIEW] pages={len(view_pages)} "
+            f"first_page_num={first_page.get('page_num', 1)} "
+            f"elements_count={len(elements)}"
+        )
+        if not elements:
+            print("[WARN] envelope.view.pages[0].elements is empty")
+
+    print("\n" + "=" * 96)
+    print("TASK BLOCKS CHECK")
+    print("=" * 96)
+    try:
+        blocks_resp = requests.get(f"{api_base}/api/v1/tasks/{envelope.get('job_id')}/blocks", timeout=60)
+        if not blocks_resp.ok:
+            print(f"[WARN] /tasks/{{id}}/blocks status={blocks_resp.status_code}")
+        else:
+            blocks_data = blocks_resp.json() if blocks_resp.content else {}
+            flat_blocks = blocks_data.get("blocks") or []
+            print(f"[BLOCKS] returned={len(flat_blocks)}")
+
+            by_id = {str(b.get("id") or ""): b for b in flat_blocks if isinstance(b, dict)}
+            for bid in target_block_ids:
+                merged = target_blocks.get(bid)
+                fb = by_id.get(bid)
+                if not merged:
+                    print(f"[{bid}] not found in fused target blocks")
+                    continue
+                if not fb:
+                    print(f"[{bid}] not found in /tasks/{{id}}/blocks")
+                    continue
+                block_text = str(fb.get("text") or fb.get("content") or "")
+                print(f"[{bid}] role={fb.get('role')} type={fb.get('type')} conf={fb.get('confidence')}")
+                print(f"  payload_text == blocks.text ? {merged['payload_text'] == block_text}")
+                print(f"  blocks_text: {repr(block_text)}")
+    except Exception as exc:
+        print(f"[WARN] failed to query /tasks/{{id}}/blocks: {exc}")
 
     if keyword:
         print("\n" + "=" * 96)

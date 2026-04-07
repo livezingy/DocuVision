@@ -37,7 +37,6 @@ let isProcessingQueue = false;
 let lastStatusMessage = '';
 let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
-let showOcrFineGrainedOverlay = false;
 let lastRenderedAnalysisResult = null;
 let lastFetchedBlocks = null;
 let enableOverlaySha256Validation = false;
@@ -995,21 +994,7 @@ function initAnalysisView() {
  * Initialize overlay options for annotation density control.
  */
 function initOverlayOptions() {
-    const toggle = document.getElementById('showOcrFineGrainedToggle');
-    if (!toggle) return;
-
-    toggle.checked = false;
-    showOcrFineGrainedOverlay = false;
-
-    toggle.addEventListener('change', () => {
-        showOcrFineGrainedOverlay = !!toggle.checked;
-
-        if (lastRenderedAnalysisResult) {
-            renderDocumentWithAnnotations(lastRenderedAnalysisResult);
-        }
-    });
-
-    const toolbar = toggle.closest('.text-toolbar');
+    const toolbar = document.querySelector('#contentTextView .text-toolbar');
     if (!toolbar || document.getElementById('overlayLayerToggles')) {
         return;
     }
@@ -1978,6 +1963,12 @@ function clearCanvasLayoutOverlay() {
 function formatAzureRoleLabel(type) {
     const normalized = String(type || 'paragraph').toLowerCase();
     const roleMap = {
+        doc_title: 'Title',
+        paragraph_title: 'SectionHeading',
+        abstract_title: 'SectionHeading',
+        reference_title: 'SectionHeading',
+        content_title: 'SectionHeading',
+        figure_table_chart_title: 'FigureCaption',
         page_header: 'PageHeader',
         page_footer: 'PageFooter',
         section_header: 'SectionHeading',
@@ -2250,7 +2241,7 @@ async function validateImageCoordinateBinding(image, result, pageNum = 1) {
 function getOverlayLayerType(type) {
     const normalized = String(type || '').toLowerCase();
     if (['table'].includes(normalized)) return 'table';
-    if (['figure', 'image'].includes(normalized)) return 'figure';
+    if (['figure', 'image', 'chart', 'figure_title', 'figure_caption', 'table_caption', 'figure_table_chart_title'].includes(normalized)) return 'figure';
     if (['header', 'footer', 'page_header', 'page_footer'].includes(normalized)) return 'header_footer';
     if (['list', 'list_item'].includes(normalized)) return 'list';
     return 'text';
@@ -2259,115 +2250,6 @@ function getOverlayLayerType(type) {
 function shouldRenderOverlayType(type) {
     const layerType = getOverlayLayerType(type);
     return overlayLayerVisibility[layerType] !== false;
-}
-
-function isTextLikeLayoutType(type) {
-    const t = String(type || '').toLowerCase();
-    return [
-        'title', 'subtitle', 'text', 'paragraph', 'text_block',
-        'section_header', 'header', 'footer', 'page_header', 'page_footer',
-        'reference', 'list_item', 'list', 'equation', 'figure_caption'
-    ].includes(t);
-}
-
-function shouldExcludeOverlayElement(element) {
-    const type = String(element.type || element.type_name || '').toLowerCase();
-    if (type === 'table' && (element.inferred_bbox || element.overlay_excluded)) {
-        return true;
-    }
-    return !!element.overlay_excluded;
-}
-
-function mapSemanticBlockToOverlayElement(block, idx) {
-    return {
-        id: block.id || `semantic_${idx}`,
-        page: block.page || 1,
-        type: block.type || 'paragraph',
-        bbox: block.bbox || block.bounding_box || { x: 0, y: 0, width: 0, height: 0 },
-        confidence: typeof block.confidence === 'number' ? block.confidence : 0,
-        text: block.text || block.content || '',
-        source: 'semantic_block'
-    };
-}
-
-function getRenderableAnnotationElements(result, options = {}) {
-    const includeOcrFineGrained = !!options.includeOcrFineGrained;
-    const forcePureLayoutBbox = !!options.forcePureLayoutBbox;
-    const semanticTextBlocks = (result.semantic_text_blocks || []).filter(el => el && typeof el === 'object');
-    const layoutElements = (result.layout?.elements || []).filter(el => el && typeof el === 'object');
-
-    if (layoutElements.length > 0) {
-        const filteredLayoutElements = layoutElements.filter(el => !shouldExcludeOverlayElement(el));
-
-        // Diagnostic mode: bypass semantic replacement and render pure layout bboxes.
-        if (forcePureLayoutBbox) {
-            return filteredLayoutElements;
-        }
-
-        if (!includeOcrFineGrained && semanticTextBlocks.length > 0) {
-            const nonTextElements = filteredLayoutElements.filter(el => {
-                const type = String(el.type || el.type_name || '').toLowerCase();
-                return !isTextLikeLayoutType(type);
-            });
-
-            const semanticOverlayElements = semanticTextBlocks.map((block, idx) => mapSemanticBlockToOverlayElement(block, idx));
-            return [...nonTextElements, ...semanticOverlayElements];
-        }
-
-        return filteredLayoutElements;
-    }
-
-    const fallbackElements = [];
-
-    if (semanticTextBlocks.length > 0) {
-        semanticTextBlocks.forEach((block, idx) => {
-            fallbackElements.push(mapSemanticBlockToOverlayElement(block, idx));
-        });
-    }
-
-    // OCR-only fallback: map text_blocks to annotation elements
-    if (includeOcrFineGrained) {
-        const textBlocks = result.text_blocks || [];
-        textBlocks.forEach((block, idx) => {
-            const polyBbox = bboxFromPolygon(block.polygon);
-            const bbox = polyBbox || normalizeAnnotationBbox(block.bbox || block.bounding_box);
-            if (bbox.width <= 0 || bbox.height <= 0) return;
-            fallbackElements.push({
-                id: `ocr_text_${idx}`,
-                page: block.page || 1,
-                type: 'text_block',
-                bbox,
-                polygon: block.polygon || [],
-                confidence: typeof block.confidence === 'number' ? block.confidence : 0,
-                text: block.text || '',
-                source: 'ocr_fine_grained'
-            });
-        });
-    }
-
-    // Table-only fallback: map tables to annotation elements
-    const tables = result.tables || [];
-    tables.forEach((table, idx) => {
-        let bbox = normalizeAnnotationBbox(table.bbox || table.bounding_box);
-        if (bbox.width <= 0 || bbox.height <= 0) {
-            // Never render inferred full-page table boxes on main overlay.
-            return;
-        }
-        fallbackElements.push({
-            id: table.id || `table_${idx}`,
-            page: table.page || table.page_number || 1,
-            type: 'table',
-            bbox,
-            inferred_bbox: false,
-            confidence: typeof table.confidence === 'number' ? table.confidence : 0,
-            html: table.html,
-            rows: table.rows,
-            columns: table.columns,
-            text: table.title || 'Table detected'
-        });
-    });
-
-    return fallbackElements;
 }
 
 /**
@@ -2750,6 +2632,18 @@ function normalizeTextForDisplay(text) {
     return text.trim();
 }
 
+function normalizePanelParagraphText(text) {
+    const value = normalizeTextForDisplay(text || '');
+    if (!value) return value;
+
+    // Flatten OCR line breaks for panel readability while keeping sentence spacing.
+    return value
+        .replace(/\r\n/g, '\n')
+        .replace(/[ \t]*\n[ \t]*/g, ' ')
+        .replace(/ +/g, ' ')
+        .trim();
+}
+
 function isLikelyCollapsedText(text) {
     const value = String(text || '');
     if (!value) return false;
@@ -2773,6 +2667,13 @@ function isLikelyCollapsedText(text) {
 function toAzureTypeLabel(type) {
     const normalized = String(type || 'paragraph').toLowerCase();
     const map = {
+        doc_title: 'Title',
+        paragraph_title: 'SectionHeading',
+        abstract_title: 'SectionHeading',
+        reference_title: 'SectionHeading',
+        content_title: 'SectionHeading',
+        figure_table_chart_title: 'FigureCaption',
+        table_caption: 'FigureCaption',
         page_header: 'PageHeader',
         page_footer: 'PageFooter',
         section_header: 'SectionHeading',
@@ -4234,9 +4135,15 @@ function updateContentText(result) {
     const semanticTextBlocks = blocksData
         ? blocksData.blocks.filter(b => {
               const t = String(b.type || b.role || '').toLowerCase();
-              return ['title','subtitle','paragraph','text','text_block','section_header',
-                      'header','footer','page_header','page_footer','reference',
-                      'list_item','list','equation','figure_caption'].includes(t)
+              return [
+                  'doc_title', 'paragraph_title', 'abstract_title', 'reference_title', 'content_title',
+                  'figure_table_chart_title', 'table_caption',
+                  'title', 'subtitle', 'paragraph', 'text', 'text_block', 'section_header',
+                  'header', 'footer', 'page_header', 'page_footer', 'reference',
+                  'reference_content', 'abstract', 'content', 'algorithm',
+                  'list_item', 'list', 'equation', 'figure_caption', 'aside_text',
+                  'number', 'formula_number'
+              ].includes(t)
                   && !!(b.text || b.content);
           }).map((b, i) => ({
               id: b.id || `block_${i}`,
@@ -4253,9 +4160,13 @@ function updateContentText(result) {
     // Keep type richness closer to Azure (Title/SectionHeading/Paragraph/...) and
     // prioritize semantic blocks (backend-aggregated) over OCR text lines.
     const textLikeTypes = new Set([
+        'doc_title', 'paragraph_title', 'abstract_title', 'reference_title', 'content_title',
+        'figure_table_chart_title',
         'title', 'subtitle', 'text', 'paragraph', 'text_block',
         'section_header', 'header', 'footer', 'page_header', 'page_footer',
-        'reference', 'list_item', 'list', 'equation', 'figure_caption'
+        'reference', 'reference_content', 'abstract', 'content', 'algorithm',
+        'list_item', 'list', 'equation', 'figure_caption', 'table_caption',
+        'aside_text', 'number', 'formula_number'
     ]);
 
     const layoutTextElements = elements.filter(el => {
@@ -4285,66 +4196,83 @@ function updateContentText(result) {
     }));
 
     const ocrCandidates = textBlocks
-        .map(b => normalizeTextForDisplay(b.text || ''))
+        .map(b => normalizePanelParagraphText(b.text || ''))
         .filter(Boolean)
         .sort((a, b) => b.length - a.length);
+
+    // Fixed type display order for the Text panel
+    const TYPE_DISPLAY_ORDER = [
+        'PageHeader', 'Title', 'SectionHeading', 'FigureCaption',
+        'Paragraph', 'Reference', 'Formula', 'ListItem', 'PageFooter'
+    ];
 
     let html = '';
 
     if (textElements.length > 0) {
-        const groups = {};
+        // --- Group by page first, then by type label ---
+        const pageMap = {};
         textElements.forEach(el => {
+            const pageNum = el.page || 1;
             const rawType = String(el.type || el.type_name || 'paragraph').toLowerCase();
             const typeLabel = toAzureTypeLabel(rawType);
 
-            if (!groups[typeLabel]) {
-                groups[typeLabel] = [];
-            }
+            if (!pageMap[pageNum]) pageMap[pageNum] = {};
+            if (!pageMap[pageNum][typeLabel]) pageMap[pageNum][typeLabel] = [];
 
             let rawText = String(el.text || el.content || '');
             if (isLikelyCollapsedText(rawText) && ocrCandidates.length > 0) {
                 const better = ocrCandidates.find(candidate => candidate.length >= rawText.length * 0.65);
-                if (better) {
-                    rawText = better;
-                }
+                if (better) rawText = better;
             }
 
-            groups[typeLabel].push({
-                text: normalizeTextForDisplay(rawText),
+            pageMap[pageNum][typeLabel].push({
+                text: normalizePanelParagraphText(rawText),
                 confidence: el.confidence
             });
         });
 
-        const preferredOrder = [
-            'PageHeader', 'Title', 'Subtitle', 'SectionHeading',
-            'Paragraph', 'Reference', 'FigureCaption', 'Formula',
-            'ListItem', 'PageFooter'
-        ];
-        const allTypes = Object.keys(groups);
-        const sortedTypes = [
-            ...preferredOrder.filter(t => allTypes.includes(t)),
-            ...allTypes.filter(t => !preferredOrder.includes(t)).sort()
-        ];
+        const sortedPages = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+        const multiPage = sortedPages.length > 1;
 
-        sortedTypes.forEach(typeLabel => {
-            html += '<div class="text-section">';
-            html += `<h4 class="text-section-title">${escapeHtml(typeLabel)}</h4>`;
+        sortedPages.forEach(pageNum => {
+            if (multiPage) {
+                html += `<div class="text-page-section">`;
+                html += `<h3 class="text-page-title">Page ${pageNum}</h3>`;
+            }
 
-            groups[typeLabel].forEach((item) => {
-                html += '<div class="text-block">';
-                html += '<div class="text-block-header">';
-                html += `<span class="block-type">${escapeHtml(typeLabel)}</span>`;
-                if (item.confidence !== undefined) {
-                    const confidence = Number(item.confidence || 0);
-                    const confidencePercent = confidence > 1 ? confidence : confidence * 100;
-                    html += `<span class="block-confidence">Confidence: ${confidencePercent.toFixed(1)}%</span>`;
-                }
-                html += '</div>';
-                html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(item.text)}</p>`;
+            const groups = pageMap[pageNum];
+            const allTypes = Object.keys(groups);
+            const sortedTypes = [
+                ...TYPE_DISPLAY_ORDER.filter(t => allTypes.includes(t)),
+                ...allTypes.filter(t => !TYPE_DISPLAY_ORDER.includes(t)).sort()
+            ];
+
+            sortedTypes.forEach(typeLabel => {
+                html += '<div class="text-section">';
+                html += `<h4 class="text-section-title">${escapeHtml(typeLabel)}</h4>`;
+
+                groups[typeLabel].forEach((item) => {
+                    html += '<div class="text-block">';
+                    html += '<div class="text-block-header">';
+                    html += `<span class="block-type">${escapeHtml(typeLabel)}</span>`;
+                    if (item.confidence !== undefined && item.confidence !== null) {
+                        const confidence = Number(item.confidence || 0);
+                        const confidencePercent = confidence > 1 ? confidence : confidence * 100;
+                        if (confidencePercent > 0) {
+                            html += `<span class="block-confidence">Confidence: ${confidencePercent.toFixed(1)}%</span>`;
+                        }
+                    }
+                    html += '</div>';
+                    html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(item.text)}</p>`;
+                    html += '</div>';
+                });
+
                 html += '</div>';
             });
 
-            html += '</div>';
+            if (multiPage) {
+                html += '</div>';
+            }
         });
     } else if (textBlocks.length > 0) {
         textBlocks.slice(0, 50).forEach((block, index) => {

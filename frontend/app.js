@@ -605,9 +605,26 @@ function initResultTabs() {
     // Initialize JSON view buttons
     initJsonViewButtons();
 
-    // Wire enhancement checkboxes to show/hide formula and seal sub-tabs
+    // Wire processing mode radios: toggle sub-options panel + enhancement tabs
+    const processingModeRadios = document.querySelectorAll('input[name="processingMode"]');
+    const layoutSubOptions = document.getElementById('layoutSubOptions');
     const optEnableFormula = document.getElementById('optEnableFormula');
     const optEnableSeal = document.getElementById('optEnableSeal');
+
+    const syncModeUI = () => {
+        const isLayout = document.querySelector('input[name="processingMode"]:checked')?.value === 'layout';
+        if (layoutSubOptions) layoutSubOptions.classList.toggle('hidden', !isLayout);
+        if (!isLayout) updateEnhancementTabs(false, false);
+        else {
+            updateEnhancementTabs(
+                optEnableFormula ? optEnableFormula.checked : false,
+                optEnableSeal ? optEnableSeal.checked : false
+            );
+        }
+    };
+
+    processingModeRadios.forEach(radio => radio.addEventListener('change', syncModeUI));
+
     if (optEnableFormula) {
         optEnableFormula.addEventListener('change', () => {
             updateEnhancementTabs(optEnableFormula.checked, optEnableSeal ? optEnableSeal.checked : false);
@@ -1142,20 +1159,6 @@ function initAnalysisOptionsDialog() {
         });
     });
 
-    // Template selector visibility (only when template processing is selected)
-    if (processingRadios.length > 0 && templateSelector) {
-        const updateTemplateVisibility = () => {
-            const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value;
-            templateSelector.style.display = selectedMode === 'template' ? 'block' : 'none';
-        };
-
-        processingRadios.forEach(radio => {
-            radio.addEventListener('change', updateTemplateVisibility);
-        });
-
-        updateTemplateVisibility();
-    }
-
     // Close handlers
     const closeModal = () => {
         if (modal) modal.classList.remove('active');
@@ -1210,8 +1213,8 @@ function saveAnalysisOptions() {
  */
 function resetAnalysisOptions() {
     document.getElementById('optLayout').checked = true;
-    document.getElementById('optOCR').checked = false;
-    document.getElementById('optTable').checked = false;
+    const optEnableTable = document.getElementById('optEnableTable');
+    if (optEnableTable) optEnableTable.checked = true;
     document.getElementById('optEnableFormula').checked = false;
     document.getElementById('optEnableSeal').checked = false;
     document.getElementById('dialogOcrEngineSelect').value = 'paddleocr';
@@ -1219,6 +1222,8 @@ function resetAnalysisOptions() {
     document.getElementById('dialogNlpEngineSelect').value = 'spacy';
     document.getElementById('dialogTemplateSelect').value = '';
     document.getElementById('dialogTemplateSelector').style.display = 'none';
+    const layoutSubOptions = document.getElementById('layoutSubOptions');
+    if (layoutSubOptions) layoutSubOptions.classList.remove('hidden');
     updateEnhancementTabs(false, false);
     showNotification('Options reset to defaults', 'info');
 }
@@ -1228,14 +1233,14 @@ function resetAnalysisOptions() {
  */
 function getProcessingOptions() {
     const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
-    const mode = (selectedMode === 'table') ? 'table' : 'layout';
+    const isLayout = selectedMode === 'layout';
 
     const options = {
-        enable_layout: mode === 'layout',
-        enable_ocr: false,
-        enable_table: mode === 'table',
-        enable_formula: document.getElementById('optEnableFormula')?.checked || false,
-        enable_seal: document.getElementById('optEnableSeal')?.checked || false,
+        document_type: isLayout ? 'auto' : selectedMode,
+        enable_layout: true,
+        enable_table: isLayout ? (document.getElementById('optEnableTable')?.checked ?? true) : true,
+        enable_formula: isLayout ? (document.getElementById('optEnableFormula')?.checked || false) : false,
+        enable_seal: isLayout ? (document.getElementById('optEnableSeal')?.checked || false) : false,
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
         layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure'
     };

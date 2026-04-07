@@ -1197,22 +1197,73 @@ body.show-analysis .analyzed-region {
 }
 
 /* Enhancement checkboxes section in Analysis Options modal */
-.options-enhancements {
-    display: flex;
+/* (removed flat Enhancements row; sub-options now live under Layout Analysis radio) */
+
+/* Radio button custom indicator — circular, matching checkbox-custom aesthetics */
+.radio-custom {
+    display: inline-flex;
     align-items: center;
-    gap: 12px;
-    margin-top: 12px;
-    padding: 8px 10px;
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-sm);
-    flex-wrap: wrap;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    border: 2px solid var(--border-strong);
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    transition: border-color 0.15s, background 0.15s;
+    flex-shrink: 0;
 }
 
-.options-enhancements-label {
-    font-size: 0.8rem;
+.option-item input[type="radio"]:checked ~ .radio-custom {
+    border-color: var(--primary-500);
+    background: var(--primary-500);
+    box-shadow: inset 0 0 0 3px var(--bg-elevated);
+}
+
+/* Sub-options block indented under Layout Analysis */
+.layout-sub-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+    margin-left: 28px;
+    padding: 8px 10px;
+    background: var(--bg-tertiary);
+    border-left: 2px solid var(--primary-800);
+    border-radius: var(--radius-sm);
+}
+
+.sub-option-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.sub-option-item input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: var(--primary-500);
+    flex-shrink: 0;
+}
+
+.sub-option-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.option-badge-sm {
+    font-size: 0.68rem;
     font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--bg-elevated);
     color: var(--text-secondary);
-    white-space: nowrap;
+    border: 1px solid var(--border-subtle);
+    margin-left: auto;
 }
 
 .option-item-inline {

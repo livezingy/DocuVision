@@ -774,33 +774,48 @@
                     <div class="options-list">
                         <label class="option-item">
                             <input type="radio" name="processingMode" id="optLayout" value="layout" checked>
-                            <span class="checkbox-custom"></span>
+                            <span class="radio-custom"></span>
                             <span class="option-label">Layout Analysis</span>
-                            <span class="option-badge">Core</span>
+                            <span class="option-badge">Default</span>
+                        </label>
+                        <!-- Sub-options: visible only when Layout Analysis is selected -->
+                        <div class="layout-sub-options" id="layoutSubOptions">
+                            <label class="sub-option-item sub-option-disabled">
+                                <input type="checkbox" checked disabled>
+                                <span class="option-label">Text &amp; Figures</span>
+                                <span class="option-badge-sm">Always on</span>
+                            </label>
+                            <label class="sub-option-item">
+                                <input type="checkbox" id="optEnableTable" checked>
+                                <span class="option-label">Tables</span>
+                            </label>
+                            <label class="sub-option-item">
+                                <input type="checkbox" id="optEnableFormula">
+                                <span class="option-label">Formulas</span>
+                            </label>
+                            <label class="sub-option-item">
+                                <input type="checkbox" id="optEnableSeal">
+                                <span class="option-label">Seals</span>
+                            </label>
+                        </div>
+                        <label class="option-item">
+                            <input type="radio" name="processingMode" id="optInvoice" value="invoice">
+                            <span class="radio-custom"></span>
+                            <span class="option-label">Invoice</span>
+                            <span class="option-badge">KIE</span>
                         </label>
                         <label class="option-item">
-                            <input type="radio" name="processingMode" id="optOCR" value="ocr">
-                            <span class="checkbox-custom"></span>
-                            <span class="option-label">OCR Recognition</span>
-                            <span class="option-badge">Core</span>
+                            <input type="radio" name="processingMode" id="optIdCard" value="id_card">
+                            <span class="radio-custom"></span>
+                            <span class="option-label">ID Card / Passport / Bank Card</span>
+                            <span class="option-badge">KIE</span>
                         </label>
                         <label class="option-item">
-                            <input type="radio" name="processingMode" id="optTable" value="table">
-                            <span class="checkbox-custom"></span>
-                            <span class="option-label">Table Extraction</span>
+                            <input type="radio" name="processingMode" id="optReceipt" value="receipt">
+                            <span class="radio-custom"></span>
+                            <span class="option-label">Receipt</span>
+                            <span class="option-badge">KIE</span>
                         </label>
-                    </div>
-                    <div class="options-enhancements">
-                        <span class="options-enhancements-label">Enhancements:</span>
-                        <label class="option-item-inline">
-                            <input type="checkbox" id="optEnableFormula">
-                            <span class="option-label">Formula</span>
-                        </label>
-                        <label class="option-item-inline">
-                            <input type="checkbox" id="optEnableSeal">
-                            <span class="option-label">Seal</span>
-                        </label>
-                    </div>
                     </div>
                 </div>
 

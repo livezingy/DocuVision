@@ -771,51 +771,58 @@
 
                 <!-- Processing Tab -->
                 <div class="modal-tab-content active" id="processingTab">
+                    <div class="options-section-header">Processing Mode</div>
+                    <hr class="options-divider">
                     <div class="options-list">
-                        <label class="option-item">
-                            <input type="radio" name="processingMode" id="optLayout" value="layout" checked>
-                            <span class="radio-custom"></span>
-                            <span class="option-label">Layout Analysis</span>
-                            <span class="option-badge">Default</span>
-                        </label>
-                        <!-- Sub-options: visible only when Layout Analysis is selected -->
-                        <div class="layout-sub-options" id="layoutSubOptions">
-                            <label class="sub-option-item sub-option-disabled">
-                                <input type="checkbox" checked disabled>
-                                <span class="option-label">Text &amp; Figures</span>
-                                <span class="option-badge-sm">Always on</span>
+                        <!-- Layout Analysis + sub-options tightly grouped -->
+                        <div class="option-group">
+                            <label class="option-item">
+                                <input type="radio" name="processingMode" id="optLayout" value="layout" checked>
+                                <span class="radio-custom"></span>
+                                <span class="option-label">Layout Analysis</span>
+                                <span class="option-badge">Default</span>
                             </label>
-                            <label class="sub-option-item">
-                                <input type="checkbox" id="optEnableTable" checked>
-                                <span class="option-label">Tables</span>
+                            <div class="layout-sub-options" id="layoutSubOptions">
+                                <label class="sub-option-item sub-option-disabled">
+                                    <input type="checkbox" checked disabled>
+                                    <span class="option-label">Text &amp; Figures</span>
+                                    <span class="option-badge-sm">Always on</span>
+                                </label>
+                                <label class="sub-option-item">
+                                    <input type="checkbox" id="optEnableTable" checked>
+                                    <span class="option-label">Tables</span>
+                                </label>
+                                <label class="sub-option-item">
+                                    <input type="checkbox" id="optEnableFormula">
+                                    <span class="option-label">Formulas</span>
+                                </label>
+                                <label class="sub-option-item">
+                                    <input type="checkbox" id="optEnableSeal">
+                                    <span class="option-label">Seals</span>
+                                </label>
+                            </div>
+                        </div>
+                        <!-- KIE document type options -->
+                        <div class="kie-options-group">
+                            <label class="option-item">
+                                <input type="radio" name="processingMode" id="optInvoice" value="invoice">
+                                <span class="radio-custom"></span>
+                                <span class="option-label">Invoice</span>
+                                <span class="option-badge">KIE</span>
                             </label>
-                            <label class="sub-option-item">
-                                <input type="checkbox" id="optEnableFormula">
-                                <span class="option-label">Formulas</span>
+                            <label class="option-item">
+                                <input type="radio" name="processingMode" id="optIdCard" value="id_card">
+                                <span class="radio-custom"></span>
+                                <span class="option-label">ID Card / Passport / Bank Card</span>
+                                <span class="option-badge">KIE</span>
                             </label>
-                            <label class="sub-option-item">
-                                <input type="checkbox" id="optEnableSeal">
-                                <span class="option-label">Seals</span>
+                            <label class="option-item">
+                                <input type="radio" name="processingMode" id="optReceipt" value="receipt">
+                                <span class="radio-custom"></span>
+                                <span class="option-label">Receipt</span>
+                                <span class="option-badge">KIE</span>
                             </label>
                         </div>
-                        <label class="option-item">
-                            <input type="radio" name="processingMode" id="optInvoice" value="invoice">
-                            <span class="radio-custom"></span>
-                            <span class="option-label">Invoice</span>
-                            <span class="option-badge">KIE</span>
-                        </label>
-                        <label class="option-item">
-                            <input type="radio" name="processingMode" id="optIdCard" value="id_card">
-                            <span class="radio-custom"></span>
-                            <span class="option-label">ID Card / Passport / Bank Card</span>
-                            <span class="option-badge">KIE</span>
-                        </label>
-                        <label class="option-item">
-                            <input type="radio" name="processingMode" id="optReceipt" value="receipt">
-                            <span class="radio-custom"></span>
-                            <span class="option-label">Receipt</span>
-                            <span class="option-badge">KIE</span>
-                        </label>
                     </div>
                 </div>
 

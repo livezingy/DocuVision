@@ -169,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initExportButtons();
     initBatchProcessing();
     initNLPFeatures();
-    initOverlayOptions();
 
     // Insert a lightweight skeleton placeholder to avoid initial flash
     if (typeof insertInitialSkeleton === 'function') {
@@ -1019,100 +1018,6 @@ function initAnalysisView() {
             startProcessing();
         });
     }
-}
-
-/**
- * Initialize overlay options for annotation density control.
- */
-function initOverlayOptions() {
-    const toolbar = document.querySelector('#contentTextView .text-toolbar');
-    if (!toolbar || document.getElementById('overlayLayerToggles')) {
-        return;
-    }
-
-    const wrapper = document.createElement('div');
-    wrapper.id = 'overlayLayerToggles';
-    wrapper.className = 'overlay-layer-toggles';
-
-    const shaLabel = document.createElement('label');
-    shaLabel.className = 'overlay-layer-toggle';
-
-    const shaInput = document.createElement('input');
-    shaInput.type = 'checkbox';
-    shaInput.checked = !!enableOverlaySha256Validation;
-
-    const shaText = document.createElement('span');
-    shaText.textContent = 'SHA256 Verify';
-
-    shaInput.addEventListener('change', () => {
-        enableOverlaySha256Validation = !!shaInput.checked;
-        if (lastRenderedAnalysisResult) {
-            renderDocumentWithAnnotations(lastRenderedAnalysisResult);
-        }
-    });
-
-    shaLabel.appendChild(shaInput);
-    shaLabel.appendChild(shaText);
-    wrapper.appendChild(shaLabel);
-
-    const pureLayoutLabel = document.createElement('label');
-    pureLayoutLabel.className = 'overlay-layer-toggle';
-
-    const pureLayoutInput = document.createElement('input');
-    pureLayoutInput.type = 'checkbox';
-    pureLayoutInput.checked = !!forcePureLayoutBboxOverlay;
-
-    const pureLayoutText = document.createElement('span');
-    pureLayoutText.textContent = 'Pure Layout BBox';
-
-    pureLayoutInput.addEventListener('change', () => {
-        forcePureLayoutBboxOverlay = !!pureLayoutInput.checked;
-        if (lastRenderedAnalysisResult) {
-            renderDocumentWithAnnotations(lastRenderedAnalysisResult);
-        }
-    });
-
-    pureLayoutLabel.appendChild(pureLayoutInput);
-    pureLayoutLabel.appendChild(pureLayoutText);
-    wrapper.appendChild(pureLayoutLabel);
-
-    const layerDefs = [
-        { key: 'text', label: 'Text', color: '#10b981' },
-        { key: 'table', label: 'Table', color: '#f59e0b' },
-        { key: 'figure', label: 'Figure', color: '#ec4899' },
-        { key: 'header_footer', label: 'Header/Footer', color: '#8b5cf6' },
-        { key: 'list', label: 'List', color: '#06b6d4' },
-    ];
-
-    layerDefs.forEach((layer) => {
-        const label = document.createElement('label');
-        label.className = 'overlay-layer-toggle';
-
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.checked = overlayLayerVisibility[layer.key] !== false;
-
-        const dot = document.createElement('span');
-        dot.className = 'overlay-layer-dot';
-        dot.style.backgroundColor = layer.color;
-
-        const text = document.createElement('span');
-        text.textContent = layer.label;
-
-        input.addEventListener('change', () => {
-            overlayLayerVisibility[layer.key] = !!input.checked;
-            if (lastRenderedAnalysisResult) {
-                renderDocumentWithAnnotations(lastRenderedAnalysisResult);
-            }
-        });
-
-        label.appendChild(input);
-        label.appendChild(dot);
-        label.appendChild(text);
-        wrapper.appendChild(label);
-    });
-
-    toolbar.appendChild(wrapper);
 }
 
 /**

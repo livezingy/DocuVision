@@ -1377,32 +1377,41 @@ body.show-analysis .analyzed-region {
     accent-color: var(--primary-500);
 }
 
-.overlay-layer-toggles {
-    margin-left: 10px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.overlay-layer-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
+/* Options section header (Processing Mode title) */
+.options-section-header {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
     color: var(--text-secondary);
-    font-size: 0.72rem;
-    user-select: none;
+    margin-bottom: 0;
 }
 
-.overlay-layer-toggle input[type="checkbox"] {
-    accent-color: var(--primary-500);
+.options-divider {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: 6px 0 10px;
 }
 
-.overlay-layer-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    display: inline-block;
+/* Layout Analysis group: radio + sub-options tightly coupled */
+.option-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.option-group > .layout-sub-options {
+    margin-top: 2px;
+}
+
+/* KIE options group separated by a subtle top border */
+.kie-options-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
 }
 
 /* Main views */

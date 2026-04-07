@@ -114,9 +114,7 @@ class EnvelopeBuilder:
                         "text": original_text,
                         "confidence": float(elem.get("confidence", 0.0)),
                     },
-                    "provenance": {
-                        "structure_text": original_text,
-                    },
+                    "provenance": None,
                 }
 
                 # --- Table blocks: keep HTML, skip OCR ---
@@ -125,14 +123,28 @@ class EnvelopeBuilder:
                     if elem.get("html"):
                         fused_block["payload"]["html"] = elem["html"]
 
-                # --- Vision blocks (figure / image / chart / seal) ---
-                elif elem_type in {"figure", "image", "chart", "seal", "stamp",
+                # --- Formula blocks: placeholder until formula_recognition engine ---
+                elif elem_type in {"formula", "inline_formula"}:
+                    fused_block["processing_status"] = "skip_formula"
+
+                # --- Seal blocks: placeholder until seal_recognition engine ---
+                elif elem_type in {"seal", "stamp"}:
+                    fused_block["processing_status"] = "skip_seal"
+
+                # --- Vision blocks (figure / image / chart): store region only ---
+                elif elem_type in {"figure", "image", "chart",
                                    "figure_table_chart", "picture"}:
-                    fused_block["processing_status"] = "vision_block"
+                    fused_block["processing_status"] = "extracted"
 
                 # --- Text-type blocks: use PPStructureV3 content directly ---
                 elif elem_type in self._OCR_TEXT_LABELS:
                     fused_block["processing_status"] = "no_ocr"
+                    fused_block["provenance"] = {
+                        "primary_source": "pp_structure_v3",
+                        "primary_text": original_text,
+                        "merge_strategy": "no_ocr",
+                        "merged_at": None,
+                    }
 
                 fused_blocks.append(fused_block)
 
@@ -174,6 +186,8 @@ class EnvelopeBuilder:
             "paragraphs": [],
             "tables": [],
             "figures": [],
+            "formulas": [],
+            "seals": [],
         }
 
         reading_order_counter = 0
@@ -220,6 +234,10 @@ class EnvelopeBuilder:
                     aggregated_elements["tables"].append(view_element)
                 elif kind == "figure":
                     aggregated_elements["figures"].append(view_element)
+                elif kind == "formula":
+                    aggregated_elements["formulas"].append(view_element)
+                elif kind == "seal":
+                    aggregated_elements["seals"].append(view_element)
 
             # Page dimensions: use output_size when view is in preprocessed space, else input_size
             if use_doc_unwarping or angle_deg == 0.0:
@@ -250,8 +268,8 @@ class EnvelopeBuilder:
             "paragraphs": aggregated_elements["paragraphs"],
             "tables": aggregated_elements["tables"],
             "figures": aggregated_elements["figures"],
-            "formulas": [],
-            "seals": [],
+            "formulas": aggregated_elements["formulas"],
+            "seals": aggregated_elements["seals"],
             "fields": {},  # dict, not list
             "sections": [],
             "styles": [],
@@ -268,9 +286,11 @@ class EnvelopeBuilder:
             engines_used = ["doc_preprocessor", "pp_structure_v3"]
 
         text_blocks_total = 0
-        text_blocks_no_match = 0
+        text_blocks_no_ocr = 0
         table_blocks_total = 0
         figure_blocks_total = 0
+        formula_count = 0
+        seal_count = 0
         confidences = []
 
         for page in fused_layer.get("pages", []):
@@ -280,8 +300,8 @@ class EnvelopeBuilder:
                 if block_type in EnvelopeBuilder._OCR_TEXT_LABELS:
                     text_blocks_total += 1
                     status = block.get("processing_status", "succeeded")
-                    if status in {"no_match", "no_ocr"}:
-                        text_blocks_no_match += 1
+                    if status == "no_ocr":
+                        text_blocks_no_ocr += 1
 
                     conf = block.get("confidence", 0.0)
                     if conf > 0:
@@ -289,21 +309,27 @@ class EnvelopeBuilder:
 
                 elif block_type == "table":
                     table_blocks_total += 1
+                elif block_type in {"formula", "inline_formula"}:
+                    formula_count += 1
+                elif block_type in {"seal", "stamp"}:
+                    seal_count += 1
                 elif block_type in {
                     "figure", "image", "chart", "picture",
-                    "figure_table_chart", "seal", "stamp",
+                    "figure_table_chart",
                 }:
                     figure_blocks_total += 1
 
-        avg_text_confidence = np.mean(confidences) if confidences else 0.0
+        avg_layout_confidence = np.mean(confidences) if confidences else 0.0
 
         return {
             "processing_time_ms": processing_time_ms,
             "text_blocks_total": text_blocks_total,
-            "text_blocks_no_match": text_blocks_no_match,
+            "text_blocks_no_ocr": text_blocks_no_ocr,
             "table_blocks_total": table_blocks_total,
             "figure_blocks_total": figure_blocks_total,
-            "avg_text_confidence": float(avg_text_confidence),
+            "formula_count": formula_count,
+            "seal_count": seal_count,
+            "avg_layout_confidence": float(avg_layout_confidence),
             "engines_used": engines_used,
         }
 

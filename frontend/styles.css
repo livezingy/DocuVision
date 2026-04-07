@@ -1191,6 +1191,127 @@ body.show-analysis .analyzed-region {
     border-color: var(--primary-500);
 }
 
+/* Utility: hide elements without removing from layout flow */
+.hidden {
+    display: none !important;
+}
+
+/* Enhancement checkboxes section in Analysis Options modal */
+.options-enhancements {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 8px 10px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    flex-wrap: wrap;
+}
+
+.options-enhancements-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.option-item-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.option-item-inline input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: var(--primary-500);
+}
+
+/* Formulas list */
+.formulas-list,
+.seals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+}
+
+.formula-item,
+.seal-item {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.formula-item-header,
+.seal-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.formula-name,
+.seal-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.formula-status,
+.seal-status {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    background: var(--bg-primary);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.formula-item-body,
+.seal-item-body {
+    padding: 12px;
+}
+
+.formula-rendered {
+    overflow-x: auto;
+    padding: 8px 0;
+}
+
+.formula-latex {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    word-break: break-all;
+}
+
+.formula-latex code {
+    background: var(--bg-primary);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.formula-placeholder,
+.seal-placeholder {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    font-style: italic;
+    margin: 0;
+}
+
+.seal-text {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin: 0;
+    word-break: break-all;
+}
+
 .overlay-toggle {
     margin-left: auto;
     display: inline-flex;

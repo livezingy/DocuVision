@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -227,6 +229,8 @@
                             </svg>
                             Figures
                         </button>
+                        <button class="content-sub-tab hidden" data-content="formulas" id="tabBtnFormulas">Formulas</button>
+                        <button class="content-sub-tab hidden" data-content="seals" id="tabBtnSeals">Seals</button>
                     </div>
 
                     <!-- Content sub-views -->
@@ -261,6 +265,18 @@
                     <div class="content-view" id="contentFiguresView">
                         <div class="figures-list" id="contentFiguresList">
                             <!-- Figures will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="content-view hidden" id="contentFormulasView">
+                        <div class="formulas-list" id="contentFormulasList">
+                            <!-- Formulas will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="content-view hidden" id="contentSealsView">
+                        <div class="seals-list" id="contentSealsList">
+                            <!-- Seals will be populated here -->
                         </div>
                     </div>
                 </div>
@@ -773,26 +789,18 @@
                             <span class="checkbox-custom"></span>
                             <span class="option-label">Table Extraction</span>
                         </label>
-                        <label class="option-item">
-                            <input type="radio" name="processingMode" id="optFormula" value="formula">
-                            <span class="checkbox-custom"></span>
-                            <span class="option-label">Formula Recognition</span>
+                    </div>
+                    <div class="options-enhancements">
+                        <span class="options-enhancements-label">Enhancements:</span>
+                        <label class="option-item-inline">
+                            <input type="checkbox" id="optEnableFormula">
+                            <span class="option-label">Formula</span>
                         </label>
-                        <label class="option-item">
-                            <input type="radio" name="processingMode" id="optStamp" value="stamp">
-                            <span class="checkbox-custom"></span>
-                            <span class="option-label">Stamp Detection</span>
+                        <label class="option-item-inline">
+                            <input type="checkbox" id="optEnableSeal">
+                            <span class="option-label">Seal</span>
                         </label>
-                        <label class="option-item">
-                            <input type="radio" name="processingMode" id="optNLP" value="nlp">
-                            <span class="checkbox-custom"></span>
-                            <span class="option-label">NLP Analysis</span>
-                        </label>
-                        <label class="option-item">
-                            <input type="radio" name="processingMode" id="optTemplate" value="template">
-                            <span class="checkbox-custom"></span>
-                            <span class="option-label">Template Matching</span>
-                        </label>
+                    </div>
                     </div>
                 </div>
 

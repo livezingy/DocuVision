@@ -304,7 +304,7 @@ class FusedBlock(BaseModel):
     source: str = "pp_structure_v3"  # "pp_structure_v3", "paddleocr"
     confidence: float = 0.0
     payload: Dict[str, Any] = {}  # Polymorphic by type
-    provenance: Dict[str, Any] = {}  # {"structure_text": str, "ocr_text": str, "ocr_lines": [...], ...}
+    provenance: Optional[Dict[str, Any]] = None  # {"primary_source", "primary_text", "merge_strategy", "merged_at"} or null
 
 
 class FusedPage(BaseModel):
@@ -367,9 +367,10 @@ class QualityLayer(BaseModel):
     processing_time_ms: int = 0
     text_blocks_total: int = 0
     text_blocks_no_ocr: int = 0
-    text_blocks_no_match: int = 0
     table_blocks_total: int = 0
     figure_blocks_total: int = 0
+    formula_count: int = 0
+    seal_count: int = 0
     avg_layout_confidence: float = 0.0
     engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3"]
 

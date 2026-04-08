@@ -116,6 +116,23 @@ class PPStructureEngine(BaseLayoutEngine):
     def get_name(self) -> str:
         return "PP-StructureV3"
 
+    def _reinit_engine(self):
+        """Destroy and recreate the PPStructureV3 engine.
+
+        Called automatically when a CUDA context error (e.g. CUBLAS_STATUS_NOT_INITIALIZED)
+        is detected during inference.  Forcing PaddlePaddle to rebuild its internal cuBLAS
+        handle is the only reliable in-process recovery for this class of GPU error.
+        """
+        logger.info("PPStructureV3: reinitializing engine after CUDA context error...")
+        self._ready = False
+        self._engine = None
+        try:
+            import gc
+            gc.collect()
+        except Exception:
+            pass
+        self._init_engine()
+
     @staticmethod
     def _build_rotation_matrix(angle, orig_h, orig_w):
         """
@@ -1198,6 +1215,10 @@ class LayoutService:
 
         last_error = None
 
+        # Keywords that identify a corrupted / stale GPU context rather than a logic error.
+        # These warrant an engine reinit + single retry before falling through to the next engine.
+        _CUDA_ERROR_KEYWORDS = ('CUBLAS', 'cuBLAS', 'CUDA', 'ExternalError', 'cublasCreate')
+
         for eng_name in engines_to_try:
             try:
                 eng = self.engines[eng_name]
@@ -1206,8 +1227,30 @@ class LayoutService:
                 result["engine_used"] = eng_name
                 return result
             except Exception as e:
-                logger.warning(f"{eng_name} failed: {e}")
-                last_error = e
+                error_str = str(e)
+                is_cuda_err = any(kw in error_str for kw in _CUDA_ERROR_KEYWORDS)
+
+                if is_cuda_err and hasattr(eng, '_reinit_engine'):
+                    logger.warning(
+                        f"{eng_name} failed with CUDA context error — "
+                        f"reinitializing engine and retrying once..."
+                    )
+                    try:
+                        eng._reinit_engine()
+                        if eng.is_ready():
+                            result = await eng.analyze(file_path)
+                            result["engine_used"] = eng_name
+                            return result
+                        else:
+                            logger.error(f"{eng_name} reinitialization failed — engine not ready")
+                            last_error = e
+                    except Exception as e2:
+                        logger.error(f"{eng_name} failed after reinitialization: {e2}")
+                        last_error = e2
+                else:
+                    logger.warning(f"{eng_name} failed: {e}")
+                    last_error = e
+
                 if not fallback:
                     raise
 

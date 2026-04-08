@@ -193,6 +193,33 @@ class FormulaService:
                     layout_threshold=fallback_layout_threshold,
                     pipeline_formula_batch_size=pipeline_formula_batch_size,
                 )
+
+                # Rescue pass: if layout still cannot find formulas (e.g., classified as chart/image),
+                # run formula model directly on the full page without layout detection.
+                fallback_need_rescue = (
+                    fallback_stats.get("formula_count", 0) == 0
+                    and fallback_stats.get("layout_formula_box_count", 0) == 0
+                )
+                if fallback_need_rescue:
+                    rescue_results, rescue_stats, rescue_kwargs = self._run_once(
+                        image_path,
+                        disable_layout=True,
+                        disable_preprocess=disable_preprocess,
+                        layout_threshold=None,
+                        pipeline_formula_batch_size=pipeline_formula_batch_size,
+                    )
+                    logger.info(
+                        "FormulaService rescue pass (no layout) done | "
+                        f"formula_count={rescue_stats.get('formula_count', 0)}"
+                    )
+                    return {
+                        "ok": True,
+                        "stage": "rescue_no_layout",
+                        "unwrapped_results": rescue_results,
+                        "stats": rescue_stats,
+                        "predict_kwargs": rescue_kwargs,
+                    }
+
                 return {
                     "ok": True,
                     "stage": "fallback",

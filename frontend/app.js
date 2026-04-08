@@ -612,7 +612,13 @@ function initResultTabs() {
 
     const syncModeUI = () => {
         const isLayout = document.querySelector('input[name="processingMode"]:checked')?.value === 'layout';
-        if (layoutSubOptions) layoutSubOptions.classList.toggle('hidden', !isLayout);
+        // Always show sub-options; dim them when a KIE mode is active to show layout runs automatically.
+        if (layoutSubOptions) {
+            layoutSubOptions.classList.remove('hidden');
+            layoutSubOptions.classList.toggle('sub-options-dimmed', !isLayout);
+        }
+        const kieNote = document.getElementById('kieNote');
+        if (kieNote) kieNote.classList.toggle('hidden', isLayout);
         if (!isLayout) updateEnhancementTabs(false, false);
         else {
             updateEnhancementTabs(
@@ -1128,7 +1134,12 @@ function resetAnalysisOptions() {
     document.getElementById('dialogTemplateSelect').value = '';
     document.getElementById('dialogTemplateSelector').style.display = 'none';
     const layoutSubOptions = document.getElementById('layoutSubOptions');
-    if (layoutSubOptions) layoutSubOptions.classList.remove('hidden');
+    if (layoutSubOptions) {
+        layoutSubOptions.classList.remove('hidden');
+        layoutSubOptions.classList.remove('sub-options-dimmed');
+    }
+    const kieNote = document.getElementById('kieNote');
+    if (kieNote) kieNote.classList.add('hidden');
     updateEnhancementTabs(false, false);
     showNotification('Options reset to defaults', 'info');
 }

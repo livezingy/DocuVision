@@ -570,6 +570,34 @@ class PPStructureEngine(BaseLayoutEngine):
             ordered_table_html = [h for _, h in sorted(table_html_map.items(), key=lambda kv: kv[0])]
             table_cursor = 0
 
+            # Build a (bbox, score) list from layout_det_res.boxes so we can look up
+            # the real detection confidence for each parsing block.
+            # parsing_res_list items do not carry a score field themselves; the score
+            # is only available in the upstream layout detection output.
+            _det_score_pairs: list = []
+            try:
+                _layout_det = (
+                    first_item.get('layout_det_res')
+                    if isinstance(first_item, dict)
+                    else getattr(first_item, 'layout_det_res', None)
+                )
+                _det_boxes = []
+                if isinstance(_layout_det, dict):
+                    _det_boxes = _layout_det.get('boxes', [])
+                elif _layout_det is not None:
+                    _det_boxes = getattr(_layout_det, 'boxes', [])
+                for _box in _det_boxes:
+                    if isinstance(_box, dict):
+                        _coord = _box.get('coordinate', [])
+                        _sc = _box.get('score', None)
+                    else:
+                        _coord = getattr(_box, 'coordinate', [])
+                        _sc = getattr(_box, 'score', None)
+                    if _coord and len(_coord) >= 4 and _sc is not None:
+                        _det_score_pairs.append((list(map(float, _coord[:4])), float(_sc)))
+            except Exception as _e:
+                logger.debug(f"Page {page_num}: Could not build det score map: {_e}")
+
             for idx, block in enumerate(parsing_blocks):
                 if isinstance(block, dict):
                     element_type = str(block.get('label', 'unknown')).lower()
@@ -601,6 +629,15 @@ class PPStructureEngine(BaseLayoutEngine):
                 x0_p = raw_bbox[0]; y0_p = raw_bbox[1]; x1_p = raw_bbox[2]; y1_p = raw_bbox[3]
                 polygon_prep = [x0_p, y0_p, x1_p, y0_p, x1_p, y1_p, x0_p, y1_p]
 
+                # Look up the real layout detection score by bbox proximity.
+                # Tolerance of 3px handles float rounding between parsing_res_list
+                # and layout_det_res.boxes coordinate representations.
+                _block_score = None
+                for _det_coord, _det_sc in _det_score_pairs:
+                    if all(abs(raw_bbox[i] - _det_coord[i]) < 3.0 for i in range(4)):
+                        _block_score = _det_sc
+                        break
+
                 element = {
                     "id": f"p{page_num}_e{block_index}",
                     "page": page_num,
@@ -608,7 +645,7 @@ class PPStructureEngine(BaseLayoutEngine):
                     "type_name": self.LAYOUT_TYPES.get(element_type, element_type),
                     "bbox": bbox_dict,
                     "polygon_preprocessed": polygon_prep,
-                    "confidence": 0.9,
+                    "confidence": _block_score,
                 }
 
                 if isinstance(content, str) and content.strip():

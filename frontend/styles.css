@@ -1255,6 +1255,20 @@ body.show-analysis .analyzed-region {
     pointer-events: none;
 }
 
+/* Entire sub-options block dimmed when a KIE mode is selected */
+.sub-options-dimmed {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.kie-note {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin: 6px 0 0;
+    padding: 0;
+    line-height: 1.4;
+}
+
 .option-badge-sm {
     font-size: 0.68rem;
     font-weight: 600;

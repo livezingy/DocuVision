@@ -234,7 +234,7 @@ def run_probe(image_path: str, lang: str, device: str, save_crops: str) -> None:
                        getattr(page_item, "parsing_res_list", [])
 
     print(f"[INFO] Total blocks in parsing_res_list: {len(parsing_res_list)}")
-
+  
     # ── Step 4: PaddleOCR init ───────────────────────────────────────────────
     # Input is already a clean crop from the original image, so default settings are used.
     print("\n[STEP 4] Initializing PaddleOCR (default settings) ...")

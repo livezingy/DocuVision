@@ -17,13 +17,13 @@ def _kie_worker_main(document_type: str, req_q: multiprocessing.Queue, res_q: mu
     try:
         # TODO: Initialize the specific KIE engine based on document_type
         # e.g. PP-ChatOCRv4-doc or specialized models
-        
+
         # Simulated initialization for now
         logger.info(f"[KIE Worker] Initiating KIE engine for type: {document_type}")
-        
+
         # Signal that initialization is complete
         res_q.put(('ready',))
-        
+
     except Exception as e:
         err_msg = str(e)
         res_q.put(('init_error', err_msg, traceback.format_exc()))
@@ -35,20 +35,20 @@ def _kie_worker_main(document_type: str, req_q: multiprocessing.Queue, res_q: mu
             msg = req_q.get()
             if msg[0] == 'stop':
                 break
-            
+
             elif msg[0] == 'analyze':
                 file_path = msg[1]
                 logger.info(f"[KIE Worker] Processing file: {file_path}")
-                
+
                 # TODO: Perform actual KIE inference here
                 # Simulated result
                 result = {
                     "document_type": document_type,
                     "fields": {}
                 }
-                
+
                 res_q.put(('ok', result))
-                
+
         except Exception as e:
             err_msg = str(e)
             res_q.put(('error', err_msg, traceback.format_exc()))
@@ -69,14 +69,14 @@ class PPKieSubprocessEngine:
         self._res_q: Optional[multiprocessing.Queue] = None
         self._process: Optional[multiprocessing.Process] = None
         self._ready = False
-        
+
         self._start_worker()
 
     def _start_worker(self):
         logger.info(f"Starting KIE subprocess worker for {self.document_type} (Spawn)...")
         self._req_q = self._ctx.Queue()
         self._res_q = self._ctx.Queue()
-        
+
         self._process = self._ctx.Process(
             target=_kie_worker_main,
             args=(self.document_type, self._req_q, self._res_q),
@@ -118,24 +118,24 @@ class PPKieSubprocessEngine:
     def _call_worker(self, file_path: str) -> Dict[str, Any]:
         if not self.is_ready():
             self._restart_worker()
-            
+
         self._req_q.put(('analyze', file_path))
-        
+
         try:
             msg = self._res_q.get(timeout=self._INFER_TIMEOUT)
-            
+
             if msg[0] == 'ok':
                 return msg[1]
-                
+
             elif msg[0] == 'error':
                 err_msg = msg[1]
                 tb_str = msg[2]
-                
+
                 is_cuda_err = any(kw in err_msg for kw in self._CUDA_KEYWORDS)
                 if is_cuda_err:
                     logger.warning(f"CUDA error detected in KIE worker, restarting: {err_msg}")
                     self._restart_worker()
-                    
+
                     # Retry once
                     logger.info("Retrying KIE analysis after worker restart...")
                     self._req_q.put(('analyze', file_path))
@@ -146,7 +146,7 @@ class PPKieSubprocessEngine:
                         raise RuntimeError(f"KIE Worker retry failed: {retry_msg[1]}\n{retry_msg[2]}")
                 else:
                     raise RuntimeError(f"KIE Worker analysis failed: {err_msg}\n{tb_str}")
-                    
+
         except queue.Empty:
             logger.error("KIE Worker isolation queue timeout!")
             self._restart_worker()
@@ -174,7 +174,7 @@ class DocumentKIEService:
     """
     def __init__(self):
         self._engines: Dict[str, PPKieSubprocessEngine] = {}
-        
+
     def _get_engine(self, document_type: str) -> PPKieSubprocessEngine:
         if document_type not in self._engines:
             logger.info(f"Initializing new KIE engine for: {document_type}")
@@ -188,9 +188,9 @@ class DocumentKIEService:
         """
         import asyncio
         loop = asyncio.get_event_loop()
-        
+
         engine = self._get_engine(document_type)
-        
+
         # Run blocking subprocess call in executor
         result = await loop.run_in_executor(None, engine.analyze, file_path)
         return result

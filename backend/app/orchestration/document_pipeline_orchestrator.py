@@ -109,7 +109,7 @@ async def table_step(ctx: PipelineContext) -> None:
 async def kie_step(ctx: PipelineContext) -> None:
     options = ctx["options"]
     document_type = options.get("document_type", "auto")
-    
+
     if document_type not in ["invoice", "id_card", "receipt"]:
         return
 

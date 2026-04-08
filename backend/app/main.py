@@ -179,6 +179,7 @@ import inspect
 from app.services.ocr_service import OCRService
 from app.services.layout_service import LayoutService
 from app.services.table_service import TableService
+from app.services.formula_service import FormulaService
 from app.services.export_service import ExportService
 from app.services.batch_service import BatchService, BatchStatus
 from app.services.unified_layout_service import UnifiedLayoutService
@@ -255,6 +256,7 @@ if use_gpu:
 ocr_service = OCRService(use_gpu=use_gpu, lang=settings.OCR_LANG)
 layout_service = LayoutService(use_gpu=use_gpu)
 table_service = TableService(use_gpu=use_gpu)
+formula_service = FormulaService(device="gpu" if use_gpu else "cpu")
 export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
 unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服�?
@@ -402,10 +404,18 @@ class ProcessingOptions(BaseModel):
     enable_layout: bool = True
     enable_ocr: bool = False
     enable_table: bool = True
+    enable_formula: bool = False
     language: str = "en"
     ocr_engine: Optional[str] = None
     layout_engine: Optional[str] = None
     table_engine: Optional[str] = None
+    formula_disable_layout: bool = False
+    formula_disable_preprocess: bool = False
+    formula_two_stage_threshold_retry: bool = True
+    formula_primary_layout_threshold: float = 0.5
+    formula_fallback_layout_threshold: float = 0.2
+    formula_layout_threshold: Optional[float] = None
+    pipeline_formula_batch_size: int = 1
 
 
 class TaskStatus(BaseModel):
@@ -622,10 +632,18 @@ async def analyze_document(
     enable_layout: bool = Form(True),
     enable_ocr: bool = Form(False),
     enable_table: bool = Form(True),
+    enable_formula: bool = Form(False),
     language: str = Form("en"),
     ocr_engine: Optional[str] = Form(None),
     layout_engine: Optional[str] = Form(None),
-    table_engine: Optional[str] = Form(None)
+    table_engine: Optional[str] = Form(None),
+    formula_disable_layout: bool = Form(False),
+    formula_disable_preprocess: bool = Form(False),
+    formula_two_stage_threshold_retry: bool = Form(True),
+    formula_primary_layout_threshold: float = Form(0.5),
+    formula_fallback_layout_threshold: float = Form(0.2),
+    formula_layout_threshold: Optional[float] = Form(None),
+    pipeline_formula_batch_size: int = Form(1),
 ):
     """Upload and analyze a single document"""
     # Validate file
@@ -650,10 +668,18 @@ async def analyze_document(
         "enable_layout": enable_layout,
         "enable_ocr": enable_ocr,
         "enable_table": enable_table,
+        "enable_formula": enable_formula,
         "language": language,
         "ocr_engine": ocr_engine,
         "layout_engine": layout_engine,
-        "table_engine": table_engine
+        "table_engine": table_engine,
+        "formula_disable_layout": formula_disable_layout,
+        "formula_disable_preprocess": formula_disable_preprocess,
+        "formula_two_stage_threshold_retry": formula_two_stage_threshold_retry,
+        "formula_primary_layout_threshold": formula_primary_layout_threshold,
+        "formula_fallback_layout_threshold": formula_fallback_layout_threshold,
+        "formula_layout_threshold": formula_layout_threshold,
+        "pipeline_formula_batch_size": pipeline_formula_batch_size,
     }
 
     task = {
@@ -767,6 +793,7 @@ async def process_document(task_id: str):
             "ocr_service": ocr_service,
             "layout_service": layout_service,
             "table_service": table_service,
+                "formula_service": formula_service,
         },
         send_event=_send_event,
         is_cancelled=lambda tid: task_cancellation_flags.get(tid, False),

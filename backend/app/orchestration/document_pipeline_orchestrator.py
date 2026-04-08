@@ -106,6 +106,48 @@ async def table_step(ctx: PipelineContext) -> None:
     await orchestrator.update_progress(ctx, 65, f"Table extraction completed | Tables: {len(ctx['result']['tables'])}")
 
 
+async def formula_step(ctx: PipelineContext) -> None:
+    options = ctx["options"]
+    if not options.get("enable_formula", False):
+        return
+
+    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
+    orchestrator.ensure_not_cancelled(ctx)
+    await orchestrator.update_progress(ctx, 70, "Running formula recognition...")
+
+    formula_service = orchestrator.services.get("formula_service")
+    if formula_service is None:
+        logger.warning("Formula step enabled but formula_service is not available; skipping")
+        return
+
+    formula_result = await orchestrator.call_maybe_async(
+        formula_service.recognize,
+        ctx["file_path"],
+        disable_layout=bool(options.get("formula_disable_layout", False)),
+        disable_preprocess=bool(options.get("formula_disable_preprocess", False)),
+        two_stage_threshold_retry=bool(options.get("formula_two_stage_threshold_retry", True)),
+        primary_layout_threshold=float(options.get("formula_primary_layout_threshold", 0.5)),
+        fallback_layout_threshold=float(options.get("formula_fallback_layout_threshold", 0.2)),
+        layout_threshold=(
+            float(options["formula_layout_threshold"])
+            if options.get("formula_layout_threshold") is not None
+            else None
+        ),
+        pipeline_formula_batch_size=int(options.get("pipeline_formula_batch_size", 1)),
+    )
+
+    if not isinstance(formula_result, dict) or not formula_result.get("ok", False):
+        logger.warning(f"Formula recognition skipped or failed: {formula_result}")
+        return
+
+    ctx["result"]["formula_unwrapped_results"] = formula_result.get("unwrapped_results", [])
+    ctx["result"]["formula_stats"] = formula_result.get("stats", {})
+    ctx["result"]["formula_stage"] = formula_result.get("stage")
+
+    formula_count = int(formula_result.get("stats", {}).get("formula_count", 0))
+    await orchestrator.update_progress(ctx, 74, f"Formula recognition completed | Formulas: {formula_count}")
+
+
 async def finalize_step(ctx: PipelineContext) -> None:
     orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
     orchestrator.ensure_not_cancelled(ctx)
@@ -161,6 +203,34 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
         fused = builder.build_fused_layer(layout_result=layout_result)
         ctx["phase1_fused"] = fused
 
+        # 3.1 Merge formula recognition output into fused/view/quality.
+        formula_unwrapped_results = ctx["result"].get("formula_unwrapped_results", [])
+        formula_adapted = None
+        if formula_unwrapped_results:
+            from app.services.formula_service import adapt_formula_results_for_backend
+
+            first_page_blocks = fused.get("pages", [{}])[0].get("blocks", []) if fused.get("pages") else []
+            max_reading_order = len(first_page_blocks)
+
+            formula_adapted = adapt_formula_results_for_backend(
+                formula_unwrapped_results,
+                page_number=1,
+                reading_order_start=max_reading_order + 1,
+            )
+
+            if fused.get("pages"):
+                page0 = fused["pages"][0]
+                existing_blocks = page0.get("blocks", [])
+                filtered_blocks = [
+                    b for b in existing_blocks
+                    if not (
+                        str(b.get("type", "")).lower() in {"formula", "inline_formula"}
+                        and str(b.get("processing_status", "")).lower() == "skip_formula"
+                    )
+                ]
+                filtered_blocks.extend(formula_adapted.get("fused_formula_blocks", []))
+                page0["blocks"] = filtered_blocks
+
         # 4. Build view layer (coordinate transformation + reading order)
         view = builder.build_view_layer(
             fused_layer=fused,
@@ -168,6 +238,10 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
             original_image_path=file_path,
             preprocessed_image_path=preprocessed_image_path,
         )
+
+        if formula_adapted is not None:
+            view["formulas"] = formula_adapted.get("view_formulas", [])
+
         ctx["phase1_view"] = view
 
         # 5. Build quality layer
@@ -176,6 +250,8 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
             processing_time_ms=processing_time_ms,
             engines_used=["doc_preprocessor", "pp_structure_v3"],
         )
+        if formula_adapted is not None:
+            quality.update(formula_adapted.get("quality_patch", {}))
         ctx["phase1_quality"] = quality
 
         # 6. Save debug artifacts if enabled
@@ -276,6 +352,7 @@ class DocumentPipelineOrchestrator:
         steps = [
             layout_step,
             table_step,
+            formula_step,
             phase1_envelope_step,  # Build Phase 1 Envelope (preprocessing, raw, fused, view, quality)
             finalize_step,
         ]

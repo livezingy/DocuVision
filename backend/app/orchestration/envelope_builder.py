@@ -163,6 +163,7 @@ class EnvelopeBuilder:
         preprocessing_metadata: Dict[str, Any],
         original_image_path: Optional[str] = None,
         preprocessed_image_path: Optional[str] = None,
+        kie_fields: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Build view layer: transform coordinates and construct reading-ordered elements.
@@ -270,7 +271,7 @@ class EnvelopeBuilder:
             "figures": aggregated_elements["figures"],
             "formulas": aggregated_elements["formulas"],
             "seals": aggregated_elements["seals"],
-            "fields": {},  # dict, not list
+            "fields": kie_fields if kie_fields else {},
             "sections": [],
             "styles": [],
         }

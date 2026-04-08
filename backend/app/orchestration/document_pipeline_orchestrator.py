@@ -106,6 +106,37 @@ async def table_step(ctx: PipelineContext) -> None:
     await orchestrator.update_progress(ctx, 65, f"Table extraction completed | Tables: {len(ctx['result']['tables'])}")
 
 
+async def kie_step(ctx: PipelineContext) -> None:
+    options = ctx["options"]
+    document_type = options.get("document_type", "auto")
+    
+    if document_type not in ["invoice", "id_card", "receipt"]:
+        return
+
+    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
+    orchestrator.ensure_not_cancelled(ctx)
+
+    await orchestrator.update_progress(ctx, 70, f"Extracting KIE fields for document type: {document_type}...")
+
+    try:
+        kie_service = orchestrator.services.get("kie_service")
+        if kie_service:
+            kie_result = await orchestrator.call_maybe_async(
+                kie_service.extract_fields,
+                ctx["file_path"],
+                document_type=document_type
+            )
+            ctx["result"]["kie_fields"] = kie_result.get("fields", {}) if isinstance(kie_result, dict) else {}
+            await orchestrator.update_progress(ctx, 75, "KIE field extraction completed")
+        else:
+            logger.warning("KIE service not injected into orchestrator, skipping KIE step.")
+    except Exception as e:
+        logger.error(f"KIE extraction failed for {document_type}: {e}")
+        logger.exception(e)
+        # Not fatal, continue pipeline
+        ctx["result"]["kie_fields"] = {}
+
+
 async def finalize_step(ctx: PipelineContext) -> None:
     orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
     orchestrator.ensure_not_cancelled(ctx)
@@ -167,6 +198,7 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
             preprocessing_metadata=preprocessing,
             original_image_path=file_path,
             preprocessed_image_path=preprocessed_image_path,
+            kie_fields=ctx["result"].get("kie_fields"),
         )
         ctx["phase1_view"] = view
 
@@ -276,6 +308,7 @@ class DocumentPipelineOrchestrator:
         steps = [
             layout_step,
             table_step,
+            kie_step,
             phase1_envelope_step,  # Build Phase 1 Envelope (preprocessing, raw, fused, view, quality)
             finalize_step,
         ]

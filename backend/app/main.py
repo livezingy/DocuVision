@@ -179,6 +179,7 @@ import inspect
 from app.services.ocr_service import OCRService
 from app.services.layout_service import LayoutService
 from app.services.table_service import TableService
+from app.services.kie_service import DocumentKIEService
 from app.services.export_service import ExportService
 from app.services.batch_service import BatchService, BatchStatus
 from app.services.unified_layout_service import UnifiedLayoutService
@@ -255,6 +256,7 @@ if use_gpu:
 ocr_service = OCRService(use_gpu=use_gpu, lang=settings.OCR_LANG)
 layout_service = LayoutService(use_gpu=use_gpu)
 table_service = TableService(use_gpu=use_gpu)
+kie_service = DocumentKIEService()
 export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
 unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服�?
@@ -767,11 +769,7 @@ async def process_document(task_id: str):
             "ocr_service": ocr_service,
             "layout_service": layout_service,
             "table_service": table_service,
-        },
-        send_event=_send_event,
-        is_cancelled=lambda tid: task_cancellation_flags.get(tid, False),
-        call_maybe_async=call_maybe_async,
-        build_page_image_meta=_build_page_image_meta,
+                "kie_service": kie_service,
         save_debug_overlay=save_debug_overlay_image if settings.ENABLE_DEBUG_OVERLAYS else None,
     )
 

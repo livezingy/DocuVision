@@ -6,6 +6,8 @@ from typing import Dict, Any, List, Optional
 from abc import ABC, abstractmethod
 from loguru import logger
 import os
+import multiprocessing
+import queue as _queue_module
 import paddle
 import cv2
 import numpy as np
@@ -1145,6 +1147,185 @@ class PPStructureEngine(BaseLayoutEngine):
         }
 
 
+# ---------------------------------------------------------------------------
+# Subprocess worker helpers
+# ---------------------------------------------------------------------------
+
+def _ppstructure_worker_main(use_gpu: bool, lang: str, req_q, res_q):
+    """
+    Entry point for the PPStructureV3 worker subprocess.
+
+    Must be a module-level function so that multiprocessing 'spawn' context
+    can pickle and import it in the child process.  The child process has its
+    own CUDA context; when CUDA gets corrupted the entire subprocess is killed
+    and restarted, giving the next request a completely fresh GPU state.
+    """
+    import asyncio
+
+    try:
+        engine = PPStructureEngine(use_gpu=use_gpu, lang=lang)
+        res_q.put(('ready',))
+    except Exception as init_err:
+        import traceback as _tb
+        res_q.put(('init_error', str(init_err), _tb.format_exc()))
+        return
+
+    while True:
+        try:
+            item = req_q.get()
+        except Exception:
+            break
+
+        if not isinstance(item, tuple) or item[0] == 'stop':
+            break
+
+        cmd, file_path = item
+        if cmd != 'analyze':
+            continue
+
+        try:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext == '.pdf':
+                result = asyncio.run(engine._analyze_pdf(file_path))
+            else:
+                result = asyncio.run(engine._analyze_image(file_path))
+            res_q.put(('ok', result))
+        except Exception as e:
+            import traceback as _tb
+            res_q.put(('error', str(e), _tb.format_exc()))
+
+
+class PPStructureSubprocessEngine(BaseLayoutEngine):
+    """
+    PPStructureV3 engine that runs inference inside a dedicated 'spawn'
+    subprocess, completely isolating CUDA context from the main process.
+
+    On CUDA corruption (CUBLAS_STATUS_NOT_INITIALIZED, etc.) the worker
+    subprocess is killed and restarted so the next request gets a fresh GPU
+    context — no manual cuBLAS handle reset required.
+    """
+
+    _CUDA_KEYWORDS = ('CUBLAS', 'cuBLAS', 'CUDA_STATUS', 'ExternalError', 'cublasCreate')
+    _INIT_TIMEOUT = 120   # seconds to wait for worker startup (model load)
+    _INFER_TIMEOUT = 180  # seconds to wait per inference
+
+    def __init__(self, use_gpu: bool = False, lang: str = "en"):
+        self._use_gpu = use_gpu
+        self._lang = lang
+        self._ctx = multiprocessing.get_context('spawn')
+        self._process = None
+        self._req_q = None
+        self._res_q = None
+        self._ready = False
+        self._start_worker()
+
+    # ------------------------------------------------------------------
+    # Worker lifecycle
+    # ------------------------------------------------------------------
+
+    def _start_worker(self):
+        self._req_q = self._ctx.Queue()
+        self._res_q = self._ctx.Queue()
+        self._process = self._ctx.Process(
+            target=_ppstructure_worker_main,
+            args=(self._use_gpu, self._lang, self._req_q, self._res_q),
+            daemon=True,
+        )
+        self._process.start()
+        logger.info(f"PPStructureV3 subprocess worker started (pid={self._process.pid})")
+
+        try:
+            msg = self._res_q.get(timeout=self._INIT_TIMEOUT)
+        except _queue_module.Empty:
+            logger.error(f"PPStructureV3 worker did not respond within {self._INIT_TIMEOUT}s")
+            self._kill_worker()
+            return
+
+        if msg[0] == 'ready':
+            self._ready = True
+            logger.info("PPStructureV3 subprocess worker is ready")
+        else:
+            detail = msg[1] if len(msg) > 1 else str(msg)
+            logger.error(f"PPStructureV3 worker init error: {detail}")
+
+    def _kill_worker(self):
+        if self._process and self._process.is_alive():
+            self._process.terminate()
+            self._process.join(timeout=5)
+            if self._process.is_alive():
+                self._process.kill()
+                self._process.join(timeout=3)
+        self._process = None
+
+    def _restart_worker(self):
+        logger.info("PPStructureV3: restarting subprocess worker (CUDA context recovery)...")
+        self._ready = False
+        self._kill_worker()
+        self._start_worker()
+
+    # ------------------------------------------------------------------
+    # BaseLayoutEngine interface
+    # ------------------------------------------------------------------
+
+    def is_ready(self) -> bool:
+        return self._ready and self._process is not None and self._process.is_alive()
+
+    def get_name(self) -> str:
+        return "PP-StructureV3"
+
+    # ------------------------------------------------------------------
+    # Inference
+    # ------------------------------------------------------------------
+
+    def _call_worker(self, file_path: str) -> Dict[str, Any]:
+        """Blocking call sent to the worker subprocess (runs in thread executor)."""
+        if not self.is_ready():
+            raise RuntimeError("PPStructureV3 subprocess worker is not running")
+
+        self._req_q.put(('analyze', file_path))
+
+        try:
+            msg = self._res_q.get(timeout=self._INFER_TIMEOUT)
+        except _queue_module.Empty:
+            logger.error(f"PPStructureV3 worker timed out after {self._INFER_TIMEOUT}s — restarting")
+            self._restart_worker()
+            raise RuntimeError("PPStructureV3 worker timed out; worker restarted for next request")
+
+        if msg[0] == 'ok':
+            return msg[1]
+
+        if msg[0] == 'error':
+            error_msg = msg[1]
+            is_cuda = any(kw in error_msg for kw in self._CUDA_KEYWORDS)
+            if is_cuda:
+                logger.warning("PPStructureV3 worker CUDA error — restarting worker and retrying once...")
+                self._restart_worker()
+                if not self.is_ready():
+                    raise RuntimeError(f"PPStructureV3 worker restart failed. Original: {error_msg}")
+
+                # Retry once with the fresh worker
+                self._req_q.put(('analyze', file_path))
+                try:
+                    msg2 = self._res_q.get(timeout=self._INFER_TIMEOUT)
+                except _queue_module.Empty:
+                    self._restart_worker()
+                    raise RuntimeError("PPStructureV3 worker timed out on retry; restarted")
+
+                if msg2[0] == 'ok':
+                    return msg2[1]
+                retry_err = msg2[1] if len(msg2) > 1 else str(msg2)
+                raise RuntimeError(f"PPStructureV3 failed after worker restart: {retry_err}")
+
+            raise RuntimeError(f"PPStructureV3 worker error: {error_msg}")
+
+        raise RuntimeError(f"PPStructureV3 worker unexpected response: {msg}")
+
+    async def analyze(self, file_path: str) -> Dict[str, Any]:
+        import asyncio
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self._call_worker, file_path)
+
+
 class LayoutService:
     """
     Layout Analysis Service powered by PP-StructureV3.
@@ -1158,8 +1339,9 @@ class LayoutService:
 
     def _init_engines(self):
         """Initialize all available layout engines"""
-        # Primary: PP-StructureV3
-        pp_engine = PPStructureEngine(use_gpu=self._use_gpu)
+        # Primary: PP-StructureV3 — wrapped in a subprocess engine so CUDA context
+        # corruption is isolated and recoverable without restarting the whole server.
+        pp_engine = PPStructureSubprocessEngine(use_gpu=self._use_gpu)
         if pp_engine.is_ready():
             self.engines["ppstructure"] = pp_engine
 
@@ -1215,10 +1397,6 @@ class LayoutService:
 
         last_error = None
 
-        # Keywords that identify a corrupted / stale GPU context rather than a logic error.
-        # These warrant an engine reinit + single retry before falling through to the next engine.
-        _CUDA_ERROR_KEYWORDS = ('CUBLAS', 'cuBLAS', 'CUDA', 'ExternalError', 'cublasCreate')
-
         for eng_name in engines_to_try:
             try:
                 eng = self.engines[eng_name]
@@ -1227,30 +1405,8 @@ class LayoutService:
                 result["engine_used"] = eng_name
                 return result
             except Exception as e:
-                error_str = str(e)
-                is_cuda_err = any(kw in error_str for kw in _CUDA_ERROR_KEYWORDS)
-
-                if is_cuda_err and hasattr(eng, '_reinit_engine'):
-                    logger.warning(
-                        f"{eng_name} failed with CUDA context error — "
-                        f"reinitializing engine and retrying once..."
-                    )
-                    try:
-                        eng._reinit_engine()
-                        if eng.is_ready():
-                            result = await eng.analyze(file_path)
-                            result["engine_used"] = eng_name
-                            return result
-                        else:
-                            logger.error(f"{eng_name} reinitialization failed — engine not ready")
-                            last_error = e
-                    except Exception as e2:
-                        logger.error(f"{eng_name} failed after reinitialization: {e2}")
-                        last_error = e2
-                else:
-                    logger.warning(f"{eng_name} failed: {e}")
-                    last_error = e
-
+                logger.warning(f"{eng_name} failed: {e}")
+                last_error = e
                 if not fallback:
                     raise
 

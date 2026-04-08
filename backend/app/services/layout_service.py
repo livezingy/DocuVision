@@ -468,7 +468,8 @@ class PPStructureEngine(BaseLayoutEngine):
                     if _out_img is not None:
                         prep_path = f"{img_path}_preprocessed.png"
                         if _out_img.shape[2] == 3:
-                            cv2.imwrite(prep_path, cv2.cvtColor(_out_img, cv2.COLOR_RGB2BGR))
+                            # doc_preprocessor output_img is already BGR, no conversion needed
+                            cv2.imwrite(prep_path, _out_img)
                         else:
                             cv2.imwrite(prep_path, _out_img)
                         preprocessed_path = prep_path

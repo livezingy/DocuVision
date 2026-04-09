@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional
 from abc import ABC, abstractmethod
 from loguru import logger
 import os
+import inspect
 import multiprocessing
 import queue as _queue_module
 import paddle
@@ -87,6 +88,28 @@ class PPStructureEngine(BaseLayoutEngine):
                 # The probe confirms: use_doc_unwarping=False �?correct spacing.
                 "use_doc_unwarping": False,
             }
+
+            # Load only mandatory layout/text/table path by default.
+            # Optional engines (formula/seal/chart) are disabled here and handled by dedicated services.
+            # We gate kwargs by signature to stay compatible with PaddleOCR/PaddleX minor version changes.
+            try:
+                supported = set(inspect.signature(PPStructureV3.__init__).parameters.keys())
+                optional_switches = {
+                    "use_formula_recognition": False,
+                    "use_seal_recognition": False,
+                    "use_chart_parsing": False,
+                    # Keep table recognition enabled by default in layout pipeline.
+                    "use_table_recognition": True,
+                }
+                for key, value in optional_switches.items():
+                    if key in supported:
+                        init_params[key] = value
+                logger.info(
+                    "PPStructureV3 optional switches applied: "
+                    f"{ {k: init_params[k] for k in optional_switches.keys() if k in init_params} }"
+                )
+            except Exception as _sig_exc:
+                logger.debug(f"Could not inspect PPStructureV3 signature for optional switches: {_sig_exc}")
 
             # Note: use_doc_orientation_classify may cause initialization errors in 3.1.1
             # Removed to match working test script configuration

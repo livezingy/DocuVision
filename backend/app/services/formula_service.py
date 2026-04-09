@@ -302,6 +302,7 @@ def adapt_formula_results_for_backend(
 
             view_item: Dict[str, Any] = {
                 "id": fid,
+                "kind": "formula",
                 "page_number": page_number,
                 "reading_order": reading_order_start + formula_idx - 1,
                 "source": "formula_recognition",
@@ -312,8 +313,7 @@ def adapt_formula_results_for_backend(
                 },
                 "formula_region_id": rid,
             }
-            if polygon is not None:
-                view_item["polygon"] = polygon
+            view_item["polygon"] = polygon if polygon is not None else []
             view_formulas.append(view_item)
 
             fused_item: Dict[str, Any] = {
@@ -321,7 +321,7 @@ def adapt_formula_results_for_backend(
                 "type": "formula",
                 "processing_status": "recognized",
                 "source": "formula_recognition",
-                "confidence": None,
+                "confidence": 1.0,
                 "payload": {
                     "latex": rec_formula,
                     "mathml": None,
@@ -333,6 +333,9 @@ def adapt_formula_results_for_backend(
                 ys = [polygon[i] for i in [1, 3, 5, 7]]
                 fused_item["polygon_preprocessed"] = polygon
                 fused_item["bbox_preprocessed"] = [min(xs), min(ys), max(xs), max(ys)]
+            else:
+                fused_item["polygon_preprocessed"] = []
+                fused_item["bbox_preprocessed"] = []
             fused_formula_blocks.append(fused_item)
 
     quality_patch = {

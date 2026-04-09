@@ -20,7 +20,8 @@ class FormulaService:
         self._device = device or self._detect_device()
         self._pipeline = None
         self._init_error: Optional[str] = None
-        self._init_pipeline()
+        # Lazy init: delay model loading until first recognize() call.
+        self._init_attempted = False
 
     @staticmethod
     def _detect_device() -> str:
@@ -33,7 +34,8 @@ class FormulaService:
             pass
         return "cpu"
 
-    def _init_pipeline(self) -> None:
+    def _init_pipeline(self) -> bool:
+        self._init_attempted = True
         try:
             from paddlex import create_pipeline
 
@@ -42,12 +44,26 @@ class FormulaService:
                 device=self._device,
             )
             self._ready = True
+            self._init_error = None
             logger.info(f"FormulaService initialized (device={self._device})")
+            return True
         except Exception as exc:
             self._pipeline = None
             self._ready = False
             self._init_error = str(exc)
             logger.warning(f"FormulaService init failed: {exc}")
+            return False
+
+    def _ensure_pipeline(self) -> bool:
+        if self._pipeline is not None and self._ready:
+            return True
+        return self._init_pipeline()
+
+    def _rebuild_pipeline(self) -> bool:
+        logger.warning("FormulaService rebuilding pipeline after failure...")
+        self._pipeline = None
+        self._ready = False
+        return self._init_pipeline()
 
     def is_ready(self) -> bool:
         return self._ready and self._pipeline is not None
@@ -127,7 +143,7 @@ class FormulaService:
         layout_threshold: Optional[float],
         pipeline_formula_batch_size: int,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any], Dict[str, Any]]:
-        if not self.is_ready():
+        if not self._ensure_pipeline():
             raise RuntimeError(f"FormulaService not ready: {self._init_error or 'unknown init error'}")
 
         predict_kwargs: Dict[str, Any] = {
@@ -153,6 +169,35 @@ class FormulaService:
         stats = self._collect_stats(unwrapped_results)
         return unwrapped_results, stats, predict_kwargs
 
+    def _run_once_with_rebuild(
+        self,
+        image_path: str,
+        *,
+        disable_layout: bool,
+        disable_preprocess: bool,
+        layout_threshold: Optional[float],
+        pipeline_formula_batch_size: int,
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any], Dict[str, Any]]:
+        try:
+            return self._run_once(
+                image_path,
+                disable_layout=disable_layout,
+                disable_preprocess=disable_preprocess,
+                layout_threshold=layout_threshold,
+                pipeline_formula_batch_size=pipeline_formula_batch_size,
+            )
+        except Exception as exc:
+            logger.warning(f"FormulaService run failed, attempting rebuild and retry once: {exc}")
+            if not self._rebuild_pipeline():
+                raise
+            return self._run_once(
+                image_path,
+                disable_layout=disable_layout,
+                disable_preprocess=disable_preprocess,
+                layout_threshold=layout_threshold,
+                pipeline_formula_batch_size=pipeline_formula_batch_size,
+            )
+
     def recognize(
         self,
         image_path: str,
@@ -165,7 +210,7 @@ class FormulaService:
         layout_threshold: Optional[float] = None,
         pipeline_formula_batch_size: int = 1,
     ) -> Dict[str, Any]:
-        if not self.is_ready():
+        if not self._ensure_pipeline():
             return {
                 "ok": False,
                 "unwrapped_results": [],
@@ -173,87 +218,95 @@ class FormulaService:
                 "error": f"FormulaService not ready: {self._init_error or 'unknown init error'}",
             }
 
-        if two_stage_threshold_retry and not disable_layout:
-            primary_results, primary_stats, primary_kwargs = self._run_once(
-                image_path,
-                disable_layout=disable_layout,
-                disable_preprocess=disable_preprocess,
-                layout_threshold=primary_layout_threshold,
-                pipeline_formula_batch_size=pipeline_formula_batch_size,
-            )
-            need_retry = (
-                primary_stats.get("layout_formula_box_count", 0) == 0
-                or primary_stats.get("formula_count", 0) == 0
-            )
-            if need_retry:
-                fallback_results, fallback_stats, fallback_kwargs = self._run_once(
+        try:
+            if two_stage_threshold_retry and not disable_layout:
+                primary_results, primary_stats, primary_kwargs = self._run_once_with_rebuild(
                     image_path,
                     disable_layout=disable_layout,
                     disable_preprocess=disable_preprocess,
-                    layout_threshold=fallback_layout_threshold,
+                    layout_threshold=primary_layout_threshold,
                     pipeline_formula_batch_size=pipeline_formula_batch_size,
                 )
-
-                # Only enable rescue pass when layout has detected formula regions
-                # but formula recognition produced no formula text.
-                layout_formula_regions = max(
-                    int(primary_stats.get("layout_formula_box_count", 0)),
-                    int(fallback_stats.get("layout_formula_box_count", 0)),
+                need_retry = (
+                    primary_stats.get("layout_formula_box_count", 0) == 0
+                    or primary_stats.get("formula_count", 0) == 0
                 )
-                fallback_need_rescue = (
-                    fallback_stats.get("formula_count", 0) == 0
-                    and layout_formula_regions > 0
-                )
-                if fallback_need_rescue:
-                    rescue_results, rescue_stats, rescue_kwargs = self._run_once(
+                if need_retry:
+                    fallback_results, fallback_stats, fallback_kwargs = self._run_once_with_rebuild(
                         image_path,
-                        disable_layout=True,
+                        disable_layout=disable_layout,
                         disable_preprocess=disable_preprocess,
-                        layout_threshold=None,
+                        layout_threshold=fallback_layout_threshold,
                         pipeline_formula_batch_size=pipeline_formula_batch_size,
                     )
-                    logger.info(
-                        "FormulaService rescue pass (no layout) done | "
-                        f"formula_count={rescue_stats.get('formula_count', 0)}"
+
+                    # Only enable rescue pass when layout has detected formula regions
+                    # but formula recognition produced no formula text.
+                    layout_formula_regions = max(
+                        int(primary_stats.get("layout_formula_box_count", 0)),
+                        int(fallback_stats.get("layout_formula_box_count", 0)),
                     )
+                    fallback_need_rescue = (
+                        fallback_stats.get("formula_count", 0) == 0
+                        and layout_formula_regions > 0
+                    )
+                    if fallback_need_rescue:
+                        rescue_results, rescue_stats, rescue_kwargs = self._run_once_with_rebuild(
+                            image_path,
+                            disable_layout=True,
+                            disable_preprocess=disable_preprocess,
+                            layout_threshold=None,
+                            pipeline_formula_batch_size=pipeline_formula_batch_size,
+                        )
+                        logger.info(
+                            "FormulaService rescue pass (no layout) done | "
+                            f"formula_count={rescue_stats.get('formula_count', 0)}"
+                        )
+                        return {
+                            "ok": True,
+                            "stage": "rescue_no_layout",
+                            "unwrapped_results": rescue_results,
+                            "stats": rescue_stats,
+                            "predict_kwargs": rescue_kwargs,
+                        }
+
                     return {
                         "ok": True,
-                        "stage": "rescue_no_layout",
-                        "unwrapped_results": rescue_results,
-                        "stats": rescue_stats,
-                        "predict_kwargs": rescue_kwargs,
+                        "stage": "fallback",
+                        "unwrapped_results": fallback_results,
+                        "stats": fallback_stats,
+                        "predict_kwargs": fallback_kwargs,
                     }
 
                 return {
                     "ok": True,
-                    "stage": "fallback",
-                    "unwrapped_results": fallback_results,
-                    "stats": fallback_stats,
-                    "predict_kwargs": fallback_kwargs,
+                    "stage": "primary",
+                    "unwrapped_results": primary_results,
+                    "stats": primary_stats,
+                    "predict_kwargs": primary_kwargs,
                 }
 
+            single_results, single_stats, single_kwargs = self._run_once_with_rebuild(
+                image_path,
+                disable_layout=disable_layout,
+                disable_preprocess=disable_preprocess,
+                layout_threshold=layout_threshold,
+                pipeline_formula_batch_size=pipeline_formula_batch_size,
+            )
             return {
                 "ok": True,
-                "stage": "primary",
-                "unwrapped_results": primary_results,
-                "stats": primary_stats,
-                "predict_kwargs": primary_kwargs,
+                "stage": "single",
+                "unwrapped_results": single_results,
+                "stats": single_stats,
+                "predict_kwargs": single_kwargs,
             }
-
-        single_results, single_stats, single_kwargs = self._run_once(
-            image_path,
-            disable_layout=disable_layout,
-            disable_preprocess=disable_preprocess,
-            layout_threshold=layout_threshold,
-            pipeline_formula_batch_size=pipeline_formula_batch_size,
-        )
-        return {
-            "ok": True,
-            "stage": "single",
-            "unwrapped_results": single_results,
-            "stats": single_stats,
-            "predict_kwargs": single_kwargs,
-        }
+        except Exception as exc:
+            return {
+                "ok": False,
+                "unwrapped_results": [],
+                "stats": {},
+                "error": f"FormulaService failed after rebuild retry: {exc}",
+            }
 
 
 def _bbox_to_polygon_xyxy(bbox: List[int]) -> List[int]:

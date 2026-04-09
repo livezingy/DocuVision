@@ -194,11 +194,15 @@ class FormulaService:
                     pipeline_formula_batch_size=pipeline_formula_batch_size,
                 )
 
-                # Rescue pass: if layout still cannot find formulas (e.g., classified as chart/image),
-                # run formula model directly on the full page without layout detection.
+                # Only enable rescue pass when layout has detected formula regions
+                # but formula recognition produced no formula text.
+                layout_formula_regions = max(
+                    int(primary_stats.get("layout_formula_box_count", 0)),
+                    int(fallback_stats.get("layout_formula_box_count", 0)),
+                )
                 fallback_need_rescue = (
                     fallback_stats.get("formula_count", 0) == 0
-                    and fallback_stats.get("layout_formula_box_count", 0) == 0
+                    and layout_formula_regions > 0
                 )
                 if fallback_need_rescue:
                     rescue_results, rescue_stats, rescue_kwargs = self._run_once(

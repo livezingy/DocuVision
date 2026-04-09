@@ -371,6 +371,8 @@ class QualityLayer(BaseModel):
     text_blocks_no_ocr: int = 0
     table_blocks_total: int = 0
     figure_blocks_total: int = 0
+    formula_blocks_total: int = 0
+    formula_blocks_recognized: int = 0
     formula_count: int = 0
     seal_count: int = 0
     avg_layout_confidence: float = 0.0

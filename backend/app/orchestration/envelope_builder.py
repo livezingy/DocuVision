@@ -327,6 +327,8 @@ class EnvelopeBuilder:
             "text_blocks_no_ocr": text_blocks_no_ocr,
             "table_blocks_total": table_blocks_total,
             "figure_blocks_total": figure_blocks_total,
+            "formula_blocks_total": 0,
+            "formula_blocks_recognized": 0,
             "formula_count": formula_count,
             "seal_count": seal_count,
             "avg_layout_confidence": float(avg_layout_confidence),

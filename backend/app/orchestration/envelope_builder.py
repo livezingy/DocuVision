@@ -234,9 +234,9 @@ class EnvelopeBuilder:
             - Use preprocessed coordinates directly
             - coordinate_space = "preprocessed"
         """
-        coordinate_space = preprocessing_metadata.get("coordinate_space", "preprocessed")
+        coordinate_space = preprocessing_metadata.get("coordinate_space", "original")
         angle_deg = preprocessing_metadata.get("angle_deg", 0.0)
-        use_doc_unwarping = preprocessing_metadata.get("use_doc_unwarping", True)
+        use_doc_unwarping = preprocessing_metadata.get("use_doc_unwarping", False)
 
         input_size = preprocessing_metadata.get("input_size", {})
         output_size = preprocessing_metadata.get("output_size", {})

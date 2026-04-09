@@ -47,11 +47,10 @@ class Settings(BaseSettings):
     # env override: APP_ENABLE_DEBUG_OVERLAYS
     ENABLE_DEBUG_OVERLAYS: bool = Field(default=False, alias="APP_ENABLE_DEBUG_OVERLAYS")
 
-    # Coordinate system strategy: if False, view layer applies inverse rotation to restore original image coords
-    # If True, view layer uses preprocessed image coordinates directly
-    # Must be service-level; all requests use the same strategy
+    # Coordinate system strategy: keep UVDoc unwarping disabled by default.
+    # This preserves PP-StructureV3 text spacing and keeps view coordinates in original image space.
     # env override: APP_USE_DOC_UNWARPING
-    USE_DOC_UNWARPING: bool = Field(default=True, alias="APP_USE_DOC_UNWARPING")
+    USE_DOC_UNWARPING: bool = Field(default=False, alias="APP_USE_DOC_UNWARPING")
 
     # Table strategy: when False, table service only consumes table regions from layout output.
     # This avoids duplicated full-page PPStructure inference by default.

@@ -298,15 +298,15 @@ class PreprocessingMetadata(BaseModel):
     input_size: Dict[str, int] = {}  # {"width": int, "height": int}
     output_size: Dict[str, int] = {}  # {"width": int, "height": int}
     use_doc_orientation_classify: bool = False
-    use_doc_unwarping: bool = True
+    use_doc_unwarping: bool = False
     angle_deg: float = 0.0
-    coordinate_space: str = "preprocessed"  # "original" or "preprocessed"
+    coordinate_space: str = "original"  # "original" or "preprocessed"
 
 
 class RawLayer(BaseModel):
     """Raw layer: engine outputs without transformation"""
-    pp_structure_v3: Dict[str, Any] = {}  # Full PP-StructureV3 output
-    paddleocr_blocks: Dict[str, Any] = {}  # Per-block OCR results keyed by element id
+    pp_structure_v3: Optional[Dict[str, Any]] = None  # Full PP-StructureV3 output
+    paddleocr_blocks: Optional[Dict[str, Any]] = None  # Per-block OCR results keyed by element id
 
 
 class FusedBlock(BaseModel):
@@ -973,7 +973,7 @@ async def get_job_status(job_id: str):
     )
 
 
-@app.get("/api/v1/jobs/{job_id}/result", response_model=JobEnvelope)
+@app.get("/api/v1/jobs/{job_id}/result", response_model=JobEnvelope, response_model_exclude_none=True)
 async def get_job_result(job_id: str):
     """
     Phase 1 API: Get the completed Envelope result.

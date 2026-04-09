@@ -216,6 +216,9 @@ class FormulaService:
                 "unwrapped_results": [],
                 "stats": {},
                 "error": f"FormulaService not ready: {self._init_error or 'unknown init error'}",
+                "error_level": "hard",
+                "error_code": "init_unavailable",
+                "failure_stage": "init",
             }
 
         try:
@@ -268,6 +271,9 @@ class FormulaService:
                             "unwrapped_results": rescue_results,
                             "stats": rescue_stats,
                             "predict_kwargs": rescue_kwargs,
+                            "error_level": "none",
+                            "error_code": "",
+                            "failure_stage": "",
                         }
 
                     return {
@@ -276,6 +282,9 @@ class FormulaService:
                         "unwrapped_results": fallback_results,
                         "stats": fallback_stats,
                         "predict_kwargs": fallback_kwargs,
+                        "error_level": "none",
+                        "error_code": "",
+                        "failure_stage": "",
                     }
 
                 return {
@@ -284,6 +293,9 @@ class FormulaService:
                     "unwrapped_results": primary_results,
                     "stats": primary_stats,
                     "predict_kwargs": primary_kwargs,
+                    "error_level": "none",
+                    "error_code": "",
+                    "failure_stage": "",
                 }
 
             single_results, single_stats, single_kwargs = self._run_once_with_rebuild(
@@ -299,13 +311,22 @@ class FormulaService:
                 "unwrapped_results": single_results,
                 "stats": single_stats,
                 "predict_kwargs": single_kwargs,
+                "error_level": "none",
+                "error_code": "",
+                "failure_stage": "",
             }
         except Exception as exc:
+            err = str(exc)
+            err_low = err.lower()
+            is_gpu_runtime = ("cuda" in err_low) or ("cublas" in err_low)
             return {
                 "ok": False,
                 "unwrapped_results": [],
                 "stats": {},
                 "error": f"FormulaService failed after rebuild retry: {exc}",
+                "error_level": "hard" if is_gpu_runtime else "soft",
+                "error_code": "gpu_runtime_error" if is_gpu_runtime else "runtime_error",
+                "failure_stage": "inference",
             }
 
 
@@ -383,7 +404,15 @@ def adapt_formula_results_for_backend(
                     "latex": rec_formula,
                     "mathml": None,
                 },
-                "provenance": None,
+                "provenance": {
+                    "primary_source": "formula_recognition",
+                    "primary_text": rec_formula,
+                    "merge_strategy": "recognized_by_optional_engine",
+                    "merged_at": None,
+                    "status": "recognized",
+                    "block_type": "formula",
+                    "formula_region_id": rid,
+                },
             }
             if polygon is not None:
                 xs = [polygon[i] for i in [0, 2, 4, 6]]

@@ -17,7 +17,10 @@ from typing import Any, Dict, List, Optional, Set
 from pathlib import Path
 from loguru import logger
 
-import cv2
+try:
+    import cv2
+except Exception:  # pragma: no cover - optional in lightweight local test env
+    cv2 = None  # type: ignore[assignment]
 import numpy as np
 
 
@@ -67,6 +70,75 @@ class EnvelopeBuilder:
         "list", "list_item",
     }
 
+    _VISION_BLOCK_LABELS: Set[str] = {
+        "figure", "image", "chart", "figure_table_chart", "picture",
+    }
+
+    def _resolve_processing_status(
+        self,
+        *,
+        elem_type: str,
+        original_text: str,
+    ) -> str:
+        """Resolve processing_status with explicit fallback coverage.
+
+        Phase 2 objective: every block gets a deterministic status that encodes
+        how it was handled, including empty-text and unknown-type fallbacks.
+        """
+        t = (elem_type or "").lower().strip()
+
+        if t == "table":
+            return "skip_table"
+        if t in {"formula", "inline_formula"}:
+            return "skip_formula"
+        if t in {"seal", "stamp"}:
+            return "skip_seal"
+        if t in self._VISION_BLOCK_LABELS:
+            return "extracted"
+        if t in self._OCR_TEXT_LABELS:
+            return "no_ocr" if str(original_text or "").strip() else "no_ocr_empty"
+        return "passthrough_unknown_type"
+
+    @staticmethod
+    def _build_block_provenance(
+        *,
+        elem_type: str,
+        processing_status: str,
+        source: str,
+        text_value: str,
+    ) -> Dict[str, Any]:
+        """Build normalized provenance for all fused blocks.
+
+        Phase 2 provenance objective: keep a minimal but complete audit trail for each
+        block, even when no cross-engine merge occurs.
+        """
+        merge_strategy = "keep_structure"
+        if processing_status == "no_ocr":
+            merge_strategy = "no_ocr"
+        elif processing_status == "no_ocr_empty":
+            merge_strategy = "no_ocr_empty"
+        elif processing_status == "skip_table":
+            merge_strategy = "table_structure_only"
+        elif processing_status == "skip_formula":
+            merge_strategy = "formula_placeholder"
+        elif processing_status == "skip_seal":
+            merge_strategy = "seal_placeholder"
+        elif processing_status == "extracted":
+            merge_strategy = "region_only"
+        elif processing_status == "passthrough_unknown_type":
+            merge_strategy = "passthrough_unknown_type"
+        elif processing_status == "recognized":
+            merge_strategy = "recognized_by_optional_engine"
+
+        return {
+            "primary_source": source,
+            "primary_text": text_value or "",
+            "merge_strategy": merge_strategy,
+            "merged_at": None,
+            "status": processing_status,
+            "block_type": elem_type,
+        }
+
     def build_fused_layer(
         self,
         layout_result: Dict[str, Any],
@@ -114,37 +186,24 @@ class EnvelopeBuilder:
                         "text": original_text,
                         "confidence": float(elem.get("confidence", 0.0)),
                     },
-                    "provenance": None,
+                    "provenance": {},
                 }
 
-                # --- Table blocks: keep HTML, skip OCR ---
-                if elem_type == "table":
-                    fused_block["processing_status"] = "skip_table"
-                    if elem.get("html"):
-                        fused_block["payload"]["html"] = elem["html"]
+                fused_block["processing_status"] = self._resolve_processing_status(
+                    elem_type=elem_type,
+                    original_text=original_text,
+                )
 
-                # --- Formula blocks: placeholder until formula_recognition engine ---
-                elif elem_type in {"formula", "inline_formula"}:
-                    fused_block["processing_status"] = "skip_formula"
+                # Table blocks keep HTML payload if available.
+                if elem_type == "table" and elem.get("html"):
+                    fused_block["payload"]["html"] = elem["html"]
 
-                # --- Seal blocks: placeholder until seal_recognition engine ---
-                elif elem_type in {"seal", "stamp"}:
-                    fused_block["processing_status"] = "skip_seal"
-
-                # --- Vision blocks (figure / image / chart): store region only ---
-                elif elem_type in {"figure", "image", "chart",
-                                   "figure_table_chart", "picture"}:
-                    fused_block["processing_status"] = "extracted"
-
-                # --- Text-type blocks: use PPStructureV3 content directly ---
-                elif elem_type in self._OCR_TEXT_LABELS:
-                    fused_block["processing_status"] = "no_ocr"
-                    fused_block["provenance"] = {
-                        "primary_source": "pp_structure_v3",
-                        "primary_text": original_text,
-                        "merge_strategy": "no_ocr",
-                        "merged_at": None,
-                    }
+                fused_block["provenance"] = self._build_block_provenance(
+                    elem_type=elem_type,
+                    processing_status=str(fused_block.get("processing_status", "succeeded")),
+                    source=str(fused_block.get("source", "pp_structure_v3")),
+                    text_value=str(fused_block.get("payload", {}).get("text", "") or ""),
+                )
 
                 fused_blocks.append(fused_block)
 
@@ -300,7 +359,7 @@ class EnvelopeBuilder:
                 if block_type in EnvelopeBuilder._OCR_TEXT_LABELS:
                     text_blocks_total += 1
                     status = block.get("processing_status", "succeeded")
-                    if status == "no_ocr":
+                    if status in {"no_ocr", "no_ocr_empty"}:
                         text_blocks_no_ocr += 1
 
                     conf = block.get("confidence", 0.0)
@@ -437,6 +496,10 @@ class EnvelopeBuilder:
         if angle_deg == 0.0 or not polygon_flat:
             return polygon_flat
 
+        if cv2 is None:
+            logger.warning("OpenCV (cv2) unavailable; skipping inverse-rotation transform")
+            return polygon_flat
+
         w_in = float(input_size.get("width", 0))
         h_in = float(input_size.get("height", 0))
         w_out = float(output_size.get("width", 0))
@@ -494,7 +557,7 @@ class EnvelopeBuilder:
             "figure_table_chart",
         }:
             return "figure"
-        elif t in {"formula", "equation", "formula_body"}:
+        elif t in {"formula", "inline_formula", "equation", "formula_body"}:
             return "formula"
         elif t in {"seal", "stamp"}:
             return "seal"

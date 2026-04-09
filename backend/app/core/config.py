@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     # env override: APP_USE_DOC_UNWARPING
     USE_DOC_UNWARPING: bool = Field(default=True, alias="APP_USE_DOC_UNWARPING")
 
+    # Table strategy: when False, table service only consumes table regions from layout output.
+    # This avoids duplicated full-page PPStructure inference by default.
+    # env override: APP_TABLE_ALLOW_FULLPAGE_FALLBACK
+    TABLE_ALLOW_FULLPAGE_FALLBACK: bool = Field(default=False, alias="APP_TABLE_ALLOW_FULLPAGE_FALLBACK")
+
     class Config:
         env_file = ".env"
         case_sensitive = True

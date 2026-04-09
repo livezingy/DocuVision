@@ -122,6 +122,18 @@ class TestProcessingStatus:
                     f"Unexpected 'vision_block' on {b['block_id']} ({b['type']})"
                 )
 
+    def test_text_empty_fallback_status(self):
+        local_layout = _make_layout_result([_elem("e_empty", "text", text="")])
+        local_fused = builder.build_fused_layer(local_layout)
+        blk = local_fused["pages"][0]["blocks"][0]
+        assert blk["processing_status"] == "no_ocr_empty"
+
+    def test_unknown_type_fallback_status(self):
+        local_layout = _make_layout_result([_elem("e_unknown", "weird_block", text="x")])
+        local_fused = builder.build_fused_layer(local_layout)
+        blk = local_fused["pages"][0]["blocks"][0]
+        assert blk["processing_status"] == "passthrough_unknown_type"
+
 
 # ===========================================================================
 # A3: provenance structure
@@ -140,17 +152,30 @@ class TestProvenance:
         b = _block("e1")
         assert b["provenance"]["primary_text"] == "Title text"
 
-    def test_table_provenance_is_null(self):
-        assert _block("e3")["provenance"] is None
+    def test_table_provenance_complete(self):
+        prov = _block("e3")["provenance"]
+        assert prov is not None
+        assert prov["primary_source"] == "pp_structure_v3"
+        assert prov["merge_strategy"] == "table_structure_only"
+        assert prov["status"] == "skip_table"
 
-    def test_figure_provenance_is_null(self):
-        assert _block("e4")["provenance"] is None
+    def test_figure_provenance_complete(self):
+        prov = _block("e4")["provenance"]
+        assert prov is not None
+        assert prov["merge_strategy"] == "region_only"
+        assert prov["status"] == "extracted"
 
-    def test_formula_provenance_is_null(self):
-        assert _block("e6")["provenance"] is None
+    def test_formula_provenance_complete(self):
+        prov = _block("e6")["provenance"]
+        assert prov is not None
+        assert prov["merge_strategy"] == "formula_placeholder"
+        assert prov["status"] == "skip_formula"
 
-    def test_seal_provenance_is_null(self):
-        assert _block("e8")["provenance"] is None
+    def test_seal_provenance_complete(self):
+        prov = _block("e8")["provenance"]
+        assert prov is not None
+        assert prov["merge_strategy"] == "seal_placeholder"
+        assert prov["status"] == "skip_seal"
 
 
 # ===========================================================================

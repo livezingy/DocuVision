@@ -180,6 +180,8 @@ from app.services.ocr_service import OCRService
 from app.services.layout_service import LayoutService
 from app.services.table_service import TableService
 from app.services.formula_service import FormulaService
+from app.services.seal_service import SealService
+from app.services.kie_service import DocumentKIEService
 from app.services.export_service import ExportService
 from app.services.batch_service import BatchService, BatchStatus
 from app.services.unified_layout_service import UnifiedLayoutService
@@ -255,8 +257,13 @@ if use_gpu:
 # Initialize Services
 ocr_service = OCRService(use_gpu=use_gpu, lang=settings.OCR_LANG)
 layout_service = LayoutService(use_gpu=use_gpu)
-table_service = TableService(use_gpu=use_gpu)
+table_service = TableService(
+    use_gpu=use_gpu,
+    allow_fullpage_fallback=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
+)
 formula_service = FormulaService(device="gpu" if use_gpu else "cpu")
+seal_service = SealService(device="gpu" if use_gpu else "cpu")
+kie_service = DocumentKIEService()
 export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
 unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服�?
@@ -270,6 +277,12 @@ task_websockets: Dict[str, Set[WebSocket]] = {}
 task_event_history: Dict[str, List[Dict[str, Any]]] = {}
 # Per-task event id counters (monotonic incrementing id for each event)
 task_event_counters: Dict[str, int] = {}
+
+logger.info(
+    "Startup strategy | layout=ppstructure(layout-only optional engines off) | table_mode={} | table_fullpage_fallback={} | formula_mode=independent_lazy | seal_mode=independent_lazy",
+    "layout_first",
+    settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
+)
 
 
 # ============================================
@@ -373,8 +386,27 @@ class QualityLayer(BaseModel):
     figure_blocks_total: int = 0
     formula_blocks_total: int = 0
     formula_blocks_recognized: int = 0
+    formula_blocks_failed: int = 0
     formula_count: int = 0
+    formula_attempted: bool = False
+    formula_stage: str = ""
+    formula_error_level: str = "none"
+    formula_error_code: str = ""
+    formula_error_message: str = ""
+    formula_recognition_rate: float = 0.0
     seal_count: int = 0
+    seal_blocks_total: int = 0
+    seal_blocks_recognized: int = 0
+    seal_attempted: bool = False
+    seal_stage: str = ""
+    seal_error_level: str = "none"
+    seal_error_code: str = ""
+    seal_error_message: str = ""
+    seal_recognition_rate: float = 0.0
+    kie_attempted: bool = False
+    kie_stage: str = ""
+    kie_error_code: str = ""
+    kie_fields_count: int = 0
     avg_layout_confidence: float = 0.0
     engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3"]
 
@@ -407,10 +439,14 @@ class ProcessingOptions(BaseModel):
     enable_ocr: bool = False
     enable_table: bool = True
     enable_formula: bool = False
+    enable_seal: bool = False
+    enable_kie: bool = False
+    document_type: str = "auto"
     language: str = "en"
     ocr_engine: Optional[str] = None
     layout_engine: Optional[str] = None
     table_engine: Optional[str] = None
+    table_allow_fullpage_fallback: bool = settings.TABLE_ALLOW_FULLPAGE_FALLBACK
     formula_disable_layout: bool = False
     formula_disable_preprocess: bool = False
     formula_two_stage_threshold_retry: bool = True
@@ -418,6 +454,7 @@ class ProcessingOptions(BaseModel):
     formula_fallback_layout_threshold: float = 0.2
     formula_layout_threshold: Optional[float] = None
     pipeline_formula_batch_size: int = 1
+    return_raw: bool = False
 
 
 class TaskStatus(BaseModel):
@@ -490,8 +527,10 @@ async def health_check():
             },
             "table": {
                 "ready": table_service.is_ready(),
-                "engines": table_service.get_available_engines()
+                "engines": table_service.get_available_engines(),
+                "strategy": table_service.get_strategy_info(),
             },
+            "seal": seal_service.get_status(),
             "batch": {
                 "ready": True,
                 "active_batches": len([b for b in batch_service.batches.values()
@@ -528,6 +567,13 @@ async def list_engines():
                 "ppstructure": {"name": "PP-Structure-Table", "is_primary": True},
                 "camelot": {"name": "Camelot", "is_primary": False},
                 "tabula": {"name": "Tabula", "is_primary": False}
+            }
+        },
+        "seal": {
+            "available": ["seal_recognition"],
+            "default": "seal_recognition",
+            "engines": {
+                "seal_recognition": {"name": "PaddleX Seal Recognition", "is_primary": True}
             }
         }
     }
@@ -635,10 +681,14 @@ async def analyze_document(
     enable_ocr: bool = Form(False),
     enable_table: bool = Form(True),
     enable_formula: bool = Form(False),
+    enable_seal: bool = Form(False),
+    enable_kie: bool = Form(False),
+    document_type: str = Form("auto"),
     language: str = Form("en"),
     ocr_engine: Optional[str] = Form(None),
     layout_engine: Optional[str] = Form(None),
     table_engine: Optional[str] = Form(None),
+    table_allow_fullpage_fallback: Optional[bool] = Form(None),
     formula_disable_layout: bool = Form(False),
     formula_disable_preprocess: bool = Form(False),
     formula_two_stage_threshold_retry: bool = Form(True),
@@ -646,6 +696,7 @@ async def analyze_document(
     formula_fallback_layout_threshold: float = Form(0.2),
     formula_layout_threshold: Optional[float] = Form(None),
     pipeline_formula_batch_size: int = Form(1),
+    return_raw: bool = Form(False),
 ):
     """Upload and analyze a single document"""
     # Validate file
@@ -655,7 +706,19 @@ async def analyze_document(
 
     # CRITICAL FIX: FastAPI parses "1"/"0" as True/False for bool Form fields
     # "true"/"false" strings will cause validation errors
-    logger.info(f"Analyze endpoint received - enable_layout={enable_layout}, enable_ocr={enable_ocr}, enable_table={enable_table}")
+    logger.info(
+        "Analyze endpoint received - enable_layout={}, enable_ocr={}, enable_table={}, table_allow_fullpage_fallback={}",
+        enable_layout,
+        enable_ocr,
+        enable_table,
+        table_allow_fullpage_fallback,
+    )
+
+    effective_table_allow_fullpage_fallback = (
+        settings.TABLE_ALLOW_FULLPAGE_FALLBACK
+        if table_allow_fullpage_fallback is None
+        else bool(table_allow_fullpage_fallback)
+    )
 
     task_id = str(uuid.uuid4())
     upload_dir = os.path.join(settings.UPLOAD_DIR, task_id)
@@ -671,10 +734,14 @@ async def analyze_document(
         "enable_ocr": enable_ocr,
         "enable_table": enable_table,
         "enable_formula": enable_formula,
+        "enable_seal": enable_seal,
+        "enable_kie": enable_kie,
+        "document_type": document_type,
         "language": language,
         "ocr_engine": ocr_engine,
         "layout_engine": layout_engine,
         "table_engine": table_engine,
+        "table_allow_fullpage_fallback": effective_table_allow_fullpage_fallback,
         "formula_disable_layout": formula_disable_layout,
         "formula_disable_preprocess": formula_disable_preprocess,
         "formula_two_stage_threshold_retry": formula_two_stage_threshold_retry,
@@ -682,6 +749,7 @@ async def analyze_document(
         "formula_fallback_layout_threshold": formula_fallback_layout_threshold,
         "formula_layout_threshold": formula_layout_threshold,
         "pipeline_formula_batch_size": pipeline_formula_batch_size,
+        "return_raw": return_raw,
     }
 
     task = {
@@ -795,7 +863,9 @@ async def process_document(task_id: str):
             "ocr_service": ocr_service,
             "layout_service": layout_service,
             "table_service": table_service,
-                "formula_service": formula_service,
+            "formula_service": formula_service,
+            "seal_service": seal_service,
+            "kie_service": kie_service,
         },
         send_event=_send_event,
         is_cancelled=lambda tid: task_cancellation_flags.get(tid, False),
@@ -817,6 +887,9 @@ async def process_document(task_id: str):
 @app.post("/api/v1/documents:analyze", response_model=JobStatus)
 async def analyze_document_v1(
     file: UploadFile = File(...),
+    enable_kie: bool = Form(False),
+    document_type: str = Form("auto"),
+    return_raw: bool = Form(False),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """
@@ -846,9 +919,13 @@ async def analyze_document_v1(
         "enable_layout": True,
         "enable_ocr": False,
         "enable_table": True,
+        "enable_kie": enable_kie,
+        "document_type": document_type,
+        "table_allow_fullpage_fallback": settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
         "language": "en",
         "use_doc_unwarping": settings.USE_DOC_UNWARPING,
         "debug_mode": settings.DEBUG_MODE,
+        "return_raw": return_raw,
     }
 
     task = {
@@ -919,6 +996,10 @@ async def get_job_result(job_id: str):
             status_code=500,
             detail="Job result envelope not found"
         )
+
+    if not bool(task.get("options", {}).get("return_raw", False)):
+        envelope_dict = dict(envelope_dict)
+        envelope_dict["raw"] = {}
 
     # Convert dict to JobEnvelope model
     return JobEnvelope(**envelope_dict)
@@ -1702,13 +1783,22 @@ async def start_batch(batch_id: str, background_tasks: BackgroundTasks):
 
         # Tables
         if options.get("enable_table", True):
+            layout_elements = result.get("layout", {}).get("elements", []) if result.get("layout") else None
+            ocr_text_blocks = result.get("text_blocks") if isinstance(result.get("text_blocks"), list) else None
             table_result = await call_maybe_async(
-                table_service.extract,
+                table_service.extract_with_meta,
                 file_path,
                 engine=options.get("table_engine"),
-                fallback=True
+                fallback=True,
+                layout_elements=layout_elements,
+                ocr_text_blocks=ocr_text_blocks,
+                allow_fullpage_fallback=bool(options.get("table_allow_fullpage_fallback", settings.TABLE_ALLOW_FULLPAGE_FALLBACK)),
             )
-            result["tables"] = table_result
+            if isinstance(table_result, dict):
+                result["tables"] = table_result.get("tables", [])
+                result["table_extraction_meta"] = table_result.get("meta", {})
+            else:
+                result["tables"] = table_result
 
         return result
 

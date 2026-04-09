@@ -2,7 +2,7 @@
 Table Extraction Service - Multi-engine support with PP-Structure (Primary) and TableTransformer (Fallback)
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from abc import ABC, abstractmethod
 from loguru import logger
 import os
@@ -36,13 +36,17 @@ class PPStructureTableEngine(BaseTableEngine):
     - Integrated with PaddleOCR for text extraction
     """
 
-    def __init__(self, use_gpu: bool = False):
+    def __init__(self, use_gpu: bool = False, lazy_init: bool = True):
         self._engine = None
         self._ready = False
         self._use_gpu = use_gpu
-        self._init_engine()
+        self._lazy_init = lazy_init
+        self._init_attempted = False
+        if not self._lazy_init:
+            self._init_engine()
 
     def _init_engine(self):
+        self._init_attempted = True
         try:
             # Import PPStructureV3
             from paddleocr import PPStructureV3
@@ -80,17 +84,30 @@ class PPStructureTableEngine(BaseTableEngine):
         except Exception as e:
             logger.error(f"PPStructureV3 Table initialization failed: {e}")
             import traceback
+
             traceback.print_exc()
             self._ready = False
 
+    def _ensure_engine(self) -> bool:
+        if self._engine is not None and self._ready:
+            return True
+        if self._ready and self._engine is None:
+            return False
+        self._init_engine()
+        return self._engine is not None and self._ready
+
     def is_ready(self) -> bool:
-        return self._ready
+        # In lazy mode, report available before first initialization attempt.
+        return self._ready or not self._init_attempted
 
     def get_name(self) -> str:
         return "PP-Structure-Table"
 
     def _call_engine(self, img_path: str):
         """Call engine with version-compatible method"""
+        if not self._ensure_engine():
+            raise RuntimeError("PP-Structure Table engine not ready")
+
         if hasattr(self, '_is_v3') and self._is_v3:
             # PPStructureV3 uses predict() method
             return self._engine.predict(img_path)
@@ -120,7 +137,7 @@ class PPStructureTableEngine(BaseTableEngine):
             return self._extract_from_layout_elements(layout_elements, ocr_text_blocks)
 
         # Fallback: call PP-Structure directly (legacy method)
-        if not self._ready:
+        if not self._ensure_engine():
             raise RuntimeError("PP-Structure Table engine not ready")
 
         ext = os.path.splitext(file_path)[1].lower()
@@ -887,7 +904,9 @@ class PPStructureTableEngine(BaseTableEngine):
                     # Limit cell text length to prevent extremely long text (likely page content)
                     # Typical table cells should be relatively short
                     if len(cell_text) > 500:
-                        logger.warning(f"Table {table_idx} row {row_idx} col {col_idx}: Cell text too long ({len(cell_text)} chars), truncating. May contain non-table content.")
+                        logger.warning(
+                            f"Table cell row {row_idx} col {col_idx}: text too long ({len(cell_text)} chars), truncating. May contain non-table content."
+                        )
                         # Try to find a reasonable break point (sentence end)
                         truncated = cell_text[:500]
                         last_period = truncated.rfind('.')
@@ -1185,18 +1204,18 @@ class TableService:
     3. Tabula (Alternative)
     """
 
-    def __init__(self, use_gpu: bool = False):
+    def __init__(self, use_gpu: bool = False, allow_fullpage_fallback: bool = False):
         self.engines: Dict[str, BaseTableEngine] = {}
         self.default_engine = "ppstructure"
         self._use_gpu = use_gpu
+        self._allow_fullpage_fallback = bool(allow_fullpage_fallback)
         self._init_engines()
 
     def _init_engines(self):
         """Initialize all available table engines"""
         # Primary: PP-Structure-Table
-        pp_engine = PPStructureTableEngine(use_gpu=self._use_gpu)
-        if pp_engine.is_ready():
-            self.engines["ppstructure"] = pp_engine
+        pp_engine = PPStructureTableEngine(use_gpu=self._use_gpu, lazy_init=True)
+        self.engines["ppstructure"] = pp_engine
 
         # PaddleOCR-only version: Camelot and Tabula disabled
         # Fallback: Camelot
@@ -1209,11 +1228,24 @@ class TableService:
         # if tabula_engine.is_ready():
         #     self.engines["tabula"] = tabula_engine
 
-        logger.info(f"Available table engines: {list(self.engines.keys())}")
+        logger.info(
+            "Available table engines: {} | allow_fullpage_fallback={}",
+            list(self.engines.keys()),
+            self._allow_fullpage_fallback,
+        )
 
     def is_ready(self) -> bool:
         """Check if any table engine is available"""
         return len(self.engines) > 0
+
+    def get_strategy_info(self) -> Dict[str, Any]:
+        """Return current extraction strategy for observability endpoints."""
+        return {
+            "mode": "layout_first",
+            "allow_fullpage_fallback": self._allow_fullpage_fallback,
+            "default_engine": self.default_engine,
+            "available_engines": self.get_available_engines(),
+        }
 
     def get_available_engines(self) -> List[str]:
         """Get list of available engines"""
@@ -1238,8 +1270,52 @@ class TableService:
         engine: Optional[str] = None,
         fallback: bool = True,
         layout_elements: Optional[List[Dict[str, Any]]] = None,
-        ocr_text_blocks: Optional[List[Dict[str, Any]]] = None
+        ocr_text_blocks: Optional[List[Dict[str, Any]]] = None,
+        allow_fullpage_fallback: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
+        """Backward-compatible table extraction API (tables only)."""
+        tables, _meta = await self._extract_internal(
+            file_path=file_path,
+            engine=engine,
+            fallback=fallback,
+            layout_elements=layout_elements,
+            ocr_text_blocks=ocr_text_blocks,
+            allow_fullpage_fallback=allow_fullpage_fallback,
+        )
+        return tables
+
+    async def extract_with_meta(
+        self,
+        file_path: str,
+        engine: Optional[str] = None,
+        fallback: bool = True,
+        layout_elements: Optional[List[Dict[str, Any]]] = None,
+        ocr_text_blocks: Optional[List[Dict[str, Any]]] = None,
+        allow_fullpage_fallback: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        """Table extraction API with structured metadata for observability and audits."""
+        tables, meta = await self._extract_internal(
+            file_path=file_path,
+            engine=engine,
+            fallback=fallback,
+            layout_elements=layout_elements,
+            ocr_text_blocks=ocr_text_blocks,
+            allow_fullpage_fallback=allow_fullpage_fallback,
+        )
+        return {
+            "tables": tables,
+            "meta": meta,
+        }
+
+    async def _extract_internal(
+        self,
+        file_path: str,
+        engine: Optional[str] = None,
+        fallback: bool = True,
+        layout_elements: Optional[List[Dict[str, Any]]] = None,
+        ocr_text_blocks: Optional[List[Dict[str, Any]]] = None,
+        allow_fullpage_fallback: Optional[bool] = None,
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Extract tables from document or from layout elements
 
@@ -1249,15 +1325,46 @@ class TableService:
             fallback: Whether to try fallback engines on failure
             layout_elements: Optional list of layout elements from Layout Service (preferred method)
             ocr_text_blocks: Optional list of OCR text blocks for table reconstruction
+            allow_fullpage_fallback: Override service-level fallback strategy
 
         Returns:
             List of extracted tables
         """
+        effective_allow_fullpage_fallback = (
+            self._allow_fullpage_fallback
+            if allow_fullpage_fallback is None
+            else bool(allow_fullpage_fallback)
+        )
+        layout_table_count = 0
+        if isinstance(layout_elements, list):
+            layout_table_count = sum(1 for el in layout_elements if isinstance(el, dict) and el.get("type") == "table")
+
+        meta: Dict[str, Any] = {
+            "strategy": "layout_first",
+            "engine_requested": engine or self.default_engine,
+            "allow_fullpage_fallback": effective_allow_fullpage_fallback,
+            "layout_elements": len(layout_elements) if isinstance(layout_elements, list) else 0,
+            "layout_table_blocks": layout_table_count,
+            "path": "unknown",
+            "reason": "unknown",
+            "fallback_activated": False,
+            "engine_used": None,
+            "tables_returned": 0,
+        }
+
+        logger.info(
+            "Table extraction request | engine={} | layout_elements={} | layout_tables={} | allow_fullpage_fallback={}",
+            engine or self.default_engine,
+            len(layout_elements) if isinstance(layout_elements, list) else 0,
+            layout_table_count,
+            effective_allow_fullpage_fallback,
+        )
+
         # If layout elements are provided and using PP-Structure, extract from layout (preferred method)
         if layout_elements and (not engine or engine == "ppstructure"):
             if "ppstructure" in self.engines:
                 eng = self.engines["ppstructure"]
-                logger.info(f"Extracting tables from layout elements (preferred method)...")
+                logger.info("Extracting tables from layout elements (layout-first path)")
                 try:
                     result = await eng.extract(
                         file_path,
@@ -1267,10 +1374,77 @@ class TableService:
                     # Add engine info to each table
                     for table in result:
                         table["engine_used"] = "ppstructure"
-                    return result
+                    meta.update(
+                        {
+                            "path": "layout_first",
+                            "reason": "layout_tables_consumed",
+                            "engine_used": "ppstructure",
+                            "tables_returned": len(result),
+                        }
+                    )
+                    return result, meta
                 except Exception as e:
-                    logger.warning(f"Failed to extract from layout elements: {e}, falling back to direct extraction")
-                    # Fall through to direct extraction
+                    if not effective_allow_fullpage_fallback:
+                        logger.warning(
+                            "Table role boundary hit | reason=layout_extract_failed_fallback_disabled | error={}",
+                            e,
+                        )
+                        meta.update(
+                            {
+                                "path": "skipped",
+                                "reason": "layout_extract_failed_fallback_disabled",
+                                "tables_returned": 0,
+                            }
+                        )
+                        return [], meta
+                    logger.warning(
+                        "Table fallback activated | reason=layout_extract_failed | error={}",
+                        e,
+                    )
+                    meta.update(
+                        {
+                            "fallback_activated": True,
+                            "path": "fullpage_fallback",
+                            "reason": "layout_extract_failed",
+                        }
+                    )
+
+        # Policy guard: disallow full-page inference unless explicitly enabled.
+        if not effective_allow_fullpage_fallback:
+            if layout_elements is None:
+                logger.warning(
+                    "Table role boundary hit | reason=missing_layout_input_fallback_disabled"
+                )
+                meta.update(
+                    {
+                        "path": "skipped",
+                        "reason": "missing_layout_input_fallback_disabled",
+                        "tables_returned": 0,
+                    }
+                )
+            else:
+                logger.warning(
+                    "Table role boundary hit | reason=no_layout_table_blocks_fallback_disabled"
+                )
+                meta.update(
+                    {
+                        "path": "skipped",
+                        "reason": "no_layout_table_blocks_fallback_disabled",
+                        "tables_returned": 0,
+                    }
+                )
+            return [], meta
+
+        logger.warning(
+            "Table fallback activated | reason=policy_allowed_fullpage_path"
+        )
+        meta.update(
+            {
+                "fallback_activated": True,
+                "path": "fullpage_fallback",
+                "reason": "policy_allowed_fullpage_path",
+            }
+        )
 
         # Fallback: direct extraction (legacy method)
         engines_to_try = []
@@ -1302,7 +1476,13 @@ class TableService:
                 for table in result:
                     table["engine_used"] = eng_name
 
-                return result
+                meta.update(
+                    {
+                        "engine_used": eng_name,
+                        "tables_returned": len(result),
+                    }
+                )
+                return result, meta
             except Exception as e:
                 logger.warning(f"{eng_name} failed: {e}")
                 last_error = e
@@ -1311,7 +1491,14 @@ class TableService:
 
         # Return empty list if all engines fail (tables are optional)
         logger.warning(f"All table engines failed. Last error: {last_error}")
-        return []
+        meta.update(
+            {
+                "path": "failed",
+                "reason": "all_engines_failed",
+                "tables_returned": 0,
+            }
+        )
+        return [], meta
 
     def to_csv(self, table_data: List[List[str]]) -> str:
         """Convert table data to CSV format"""

@@ -1187,6 +1187,8 @@ def _ppstructure_worker_main(use_gpu: bool, lang: str, req_q, res_q):
     import asyncio
     # Ensure spawned worker process does not run model host connectivity checks.
     os.environ.setdefault("DISABLE_MODEL_SOURCE_CHECK", "True")
+    os.environ.setdefault("PADDLEX_DISABLE_MODEL_SOURCE_CHECK", "True")
+    os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
     try:
         engine = PPStructureEngine(use_gpu=use_gpu, lang=lang)

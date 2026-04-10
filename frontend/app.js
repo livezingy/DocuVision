@@ -1154,6 +1154,8 @@ function getProcessingOptions() {
     const options = {
         document_type: isLayout ? 'auto' : selectedMode,
         enable_layout: true,
+        // Layout mode text extraction comes from PP-StructureV3 block content, not OCRService.
+        enable_ocr: false,
         enable_table: isLayout ? (document.getElementById('optEnableTable')?.checked ?? true) : true,
         enable_formula: isLayout ? (document.getElementById('optEnableFormula')?.checked || false) : false,
         enable_seal: isLayout ? (document.getElementById('optEnableSeal')?.checked || false) : false,

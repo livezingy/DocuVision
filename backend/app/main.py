@@ -14,6 +14,8 @@ os.environ['FLAGS_use_onednn'] = '0'
 os.environ['PADDLE_USE_ONEDNN'] = '0'
 # Avoid startup/source connectivity probes for model hosters in both local and cloud runs.
 os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'
+os.environ['PADDLEX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
+os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 
 # Fix matplotlib backend issue
 import matplotlib

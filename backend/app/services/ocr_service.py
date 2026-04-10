@@ -42,7 +42,8 @@ class PaddleOCREngine(BaseOCREngine):
         self._ready = False
         self._use_gpu = use_gpu
         self._lang = lang
-        self._init_engine()
+        # Lazy init to avoid loading OCR models during API startup.
+        # Engine will initialize on first recognize() call.
 
     def _init_engine(self):
         try:
@@ -262,7 +263,9 @@ class PaddleOCREngine(BaseOCREngine):
 
     async def recognize(self, file_path: str, language: str = "en") -> Dict[str, Any]:
         if not self._ready:
-            raise RuntimeError("PaddleOCR engine not ready")
+            self._init_engine()
+            if not self._ready:
+                raise RuntimeError("PaddleOCR engine not ready")
 
         ext = os.path.splitext(file_path)[1].lower()
 
@@ -381,8 +384,7 @@ class OCRService:
         """Initialize all available OCR engines"""
         # Primary: PaddleOCR
         paddle_engine = PaddleOCREngine(use_gpu=self._use_gpu, lang=self._lang)
-        if paddle_engine.is_ready():
-            self.engines["paddleocr"] = paddle_engine
+        self.engines["paddleocr"] = paddle_engine
 
         logger.info(f"Available OCR engines: {list(self.engines.keys())}")
 

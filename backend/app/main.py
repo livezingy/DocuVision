@@ -12,6 +12,8 @@ os.environ['FLAGS_onednn'] = '0'
 os.environ['MKLDNN_ENABLED'] = '0'
 os.environ['FLAGS_use_onednn'] = '0'
 os.environ['PADDLE_USE_ONEDNN'] = '0'
+# Avoid startup/source connectivity probes for model hosters in both local and cloud runs.
+os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 
 # Fix matplotlib backend issue
 import matplotlib
@@ -707,11 +709,22 @@ async def analyze_document(
     # CRITICAL FIX: FastAPI parses "1"/"0" as True/False for bool Form fields
     # "true"/"false" strings will cause validation errors
     logger.info(
-        "Analyze endpoint received - enable_layout={}, enable_ocr={}, enable_table={}, table_allow_fullpage_fallback={}",
+        "Analyze endpoint received - enable_layout={}, enable_ocr={}, enable_table={}, "
+        "enable_formula={}, enable_seal={}, enable_kie={}, document_type={}, "
+        "table_allow_fullpage_fallback={}, formula_disable_layout={}, formula_disable_preprocess={}, "
+        "pipeline_formula_batch_size={}, return_raw={}",
         enable_layout,
         enable_ocr,
         enable_table,
+        enable_formula,
+        enable_seal,
+        enable_kie,
+        document_type,
         table_allow_fullpage_fallback,
+        formula_disable_layout,
+        formula_disable_preprocess,
+        pipeline_formula_batch_size,
+        return_raw,
     )
 
     effective_table_allow_fullpage_fallback = (

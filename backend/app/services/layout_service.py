@@ -1185,6 +1185,8 @@ def _ppstructure_worker_main(use_gpu: bool, lang: str, req_q, res_q):
     and restarted, giving the next request a completely fresh GPU state.
     """
     import asyncio
+    # Ensure spawned worker process does not run model host connectivity checks.
+    os.environ.setdefault("DISABLE_MODEL_SOURCE_CHECK", "True")
 
     try:
         engine = PPStructureEngine(use_gpu=use_gpu, lang=lang)

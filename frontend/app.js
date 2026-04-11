@@ -1127,6 +1127,8 @@ function resetAnalysisOptions() {
     const optEnableTable = document.getElementById('optEnableTable');
     if (optEnableTable) optEnableTable.checked = true;
     document.getElementById('optEnableFormula').checked = false;
+    const optEnableChart = document.getElementById('optEnableChart');
+    if (optEnableChart) optEnableChart.checked = false;
     document.getElementById('optEnableSeal').checked = false;
     document.getElementById('dialogOcrEngineSelect').value = 'paddleocr';
     document.getElementById('dialogLayoutEngineSelect').value = 'ppstructure';
@@ -1158,6 +1160,7 @@ function getProcessingOptions() {
         enable_ocr: false,
         enable_table: isLayout ? (document.getElementById('optEnableTable')?.checked ?? true) : true,
         enable_formula: isLayout ? (document.getElementById('optEnableFormula')?.checked || false) : false,
+        enable_chart: isLayout ? (document.getElementById('optEnableChart')?.checked || false) : false,
         enable_seal: isLayout ? (document.getElementById('optEnableSeal')?.checked || false) : false,
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
         layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure'

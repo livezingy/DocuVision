@@ -98,6 +98,7 @@ class PPStructureEngine(BaseLayoutEngine):
                     "use_formula_recognition": False,
                     "use_seal_recognition": False,
                     "use_chart_parsing": False,
+                    "use_chart_recognition": False,
                     # Keep table recognition enabled by default in layout pipeline.
                     "use_table_recognition": True,
                 }

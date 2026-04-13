@@ -18,10 +18,12 @@ from loguru import logger
 class ChartService:
     """Optional chart recognition service with ROI-batch inference."""
 
+    # Keep only candidates known to exist in typical paddlex installs.
+    # Remove "chart_recognition" which may not exist in some environments
+    # and causes create_pipeline to fail eagerly.
     _PIPELINE_CANDIDATES = (
         "chart_parsing",
         "chart2table",
-        "chart_recognition",
     )
 
     def __init__(self, device: Optional[str] = None):

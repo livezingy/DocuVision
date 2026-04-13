@@ -234,6 +234,20 @@ async def formula_step(ctx: PipelineContext) -> None:
         roi_source_image_path,
     )
 
+    # Short-circuit when no layout-detected formula boxes to avoid
+    # unnecessary lazy initialization of optional formula pipelines.
+    if not formula_boxes:
+        ctx["result"]["formula_meta"] = {
+            "attempted": False,
+            "succeeded": False,
+            "stage": "no_layout_formula_boxes",
+            "error_level": "none",
+            "error_code": "",
+            "error_message": "",
+        }
+        ctx["result"]["formula_stats"] = {"formula_count": 0, "layout_formula_box_count": 0}
+        return
+
     formula_result = await orchestrator.call_maybe_async(
         formula_service.recognize,
         ctx["file_path"],
@@ -326,6 +340,20 @@ async def chart_step(ctx: PipelineContext) -> None:
         len(chart_boxes),
         roi_source_image_path,
     )
+
+    # Short-circuit when no layout-detected chart boxes to avoid
+    # unnecessary lazy initialization of optional chart pipelines.
+    if not chart_boxes:
+        ctx["result"]["chart_meta"] = {
+            "attempted": False,
+            "succeeded": False,
+            "stage": "no_layout_chart_boxes",
+            "error_level": "none",
+            "error_code": "",
+            "error_message": "",
+        }
+        ctx["result"]["chart_stats"] = {"chart_count": 0, "layout_chart_box_count": 0}
+        return
 
     chart_result = await orchestrator.call_maybe_async(
         chart_service.recognize,

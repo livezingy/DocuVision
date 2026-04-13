@@ -20,9 +20,11 @@ from loguru import logger
 class FormulaService:
     """Optional formula recognition service with two-stage threshold retry."""
 
-    def __init__(self, device: Optional[str] = None):
+    def __init__(self, device: Optional[str] = None, model_level_backend: str = "auto"):
         self._ready = False
         self._device = device or self._detect_device()
+        # model_level_backend: 'auto'|'pipeline'|'formulanet' - skeleton support
+        self.model_level_backend = (str(model_level_backend or "auto")).strip().lower()
         self._pipeline = None
         self._init_error: Optional[str] = None
         # Lazy init: delay model loading until first recognize() call.
@@ -69,6 +71,32 @@ class FormulaService:
         self._pipeline = None
         self._ready = False
         return self._init_pipeline()
+
+    def _try_model_level_on_rois(
+        self,
+        image_path: str,
+        layout_formula_boxes: List[Dict[str, Any]],
+        *,
+        disable_preprocess: bool,
+        pipeline_formula_batch_size: int,
+    ) -> Optional[Dict[str, Any]]:
+        """Skeleton: attempt model-level inference on ROI crops.
+
+        Currently a stub that logs intent and returns None to indicate
+        fallback to existing pipeline behavior. Future implementation
+        should return a dict matching `recognize`'s successful shape.
+        """
+        try:
+            if self.model_level_backend == "auto":
+                # auto: prefer model-level when implemented, else fallback
+                logger.info("FormulaService model-level attempt (auto) - not implemented, falling back to pipeline")
+                return None
+            if self.model_level_backend in ("formulanet", "model"):
+                logger.info("FormulaService model-level attempt (requested) - not implemented, falling back")
+                return None
+        except Exception:
+            logger.exception("FormulaService model-level attempt failed unexpectedly")
+        return None
 
     def is_ready(self) -> bool:
         return self._ready and self._pipeline is not None
@@ -444,6 +472,22 @@ class FormulaService:
         layout_threshold: Optional[float] = None,
         pipeline_formula_batch_size: int = 1,
     ) -> Dict[str, Any]:
+        # Determine ROI boxes early so we can attempt model-level inference
+        # (skeleton) before triggering pipeline lazy-init.
+        roi_boxes = layout_formula_boxes if isinstance(layout_formula_boxes, list) else []
+
+        # Try model-level backend on ROIs first when requested/auto.
+        if roi_boxes and self.model_level_backend in ("auto", "formulanet", "model"):
+            model_try = self._try_model_level_on_rois(
+                roi_source_image_path or image_path,
+                roi_boxes,
+                disable_preprocess=disable_preprocess,
+                pipeline_formula_batch_size=pipeline_formula_batch_size,
+            )
+            if isinstance(model_try, dict):
+                return model_try
+
+        # Fallback: ensure pipeline (lazy init on first use)
         if not self._ensure_pipeline():
             return {
                 "ok": False,
@@ -456,7 +500,7 @@ class FormulaService:
             }
 
         try:
-            roi_boxes = layout_formula_boxes if isinstance(layout_formula_boxes, list) else []
+            # roi_boxes variable computed above
             if roi_boxes:
                 roi_image = roi_source_image_path or image_path
                 roi_results, roi_stats, roi_kwargs = self._run_once_on_layout_rois_with_rebuild(

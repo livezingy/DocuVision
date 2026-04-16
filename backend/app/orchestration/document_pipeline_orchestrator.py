@@ -507,25 +507,49 @@ async def kie_step(ctx: PipelineContext) -> None:
         await orchestrator.update_progress(ctx, 80, "KIE extraction skipped (service unavailable)")
         return
 
+    # Prepare richer inputs for KIE: prefer preprocessed image and table meta when available
+    preprocessed_image_path = ctx["task"].get("preprocessed_image_path") or ctx.get("file_path")
+    layout = ctx["result"].get("layout", {}) if isinstance(ctx["result"].get("layout"), dict) else {}
+    table_meta = ctx["result"].get("table_extraction_meta", {}) if isinstance(ctx["result"].get("table_extraction_meta"), dict) else {}
+
+    # Record the inputs used for KIE for traceability
+    ctx["result"]["kie_input"] = {
+        "file_path": ctx.get("file_path"),
+        "preprocessed_image_path": preprocessed_image_path,
+        "layout_present": bool(layout),
+        "table_meta": table_meta,
+    }
+
     try:
+        # Try calling the extended signature first (backwards-compatible).
         kie_result = await orchestrator.call_maybe_async(
             kie_service.extract_fields,
             ctx["file_path"],
             document_type,
+            preprocessed_image_path=preprocessed_image_path,
+            layout=layout,
+            table_meta=table_meta,
         )
-        fields = {}
-        if isinstance(kie_result, dict):
-            fields = kie_result.get("fields", {}) if isinstance(kie_result.get("fields", {}), dict) else {}
-
-        ctx["result"]["kie_fields"] = fields
-        ctx["result"]["kie_meta"] = {
-            "attempted": True,
-            "succeeded": True,
-            "stage": "completed",
-            "error_code": "",
-            "error_message": "",
-        }
-        await orchestrator.update_progress(ctx, 80, f"KIE extraction completed | fields={len(fields)}")
+    except TypeError:
+        # Fallback to legacy signature if the service doesn't accept new kwargs.
+        try:
+            kie_result = await orchestrator.call_maybe_async(
+                kie_service.extract_fields,
+                ctx["file_path"],
+                document_type,
+            )
+        except Exception as exc:
+            logger.warning(f"KIE extraction failed: {exc}")
+            ctx["result"]["kie_fields"] = {}
+            ctx["result"]["kie_meta"] = {
+                "attempted": True,
+                "succeeded": False,
+                "stage": "runtime_error",
+                "error_code": "runtime_error",
+                "error_message": str(exc),
+            }
+            await orchestrator.update_progress(ctx, 80, "KIE extraction failed")
+            return
     except Exception as exc:
         logger.warning(f"KIE extraction failed: {exc}")
         ctx["result"]["kie_fields"] = {}
@@ -537,6 +561,22 @@ async def kie_step(ctx: PipelineContext) -> None:
             "error_message": str(exc),
         }
         await orchestrator.update_progress(ctx, 80, "KIE extraction failed")
+        return
+
+    # Normalize result shape defensively
+    fields = {}
+    if isinstance(kie_result, dict):
+        fields = kie_result.get("fields", {}) if isinstance(kie_result.get("fields", {}), dict) else {}
+
+    ctx["result"]["kie_fields"] = fields
+    ctx["result"]["kie_meta"] = {
+        "attempted": True,
+        "succeeded": True,
+        "stage": "completed",
+        "error_code": "",
+        "error_message": "",
+    }
+    await orchestrator.update_progress(ctx, 80, f"KIE extraction completed | fields={len(fields)}")
 
 
 async def finalize_step(ctx: PipelineContext) -> None:
@@ -829,10 +869,10 @@ class DocumentPipelineOrchestrator:
         steps = [
             layout_step,
             table_step,
+            kie_step,
             formula_step,
             chart_step,
             seal_step,
-            kie_step,
             phase1_envelope_step,  # Build Phase 1 Envelope (preprocessing, raw, fused, view, quality)
             finalize_step,
         ]

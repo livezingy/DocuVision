@@ -181,16 +181,56 @@ class DocumentKIEService:
             self._engines[document_type] = PPKieSubprocessEngine(document_type)
         return self._engines[document_type]
 
-    async def extract_fields(self, file_path: str, document_type: str) -> Dict[str, Any]:
+    async def extract_fields(
+        self,
+        file_path: str,
+        document_type: str,
+        *,
+        preprocessed_image_path: Optional[str] = None,
+        layout: Optional[Dict[str, Any]] = None,
+        table_meta: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
         Extract fields from a document based on its type.
-        Returns a dictionary of fields to be merged into view.fields.
+        Accepts optional richer inputs for KIE: `preprocessed_image_path`, `layout`, and `table_meta`.
+        Returns a dictionary of fields to be merged into view.fields. For backward compatibility
+        this will still call the subprocess engine with the original `file_path` and include the
+        received inputs under the `debug_input` key in the returned dict for test assertion.
         """
         import asyncio
         loop = asyncio.get_event_loop()
 
         engine = self._get_engine(document_type)
 
-        # Run blocking subprocess call in executor
+        # Log received inputs for observability/tests
+        try:
+            logger.info(
+                "KIE.extract_fields called | file=%s | doc_type=%s | preproc=%s | layout_present=%s | table_meta_keys=%s",
+                file_path,
+                document_type,
+                bool(preprocessed_image_path),
+                bool(layout),
+                list(table_meta.keys()) if isinstance(table_meta, dict) else None,
+            )
+        except Exception:
+            pass
+
+        # Run blocking subprocess call in executor (engine currently expects file_path)
         result = await loop.run_in_executor(None, engine.analyze, file_path)
+
+        # Ensure returned shape is a dict and contains `fields` key
+        if not isinstance(result, dict):
+            result = {"fields": {}}
+        else:
+            if "fields" not in result:
+                result["fields"] = {}
+
+        # Attach debug_input for testability and tracing
+        result.setdefault("debug_input", {})
+        result["debug_input"].update({
+            "preprocessed_image_path": preprocessed_image_path,
+            "layout_present": bool(layout),
+            "table_meta": table_meta or {},
+        })
+
         return result

@@ -1162,6 +1162,12 @@ function getProcessingOptions() {
         enable_formula: isLayout ? (document.getElementById('optEnableFormula')?.checked || false) : false,
         enable_chart: isLayout ? (document.getElementById('optEnableChart')?.checked || false) : false,
         enable_seal: isLayout ? (document.getElementById('optEnableSeal')?.checked || false) : false,
+        // Auto-enable KIE when user selects invoice/receipt/id_card processing mode
+        enable_kie: (function() {
+            const dt = isLayout ? 'auto' : selectedMode;
+            const kieTypes = new Set(['invoice', 'receipt', 'id_card']);
+            return kieTypes.has(String(dt).toLowerCase());
+        })(),
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
         layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure'
     };

@@ -773,6 +773,17 @@ async def analyze_document(
         "return_raw": return_raw,
     }
 
+    # Backward-compatible fallback: if user selected a document_type that typically
+    # requires KIE (invoice/receipt/id_card) but did not explicitly enable KIE,
+    # enable it automatically as a short-term safety net.
+    try:
+        doc_type_norm = str(document_type or "").strip().lower()
+        if doc_type_norm in {"invoice", "receipt", "id_card"} and not options.get("enable_kie", False):
+            options["enable_kie"] = True
+            logger.info(f"Analyze endpoint compatibility: auto-enabled KIE for document_type={doc_type_norm}")
+    except Exception:
+        pass
+
     task = {
         "task_id": task_id,
         "status": "pending",

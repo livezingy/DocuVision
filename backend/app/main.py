@@ -784,6 +784,15 @@ async def analyze_document(
     except Exception:
         pass
 
+    # Explicitly log the final analyze options so server-side observers
+    # (cloud testing / CI logs) can verify whether KIE was enabled without
+    # inspecting the browser request payload.
+    try:
+        logger.info("Analyze options: %s", options)
+    except Exception:
+        # Logging should never break the request flow
+        logger.debug("Failed to log analyze options")
+
     task = {
         "task_id": task_id,
         "status": "pending",

@@ -783,7 +783,7 @@
                             <div class="layout-sub-options" id="layoutSubOptions">
                                 <label class="sub-option-item sub-option-disabled">
                                     <input type="checkbox" checked disabled>
-                                    <span class="option-label">Text &amp; Figures</span>
+                                    <span class="option-label">Text &amp; Figures (from PP-StructureV3)</span>
                                     <span class="option-badge-sm">Always on</span>
                                 </label>
                                 <label class="sub-option-item">
@@ -793,6 +793,10 @@
                                 <label class="sub-option-item">
                                     <input type="checkbox" id="optEnableFormula">
                                     <span class="option-label">Formulas</span>
+                                </label>
+                                <label class="sub-option-item">
+                                    <input type="checkbox" id="optEnableChart">
+                                    <span class="option-label">Charts (Chart2Table)</span>
                                 </label>
                                 <label class="sub-option-item">
                                     <input type="checkbox" id="optEnableSeal">
@@ -828,7 +832,7 @@
                 <!-- Engines Tab -->
                 <div class="modal-tab-content" id="enginesTab">
                     <div class="engine-selector">
-                        <label class="engine-label">OCR Engine</label>
+                        <label class="engine-label">OCR Engine (legacy /api/v1/ocr path)</label>
                         <select class="engine-select" id="dialogOcrEngineSelect">
                             <option value="paddleocr" selected>PaddleOCR (Recommended)</option>
                             <option value="tesseract">Tesseract OCR (Fallback)</option>

@@ -17,6 +17,12 @@ os.environ['MKLDNN_ENABLED'] = '0'
 os.environ['FLAGS_use_onednn'] = '0'  # 添加额外的标志
 os.environ['PADDLE_USE_ONEDNN'] = '0'  # PaddlePaddle 3.x 可能需要这个
 
+# Disable PaddleX model source host connectivity checks as early as possible.
+# Keep multiple env keys for compatibility across PaddleX revisions.
+os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'
+os.environ['PADDLEX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
+os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
+
 
 def _ensure_env_from_cloud_template() -> None:
     """Create backend/.env from backend/.env.cloud when .env is missing."""

@@ -12,6 +12,10 @@ os.environ['FLAGS_onednn'] = '0'
 os.environ['MKLDNN_ENABLED'] = '0'
 os.environ['FLAGS_use_onednn'] = '0'
 os.environ['PADDLE_USE_ONEDNN'] = '0'
+# Avoid startup/source connectivity probes for model hosters in both local and cloud runs.
+os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'
+os.environ['PADDLEX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
+os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 
 # Fix matplotlib backend issue
 import matplotlib
@@ -180,6 +184,7 @@ from app.services.ocr_service import OCRService
 from app.services.layout_service import LayoutService
 from app.services.table_service import TableService
 from app.services.formula_service import FormulaService
+from app.services.chart_service import ChartService
 from app.services.seal_service import SealService
 from app.services.kie_service import DocumentKIEService
 from app.services.export_service import ExportService
@@ -262,6 +267,7 @@ table_service = TableService(
     allow_fullpage_fallback=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
 )
 formula_service = FormulaService(device="gpu" if use_gpu else "cpu")
+chart_service = ChartService(device="gpu" if use_gpu else "cpu")
 seal_service = SealService(device="gpu" if use_gpu else "cpu")
 kie_service = DocumentKIEService()
 export_service = ExportService()
@@ -279,7 +285,7 @@ task_event_history: Dict[str, List[Dict[str, Any]]] = {}
 task_event_counters: Dict[str, int] = {}
 
 logger.info(
-    "Startup strategy | layout=ppstructure(layout-only optional engines off) | table_mode={} | table_fullpage_fallback={} | formula_mode=independent_lazy | seal_mode=independent_lazy",
+    "Startup strategy | layout=ppstructure(layout-only optional engines off) | table_mode={} | table_fullpage_fallback={} | formula_mode=independent_lazy_roi | chart_mode=independent_lazy_roi | seal_mode=independent_lazy",
     "layout_first",
     settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
 )
@@ -439,6 +445,7 @@ class ProcessingOptions(BaseModel):
     enable_ocr: bool = False
     enable_table: bool = True
     enable_formula: bool = False
+    enable_chart: bool = False
     enable_seal: bool = False
     enable_kie: bool = False
     document_type: str = "auto"
@@ -681,6 +688,7 @@ async def analyze_document(
     enable_ocr: bool = Form(False),
     enable_table: bool = Form(True),
     enable_formula: bool = Form(False),
+    enable_chart: bool = Form(False),
     enable_seal: bool = Form(False),
     enable_kie: bool = Form(False),
     document_type: str = Form("auto"),
@@ -707,11 +715,23 @@ async def analyze_document(
     # CRITICAL FIX: FastAPI parses "1"/"0" as True/False for bool Form fields
     # "true"/"false" strings will cause validation errors
     logger.info(
-        "Analyze endpoint received - enable_layout={}, enable_ocr={}, enable_table={}, table_allow_fullpage_fallback={}",
+        "Analyze endpoint received - enable_layout={}, enable_ocr={}, enable_table={}, "
+        "enable_formula={}, enable_chart={}, enable_seal={}, enable_kie={}, document_type={}, "
+        "table_allow_fullpage_fallback={}, formula_disable_layout={}, formula_disable_preprocess={}, "
+        "pipeline_formula_batch_size={}, return_raw={}",
         enable_layout,
         enable_ocr,
         enable_table,
+        enable_formula,
+        enable_chart,
+        enable_seal,
+        enable_kie,
+        document_type,
         table_allow_fullpage_fallback,
+        formula_disable_layout,
+        formula_disable_preprocess,
+        pipeline_formula_batch_size,
+        return_raw,
     )
 
     effective_table_allow_fullpage_fallback = (
@@ -734,6 +754,7 @@ async def analyze_document(
         "enable_ocr": enable_ocr,
         "enable_table": enable_table,
         "enable_formula": enable_formula,
+        "enable_chart": enable_chart,
         "enable_seal": enable_seal,
         "enable_kie": enable_kie,
         "document_type": document_type,
@@ -864,6 +885,7 @@ async def process_document(task_id: str):
             "layout_service": layout_service,
             "table_service": table_service,
             "formula_service": formula_service,
+            "chart_service": chart_service,
             "seal_service": seal_service,
             "kie_service": kie_service,
         },

@@ -98,6 +98,7 @@ class PPStructureEngine(BaseLayoutEngine):
                     "use_formula_recognition": False,
                     "use_seal_recognition": False,
                     "use_chart_parsing": False,
+                    "use_chart_recognition": False,
                     # Keep table recognition enabled by default in layout pipeline.
                     "use_table_recognition": True,
                 }
@@ -1185,6 +1186,10 @@ def _ppstructure_worker_main(use_gpu: bool, lang: str, req_q, res_q):
     and restarted, giving the next request a completely fresh GPU state.
     """
     import asyncio
+    # Ensure spawned worker process does not run model host connectivity checks.
+    os.environ.setdefault("DISABLE_MODEL_SOURCE_CHECK", "True")
+    os.environ.setdefault("PADDLEX_DISABLE_MODEL_SOURCE_CHECK", "True")
+    os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
     try:
         engine = PPStructureEngine(use_gpu=use_gpu, lang=lang)

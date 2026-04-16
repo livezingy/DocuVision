@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 import os
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from loguru import logger
 
@@ -25,6 +25,52 @@ async def _run_progressed_step(
 ) -> None:
     await ctx["orchestrator"].update_progress(ctx, progress, message)
     await func(ctx)
+
+
+def _collect_layout_blocks(
+    layout_result: Dict[str, Any],
+    *,
+    accepted_types: set,
+) -> List[Dict[str, Any]]:
+    """Collect normalized [x1,y1,x2,y2] boxes from layout elements for given types."""
+    out: List[Dict[str, Any]] = []
+    if not isinstance(layout_result, dict):
+        return out
+
+    elements = layout_result.get("elements", [])
+    if not isinstance(elements, list):
+        return out
+
+    for el in elements:
+        if not isinstance(el, dict):
+            continue
+        t = str(el.get("type", "")).strip().lower()
+        if t not in accepted_types:
+            continue
+
+        bbox = el.get("bbox", {})
+        if not isinstance(bbox, dict):
+            continue
+        try:
+            x1 = float(bbox.get("x", 0.0))
+            y1 = float(bbox.get("y", 0.0))
+            w = float(bbox.get("width", 0.0))
+            h = float(bbox.get("height", 0.0))
+            if w <= 0 or h <= 0:
+                continue
+            out.append(
+                {
+                    "x1": x1,
+                    "y1": y1,
+                    "x2": x1 + w,
+                    "y2": y1 + h,
+                    "source_id": el.get("id", ""),
+                    "source_type": t,
+                }
+            )
+        except Exception:
+            continue
+    return out
 
 
 async def layout_step(ctx: PipelineContext) -> None:
@@ -176,11 +222,39 @@ async def formula_step(ctx: PipelineContext) -> None:
         ctx["result"]["formula_stats"] = {}
         return
 
+    layout_result = ctx["result"].get("layout", {}) if isinstance(ctx["result"], dict) else {}
+    formula_boxes = _collect_layout_blocks(
+        layout_result,
+        accepted_types={"formula", "inline_formula", "equation"},
+    )
+    roi_source_image_path = ctx["task"].get("preprocessed_image_path") or ctx["file_path"]
+    logger.info(
+        "Formula ROI mode | layout_formula_boxes={} | roi_source_image={}",
+        len(formula_boxes),
+        roi_source_image_path,
+    )
+
+    # Short-circuit when no layout-detected formula boxes to avoid
+    # unnecessary lazy initialization of optional formula pipelines.
+    if not formula_boxes:
+        ctx["result"]["formula_meta"] = {
+            "attempted": False,
+            "succeeded": False,
+            "stage": "no_layout_formula_boxes",
+            "error_level": "none",
+            "error_code": "",
+            "error_message": "",
+        }
+        ctx["result"]["formula_stats"] = {"formula_count": 0, "layout_formula_box_count": 0}
+        return
+
     formula_result = await orchestrator.call_maybe_async(
         formula_service.recognize,
         ctx["file_path"],
-        disable_layout=bool(options.get("formula_disable_layout", False)),
+        disable_layout=True if formula_boxes else bool(options.get("formula_disable_layout", False)),
         disable_preprocess=bool(options.get("formula_disable_preprocess", False)),
+        layout_formula_boxes=formula_boxes,
+        roi_source_image_path=roi_source_image_path,
         two_stage_threshold_retry=bool(options.get("formula_two_stage_threshold_retry", True)),
         primary_layout_threshold=float(options.get("formula_primary_layout_threshold", 0.5)),
         fallback_layout_threshold=float(options.get("formula_fallback_layout_threshold", 0.2)),
@@ -218,6 +292,7 @@ async def formula_step(ctx: PipelineContext) -> None:
     ctx["result"]["formula_unwrapped_results"] = formula_result.get("unwrapped_results", [])
     ctx["result"]["formula_stats"] = formula_result.get("stats", {})
     ctx["result"]["formula_stage"] = formula_result.get("stage")
+    ctx["result"]["formula_layout_boxes"] = formula_boxes
     ctx["result"]["formula_meta"] = {
         "attempted": True,
         "succeeded": True,
@@ -229,6 +304,102 @@ async def formula_step(ctx: PipelineContext) -> None:
 
     formula_count = int(formula_result.get("stats", {}).get("formula_count", 0))
     await orchestrator.update_progress(ctx, 74, f"Formula recognition completed | Formulas: {formula_count}")
+
+
+async def chart_step(ctx: PipelineContext) -> None:
+    options = ctx["options"]
+    if not options.get("enable_chart", False):
+        return
+
+    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
+    orchestrator.ensure_not_cancelled(ctx)
+    await orchestrator.update_progress(ctx, 75, "Running chart recognition...")
+
+    chart_service = orchestrator.services.get("chart_service")
+    if chart_service is None:
+        logger.warning("Chart step enabled but chart_service is not available; skipping")
+        ctx["result"]["chart_meta"] = {
+            "attempted": True,
+            "succeeded": False,
+            "stage": "service_unavailable",
+            "error_level": "soft",
+            "error_code": "service_unavailable",
+            "error_message": "chart_service is not available",
+        }
+        ctx["result"]["chart_stats"] = {}
+        return
+
+    layout_result = ctx["result"].get("layout", {}) if isinstance(ctx["result"], dict) else {}
+    chart_boxes = _collect_layout_blocks(
+        layout_result,
+        accepted_types={"chart", "flowchart", "figure_table_chart"},
+    )
+    roi_source_image_path = ctx["task"].get("preprocessed_image_path") or ctx["file_path"]
+    logger.info(
+        "Chart ROI mode | layout_chart_boxes={} | roi_source_image={}",
+        len(chart_boxes),
+        roi_source_image_path,
+    )
+
+    # Short-circuit when no layout-detected chart boxes to avoid
+    # unnecessary lazy initialization of optional chart pipelines.
+    if not chart_boxes:
+        ctx["result"]["chart_meta"] = {
+            "attempted": False,
+            "succeeded": False,
+            "stage": "no_layout_chart_boxes",
+            "error_level": "none",
+            "error_code": "",
+            "error_message": "",
+        }
+        ctx["result"]["chart_stats"] = {"chart_count": 0, "layout_chart_box_count": 0}
+        return
+
+    chart_result = await orchestrator.call_maybe_async(
+        chart_service.recognize,
+        ctx["file_path"],
+        layout_chart_boxes=chart_boxes,
+        roi_source_image_path=roi_source_image_path,
+    )
+
+    if not isinstance(chart_result, dict) or not chart_result.get("ok", False):
+        logger.warning(f"Chart recognition skipped or failed: {chart_result}")
+        error_message = "invalid_chart_result"
+        error_level = "soft"
+        error_code = "invalid_result"
+        failure_stage = "inference"
+        if isinstance(chart_result, dict):
+            error_message = str(chart_result.get("error", error_message))
+            error_level = str(chart_result.get("error_level", error_level))
+            error_code = str(chart_result.get("error_code", error_code))
+            failure_stage = str(chart_result.get("failure_stage", failure_stage))
+
+        ctx["result"]["chart_meta"] = {
+            "attempted": True,
+            "succeeded": False,
+            "stage": failure_stage,
+            "error_level": error_level,
+            "error_code": error_code,
+            "error_message": error_message,
+        }
+        ctx["result"]["chart_stats"] = chart_result.get("stats", {}) if isinstance(chart_result, dict) else {}
+        return
+
+    ctx["result"]["chart_unwrapped_results"] = chart_result.get("unwrapped_results", [])
+    ctx["result"]["chart_stats"] = chart_result.get("stats", {})
+    ctx["result"]["chart_stage"] = chart_result.get("stage")
+    ctx["result"]["chart_layout_boxes"] = chart_boxes
+    ctx["result"]["chart_meta"] = {
+        "attempted": True,
+        "succeeded": True,
+        "stage": str(chart_result.get("stage", "single")),
+        "error_level": str(chart_result.get("error_level", "none")),
+        "error_code": str(chart_result.get("error_code", "")),
+        "error_message": "",
+    }
+
+    chart_count = int(chart_result.get("stats", {}).get("chart_count", 0))
+    await orchestrator.update_progress(ctx, 76, f"Chart recognition completed | Charts: {chart_count}")
 
 
 async def seal_step(ctx: PipelineContext) -> None:
@@ -659,6 +830,7 @@ class DocumentPipelineOrchestrator:
             layout_step,
             table_step,
             formula_step,
+            chart_step,
             seal_step,
             kie_step,
             phase1_envelope_step,  # Build Phase 1 Envelope (preprocessing, raw, fused, view, quality)

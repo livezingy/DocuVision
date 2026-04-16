@@ -7,7 +7,12 @@ stable outputs for backend envelope integration.
 from __future__ import annotations
 
 import collections
+import os
+import tempfile
+import uuid
 from typing import Any, Dict, List, Optional, Tuple
+
+import cv2
 
 from loguru import logger
 
@@ -15,9 +20,11 @@ from loguru import logger
 class FormulaService:
     """Optional formula recognition service with two-stage threshold retry."""
 
-    def __init__(self, device: Optional[str] = None):
+    def __init__(self, device: Optional[str] = None, model_level_backend: str = "auto"):
         self._ready = False
         self._device = device or self._detect_device()
+        # model_level_backend: 'auto'|'pipeline'|'formulanet' - skeleton support
+        self.model_level_backend = (str(model_level_backend or "auto")).strip().lower()
         self._pipeline = None
         self._init_error: Optional[str] = None
         # Lazy init: delay model loading until first recognize() call.
@@ -64,6 +71,32 @@ class FormulaService:
         self._pipeline = None
         self._ready = False
         return self._init_pipeline()
+
+    def _try_model_level_on_rois(
+        self,
+        image_path: str,
+        layout_formula_boxes: List[Dict[str, Any]],
+        *,
+        disable_preprocess: bool,
+        pipeline_formula_batch_size: int,
+    ) -> Optional[Dict[str, Any]]:
+        """Skeleton: attempt model-level inference on ROI crops.
+
+        Currently a stub that logs intent and returns None to indicate
+        fallback to existing pipeline behavior. Future implementation
+        should return a dict matching `recognize`'s successful shape.
+        """
+        try:
+            if self.model_level_backend == "auto":
+                # auto: prefer model-level when implemented, else fallback
+                logger.info("FormulaService model-level attempt (auto) - not implemented, falling back to pipeline")
+                return None
+            if self.model_level_backend in ("formulanet", "model"):
+                logger.info("FormulaService model-level attempt (requested) - not implemented, falling back")
+                return None
+        except Exception:
+            logger.exception("FormulaService model-level attempt failed unexpectedly")
+        return None
 
     def is_ready(self) -> bool:
         return self._ready and self._pipeline is not None
@@ -169,6 +202,233 @@ class FormulaService:
         stats = self._collect_stats(unwrapped_results)
         return unwrapped_results, stats, predict_kwargs
 
+    @staticmethod
+    def _normalize_bbox(box: Dict[str, Any]) -> Optional[List[int]]:
+        """Normalize a formula bbox to [x1, y1, x2, y2] integer coordinates."""
+        try:
+            if all(k in box for k in ("x1", "y1", "x2", "y2")):
+                x1 = int(round(float(box["x1"])))
+                y1 = int(round(float(box["y1"])))
+                x2 = int(round(float(box["x2"])))
+                y2 = int(round(float(box["y2"])))
+                return [x1, y1, x2, y2]
+
+            if all(k in box for k in ("x", "y", "width", "height")):
+                x = float(box["x"])
+                y = float(box["y"])
+                w = float(box["width"])
+                h = float(box["height"])
+                return [
+                    int(round(x)),
+                    int(round(y)),
+                    int(round(x + w)),
+                    int(round(y + h)),
+                ]
+        except Exception:
+            return None
+        return None
+
+    def _crop_formula_rois(
+        self,
+        image_path: str,
+        layout_formula_boxes: List[Dict[str, Any]],
+    ) -> Tuple[str, List[str], List[List[int]]]:
+        """Crop ROI images for each layout-detected formula block."""
+        image = cv2.imread(image_path)
+        if image is None:
+            raise RuntimeError(f"FormulaService could not read image for ROI crop: {image_path}")
+
+        h, w = image.shape[:2]
+        roi_dir = os.path.join(
+            tempfile.gettempdir(),
+            f"docuvision_formula_roi_{uuid.uuid4().hex}",
+        )
+        os.makedirs(roi_dir, exist_ok=True)
+
+        roi_paths: List[str] = []
+        normalized_boxes: List[List[int]] = []
+
+        for i, raw_box in enumerate(layout_formula_boxes):
+            if not isinstance(raw_box, dict):
+                continue
+            norm = self._normalize_bbox(raw_box)
+            if norm is None:
+                continue
+
+            x1, y1, x2, y2 = norm
+            x1 = max(0, min(x1, w - 1))
+            y1 = max(0, min(y1, h - 1))
+            x2 = max(0, min(x2, w))
+            y2 = max(0, min(y2, h))
+            if x2 <= x1 or y2 <= y1:
+                continue
+
+            crop = image[y1:y2, x1:x2]
+            if crop is None or crop.size == 0:
+                continue
+
+            roi_path = os.path.join(roi_dir, f"formula_roi_{i:04d}.png")
+            cv2.imwrite(roi_path, crop)
+            roi_paths.append(roi_path)
+            normalized_boxes.append([x1, y1, x2, y2])
+
+        return roi_dir, roi_paths, normalized_boxes
+
+    def _predict_formula_rois(
+        self,
+        roi_paths: List[str],
+        predict_kwargs: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """Run formula pipeline on ROI list, preferring batch invocation."""
+        results: List[Dict[str, Any]] = []
+        if not roi_paths:
+            return results
+
+        try:
+            batched = list(self._pipeline.predict(roi_paths, **predict_kwargs))
+            results = [self.result_to_dict(r) for r in batched]
+            return results
+        except Exception as exc:
+            logger.warning(f"FormulaService ROI batch predict failed, fallback to per-ROI: {exc}")
+
+        for roi_path in roi_paths:
+            single = list(self._pipeline.predict(roi_path, **predict_kwargs))
+            if single:
+                results.append(self.result_to_dict(single[0]))
+            else:
+                results.append({})
+        return results
+
+    @staticmethod
+    def _extract_rec_formula(result_item: Dict[str, Any]) -> str:
+        """Extract recognized formula string from one pipeline result dict."""
+        formula_res_list = result_item.get("formula_res_list", [])
+        if isinstance(formula_res_list, list):
+            for item in formula_res_list:
+                if not isinstance(item, dict):
+                    continue
+                rec = str(item.get("rec_formula", "")).strip()
+                if rec:
+                    return rec
+
+        root_formula = result_item.get("rec_formula")
+        if isinstance(root_formula, str) and root_formula.strip():
+            return root_formula.strip()
+        return ""
+
+    def _run_once_on_layout_rois(
+        self,
+        image_path: str,
+        layout_formula_boxes: List[Dict[str, Any]],
+        *,
+        disable_preprocess: bool,
+        pipeline_formula_batch_size: int,
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any], Dict[str, Any]]:
+        """Run formula recognition directly on layout-detected ROI crops."""
+        if not self._ensure_pipeline():
+            raise RuntimeError(f"FormulaService not ready: {self._init_error or 'unknown init error'}")
+
+        predict_kwargs: Dict[str, Any] = {
+            # ROI mode disables layout detection to avoid loading layout stacks again.
+            "use_layout_detection": False,
+        }
+        if disable_preprocess:
+            predict_kwargs["use_doc_orientation_classify"] = False
+            predict_kwargs["use_doc_unwarping"] = False
+
+        try:
+            inner = getattr(self._pipeline, "_pipeline", None)
+            frm_model = getattr(inner, "formula_recognition_model", None)
+            if frm_model is not None and hasattr(frm_model, "set_predictor"):
+                frm_model.set_predictor(batch_size=max(1, int(pipeline_formula_batch_size)))
+        except Exception:
+            pass
+
+        roi_dir = ""
+        try:
+            roi_dir, roi_paths, normalized_boxes = self._crop_formula_rois(image_path, layout_formula_boxes)
+            roi_results = self._predict_formula_rois(roi_paths, predict_kwargs)
+
+            formula_items: List[Dict[str, Any]] = []
+            recognized = 0
+            for idx, bbox in enumerate(normalized_boxes):
+                result_item = roi_results[idx] if idx < len(roi_results) else {}
+                rec_formula = self._extract_rec_formula(result_item)
+                if rec_formula:
+                    recognized += 1
+                formula_items.append(
+                    {
+                        "formula_region_id": idx + 1,
+                        "rec_formula": rec_formula,
+                        "dt_polys": bbox,
+                        "source": "layout_roi",
+                    }
+                )
+
+            unwrapped_results = [
+                {
+                    "formula_res_list": formula_items,
+                    "layout_det_res": {
+                        "boxes": [
+                            {
+                                "label": "formula",
+                                "coordinate": bbox,
+                                "score": 1.0,
+                            }
+                            for bbox in normalized_boxes
+                        ]
+                    },
+                }
+            ]
+
+            total_boxes = len(normalized_boxes)
+            stats = {
+                "formula_count": recognized,
+                "layout_formula_box_count": total_boxes,
+                "label_hist": {"formula": total_boxes},
+                "first_formula": next((it["rec_formula"] for it in formula_items if it["rec_formula"]), None),
+                "roi_mode": True,
+                "roi_total": total_boxes,
+                "roi_recognized": recognized,
+            }
+            return unwrapped_results, stats, predict_kwargs
+        finally:
+            if roi_dir and os.path.isdir(roi_dir):
+                try:
+                    for name in os.listdir(roi_dir):
+                        path = os.path.join(roi_dir, name)
+                        if os.path.isfile(path):
+                            os.remove(path)
+                    os.rmdir(roi_dir)
+                except Exception as cleanup_exc:
+                    logger.debug(f"FormulaService ROI temp cleanup failed: {cleanup_exc}")
+
+    def _run_once_on_layout_rois_with_rebuild(
+        self,
+        image_path: str,
+        layout_formula_boxes: List[Dict[str, Any]],
+        *,
+        disable_preprocess: bool,
+        pipeline_formula_batch_size: int,
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any], Dict[str, Any]]:
+        try:
+            return self._run_once_on_layout_rois(
+                image_path,
+                layout_formula_boxes,
+                disable_preprocess=disable_preprocess,
+                pipeline_formula_batch_size=pipeline_formula_batch_size,
+            )
+        except Exception as exc:
+            logger.warning(f"FormulaService ROI mode failed, attempting rebuild and retry once: {exc}")
+            if not self._rebuild_pipeline():
+                raise
+            return self._run_once_on_layout_rois(
+                image_path,
+                layout_formula_boxes,
+                disable_preprocess=disable_preprocess,
+                pipeline_formula_batch_size=pipeline_formula_batch_size,
+            )
+
     def _run_once_with_rebuild(
         self,
         image_path: str,
@@ -204,12 +464,30 @@ class FormulaService:
         *,
         disable_layout: bool = False,
         disable_preprocess: bool = False,
+        layout_formula_boxes: Optional[List[Dict[str, Any]]] = None,
+        roi_source_image_path: Optional[str] = None,
         two_stage_threshold_retry: bool = True,
         primary_layout_threshold: float = 0.5,
         fallback_layout_threshold: float = 0.2,
         layout_threshold: Optional[float] = None,
         pipeline_formula_batch_size: int = 1,
     ) -> Dict[str, Any]:
+        # Determine ROI boxes early so we can attempt model-level inference
+        # (skeleton) before triggering pipeline lazy-init.
+        roi_boxes = layout_formula_boxes if isinstance(layout_formula_boxes, list) else []
+
+        # Try model-level backend on ROIs first when requested/auto.
+        if roi_boxes and self.model_level_backend in ("auto", "formulanet", "model"):
+            model_try = self._try_model_level_on_rois(
+                roi_source_image_path or image_path,
+                roi_boxes,
+                disable_preprocess=disable_preprocess,
+                pipeline_formula_batch_size=pipeline_formula_batch_size,
+            )
+            if isinstance(model_try, dict):
+                return model_try
+
+        # Fallback: ensure pipeline (lazy init on first use)
         if not self._ensure_pipeline():
             return {
                 "ok": False,
@@ -222,6 +500,26 @@ class FormulaService:
             }
 
         try:
+            # roi_boxes variable computed above
+            if roi_boxes:
+                roi_image = roi_source_image_path or image_path
+                roi_results, roi_stats, roi_kwargs = self._run_once_on_layout_rois_with_rebuild(
+                    roi_image,
+                    roi_boxes,
+                    disable_preprocess=disable_preprocess,
+                    pipeline_formula_batch_size=pipeline_formula_batch_size,
+                )
+                return {
+                    "ok": True,
+                    "stage": "roi_batch",
+                    "unwrapped_results": roi_results,
+                    "stats": roi_stats,
+                    "predict_kwargs": roi_kwargs,
+                    "error_level": "none",
+                    "error_code": "",
+                    "failure_stage": "",
+                }
+
             if two_stage_threshold_retry and not disable_layout:
                 primary_results, primary_stats, primary_kwargs = self._run_once_with_rebuild(
                     image_path,

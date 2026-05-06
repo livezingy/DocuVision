@@ -152,7 +152,10 @@ docs/_build/
 site/
 
 # User-requested local-only directories
-.cursor/
+# Cursor：共享规则进仓库，其余 .cursor 下内容仍本地忽略
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
 .devcontainer/
 .qoder/
 .vscode/

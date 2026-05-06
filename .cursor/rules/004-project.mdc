@@ -1,8 +1,6 @@
-## 关于我
+## 关于项目
 
-有10年以上C++和C#的开发经验，python经验不错，懂基本语法。
-
-我用 Claude Code 做 [仿Azure智能文档处理系统] 。
+当前项目是使用paddle组件 [仿Azure智能文档处理系统] ，D:\3_PROJECTS\DocuVision\test_data\Azure\AzureDocs路径下有Azure智能文档处理系统处理不同类型的文件得到的json文件，D:\3_PROJECTS\DocuVision\test_data\Azure的图像是处理部分文件时的界面截图。
 
 ## 技术栈
 
@@ -12,7 +10,7 @@
 
 ## 开发环境
 
-- 腾讯 Cloud Studio GPU 环境
+- 本地环境未安装paddle套件，在本地修改代码之后上传至Git，腾讯 Cloud Studio GPU 环境下从Git中下载代码并运行，腾讯Cloud中不对代码进行修改。
 
 ## 项目结构
 
@@ -24,7 +22,6 @@ DocuVision/
 │   └── architecture/   # 架构文档，启动时阅读
 ├── test_data/
 │   └── Azure/      # Azure 处理结果，作为参考基准
-└── CLAUDE.md
 ```
 
 ## 启动时必读
@@ -44,11 +41,9 @@ DocuVision/
 
 ## 约束先行
 
-无论开发项目还是知识管理项目，第一步永远是建规则：新项目先写 CLAUDE.md，新目录先定结构约定（什么放哪、怎么命名、何时清理）。
+无论开发项目还是知识管理项目，第一步永远是建规则：新项目先写 SKILLS.md，新目录先定结构约定（什么放哪、怎么命名、何时清理）。
 
-没有规范的工作空间不动手。已有规范的项目，严格遵守其 CLAUDE.md 中的约定。需要调整规范时先改文档、再改实践，不要反过来。
-
-与 AI 协作的 Cursor 规则文件位于仓库内 `.cursor/rules/*.mdc`（已纳入 Git，与代码一并维护）。
+没有规范的工作空间不动手。已有规范的项目，严格遵守其 SKILLS.md 中的约定。需要调整规范时先改文档、再改实践，不要反过来。
 
 ## 沟通方式
 
@@ -85,12 +80,6 @@ DocuVision/
 - 密钥、token、密码不进代码、不进 commit、不进日志
 
 - 大改动前先在 Plan Mode 出方案，我确认后再动手
-
-## Git 与 GitHub 同步
-
-- 在本仓库完成**可交付的代码或前端资源变更**后，若我明确要求「提交 / 推送到 GitHub」，或约定「改完即同步远端」，助手应在自检（lint、与改动匹配的验证）后执行：`git add` → `git commit`（信息简洁；建议前缀 `feat:`、`fix:`、`docs:`、`refactor:`、`chore:` 等）→ `git push` 至当前分支对应的 `origin`。
-- 与上文「红线」中 `git push` 的关系：**未**获我明确提交/推送意图时，不擅自 push；我**明确**要求同步 GitHub 时，不在此红线禁止之列。
-- 密钥、token、`.env` 等不得进入 commit。
 
 ## 文档同步
 

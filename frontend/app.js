@@ -163,7 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initResultTabs();
     initActionButtons();
     initAnalysisOptionsDialog();
-    initTreeToggle();
     initTemplateSelector();
     initAnalysisView();
     initExportButtons();
@@ -903,62 +902,6 @@ async function updatePreviewView(viewType) {
             showNotification('Compare view coming soon...', 'info');
             break;
     }
-}
-
-/**
- * Initialize tree toggle
- */
-function initTreeToggle() {
-    // Remove existing event listeners by cloning and replacing
-    const structureView = document.getElementById('structureView');
-    if (structureView) {
-        const treeItems = structureView.querySelectorAll('.tree-item-header');
-
-        treeItems.forEach(header => {
-            // Remove existing listeners by cloning
-            const newHeader = header.cloneNode(true);
-            header.parentNode.replaceChild(newHeader, header);
-
-            // Add new event listener
-            newHeader.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const item = newHeader.closest('.tree-item');
-                if (!item) return;
-
-                const children = item.querySelector('.tree-children');
-                if (children) {
-                    const isExpanded = item.classList.contains('expanded');
-                    const toggle = newHeader.querySelector('.tree-toggle');
-
-                    if (isExpanded) {
-                        item.classList.remove('expanded');
-                        if (toggle) toggle.textContent = '▶';
-                    } else {
-                        item.classList.add('expanded');
-                        if (toggle) toggle.textContent = '▼';
-                    }
-                }
-
-                // Highlight document region if clickable
-                if (newHeader.classList.contains('clickable')) {
-                    const regionId = newHeader.dataset.region;
-                    highlightDocumentRegion(regionId);
-                }
-            });
-        });
-    }
-}
-
-/**
- * Highlight document region
- */
-function highlightDocumentRegion(regionId) {
-    // Remove all highlights
-    document.querySelectorAll('.analyzed-region').forEach(r => {
-        r.style.boxShadow = 'none';
-    });
-
-    showNotification(`Navigated to: ${regionId}`, 'info');
 }
 
 /**
@@ -1793,50 +1736,15 @@ function clearResultsDisplay(keepDocumentPreview = false) {
         }
     }
 
-    // Clear structure view
-    const structureView = document.getElementById('structureView');
-    if (structureView) {
-        structureView.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No structure data available</div>';
-    }
-
-    // Clear text view
-    const textView = document.getElementById('textView');
-    if (textView) {
-        const textContent = textView.querySelector('.text-content');
-        if (textContent) {
-            textContent.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No text extracted</div>';
-        }
-    }
-
-    // Clear table view
-    const tableView = document.getElementById('tableView');
-    if (tableView) {
-        const tableList = tableView.querySelector('.table-list');
-        if (tableList) {
-            tableList.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No tables extracted</div>';
-        }
-    }
-
-    // Clear extract view
-    const extractView = document.getElementById('extractView');
-    if (extractView) {
-        const extractSummary = extractView.querySelector('.extract-summary');
-        if (extractSummary) {
-            extractSummary.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No extracted data available</div>';
-        }
-    }
-
-    // Clear keywords
-    const keywordsList = document.getElementById('keywordsList');
-    if (keywordsList) {
-        keywordsList.innerHTML = '<span style="color: #6b7280; font-size: 14px;">No keywords extracted</span>';
-    }
-
-    // Clear entities
-    const entitiesList = document.getElementById('entitiesList');
-    if (entitiesList) {
-        entitiesList.innerHTML = '<div style="color: #6b7280; font-size: 14px; padding: 20px;">No entities extracted</div>';
-    }
+    // Reset Content > Fields sub-tab (hide button + view, clear renderings)
+    const fieldsBtn = document.getElementById('tabBtnFields');
+    const fieldsView = document.getElementById('contentFieldsView');
+    const fieldsList = document.getElementById('contentFieldsList');
+    const fieldsMeta = document.getElementById('contentFieldsMeta');
+    if (fieldsBtn) fieldsBtn.classList.add('hidden');
+    if (fieldsView) fieldsView.classList.add('hidden');
+    if (fieldsList) fieldsList.innerHTML = '';
+    if (fieldsMeta) fieldsMeta.textContent = '';
 }
 
 /**
@@ -1881,17 +1789,10 @@ function updateResultsDisplay(result) {
     updateContentFigures(result);
     updateContentFormulas((result.view || {}).formulas || []);
     updateContentSeals((result.view || {}).seals || []);
+    updateContentFields(result);
 
     // Update Result JSON view
     updateResultJson(result);
-
-    // Legacy views (kept for compatibility)
-    updateStructureView(result);
-    updateTextView(result);
-    updateTableView(result);
-    updateExtractView(result);
-    updateKeywords(result);
-    updateEntities(result);
 }
 
 /**
@@ -2474,95 +2375,6 @@ function highlightResultItem(elementType, elementIndex) {
 
 
 /**
- * Update structure view
- */
-function updateStructureView(result) {
-    const structureView = document.getElementById('structureView');
-    if (!structureView) return;
-
-    const layout = result.layout || {};
-    const elements = layout.elements || [];
-    const summary = layout.summary || {};
-    const typeCounts = summary.type_counts || {};
-
-    let html = '<div class="structure-tree">';
-    html += '<div class="tree-item expanded">';
-    html += '<div class="tree-item-header">';
-    html += '<span class="tree-toggle">▼</span>';
-    html += '<span class="tree-icon header-icon">📄</span>';
-    html += `<span class="tree-label">Document Structure</span>`;
-    html += `<span class="tree-count">${elements.length} elements</span>`;
-    html += '</div>';
-    html += '<div class="tree-children">';
-
-    // Group elements by type
-    const elementsByType = {};
-    elements.forEach(el => {
-        const type = el.type || 'unknown';
-        if (!elementsByType[type]) {
-            elementsByType[type] = [];
-        }
-        elementsByType[type].push(el);
-    });
-
-    // Add element type groups with expandable details
-    const typesToShow = Object.keys(typeCounts).length > 0 ? Object.keys(typeCounts) : Object.keys(elementsByType);
-    if (typesToShow.length > 0) {
-        typesToShow.forEach(type => {
-            const count = typeCounts[type] || elementsByType[type]?.length || 0;
-            const typeElements = elementsByType[type] || [];
-            html += '<div class="tree-item">';
-            html += '<div class="tree-item-header" style="cursor: pointer; user-select: none;">';
-            if (typeElements.length > 0) {
-                html += '<span class="tree-toggle">▶</span>';
-            } else {
-                html += '<span class="tree-toggle" style="visibility: hidden;">▶</span>';
-            }
-            html += `<span class="tree-icon">${getElementIcon(type)}</span>`;
-            const typeLabel = String(type).charAt(0).toUpperCase() + String(type).slice(1).replace(/_/g, ' ');
-            html += `<span class="tree-label">${escapeHtml(typeLabel)} (${count})</span>`;
-            html += `<span class="tree-badge ${type}-badge">${type}</span>`;
-            html += '</div>';
-            if (typeElements.length > 0) {
-                html += '<div class="tree-children">';
-                typeElements.slice(0, 30).forEach((el, idx) => {
-                    let text = String(el.text || el.content || '');
-                    // Ensure proper spacing in text display
-                    // Replace multiple spaces with single space, but preserve intentional spacing
-                    text = text.replace(/\s+/g, ' ').trim();
-                    const preview = text.length > 80 ? text.substring(0, 80) + '...' : text;
-                    const page = el.page || '?';
-                    html += '<div class="tree-item">';
-                    html += '<div class="tree-item-header" style="padding-left: 30px; font-size: 13px; cursor: default;">';
-                    html += `<span class="tree-label" title="${escapeHtml(text)}">`;
-                    html += `<span style="color: #6b7280; margin-right: 8px;">[${page}]</span>`;
-                    html += `${idx + 1}. ${escapeHtml(preview || `Element ${idx + 1}`)}`;
-                    html += '</span>';
-                    html += '</div>';
-                    html += '</div>';
-                });
-                if (typeElements.length > 30) {
-                    html += `<div style="padding: 10px 30px; color: #6b7280; font-size: 12px; font-style: italic;">... and ${typeElements.length - 30} more elements</div>`;
-                }
-                html += '</div>';
-            }
-            html += '</div>';
-        });
-    } else {
-        html += '<div class="tree-item">';
-        html += '<div class="tree-item-header">';
-        html += '<span class="tree-label" style="color: #6b7280;">No structure data available</span>';
-        html += '</div></div>';
-    }
-
-    html += '</div></div></div>';
-    structureView.innerHTML = html;
-
-    // Re-initialize tree toggle for new elements
-    initTreeToggle();
-}
-
-/**
  * Normalize text to ensure proper spacing between words
  */
 function normalizeTextForDisplay(text) {
@@ -2648,182 +2460,6 @@ function toAzureTypeLabel(type) {
         .split('_')
         .map(p => p ? p.charAt(0).toUpperCase() + p.slice(1) : '')
         .join('');
-}
-
-/**
- * Update text view
- */
-function updateTextView(result) {
-    const textView = document.getElementById('textView');
-    if (!textView) return;
-
-    const textContent = textView.querySelector('.text-content');
-    if (!textContent) return;
-
-    const textBlocks = result.text_blocks || [];
-    const fullText = result.full_text || '';
-
-    // Try to extract text from layout elements if text_blocks is empty
-    let extractedText = '';
-    if (textBlocks.length === 0 && !fullText) {
-        const layout = result.layout || {};
-        const elements = layout.elements || [];
-        const textElements = elements.filter(el => el.text && el.type !== 'table');
-        if (textElements.length > 0) {
-            extractedText = textElements.map(el => normalizeTextForDisplay(el.text || '')).join('\n\n');
-        }
-    }
-
-    if (textBlocks.length === 0 && !fullText && !extractedText) {
-        textContent.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No text extracted</div>';
-        return;
-    }
-
-    let html = '';
-    if (textBlocks.length > 0) {
-        textBlocks.slice(0, 50).forEach((block, index) => {
-            // Normalize text to ensure proper spacing
-            const normalizedText = normalizeTextForDisplay(block.text || '');
-            html += '<div class="text-block">';
-            html += '<div class="text-block-header">';
-            html += `<span class="block-type">Text Block ${index + 1}</span>`;
-            if (block.confidence !== undefined) {
-                html += `<span class="block-confidence">Confidence: ${(block.confidence * 100).toFixed(1)}%</span>`;
-            }
-            html += '</div>';
-            html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(normalizedText)}</p>`;
-            html += '</div>';
-        });
-        if (textBlocks.length > 50) {
-            html += `<div style="padding: 20px; text-align: center; color: #6b7280;">... and ${textBlocks.length - 50} more blocks</div>`;
-        }
-    } else if (fullText) {
-        const normalizedText = normalizeTextForDisplay(fullText);
-        html += '<div class="text-block">';
-        html += '<div class="text-block-header">';
-        html += '<span class="block-type">Full Text</span>';
-        html += '</div>';
-        const displayText = normalizedText.length > 10000 ? normalizedText.substring(0, 10000) + '...' : normalizedText;
-        html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(displayText)}</p>`;
-        html += '</div>';
-    } else if (extractedText) {
-        html += '<div class="text-block">';
-        html += '<div class="text-block-header">';
-        html += '<span class="block-type">Extracted Text (from layout)</span>';
-        html += '</div>';
-        const displayText = extractedText.length > 10000 ? extractedText.substring(0, 10000) + '...' : extractedText;
-        html += `<p class="text-block-content" style="white-space: pre-wrap;">${escapeHtml(displayText)}</p>`;
-        html += '</div>';
-    }
-
-    textContent.innerHTML = html;
-}
-
-/**
- * Update table view - Only show tables from table extraction service
- */
-function updateTableView(result) {
-    const tableView = document.getElementById('tableView');
-    if (!tableView) return;
-
-    const tableList = tableView.querySelector('.table-list');
-    if (!tableList) return;
-
-    // ONLY use tables from table extraction service, not from layout elements
-    const extractedTables = result.tables || [];
-
-    let tables = [];
-
-    if (extractedTables.length > 0) {
-        // Use extracted table data from Table Extraction service
-        tables = extractedTables.map((table, idx) => ({
-            id: table.id || `table_${idx + 1}`,
-            data: table.data || [],
-            html: table.html || null,
-            html_structure: table.html_structure || null,
-            page: table.page || table.page_number || '?',
-            rows: table.rows || 0,
-            columns: table.columns || 0,
-            confidence: table.confidence || 0
-        }));
-    }
-
-    if (tables.length === 0) {
-        tableList.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">No tables extracted</div>';
-        return;
-    }
-
-    // Add navigation controls if multiple tables
-    let html = '';
-    if (tables.length > 1) {
-        html += '<div class="table-navigation" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md);">';
-        html += '<button class="table-nav-btn" id="prevTableBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
-        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"></polyline></svg>';
-        html += 'Previous</button>';
-        html += `<span style="color: var(--text-primary); font-weight: 500;">Table <span id="currentTableIndex">1</span> of ${tables.length}</span>`;
-        html += '<button class="table-nav-btn" id="nextTableBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
-        html += 'Next<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"></polyline></svg></button>';
-        html += '</div>';
-    }
-
-    // Store tables data globally for navigation
-    window.currentTables = tables;
-    window.currentTableIndex = 0;
-
-    // Render first table
-    html += renderTableCard(tables[0], 0, tables.length);
-
-    tableList.innerHTML = html;
-
-    // Add navigation event listeners if multiple tables
-    if (tables.length > 1) {
-        const prevBtn = document.getElementById('prevTableBtn');
-        const nextBtn = document.getElementById('nextTableBtn');
-        const currentIndexSpan = document.getElementById('currentTableIndex');
-
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                if (window.currentTableIndex > 0) {
-                    window.currentTableIndex--;
-                    currentIndexSpan.textContent = window.currentTableIndex + 1;
-                    const tableCard = tableList.querySelector('.table-card');
-                    if (tableCard) {
-                        tableCard.outerHTML = renderTableCard(tables[window.currentTableIndex], window.currentTableIndex, tables.length);
-                    }
-                    updateNavButtons();
-                }
-            });
-        }
-
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                if (window.currentTableIndex < tables.length - 1) {
-                    window.currentTableIndex++;
-                    currentIndexSpan.textContent = window.currentTableIndex + 1;
-                    const tableCard = tableList.querySelector('.table-card');
-                    if (tableCard) {
-                        tableCard.outerHTML = renderTableCard(tables[window.currentTableIndex], window.currentTableIndex, tables.length);
-                    }
-                    updateNavButtons();
-                }
-            });
-        }
-
-        function updateNavButtons() {
-            if (prevBtn) {
-                prevBtn.disabled = window.currentTableIndex === 0;
-                prevBtn.style.opacity = window.currentTableIndex === 0 ? '0.5' : '1';
-                prevBtn.style.cursor = window.currentTableIndex === 0 ? 'not-allowed' : 'pointer';
-            }
-            if (nextBtn) {
-                nextBtn.disabled = window.currentTableIndex === tables.length - 1;
-                nextBtn.style.opacity = window.currentTableIndex === tables.length - 1 ? '0.5' : '1';
-                nextBtn.style.cursor = window.currentTableIndex === tables.length - 1 ? 'not-allowed' : 'pointer';
-            }
-        }
-
-        updateNavButtons();
-    }
 }
 
 /**
@@ -3011,86 +2647,6 @@ function renderTableCard(table, index, total) {
 }
 
 /**
- * Update keywords display
- */
-function updateKeywords(result) {
-    const keywordsList = document.getElementById('keywordsList');
-    if (!keywordsList) return;
-
-    const keywords = result.keywords || [];
-    const keywordsDetailed = result.keywords_detailed || [];
-
-    if (keywords.length === 0 && keywordsDetailed.length === 0) {
-        keywordsList.innerHTML = '<span class="empty-hint">No keywords extracted</span>';
-        return;
-    }
-
-    // Use detailed keywords if available (with scores), otherwise use simple list
-    const keywordsToShow = keywordsDetailed.length > 0 ? keywordsDetailed : keywords.map(kw => ({ keyword: kw, score: 0 }));
-
-    keywordsList.innerHTML = keywordsToShow.map(kw => {
-        const keyword = typeof kw === 'string' ? kw : kw.keyword;
-        const score = typeof kw === 'object' ? (kw.score || 0) : 0;
-        return `<span class="keyword-tag" data-score="${score.toFixed(2)}">${escapeHtml(keyword)}</span>`;
-    }).join('');
-}
-
-/**
- * Update entities display
- */
-function updateEntities(result) {
-    const entitiesList = document.getElementById('entitiesList');
-    if (!entitiesList) return;
-
-    const entities = result.entities || [];
-    const entitiesGrouped = result.entities_grouped || {};
-
-    if (entities.length === 0 && Object.keys(entitiesGrouped).length === 0) {
-        entitiesList.innerHTML = '<div class="empty-hint">No entities extracted</div>';
-        return;
-    }
-
-    let html = '';
-
-    // Use grouped entities if available
-    if (Object.keys(entitiesGrouped).length > 0) {
-        Object.entries(entitiesGrouped).forEach(([label, items]) => {
-            html += '<div class="entity-group">';
-            html += `<span class="entity-label ${label.toLowerCase()}">${label}</span>`;
-            html += '<div class="entity-items">';
-            items.forEach(item => {
-                const text = typeof item === 'string' ? item : (item.text || item.entity || '');
-                html += `<span class="entity-tag">${escapeHtml(text)}</span>`;
-            });
-            html += '</div></div>';
-        });
-    } else if (entities.length > 0) {
-        // Group entities by label
-        const grouped = {};
-        entities.forEach(entity => {
-            const label = entity.label || entity.type || 'OTHER';
-            if (!grouped[label]) {
-                grouped[label] = [];
-            }
-            grouped[label].push(entity.text || entity.entity || entity);
-        });
-
-        Object.entries(grouped).forEach(([label, items]) => {
-            html += '<div class="entity-group">';
-            html += `<span class="entity-label ${label.toLowerCase()}">${label}</span>`;
-            html += '<div class="entity-items">';
-            items.forEach(item => {
-                const text = typeof item === 'string' ? item : (item.text || item.entity || '');
-                html += `<span class="entity-tag">${escapeHtml(text)}</span>`;
-            });
-            html += '</div></div>';
-        });
-    }
-
-    entitiesList.innerHTML = html;
-}
-
-/**
  * 从任务 result 中取出 KIE 字段映射（与 envelope.view.fields 同源）。
  */
 function pickKieFieldsMap(result) {
@@ -3205,160 +2761,69 @@ function formatKieFieldForExtract(field, depth) {
 }
 
 /**
- * Update extract view
+ * 在 Content > Fields 子页签中渲染 KIE 字段。
+ * 仅当 result.kie_fields 或 result.view.fields 非空时显示 Fields 按钮，
+ * 并在结果加载完成后自动切到该子页签。
  */
-function updateExtractView(result) {
-    const extractView = document.getElementById('extractView');
-    if (!extractView) return;
+function updateContentFields(result) {
+    const fieldsBtn = document.getElementById('tabBtnFields');
+    const fieldsView = document.getElementById('contentFieldsView');
+    const fieldsList = document.getElementById('contentFieldsList');
+    const fieldsMeta = document.getElementById('contentFieldsMeta');
 
-    const extractSummary = extractView.querySelector('.extract-summary');
-    if (!extractSummary) return;
-
-    const kieFields = pickKieFieldsMap(result);
-    const hasKie = Object.keys(kieFields).length > 0;
-
-    const templateExtraction = result.template_extraction || {};
-    const extractedFields = templateExtraction.fields || {};
-    const hasTemplate = Object.keys(extractedFields).length > 0;
-
-    let html = '';
-
-    if (hasKie) {
-        const meta = result.kie_meta || {};
-        const metaBits = [];
-        if (meta.succeeded === false) {
-            metaBits.push('KIE 未完成');
-            if (meta.error_message) {
-                metaBits.push(String(meta.error_message));
-            } else if (meta.error_code) {
-                metaBits.push(String(meta.error_code));
-            }
-        } else {
-            if (meta.confidence_avg != null && !Number.isNaN(Number(meta.confidence_avg))) {
-                metaBits.push('平均置信度 ' + Number(meta.confidence_avg).toFixed(2));
-            }
-            if (meta.items_count != null) {
-                metaBits.push('明细行 ' + String(meta.items_count));
-            }
-        }
-        if (metaBits.length) {
-            html += '<div class="kie-meta-line">' + escapeHtml(metaBits.join(' · ')) + '</div>';
-        }
-
-        Object.entries(kieFields).forEach(([key, value]) => {
-            html += '<div class="extract-card">';
-            html += '<div class="extract-card-header">';
-            html +=
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M16 3v4"></path><path d="M8 3v4"></path><path d="M3 10h18"></path></svg>';
-            html += '<span>' + escapeHtml(key) + '</span></div>';
-            html +=
-                '<div class="extract-card-value kie-field-body">' + formatKieFieldForExtract(value, 0) + '</div>';
-            html += '</div>';
-        });
-    }
-
-    if (hasTemplate) {
-        if (hasKie) {
-            html += '<div class="extract-section-label">Template extraction</div>';
-        }
-        Object.entries(extractedFields).forEach(([key, value]) => {
-            html += '<div class="extract-card">';
-            html += '<div class="extract-card-header">';
-            html +=
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
-            html += '<span>' + escapeHtml(key) + '</span></div>';
-            html += '<div class="extract-card-value">' + escapeHtml(String(value)) + '</div>';
-            html += '</div>';
-        });
-    }
-
-    if (html) {
-        extractSummary.innerHTML = html;
+    if (!fieldsBtn || !fieldsView || !fieldsList || !fieldsMeta) {
         return;
     }
 
-    // 无 KIE、无模板字段：沿用文档结构摘要
-    const docInfo = result.document_info || {};
-    const layout = result.layout || {};
-    const elements = layout.elements || [];
+    const kieFields = pickKieFieldsMap(result || {});
+    const hasKie = Object.keys(kieFields).length > 0;
 
-    let summaryHtml = '';
-    if (docInfo.file_name) {
-        summaryHtml += '<div class="extract-card">';
-        summaryHtml += '<div class="extract-card-header">';
-        summaryHtml +=
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
-        summaryHtml += '<span>File Name</span></div>';
-        summaryHtml += `<div class="extract-card-value">${escapeHtml(docInfo.file_name)}</div>`;
-        summaryHtml += '</div>';
+    if (!hasKie) {
+        fieldsList.innerHTML = '';
+        fieldsMeta.textContent = '';
+        fieldsBtn.classList.add('hidden');
+        if (fieldsBtn.classList.contains('active')) {
+            const fallback = document.querySelector('.content-sub-tab[data-content="text"]');
+            if (fallback) fallback.click();
+        }
+        return;
     }
 
-    if (docInfo.pages) {
-        summaryHtml += '<div class="extract-card">';
-        summaryHtml += '<div class="extract-card-header">';
-        summaryHtml +=
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect></svg>';
-        summaryHtml += '<span>Pages</span></div>';
-        summaryHtml += `<div class="extract-card-value">${docInfo.pages}</div>`;
-        summaryHtml += '</div>';
+    const meta = result.kie_meta || {};
+    const metaBits = [];
+    if (meta.succeeded === false) {
+        metaBits.push('KIE 未完成');
+        if (meta.error_message) {
+            metaBits.push(String(meta.error_message));
+        } else if (meta.error_code) {
+            metaBits.push(String(meta.error_code));
+        }
+    } else {
+        if (meta.confidence_avg != null && !Number.isNaN(Number(meta.confidence_avg))) {
+            metaBits.push('平均置信度 ' + Number(meta.confidence_avg).toFixed(2));
+        }
+        if (meta.items_count != null) {
+            metaBits.push('明细行 ' + String(meta.items_count));
+        }
     }
+    fieldsMeta.textContent = metaBits.join(' · ');
 
-    const titleCount = elements.filter((e) => e.type === 'title' || e.type === 'text_title').length;
-    const textCount = elements.filter((e) => e.type === 'text' || e.type === 'paragraph').length;
-    const tableCount = elements.filter((e) => e.type === 'table').length;
+    let html = '';
+    Object.entries(kieFields).forEach(([key, value]) => {
+        html += '<div class="kie-field-card">';
+        html += '<div class="kie-field-card-header">';
+        html +=
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M16 3v4"></path><path d="M8 3v4"></path><path d="M3 10h18"></path></svg>';
+        html += '<span>' + escapeHtml(key) + '</span></div>';
+        html += '<div class="kie-field-card-value">' + formatKieFieldForExtract(value, 0) + '</div>';
+        html += '</div>';
+    });
+    fieldsList.innerHTML = html;
 
-    if (titleCount > 0) {
-        summaryHtml += '<div class="extract-card">';
-        summaryHtml += '<div class="extract-card-header">';
-        summaryHtml +=
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path></svg>';
-        summaryHtml += '<span>Titles</span></div>';
-        summaryHtml += `<div class="extract-card-value">${titleCount}</div>`;
-        summaryHtml += '</div>';
+    fieldsBtn.classList.remove('hidden');
+    if (!fieldsBtn.classList.contains('active')) {
+        fieldsBtn.click();
     }
-
-    if (textCount > 0) {
-        summaryHtml += '<div class="extract-card">';
-        summaryHtml += '<div class="extract-card-header">';
-        summaryHtml +=
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>';
-        summaryHtml += '<span>Text Blocks</span></div>';
-        summaryHtml += `<div class="extract-card-value">${textCount}</div>`;
-        summaryHtml += '</div>';
-    }
-
-    if (tableCount > 0) {
-        summaryHtml += '<div class="extract-card">';
-        summaryHtml += '<div class="extract-card-header">';
-        summaryHtml +=
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"></path></svg>';
-        summaryHtml += '<span>Tables</span></div>';
-        summaryHtml += `<div class="extract-card-value highlight">${tableCount}</div>`;
-        summaryHtml += '</div>';
-    }
-
-    extractSummary.innerHTML =
-        summaryHtml ||
-        '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No extracted data available</div>';
-}
-
-/**
- * Get icon for element type
- */
-function getElementIcon(type) {
-    const icons = {
-        'header': '🏷️',
-        'title': '📝',
-        'paragraph': '📄',
-        'text': '📄',
-        'text_title': '📝',
-        'table': '📊',
-        'table_caption': '📊',
-        'list': '📑',
-        'figure': '🖼️',
-        'footer': '🏷️'
-    };
-    return icons[type.toLowerCase()] || '📄';
 }
 
 /**
@@ -4425,7 +3890,7 @@ function updateContentTables(result) {
     const contentTableList = document.getElementById('contentTableList');
     if (!contentTableList) return;
 
-    // Use the same logic as updateTableView but render to contentTableList
+    // Render extracted tables (or fallback layout-derived tables) into contentTableList
     let extractedTables = result.tables || [];
 
     // Fallback: Layout-only mode can contain table HTML in result.layout.elements

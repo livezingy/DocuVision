@@ -1,0 +1,62 @@
+[
+  {
+    "InvoiceId|发票号码|发票号|Invoice No|Invoice Number": [
+      {"text": "12345678", "start": 80, "end": 88, "probability": 0.98}
+    ],
+    "InvoiceDate|开票日期|发票日期|Invoice Date": [
+      {"text": "19/2/2024", "start": 122, "end": 131, "probability": 0.95}
+    ],
+    "InvoiceTotal|应付总额|总金额|Total|Amount Due": [
+      {"text": "GBP 180.00", "start": 321, "end": 331, "probability": 0.93}
+    ],
+    "VendorName|供应商|开票方|Vendor|Vendor Name": [
+      {"text": "Contoso", "start": 0, "end": 7, "probability": 0.88}
+    ],
+    "CustomerName|客户名称|购方|Customer Name|Bill To": [
+      {"text": "MICROSOFT LTD", "start": 55, "end": 68, "probability": 0.91}
+    ],
+    "CustomerId|客户编号|Customer ID": [
+      {"text": "C123456", "start": 101, "end": 108, "probability": 0.9}
+    ],
+    "PurchaseOrder|采购订单号|Purchase Order|PO Number": [
+      {"text": "98765431", "start": 159, "end": 167, "probability": 0.92}
+    ],
+    "DueDate|到期日|付款到期日|Payment Due|Due Date": [
+      {"text": "19/02/2024", "start": 180, "end": 190, "probability": 0.94}
+    ],
+    "SubTotal|小计|Sub Total": [
+      {"text": "150.00", "start": 298, "end": 304, "probability": 0.9}
+    ],
+    "TotalTax|总税额|VAT|Tax": [
+      {"text": "30.00", "start": 309, "end": 314, "probability": 0.89}
+    ],
+    "Items|商品行|发票明细": [
+      {
+        "text": "Wood Pallet (Raw Materials)",
+        "start": 246,
+        "end": 257,
+        "probability": 0.85,
+        "relations": {
+          "Description|品名|描述|Description|Item": [
+            {"text": "Wood Pallet (Raw Materials)", "start": 246, "end": 257, "probability": 0.85}
+          ],
+          "Quantity|数量|Qty|Quantity": [
+            {"text": "1.00", "start": 258, "end": 262, "probability": 0.9}
+          ],
+          "UnitPrice|单价|Unit Price": [
+            {"text": "100.00", "start": 263, "end": 269, "probability": 0.88}
+          ],
+          "Amount|金额|Amount": [
+            {"text": "100.00", "start": 270, "end": 276, "probability": 0.87}
+          ],
+          "TaxRate|税率|Tax Rate|VAT %": [
+            {"text": "20.00", "start": 277, "end": 282, "probability": 0.84}
+          ],
+          "Tax|税额|VAT Amount": [
+            {"text": "20.00", "start": 283, "end": 288, "probability": 0.83}
+          ]
+        }
+      }
+    ]
+  }
+]

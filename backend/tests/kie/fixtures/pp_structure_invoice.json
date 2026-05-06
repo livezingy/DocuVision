@@ -1,0 +1,114 @@
+{
+  "engine": "PP-StructureV3",
+  "total_pages": 1,
+  "elements": [
+    {
+      "id": "p1_e0",
+      "page": 1,
+      "type": "text",
+      "reading_order": 0,
+      "bbox": {"x": 100, "y": 50, "width": 300, "height": 40},
+      "polygon_preprocessed": [100, 50, 400, 50, 400, 90, 100, 90],
+      "text": "Contoso INVOICE"
+    },
+    {
+      "id": "p1_e1",
+      "page": 1,
+      "type": "text",
+      "reading_order": 1,
+      "bbox": {"x": 100, "y": 100, "width": 350, "height": 30},
+      "polygon_preprocessed": [100, 100, 450, 100, 450, 130, 100, 130],
+      "text": "VAT Registration No: GB 123 4567 89"
+    },
+    {
+      "id": "p1_e2",
+      "page": 1,
+      "type": "text",
+      "reading_order": 2,
+      "bbox": {"x": 100, "y": 140, "width": 250, "height": 30},
+      "polygon_preprocessed": [100, 140, 350, 140, 350, 170, 100, 170],
+      "text": "To MICROSOFT LTD"
+    },
+    {
+      "id": "p1_e3",
+      "page": 1,
+      "type": "text",
+      "reading_order": 3,
+      "bbox": {"x": 100, "y": 180, "width": 250, "height": 30},
+      "polygon_preprocessed": [100, 180, 350, 180, 350, 210, 100, 210],
+      "text": "Invoice No 12345678"
+    },
+    {
+      "id": "p1_e4",
+      "page": 1,
+      "type": "text",
+      "reading_order": 4,
+      "bbox": {"x": 100, "y": 220, "width": 250, "height": 30},
+      "polygon_preprocessed": [100, 220, 350, 220, 350, 250, 100, 250],
+      "text": "Customer ID C123456"
+    },
+    {
+      "id": "p1_e5",
+      "page": 1,
+      "type": "text",
+      "reading_order": 5,
+      "bbox": {"x": 100, "y": 260, "width": 250, "height": 30},
+      "polygon_preprocessed": [100, 260, 350, 260, 350, 290, 100, 290],
+      "text": "Invoice Date 19/2/2024"
+    },
+    {
+      "id": "p1_e6",
+      "page": 1,
+      "type": "text",
+      "reading_order": 6,
+      "bbox": {"x": 100, "y": 300, "width": 280, "height": 30},
+      "polygon_preprocessed": [100, 300, 380, 300, 380, 330, 100, 330],
+      "text": "Purchase Order / Reference 98765431"
+    },
+    {
+      "id": "p1_e7",
+      "page": 1,
+      "type": "text",
+      "reading_order": 7,
+      "bbox": {"x": 100, "y": 340, "width": 250, "height": 30},
+      "polygon_preprocessed": [100, 340, 350, 340, 350, 370, 100, 370],
+      "text": "Payment Due 19/02/2024"
+    },
+    {
+      "id": "p1_e8",
+      "page": 1,
+      "type": "table",
+      "reading_order": 8,
+      "bbox": {"x": 100, "y": 400, "width": 600, "height": 100},
+      "polygon_preprocessed": [100, 400, 700, 400, 700, 500, 100, 500],
+      "text": "Description Qty Unit Price Amount GBP VAT % VAT Amount Wood Pallet 1.00 100.00 100.00 20.00 20.00"
+    },
+    {
+      "id": "p1_e9",
+      "page": 1,
+      "type": "text",
+      "reading_order": 9,
+      "bbox": {"x": 100, "y": 520, "width": 250, "height": 30},
+      "polygon_preprocessed": [100, 520, 350, 520, 350, 550, 100, 550],
+      "text": "Sub Total 150.00"
+    },
+    {
+      "id": "p1_e10",
+      "page": 1,
+      "type": "text",
+      "reading_order": 10,
+      "bbox": {"x": 100, "y": 560, "width": 250, "height": 30},
+      "polygon_preprocessed": [100, 560, 350, 560, 350, 590, 100, 590],
+      "text": "VAT 30.00"
+    },
+    {
+      "id": "p1_e11",
+      "page": 1,
+      "type": "text",
+      "reading_order": 11,
+      "bbox": {"x": 100, "y": 600, "width": 250, "height": 30},
+      "polygon_preprocessed": [100, 600, 350, 600, 350, 630, 100, 630],
+      "text": "Total GBP 180.00"
+    }
+  ]
+}

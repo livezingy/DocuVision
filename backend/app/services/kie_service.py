@@ -1,102 +1,141 @@
+"""DocumentKIEService：基于 PaddleNLP UIE (uie-m-base) 的 KIE 服务。
+
+架构：
+- PPKieSubprocessEngine：每个 document_type 独占一个子进程 worker，
+  worker 内常驻一个 Taskflow('information_extraction', model='uie-m-base')
+  实例（避免每次推理都重新加载 600MB 权重，避免 CUDA 上下文与 PP-StructureV3
+  冲突）。CUDA 错误自动重启 + 重试一次。
+- 主进程：拼 OCR 全文（WordIndexer）→ 子进程 UIE 推理 → 主进程做
+  UieToAzureMapper + ItemsAggregator + AzureSchemaEmitter，最终输出
+  view.fields 兼容 dict。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import multiprocessing
 import os
 import queue
-import logging
+import sys
+import time
 import traceback
-import multiprocessing
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-# --- Worker Subprocess Entry Point ---
-def _kie_worker_main(document_type: str, req_q: multiprocessing.Queue, res_q: multiprocessing.Queue):
-    """
-    Subprocess worker for Document KIE (Invoice/ID Card/Receipt).
-    This isolates the PaddleX/OCR models in a separate process to avoid CUDA context conflicts.
-    """
-    import sys
+
+# ============================================================
+# Worker: 子进程常驻 PaddleNLP UIE Taskflow
+# ============================================================
+def _kie_worker_main(
+    document_type: str,
+    req_q: "multiprocessing.Queue[Any]",
+    res_q: "multiprocessing.Queue[Any]",
+) -> None:
+    """KIE worker 主循环：常驻 Taskflow 实例处理 analyze_text 请求。"""
     try:
-        # TODO: Initialize the specific KIE engine based on document_type
-        # e.g. PP-ChatOCRv4-doc or specialized models
+        # PPNLP_HOME 由 .env / OS 环境变量配置，不在代码内硬编码路径
+        from paddlenlp import Taskflow  # type: ignore
 
-        # Simulated initialization for now
-        logger.info(f"[KIE Worker] Initiating KIE engine for type: {document_type}")
+        from app.services.kie.schemas import SCHEMAS
 
-        # Signal that initialization is complete
-        res_q.put(('ready',))
+        if document_type not in SCHEMAS:
+            raise ValueError(f"Unsupported document_type for KIE: {document_type}")
 
+        schema = SCHEMAS[document_type]
+        ie = Taskflow(
+            "information_extraction",
+            schema=schema,
+            model="uie-m-base",
+        )
+        res_q.put(("ready",))
     except Exception as e:
-        err_msg = str(e)
-        res_q.put(('init_error', err_msg, traceback.format_exc()))
+        res_q.put(("init_error", str(e), traceback.format_exc()))
         sys.exit(1)
 
-    # Worker Loop
     while True:
         try:
             msg = req_q.get()
-            if msg[0] == 'stop':
+            if not isinstance(msg, tuple) or not msg:
+                continue
+            op = msg[0]
+
+            if op == "stop":
                 break
 
-            elif msg[0] == 'analyze':
-                file_path = msg[1]
-                logger.info(f"[KIE Worker] Processing file: {file_path}")
+            if op == "analyze_text":
+                text = msg[1] if len(msg) > 1 else ""
+                if not isinstance(text, str) or not text.strip():
+                    res_q.put(("ok", []))
+                    continue
+                results = ie(text)
+                res_q.put(("ok", results))
+                continue
 
-                # TODO: Perform actual KIE inference here
-                # Simulated result
-                result = {
-                    "document_type": document_type,
-                    "fields": {}
-                }
-
-                res_q.put(('ok', result))
-
+            res_q.put(("error", f"Unknown op: {op}", ""))
         except Exception as e:
-            err_msg = str(e)
-            res_q.put(('error', err_msg, traceback.format_exc()))
+            res_q.put(("error", str(e), traceback.format_exc()))
 
-# --- Subprocess Engine Wrapper ---
+
+# ============================================================
+# Subprocess Engine: 管理 worker 进程生命周期
+# ============================================================
 class PPKieSubprocessEngine:
-    """
-    Manages the isolated KIE subprocess worker.
-    """
-    _ctx = multiprocessing.get_context('spawn')
-    _INIT_TIMEOUT = 120
-    _INFER_TIMEOUT = 180
-    _CUDA_KEYWORDS = ('CUBLAS', 'cuBLAS', 'CUDA_STATUS', 'CUDNN', 'cudnn', 'cublas')
+    """单个 document_type 的 UIE worker。"""
+
+    _ctx = multiprocessing.get_context("spawn")
+    _INIT_TIMEOUT = 180  # uie-m-base 首次下载可能较久
+    _INFER_TIMEOUT = 120
+    _CUDA_KEYWORDS = ("CUBLAS", "cuBLAS", "CUDA_STATUS", "CUDNN", "cudnn", "cublas")
 
     def __init__(self, document_type: str):
         self.document_type = document_type
-        self._req_q: Optional[multiprocessing.Queue] = None
-        self._res_q: Optional[multiprocessing.Queue] = None
+        self._req_q: Optional["multiprocessing.Queue[Any]"] = None
+        self._res_q: Optional["multiprocessing.Queue[Any]"] = None
         self._process: Optional[multiprocessing.Process] = None
         self._ready = False
+        self._load_ms: int = 0
 
         self._start_worker()
 
-    def _start_worker(self):
-        logger.info(f"Starting KIE subprocess worker for {self.document_type} (Spawn)...")
+    def _start_worker(self) -> None:
+        logger.info(
+            "Starting KIE subprocess worker for %s (Spawn, model=uie-m-base)...",
+            self.document_type,
+        )
         self._req_q = self._ctx.Queue()
         self._res_q = self._ctx.Queue()
 
         self._process = self._ctx.Process(
             target=_kie_worker_main,
             args=(self.document_type, self._req_q, self._res_q),
-            daemon=True
+            daemon=True,
         )
+
+        t0 = time.time()
         self._process.start()
 
         try:
             msg = self._res_q.get(timeout=self._INIT_TIMEOUT)
-            if msg[0] == 'ready':
+            if msg[0] == "ready":
                 self._ready = True
-                logger.info(f"KIE subprocess worker for {self.document_type} is ready.")
-            elif msg[0] == 'init_error':
+                self._load_ms = int((time.time() - t0) * 1000)
+                logger.info(
+                    "KIE subprocess worker for %s is ready (load=%dms)",
+                    self.document_type,
+                    self._load_ms,
+                )
+            elif msg[0] == "init_error":
                 self._kill_worker()
                 raise RuntimeError(f"KIE Worker init failed: {msg[1]}\n{msg[2]}")
         except queue.Empty:
             self._kill_worker()
-            raise TimeoutError(f"KIE Worker initialization timed out after {self._INIT_TIMEOUT}s")
+            raise TimeoutError(
+                f"KIE Worker initialization timed out after {self._INIT_TIMEOUT}s"
+            )
 
-    def _kill_worker(self):
+    def _kill_worker(self) -> None:
         if self._process and self._process.is_alive():
             logger.info("Terminating KIE subprocess worker...")
             self._process.terminate()
@@ -107,79 +146,92 @@ class PPKieSubprocessEngine:
                 self._process.join(timeout=3)
         self._ready = False
 
-    def _restart_worker(self):
+    def _restart_worker(self) -> None:
         logger.info("Restarting KIE subprocess worker (Recovery)...")
         self._kill_worker()
         self._start_worker()
 
     def is_ready(self) -> bool:
-        return self._ready and self._process is not None and self._process.is_alive()
+        return (
+            self._ready
+            and self._process is not None
+            and self._process.is_alive()
+        )
 
-    def _call_worker(self, file_path: str) -> Dict[str, Any]:
+    @property
+    def load_ms(self) -> int:
+        return self._load_ms
+
+    def analyze_text(self, text: str) -> List[Dict[str, Any]]:
+        """阻塞调用：把 OCR 全文交给 worker 跑 UIE。"""
         if not self.is_ready():
             self._restart_worker()
+        assert self._req_q is not None and self._res_q is not None
 
-        self._req_q.put(('analyze', file_path))
+        self._req_q.put(("analyze_text", text))
 
         try:
             msg = self._res_q.get(timeout=self._INFER_TIMEOUT)
-
-            if msg[0] == 'ok':
-                return msg[1]
-
-            elif msg[0] == 'error':
-                err_msg = msg[1]
-                tb_str = msg[2]
-
-                is_cuda_err = any(kw in err_msg for kw in self._CUDA_KEYWORDS)
-                if is_cuda_err:
-                    logger.warning(f"CUDA error detected in KIE worker, restarting: {err_msg}")
-                    self._restart_worker()
-
-                    # Retry once
-                    logger.info("Retrying KIE analysis after worker restart...")
-                    self._req_q.put(('analyze', file_path))
-                    retry_msg = self._res_q.get(timeout=self._INFER_TIMEOUT)
-                    if retry_msg[0] == 'ok':
-                        return retry_msg[1]
-                    else:
-                        raise RuntimeError(f"KIE Worker retry failed: {retry_msg[1]}\n{retry_msg[2]}")
-                else:
-                    raise RuntimeError(f"KIE Worker analysis failed: {err_msg}\n{tb_str}")
-
         except queue.Empty:
-            logger.error("KIE Worker isolation queue timeout!")
+            logger.error("KIE Worker analyze_text timeout")
             self._restart_worker()
-            raise TimeoutError("KIE analysis timed out.")
+            raise TimeoutError("KIE analyze_text timed out.")
 
-    def analyze(self, file_path: str) -> Dict[str, Any]:
-        """
-        Blocking call to analyze. For async contexts, run this in an executor.
-        """
-        return self._call_worker(file_path)
+        if msg[0] == "ok":
+            return msg[1] if isinstance(msg[1], list) else []
 
-    def close(self):
-        if self._req_q:
+        if msg[0] == "error":
+            err_msg = msg[1] if len(msg) > 1 else ""
+            tb_str = msg[2] if len(msg) > 2 else ""
+
+            is_cuda_err = any(kw in err_msg for kw in self._CUDA_KEYWORDS)
+            if is_cuda_err:
+                logger.warning("CUDA error detected in KIE worker, restarting: %s", err_msg)
+                self._restart_worker()
+                self._req_q.put(("analyze_text", text))
+                retry_msg = self._res_q.get(timeout=self._INFER_TIMEOUT)
+                if retry_msg[0] == "ok":
+                    return retry_msg[1] if isinstance(retry_msg[1], list) else []
+                raise RuntimeError(
+                    f"KIE Worker retry failed: {retry_msg[1] if len(retry_msg) > 1 else ''}"
+                )
+            raise RuntimeError(f"KIE Worker analysis failed: {err_msg}\n{tb_str}")
+
+        raise RuntimeError(f"KIE Worker returned unexpected response: {msg}")
+
+    def close(self) -> None:
+        if self._req_q is not None:
             try:
-                self._req_q.put(('stop',))
+                self._req_q.put(("stop",))
             except Exception:
                 pass
         self._kill_worker()
 
 
+# ============================================================
+# Service Layer
+# ============================================================
 class DocumentKIEService:
+    """KIE 服务入口：管理多 document_type 的 worker，对外暴露
+    `extract_fields(file_path, document_type, *, layout, table_meta, tables, ...)`.
     """
-    Service layer for Document Key Information Extraction.
-    Manages engines for different document types.
-    """
-    def __init__(self):
+
+    def __init__(self) -> None:
         self._engines: Dict[str, PPKieSubprocessEngine] = {}
 
     def _get_engine(self, document_type: str) -> PPKieSubprocessEngine:
         if document_type not in self._engines:
-            logger.info(f"Initializing new KIE engine for: {document_type}")
+            logger.info("Initializing new KIE engine for: %s", document_type)
             self._engines[document_type] = PPKieSubprocessEngine(document_type)
         return self._engines[document_type]
+
+    def close(self) -> None:
+        for engine in self._engines.values():
+            try:
+                engine.close()
+            except Exception:
+                pass
+        self._engines.clear()
 
     async def extract_fields(
         self,
@@ -189,48 +241,112 @@ class DocumentKIEService:
         preprocessed_image_path: Optional[str] = None,
         layout: Optional[Dict[str, Any]] = None,
         table_meta: Optional[Dict[str, Any]] = None,
+        tables: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
-        """
-        Extract fields from a document based on its type.
-        Accepts optional richer inputs for KIE: `preprocessed_image_path`, `layout`, and `table_meta`.
-        Returns a dictionary of fields to be merged into view.fields. For backward compatibility
-        this will still call the subprocess engine with the original `file_path` and include the
-        received inputs under the `debug_input` key in the returned dict for test assertion.
-        """
-        import asyncio
-        loop = asyncio.get_event_loop()
+        """主流程：拼全文 → UIE → BaseField → ItemsAggregator → KieResult。
 
-        engine = self._get_engine(document_type)
+        返回 dict 字段：
+          - fields:        view.fields 兼容 dict
+          - confidence_avg: 全部字段平均 UIE probability
+          - items_count:   行项目数
+          - metadata:      {items_source, kie_model_load_ms, ...}
+          - debug_input:   测试与可观测性
+        """
+        # 主进程仅 import KIE 子包（不引入 paddlenlp）；paddlenlp 仅在 worker 内 import
+        from app.services.kie.azure_emitter import AzureSchemaEmitter
+        from app.services.kie.azure_schema import BaseField
+        from app.services.kie.items_aggregator import ItemsAggregator
+        from app.services.kie.uie_to_azure import UieToAzureMapper
+        from app.services.kie.word_indexer import WordIndexer
 
-        # Log received inputs for observability/tests
+        debug_input = {
+            "preprocessed_image_path": preprocessed_image_path,
+            "layout_present": bool(layout),
+            "table_meta": table_meta or {},
+            "ocr_text_length": 0,
+        }
+
         try:
             logger.info(
-                "KIE.extract_fields called | file=%s | doc_type=%s | preproc=%s | layout_present=%s | table_meta_keys=%s",
+                "KIE.extract_fields | file=%s | doc_type=%s | preproc=%s | layout=%s | tables=%s",
                 file_path,
                 document_type,
                 bool(preprocessed_image_path),
                 bool(layout),
-                list(table_meta.keys()) if isinstance(table_meta, dict) else None,
+                len(tables) if isinstance(tables, list) else 0,
             )
         except Exception:
             pass
 
-        # Run blocking subprocess call in executor (engine currently expects file_path)
-        result = await loop.run_in_executor(None, engine.analyze, file_path)
+        indexer = WordIndexer.from_layout(layout or {})
+        debug_input["ocr_text_length"] = len(indexer.content)
 
-        # Ensure returned shape is a dict and contains `fields` key
-        if not isinstance(result, dict):
-            result = {"fields": {}}
-        else:
-            if "fields" not in result:
-                result["fields"] = {}
+        if not indexer.content.strip():
+            return {
+                "fields": {},
+                "confidence_avg": 0.0,
+                "items_count": 0,
+                "metadata": {
+                    "reason": "empty_ocr_text",
+                    "items_source": "n/a",
+                    "kie_model_load_ms": 0,
+                },
+                "debug_input": debug_input,
+            }
 
-        # Attach debug_input for testability and tracing
-        result.setdefault("debug_input", {})
-        result["debug_input"].update({
-            "preprocessed_image_path": preprocessed_image_path,
-            "layout_present": bool(layout),
-            "table_meta": table_meta or {},
-        })
+        engine = self._get_engine(document_type)
 
-        return result
+        loop = asyncio.get_event_loop()
+        t0 = time.time()
+        uie_result = await loop.run_in_executor(None, engine.analyze_text, indexer.content)
+        infer_ms = int((time.time() - t0) * 1000)
+
+        mapper = UieToAzureMapper(indexer)
+        raw_mapped = mapper.map_uie_result(uie_result)
+
+        # 拆出关系字段交给 ItemsAggregator
+        items_raw = raw_mapped.pop("Items", None) if isinstance(raw_mapped.get("Items"), list) else None
+        payment_raw = (
+            raw_mapped.pop("PaymentDetails", None)
+            if isinstance(raw_mapped.get("PaymentDetails"), list)
+            else None
+        )
+
+        single_fields: Dict[str, BaseField] = {
+            k: v for k, v in raw_mapped.items() if isinstance(v, BaseField)
+        }
+
+        items_list: List[BaseField] = []
+        payment_list: List[BaseField] = []
+        items_source = "n/a"
+
+        if document_type in {"invoice", "receipt"}:
+            agg = ItemsAggregator(indexer, mapper, tables=tables or []).aggregate(
+                items_raw, payment_raw
+            )
+            items_list = agg["Items"]
+            payment_list = agg["PaymentDetails"]
+            items_source = agg["items_source"]
+
+        emitter = AzureSchemaEmitter(document_type=document_type)
+        # kie_model_load_ms = worker 启动 + 本次推理（监控 PPNLP_HOME 缓存是否生效）
+        kie_model_load_ms = engine.load_ms + infer_ms
+        kie_result = emitter.build(
+            single_fields=single_fields,
+            items=items_list if items_list else None,
+            payment_details=payment_list if payment_list else None,
+            metadata={
+                "items_source": items_source,
+                "kie_model_load_ms": kie_model_load_ms,
+                "infer_ms": infer_ms,
+                "engine_load_ms": engine.load_ms,
+            },
+        )
+
+        return {
+            "fields": kie_result.to_view_fields(),
+            "confidence_avg": kie_result.confidence,
+            "items_count": len(items_list),
+            "metadata": kie_result.metadata,
+            "debug_input": debug_input,
+        }

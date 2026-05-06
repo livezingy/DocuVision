@@ -511,6 +511,7 @@ async def kie_step(ctx: PipelineContext) -> None:
     preprocessed_image_path = ctx["task"].get("preprocessed_image_path") or ctx.get("file_path")
     layout = ctx["result"].get("layout", {}) if isinstance(ctx["result"].get("layout"), dict) else {}
     table_meta = ctx["result"].get("table_extraction_meta", {}) if isinstance(ctx["result"].get("table_extraction_meta"), dict) else {}
+    tables = ctx["result"].get("tables", []) if isinstance(ctx["result"].get("tables"), list) else []
 
     # Record the inputs used for KIE for traceability
     ctx["result"]["kie_input"] = {
@@ -518,6 +519,7 @@ async def kie_step(ctx: PipelineContext) -> None:
         "preprocessed_image_path": preprocessed_image_path,
         "layout_present": bool(layout),
         "table_meta": table_meta,
+        "tables_count": len(tables),
     }
 
     try:
@@ -529,6 +531,7 @@ async def kie_step(ctx: PipelineContext) -> None:
             preprocessed_image_path=preprocessed_image_path,
             layout=layout,
             table_meta=table_meta,
+            tables=tables,
         )
     except TypeError:
         # Fallback to legacy signature if the service doesn't accept new kwargs.
@@ -565,8 +568,21 @@ async def kie_step(ctx: PipelineContext) -> None:
 
     # Normalize result shape defensively
     fields = {}
+    confidence_avg = 0.0
+    items_count = 0
+    metadata: Dict[str, Any] = {}
     if isinstance(kie_result, dict):
         fields = kie_result.get("fields", {}) if isinstance(kie_result.get("fields", {}), dict) else {}
+        try:
+            confidence_avg = float(kie_result.get("confidence_avg", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            confidence_avg = 0.0
+        try:
+            items_count = int(kie_result.get("items_count", 0) or 0)
+        except (TypeError, ValueError):
+            items_count = 0
+        if isinstance(kie_result.get("metadata"), dict):
+            metadata = kie_result.get("metadata") or {}
 
     ctx["result"]["kie_fields"] = fields
     ctx["result"]["kie_meta"] = {
@@ -575,8 +591,16 @@ async def kie_step(ctx: PipelineContext) -> None:
         "stage": "completed",
         "error_code": "",
         "error_message": "",
+        "confidence_avg": confidence_avg,
+        "items_count": items_count,
+        "items_source": str(metadata.get("items_source", "n/a")),
+        "kie_model_load_ms": int(metadata.get("kie_model_load_ms", 0) or 0),
+        "ocr_text_length": int(
+            (kie_result.get("debug_input", {}) or {}).get("ocr_text_length", 0)
+            if isinstance(kie_result, dict) else 0
+        ),
     }
-    await orchestrator.update_progress(ctx, 80, f"KIE extraction completed | fields={len(fields)}")
+    await orchestrator.update_progress(ctx, 80, f"KIE extraction completed | fields={len(fields)} | items={items_count}")
 
 
 async def finalize_step(ctx: PipelineContext) -> None:
@@ -766,6 +790,20 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
         quality["kie_stage"] = str(kie_meta.get("stage", ""))
         quality["kie_error_code"] = str(kie_meta.get("error_code", ""))
         quality["kie_fields_count"] = kie_fields_count
+        try:
+            quality["kie_items_count"] = int(kie_meta.get("items_count", 0) or 0)
+        except (TypeError, ValueError):
+            quality["kie_items_count"] = 0
+        try:
+            quality["kie_confidence_avg"] = float(kie_meta.get("confidence_avg", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            quality["kie_confidence_avg"] = 0.0
+        quality["kie_confidence_source"] = "uie-m-base" if quality["kie_attempted"] else ""
+        try:
+            quality["kie_model_load_ms"] = int(kie_meta.get("kie_model_load_ms", 0) or 0)
+        except (TypeError, ValueError):
+            quality["kie_model_load_ms"] = 0
+        quality["kie_items_source"] = str(kie_meta.get("items_source", "n/a"))
 
         ctx["phase1_quality"] = quality
 

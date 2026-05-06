@@ -272,7 +272,7 @@ seal_service = SealService(device="gpu" if use_gpu else "cpu")
 kie_service = DocumentKIEService()
 export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
-unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服�?
+unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服
 # Task Storage
 tasks: Dict[str, Dict[str, Any]] = {}
 # Task cancellation flags
@@ -413,6 +413,11 @@ class QualityLayer(BaseModel):
     kie_stage: str = ""
     kie_error_code: str = ""
     kie_fields_count: int = 0
+    kie_items_count: int = 0
+    kie_confidence_avg: float = 0.0
+    kie_confidence_source: str = ""
+    kie_model_load_ms: int = 0
+    kie_items_source: str = "n/a"
     avg_layout_confidence: float = 0.0
     engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3"]
 

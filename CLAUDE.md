@@ -84,6 +84,12 @@ DocuVision/
 
 - 大改动前先在 Plan Mode 出方案，我确认后再动手
 
+## Git 与 GitHub 同步
+
+- 在本仓库完成**可交付的代码或前端资源变更**后，若我明确要求「提交 / 推送到 GitHub」，或约定「改完即同步远端」，助手应在自检（lint、与改动匹配的验证）后执行：`git add` → `git commit`（信息简洁；建议前缀 `feat:`、`fix:`、`docs:`、`refactor:`、`chore:` 等）→ `git push` 至当前分支对应的 `origin`。
+- 与上文「红线」中 `git push` 的关系：**未**获我明确提交/推送意图时，不擅自 push；我**明确**要求同步 GitHub 时，不在此红线禁止之列。
+- 密钥、token、`.env` 等不得进入 commit。
+
 ## 文档同步
 
 代码变更后，同步更新 `docs/architecture/` 下的相关文档。

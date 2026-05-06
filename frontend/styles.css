@@ -1872,6 +1872,59 @@ body.show-analysis .analyzed-region {
     color: var(--text-primary);
 }
 
+/* KIE（Azure 风格字段）在提取视图中的展示 */
+.extract-card-value.kie-field-body {
+    font-weight: 500;
+}
+
+.kie-meta-line {
+    grid-column: 1 / -1;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+}
+
+.extract-section-label {
+    grid-column: 1 / -1;
+    margin: 12px 0 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.kie-object {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.kie-subrow {
+    margin: 4px 0;
+    line-height: 1.35;
+}
+
+.kie-subk {
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.kie-array {
+    margin: 0;
+    padding-left: 1.1rem;
+}
+
+.kie-array li {
+    margin: 4px 0;
+}
+
+.kie-json {
+    font-size: 0.75rem;
+    font-weight: 400;
+    white-space: pre-wrap;
+    max-height: 220px;
+    overflow: auto;
+    margin: 0;
+}
+
 .extract-card-value.highlight {
     color: var(--success-400);
 }

@@ -613,7 +613,19 @@ async def finalize_step(ctx: PipelineContext) -> None:
     task["status"] = "completed"
     task["message"] = "Processing completed"
     task["completed_at"] = datetime.now()
-    task["result"] = ctx["result"]
+
+    result = ctx["result"]
+    # 将 Phase1 envelope 的 view/quality 并入 result，便于 GET /tasks/.../result 一次返回
+    # （含 view.fields 与 formulas/seals；前端 updateExtractView / Formulas 等统一读 result.view）
+    envelope = task.get("envelope")
+    if isinstance(envelope, dict):
+        view = envelope.get("view")
+        if isinstance(view, dict) and view:
+            result["view"] = view
+        quality = envelope.get("quality")
+        if isinstance(quality, dict) and quality:
+            result["quality"] = quality
+    task["result"] = result
 
     await orchestrator.send_event(ctx["task_id"], "completed", "Processing completed", 100)
 

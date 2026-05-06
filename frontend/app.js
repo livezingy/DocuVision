@@ -3091,6 +3091,120 @@ function updateEntities(result) {
 }
 
 /**
+ * 从任务 result 中取出 KIE 字段映射（与 envelope.view.fields 同源）。
+ */
+function pickKieFieldsMap(result) {
+    const view = result.view || {};
+    const k = result.kie_fields;
+    const vf = view.fields;
+    if (k && typeof k === 'object' && !Array.isArray(k)) {
+        return k;
+    }
+    if (vf && typeof vf === 'object' && !Array.isArray(vf)) {
+        return vf;
+    }
+    return {};
+}
+
+/**
+ * 将 Azure 风格 KIE 字段（dict / BaseField）格式化为可放入 innerHTML 的安全 HTML。
+ */
+function formatKieFieldForExtract(field, depth) {
+    const d = depth || 0;
+    if (d > 8) {
+        try {
+            return '<pre class="kie-json">' + escapeHtml(JSON.stringify(field, null, 2)) + '</pre>';
+        } catch (e) {
+            return escapeHtml(String(field));
+        }
+    }
+    if (field == null) {
+        return '';
+    }
+    if (typeof field !== 'object') {
+        return escapeHtml(String(field));
+    }
+    if (Array.isArray(field)) {
+        if (field.length === 0) {
+            return '<span class="kie-empty">—</span>';
+        }
+        return (
+            '<ul class="kie-array">' +
+            field.map((item) => '<li>' + formatKieFieldForExtract(item, d + 1) + '</li>').join('') +
+            '</ul>'
+        );
+    }
+
+    const t = field.type;
+    if (t === 'string') {
+        const s = field.valueString != null ? field.valueString : field.content;
+        return escapeHtml(s != null ? String(s) : '');
+    }
+    if (t === 'date') {
+        const s = field.valueDate != null ? field.valueDate : field.content;
+        return escapeHtml(s != null ? String(s) : '');
+    }
+    if (t === 'number') {
+        const n = field.valueNumber != null ? field.valueNumber : field.content;
+        return escapeHtml(String(n));
+    }
+    if (t === 'currency' && field.valueCurrency && typeof field.valueCurrency === 'object') {
+        const c = field.valueCurrency;
+        const amt = c.amount != null ? String(c.amount) : '';
+        const code = c.currencyCode != null ? String(c.currencyCode) : '';
+        const joined = [code, amt].filter(Boolean).join(' ').trim();
+        return escapeHtml(joined || (field.content != null ? String(field.content) : ''));
+    }
+    if (t === 'address' && field.valueAddress && typeof field.valueAddress === 'object') {
+        const a = field.valueAddress;
+        const parts = [a.streetAddress, a.city, a.state, a.postalCode, a.countryRegion].filter(Boolean);
+        return escapeHtml(parts.join(', '));
+    }
+    if (t === 'object' && field.valueObject && typeof field.valueObject === 'object') {
+        const rows = Object.entries(field.valueObject).map(([k, v]) => {
+            return (
+                '<div class="kie-subrow"><span class="kie-subk">' +
+                escapeHtml(k) +
+                '</span>: ' +
+                formatKieFieldForExtract(v, d + 1) +
+                '</div>'
+            );
+        });
+        return '<div class="kie-object">' + rows.join('') + '</div>';
+    }
+    if (t === 'array' && Array.isArray(field.valueArray)) {
+        return formatKieFieldForExtract(field.valueArray, d + 1);
+    }
+
+    if (field.relations && typeof field.relations === 'object') {
+        const rows = Object.entries(field.relations).map(([k, arr]) => {
+            const label = String(k).split('|')[0];
+            let val = '';
+            if (Array.isArray(arr) && arr[0] && arr[0].text != null) {
+                val = String(arr[0].text);
+            }
+            return (
+                '<div class="kie-subrow"><span class="kie-subk">' +
+                escapeHtml(label) +
+                '</span>: ' +
+                escapeHtml(val) +
+                '</div>'
+            );
+        });
+        return '<div class="kie-object">' + rows.join('') + '</div>';
+    }
+
+    if (field.content != null && field.content !== '') {
+        return escapeHtml(String(field.content));
+    }
+    try {
+        return '<pre class="kie-json">' + escapeHtml(JSON.stringify(field, null, 2)) + '</pre>';
+    } catch (e) {
+        return escapeHtml(String(field));
+    }
+}
+
+/**
  * Update extract view
  */
 function updateExtractView(result) {
@@ -3100,82 +3214,132 @@ function updateExtractView(result) {
     const extractSummary = extractView.querySelector('.extract-summary');
     if (!extractSummary) return;
 
-    // Get template extraction data if available
+    const kieFields = pickKieFieldsMap(result);
+    const hasKie = Object.keys(kieFields).length > 0;
+
     const templateExtraction = result.template_extraction || {};
     const extractedFields = templateExtraction.fields || {};
+    const hasTemplate = Object.keys(extractedFields).length > 0;
 
-    // If no template extraction, show summary from document
-    if (Object.keys(extractedFields).length === 0) {
-        const docInfo = result.document_info || {};
-        const layout = result.layout || {};
-        const elements = layout.elements || [];
-        const textBlocks = result.text_blocks || [];
+    let html = '';
 
-        // Create a simple summary
-        let html = '';
-        if (docInfo.file_name) {
-            html += '<div class="extract-card">';
-            html += '<div class="extract-card-header">';
-            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
-            html += '<span>File Name</span></div>';
-            html += `<div class="extract-card-value">${escapeHtml(docInfo.file_name)}</div>`;
-            html += '</div>';
+    if (hasKie) {
+        const meta = result.kie_meta || {};
+        const metaBits = [];
+        if (meta.succeeded === false) {
+            metaBits.push('KIE 未完成');
+            if (meta.error_message) {
+                metaBits.push(String(meta.error_message));
+            } else if (meta.error_code) {
+                metaBits.push(String(meta.error_code));
+            }
+        } else {
+            if (meta.confidence_avg != null && !Number.isNaN(Number(meta.confidence_avg))) {
+                metaBits.push('平均置信度 ' + Number(meta.confidence_avg).toFixed(2));
+            }
+            if (meta.items_count != null) {
+                metaBits.push('明细行 ' + String(meta.items_count));
+            }
+        }
+        if (metaBits.length) {
+            html += '<div class="kie-meta-line">' + escapeHtml(metaBits.join(' · ')) + '</div>';
         }
 
-        if (docInfo.pages) {
+        Object.entries(kieFields).forEach(([key, value]) => {
             html += '<div class="extract-card">';
             html += '<div class="extract-card-header">';
-            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect></svg>';
-            html += '<span>Pages</span></div>';
-            html += `<div class="extract-card-value">${docInfo.pages}</div>`;
+            html +=
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M16 3v4"></path><path d="M8 3v4"></path><path d="M3 10h18"></path></svg>';
+            html += '<span>' + escapeHtml(key) + '</span></div>';
+            html +=
+                '<div class="extract-card-value kie-field-body">' + formatKieFieldForExtract(value, 0) + '</div>';
             html += '</div>';
+        });
+    }
+
+    if (hasTemplate) {
+        if (hasKie) {
+            html += '<div class="extract-section-label">Template extraction</div>';
         }
-
-        const titleCount = elements.filter(e => e.type === 'title' || e.type === 'text_title').length;
-        const textCount = elements.filter(e => e.type === 'text' || e.type === 'paragraph').length;
-        const tableCount = elements.filter(e => e.type === 'table').length;
-
-        if (titleCount > 0) {
-            html += '<div class="extract-card">';
-            html += '<div class="extract-card-header">';
-            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path></svg>';
-            html += '<span>Titles</span></div>';
-            html += `<div class="extract-card-value">${titleCount}</div>`;
-            html += '</div>';
-        }
-
-        if (textCount > 0) {
-            html += '<div class="extract-card">';
-            html += '<div class="extract-card-header">';
-            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>';
-            html += '<span>Text Blocks</span></div>';
-            html += `<div class="extract-card-value">${textCount}</div>`;
-            html += '</div>';
-        }
-
-        if (tableCount > 0) {
-            html += '<div class="extract-card">';
-            html += '<div class="extract-card-header">';
-            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"></path></svg>';
-            html += '<span>Tables</span></div>';
-            html += `<div class="extract-card-value highlight">${tableCount}</div>`;
-            html += '</div>';
-        }
-
-        extractSummary.innerHTML = html || '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No extracted data available</div>';
-    } else {
-        // Display template extracted fields
-        let html = '';
         Object.entries(extractedFields).forEach(([key, value]) => {
             html += '<div class="extract-card">';
             html += '<div class="extract-card-header">';
-            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
-            html += `<span>${escapeHtml(key)}</span></div>`;
-            html += `<div class="extract-card-value">${escapeHtml(String(value))}</div>`;
+            html +=
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+            html += '<span>' + escapeHtml(key) + '</span></div>';
+            html += '<div class="extract-card-value">' + escapeHtml(String(value)) + '</div>';
             html += '</div>';
         });
-        extractSummary.innerHTML = html;
     }
+
+    if (html) {
+        extractSummary.innerHTML = html;
+        return;
+    }
+
+    // 无 KIE、无模板字段：沿用文档结构摘要
+    const docInfo = result.document_info || {};
+    const layout = result.layout || {};
+    const elements = layout.elements || [];
+
+    let summaryHtml = '';
+    if (docInfo.file_name) {
+        summaryHtml += '<div class="extract-card">';
+        summaryHtml += '<div class="extract-card-header">';
+        summaryHtml +=
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+        summaryHtml += '<span>File Name</span></div>';
+        summaryHtml += `<div class="extract-card-value">${escapeHtml(docInfo.file_name)}</div>`;
+        summaryHtml += '</div>';
+    }
+
+    if (docInfo.pages) {
+        summaryHtml += '<div class="extract-card">';
+        summaryHtml += '<div class="extract-card-header">';
+        summaryHtml +=
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect></svg>';
+        summaryHtml += '<span>Pages</span></div>';
+        summaryHtml += `<div class="extract-card-value">${docInfo.pages}</div>`;
+        summaryHtml += '</div>';
+    }
+
+    const titleCount = elements.filter((e) => e.type === 'title' || e.type === 'text_title').length;
+    const textCount = elements.filter((e) => e.type === 'text' || e.type === 'paragraph').length;
+    const tableCount = elements.filter((e) => e.type === 'table').length;
+
+    if (titleCount > 0) {
+        summaryHtml += '<div class="extract-card">';
+        summaryHtml += '<div class="extract-card-header">';
+        summaryHtml +=
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path></svg>';
+        summaryHtml += '<span>Titles</span></div>';
+        summaryHtml += `<div class="extract-card-value">${titleCount}</div>`;
+        summaryHtml += '</div>';
+    }
+
+    if (textCount > 0) {
+        summaryHtml += '<div class="extract-card">';
+        summaryHtml += '<div class="extract-card-header">';
+        summaryHtml +=
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>';
+        summaryHtml += '<span>Text Blocks</span></div>';
+        summaryHtml += `<div class="extract-card-value">${textCount}</div>`;
+        summaryHtml += '</div>';
+    }
+
+    if (tableCount > 0) {
+        summaryHtml += '<div class="extract-card">';
+        summaryHtml += '<div class="extract-card-header">';
+        summaryHtml +=
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"></path></svg>';
+        summaryHtml += '<span>Tables</span></div>';
+        summaryHtml += `<div class="extract-card-value highlight">${tableCount}</div>`;
+        summaryHtml += '</div>';
+    }
+
+    extractSummary.innerHTML =
+        summaryHtml ||
+        '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">No extracted data available</div>';
 }
 
 /**

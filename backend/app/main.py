@@ -17,6 +17,12 @@ os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 os.environ['PADDLEX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 
+# PaddleNLP 需要 aistudio-sdk<0.3（hub.download）；PaddleX 3.3 需要 snapshot_download。
+# 固定 0.2.x 并在 import paddlex 前注册 shim（见 app.core.aistudio_compat）。
+from app.core.aistudio_compat import install_aistudio_snapshot_shim_for_paddlex
+
+install_aistudio_snapshot_shim_for_paddlex()
+
 # Fix matplotlib backend issue
 import matplotlib
 matplotlib.use('Agg')

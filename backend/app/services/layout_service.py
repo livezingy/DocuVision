@@ -1191,6 +1191,11 @@ def _ppstructure_worker_main(use_gpu: bool, lang: str, req_q, res_q):
     os.environ.setdefault("PADDLEX_DISABLE_MODEL_SOURCE_CHECK", "True")
     os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
+    # Spawn 子进程不经过 app.main：须在此补注册 aistudio_sdk.snapshot_download shim（见 aistudio_compat）。
+    from app.core.aistudio_compat import install_aistudio_snapshot_shim_for_paddlex
+
+    install_aistudio_snapshot_shim_for_paddlex()
+
     try:
         engine = PPStructureEngine(use_gpu=use_gpu, lang=lang)
         res_q.put(('ready',))

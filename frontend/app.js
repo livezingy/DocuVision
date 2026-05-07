@@ -587,11 +587,12 @@ function initResultTabs() {
             contentSubTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
 
-            // Update content view
+            // Update content view（可选子视图初始带 .hidden，需去掉否则 display:none !important 盖住 .active）
             contentViews.forEach(view => {
                 view.classList.remove('active');
                 if (view.id === `content${targetContent.charAt(0).toUpperCase() + targetContent.slice(1)}View`) {
                     view.classList.add('active');
+                    view.classList.remove('hidden');
                 }
             });
         });
@@ -2782,6 +2783,7 @@ function updateContentFields(result) {
         fieldsList.innerHTML = '';
         fieldsMeta.textContent = '';
         fieldsBtn.classList.add('hidden');
+        fieldsView.classList.add('hidden');
         if (fieldsBtn.classList.contains('active')) {
             const fallback = document.querySelector('.content-sub-tab[data-content="text"]');
             if (fallback) fallback.click();
@@ -2821,6 +2823,7 @@ function updateContentFields(result) {
     fieldsList.innerHTML = html;
 
     fieldsBtn.classList.remove('hidden');
+    fieldsView.classList.remove('hidden');
     if (!fieldsBtn.classList.contains('active')) {
         fieldsBtn.click();
     }

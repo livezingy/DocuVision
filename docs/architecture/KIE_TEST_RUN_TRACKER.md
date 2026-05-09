@@ -1,7 +1,9 @@
 # KIE Test Run Tracker
 
-Last updated: 2026-04-10
+Last updated: 2026-05-06  
 Scope: Ongoing cloud verification for invoice KIE acceptance
+
+前端 **Content > Fields** 已接入：数据来源为任务结果中的 `kie_fields` 或 Envelope `view.fields`（与 [kie.md](./kie.md) 契约一致）。云端批测仍可按下方规则统计 `quality.kie_*`。
 
 ## Tracking Rule
 

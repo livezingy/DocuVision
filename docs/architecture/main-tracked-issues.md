@@ -1,42 +1,19 @@
-# Main — Tracked Issues (post-merge baseline)
+# Main — 轻量跟踪清单
 
-This document lists issues and short remediation notes to track on `main` after the recent merge baseline.
+> **注意**：本文档仅作备忘。若与仓库代码或 [智能文档处理系统设计方案.md](./智能文档处理系统设计方案.md) 冲突，**以代码与总纲为准**。  
+> KIE 已从占位实现升级为 **PaddleNLP UIE（`uie-m-base`）**；详见 [kie.md](./kie.md)。
 
-## High Priority
-- KIE engine implementation
-  - Description: `backend/app/services/kie_service.py` currently wraps a worker that returns placeholder/empty `fields`.
-  - Impact: KIE API responses are non-functional for invoice/receipt/id extraction.
-  - Suggested action: implement a real worker (cloud adapter or local inference) and integration tests.
-  - Owner: TBD
+## 仍值得跟进的主题（非阻塞）
 
-- Verify KIE input source
-  - Description: Ensure `kie_step()` consumes `preprocessed_image_path` (when available) rather than raw file for better OCR/layout alignment.
-  - Acceptance: KIE worker receives `preprocessed_image_path` in at least one sample API call; end-to-end test validates non-empty `fields` for sample invoice.
+- **KIE 效果**：整页 OCR 文本 + UIE 在复杂版式上的局限；可选第二引擎（Qwen2.5-VL、`uie-x-base` 等）见 [kie.md](./kie.md) §8。
+- **`kie_confidence_source`**：当前 orchestrator 硬编码 `uie-m-base`；换引擎时需改为配置或枚举。
+- **文档**：根目录 [DATA_FLOW_DIAGRAM.md](../DATA_FLOW_DIAGRAM.md) 为历史示意图，非当前实现权威来源。
 
-## Medium Priority
-- Orchestrator ordering confirmation
-  - Description: Confirm pipeline ordering (KIE after table, before formula/chart) and add a regression test ensuring KIE runs in the expected position when `enable_kie=true`.
-  - Acceptance: Unit test asserting that `kie_step` is invoked before `formula_step` for a sample task.
+## 测试入口
 
-- Table fallback behaviour
-  - Description: Validate `TABLE_ALLOW_FULLPAGE_FALLBACK` behavior and `table_service.extract_with_meta()` metadata correctness.
-  - Acceptance: Tests cover both fallback disabled/enabled modes and verify `meta.fallback_activated` flags.
+- `pytest backend/tests/test_kie_service.py backend/tests/test_orchestrator_order.py`
+- 云测矩阵：[KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)
 
-## Low Priority
-- Documentation naming alignment
-  - Description: Update design docs to use `envelope_builder` naming and reflect normalized `element['text']` fields.
-  - Acceptance: Design docs and README match code references.
+## 历史
 
-- Debug flags and production behavior
-  - Description: Confirm `use_doc_unwarping=false` is acceptable for all pipelines or make it configurable per-request.
-  - Acceptance: Config update or per-request toggle with documentation.
-
-## Tests to Run
-- `backend/tests/test_kie_*` (if present) and `backend/tests/test_table_strategy_meta.py`.
-- Add sample fixture for an invoice/receipt and run `pytest tests/...` to validate KIE after implementation.
-
-## Notes
-- Branches created during baseline merge:
-  - `merge/feature-main-followup-into-main` (merge artifact)
-  - `feature/prioritize-kie` (new working branch)
-
+- 旧版本文曾描述「KIE 为 placeholder」——该状态已过期（2026-05 同步）。

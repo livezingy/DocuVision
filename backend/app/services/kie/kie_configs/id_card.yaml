@@ -1,0 +1,20 @@
+type_id: id_card
+display_name: 身份证
+category: card
+prompt_template: |
+  你是一个专业的身份证信息提取助手。
+  请从图片中提取中国居民身份证的信息，严格填入 JSON 模板。
+  要求：
+  1. 只输出 JSON，不要解释。
+  2. 找不到的字段用 "" 表示。
+
+  JSON 模板：
+  ```json
+  {{ schema_json }}
+schema:
+  name: 姓名
+  id_number: 证件号码
+  date_of_birth: 出生日期
+  address: 住址
+  expiration_date: 有效期
+  issuing_authority: 签发机关

@@ -37,12 +37,12 @@ Authoritative design and contracts live under **`docs/architecture/`**, especial
 
 | Layer | Notes |
 |-------|--------|
-| Runtime | Python **3.10+** (some requirement files mention 3.11 for cloud images) |
-| Deep learning | **PaddlePaddle GPU 3.3.x**, **PaddleOCR 3.3.x**, **PaddleX 3.3.x** (see `CLAUDE.md` and `backend/requirements-paddleocr-aistudio.txt`) |
+| Runtime | Python **3.10+**（`backend/requirements.txt` 注释说明与托管镜像的版本关系） |
+| Deep learning | **PaddlePaddle GPU 3.3.x**, **PaddleOCR 3.3.x**, **PaddleX 3.3.x** (see `CLAUDE.md` and `backend/requirements.txt` 头部说明) |
 | API | **FastAPI**, **Uvicorn** |
 | UI | Static SPA, no Node build step |
 
-Dependency pins and GPU-environment notes are in `backend/requirements-paddleocr-aistudio.txt` and `backend/requirements-colab.txt`. Heavy DL stacks are often preinstalled on target GPU images (e.g. AI Studio); avoid conflicting installs in those environments.
+Dependency pins are in **`backend/requirements.txt`**（仓库内唯一维护的依赖文件）。Paddle / Qwen 等与 CUDA 相关的栈常由 GPU 镜像预装或需单独安装，见该文件顶部注释；避免与托管环境冲突的重复安装。
 
 ---
 
@@ -62,7 +62,7 @@ DocuVision/
 ## Getting started (outline)
 
 1. **Environment**: GPU recommended for production-like latency; CPU may work for smoke tests depending on models loaded.
-2. **Python dependencies**: Install from the requirements file that matches your platform (`backend/requirements-paddleocr-aistudio.txt` or `requirements-colab.txt`), respecting preinstalled Paddle versions on managed images.
+2. **Python dependencies**: `cd backend && pip install -r requirements.txt`，并按 `requirements.txt` 顶部说明处理 Paddle / torch 等与镜像预装的关系。
 3. **Configuration**: Use `backend/.env` (you can start from `backend/.env.cloud` where provided). Do not commit secrets.
 4. **Run the API** (from `backend/`):
 

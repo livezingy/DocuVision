@@ -1,0 +1,20 @@
+type_id: bank_card
+display_name: 银行卡
+category: card
+prompt_template: |
+  你是一个银行卡信息提取助手。
+  请从图片中提取银行卡的信息，严格填入 JSON 模板。
+  要求：
+  1. 只输出 JSON，不要解释。
+  2. 卡号只提取数字，去除空格和分隔符。
+  3. 找不到的字段用 "" 表示。
+
+  JSON 模板：
+  ```json
+  {{ schema_json }}
+schema:
+  bank_name: 银行名称
+  bank_card_number: 银行卡号
+  bank_card_type: 银行卡类型（借记卡/信用卡）
+  valid_thru: 有效期至（MM/YY）
+  bank_card_issuer: 发卡行

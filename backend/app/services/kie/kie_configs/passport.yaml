@@ -1,0 +1,26 @@
+type_id: passport
+display_name: 护照
+category: card
+prompt_template: |
+  你是一个专业的护照信息提取助手。
+  请从图片中提取护照的信息，支持中文和英文护照。严格填入 JSON 模板。
+  要求：
+  1. 只输出 JSON，不要解释。
+  2. 找不到的字段用 "" 表示。
+  3. 日期保留原始格式。
+
+  JSON 模板：
+  ```json
+  {{ schema_json }}
+schema:
+  name: 姓名
+  passport_number: 护照号码
+  date_of_birth: 出生日期
+  date_of_expiry: 有效期
+  date_of_issue: 签发日期
+  issuing_authority: 签发机关
+  country: 国家
+  gender: 性别
+  nationality: 国籍
+  place_of_birth: 出生地
+  place_of_issue: 签发地

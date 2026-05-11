@@ -1,0 +1,38 @@
+type_id: invoice
+display_name: 发票
+category: document
+prompt_template: |
+  你是一个专业的发票信息提取助手。
+  请仔细分析图片中的发票，将提取的信息严格填入下方 JSON 模板。
+  要求：
+  1. 只输出 JSON，不要任何额外解释。
+  2. 金额保留货币符号和数字，日期保持原格式。
+  3. 表格项目（items）按行记录为对象列表。
+  4. 所有字段都必须出现在 JSON 中，找不到的字段用空字符串 "" 或空列表 [] 表示。
+
+  JSON 模板：
+  ```json
+  {{ schema_json }}
+schema:
+  invoice_number: 发票号码
+  invoice_date: 开票日期
+  due_date: 到期日/付款截止日
+  seller_name: 销售方名称
+  seller_address: 销售方地址
+  seller_tax_id: 销售方税号
+  buyer_name: 购买方名称
+  buyer_address: 购买方地址
+  buyer_tax_id: 购买方税号
+  currency: 货币代码
+  subtotal: 小计
+  tax_total: 税额合计
+  total: 总金额
+  amount_due: 应付金额
+  payment_terms: 付款条款
+  items:
+    - description: 商品/服务描述
+      quantity: 数量
+      unit: 单位
+      unit_price: 单价
+      tax: 行税额
+      amount: 行金额

@@ -57,6 +57,14 @@ class Settings(BaseSettings):
     # env override: APP_TABLE_ALLOW_FULLPAGE_FALLBACK
     TABLE_ALLOW_FULLPAGE_FALLBACK: bool = Field(default=False, alias="APP_TABLE_ALLOW_FULLPAGE_FALLBACK")
 
+    # KIE (Qwen2.5-VL) — env: DOCUVISION_KIE_QWEN_MODEL_ID, DOCUVISION_KIE_QWEN_DEVICE_MAP, DOCUVISION_KIE_QWEN_TORCH_DTYPE
+    KIE_QWEN_MODEL_ID: str = Field(
+        default="Qwen/Qwen2.5-VL-7B-Instruct",
+        alias="DOCUVISION_KIE_QWEN_MODEL_ID",
+    )
+    KIE_QWEN_DEVICE_MAP: str = Field(default="auto", alias="DOCUVISION_KIE_QWEN_DEVICE_MAP")
+    KIE_QWEN_TORCH_DTYPE: str = Field(default="bfloat16", alias="DOCUVISION_KIE_QWEN_TORCH_DTYPE")
+
     class Config:
         env_file = ".env"
         case_sensitive = True

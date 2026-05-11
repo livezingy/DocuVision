@@ -1,128 +1,127 @@
-"""DocumentKIEService 主流程单测（mock 子进程，不真实加载 PaddleNLP）。"""
+"""QwenDocumentKIEService 单测：mock KieManager，不加载 HF 权重。"""
 
 import asyncio
-import json
+import os
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
-from app.services.kie_service import DocumentKIEService
-
-FIXTURES = Path(__file__).parent / "kie" / "fixtures"
-
-
-class _MockEngine:
-    """模拟常驻 UIE worker，绕过 paddlenlp 加载。"""
-
-    load_ms = 0
-
-    def __init__(self, uie_output):
-        self._uie_output = uie_output
-
-    def analyze_text(self, text):
-        return self._uie_output
+from app.services.kie_qwen_service import QwenDocumentKIEService
 
 
-def _load_layout():
-    return json.loads((FIXTURES / "pp_structure_invoice.json").read_text(encoding="utf-8"))
+class _FakeKieManager:
+    def __init__(self) -> None:
+        self.last_image: str = ""
+        self.last_type: str = ""
+
+    def extract(self, image_path: str, option_type: str, lang=None):
+        self.last_image = image_path
+        self.last_type = option_type
+        return {
+            "type": option_type,
+            "fields": {
+                "invoice_number": "INV-001",
+                "items": [{"description": "A", "amount": "1"}],
+            },
+        }
 
 
-def _load_uie():
-    return json.loads((FIXTURES / "uie_output_invoice.json").read_text(encoding="utf-8"))
+def _patch_init_manager(fake: _FakeKieManager):
+    def _impl(self: QwenDocumentKIEService) -> None:
+        self._manager = fake
+        self._init_wall_ms = 12
+
+    return _impl
 
 
-def test_extract_fields_returns_view_compatible_dict(monkeypatch):
-    svc = DocumentKIEService()
-    monkeypatch.setattr(
-        DocumentKIEService,
-        "_get_engine",
-        lambda self, dt: _MockEngine(_load_uie()),
-    )
+def test_extract_fields_returns_kie_step_compatible_dict(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeKieManager()
+    monkeypatch.setattr(QwenDocumentKIEService, "_init_manager", _patch_init_manager(fake))
+
+    img_path = tmp_path / "one.png"
+    Image.new("RGB", (4, 4), color="white").save(img_path)
 
     async def run_test():
+        svc = QwenDocumentKIEService()
         res = await svc.extract_fields(
-            "somepath.pdf",
+            str(img_path),
             "invoice",
-            preprocessed_image_path="/tmp/preproc.jpg",
-            layout=_load_layout(),
+            preprocessed_image_path=str(img_path),
+            layout={"elements": []},
             table_meta={"tables_returned": 0},
             tables=[],
         )
-
         assert isinstance(res, dict)
-        # view.fields 兼容
         fields = res["fields"]
-        assert isinstance(fields, dict)
-        assert "InvoiceId" in fields
-        assert "InvoiceDate" in fields
-        assert "InvoiceTotal" in fields
-        assert fields["InvoiceDate"].get("valueDate") == "2024-02-19"
-        assert fields["InvoiceTotal"]["valueCurrency"]["amount"] == 180.0
-
-        # confidence_avg / metadata
-        assert res["confidence_avg"] > 0
-        assert res["metadata"]["items_source"] in {"uie_relation", "table_heuristic", "none"}
-
-        # 行项目应被聚合
-        items = fields.get("Items")
-        assert items is not None
-        assert items["type"] == "array"
-        assert isinstance(items.get("valueArray"), list)
-        assert len(items["valueArray"]) >= 1
-
-        # debug_input 透传
-        assert res["debug_input"]["preprocessed_image_path"] == "/tmp/preproc.jpg"
-        assert res["debug_input"]["ocr_text_length"] > 0
+        assert fields["invoice_number"] == "INV-001"
+        assert len(fields["items"]) == 1
+        assert res["items_count"] == 1
+        assert res["confidence_avg"] == 0.0
+        assert res["metadata"]["engine"] == "qwen2.5-vl"
+        assert res["metadata"]["resolved_document_type"] == "invoice"
+        assert res["metadata"]["items_source"] == "n/a"
+        assert res["debug_input"]["vl_image_path"] == str(img_path)
 
     asyncio.run(run_test())
 
 
-def test_extract_fields_empty_layout_short_circuits(monkeypatch):
-    svc = DocumentKIEService()
-    called = {"n": 0}
-
-    class _ShouldNotBeCalled:
-        load_ms = 0
-
-        def analyze_text(self, text):
-            called["n"] += 1
-            return []
-
-    monkeypatch.setattr(
-        DocumentKIEService,
-        "_get_engine",
-        lambda self, dt: _ShouldNotBeCalled(),
-    )
+def test_extract_fields_missing_image_returns_empty(monkeypatch) -> None:
+    fake = _FakeKieManager()
+    monkeypatch.setattr(QwenDocumentKIEService, "_init_manager", _patch_init_manager(fake))
 
     async def run_test():
+        svc = QwenDocumentKIEService()
         res = await svc.extract_fields(
-            "x.pdf",
+            "/nonexistent/path/nope.pdf",
             "invoice",
-            layout={"elements": []},
+            preprocessed_image_path=None,
         )
         assert res["fields"] == {}
-        assert res["metadata"]["reason"] == "empty_ocr_text"
-        assert called["n"] == 0  # 子进程未被触发
+        assert res["metadata"].get("reason") == "kie_image_missing"
+        assert fake.last_image == ""
 
     asyncio.run(run_test())
 
 
-@pytest.mark.parametrize("doc_type", ["invoice", "receipt", "id_card"])
-def test_extract_fields_routes_by_document_type(monkeypatch, doc_type):
-    svc = DocumentKIEService()
-    monkeypatch.setattr(
-        DocumentKIEService,
-        "_get_engine",
-        lambda self, dt: _MockEngine(_load_uie()),
-    )
+@pytest.mark.parametrize(
+    "doc_type",
+    ["invoice", "receipt", "id_card", "passport", "bank_card", "card_group"],
+)
+def test_extract_fields_routes_document_type(monkeypatch, tmp_path: Path, doc_type: str) -> None:
+    fake = _FakeKieManager()
+    monkeypatch.setattr(QwenDocumentKIEService, "_init_manager", _patch_init_manager(fake))
+
+    img_path = tmp_path / f"{doc_type}.png"
+    Image.new("RGB", (2, 2)).save(img_path)
 
     async def run_test():
-        res = await svc.extract_fields(
-            "x.pdf",
-            doc_type,
-            layout=_load_layout(),
-        )
-        assert isinstance(res, dict)
-        assert "fields" in res
+        svc = QwenDocumentKIEService()
+        res = await svc.extract_fields(str(img_path), doc_type)
+        assert res["metadata"]["resolved_document_type"] == doc_type
+        assert fake.last_type == doc_type
+
+    asyncio.run(run_test())
+
+
+def test_pdf_raster_fallback_uses_temp_png(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeKieManager()
+    monkeypatch.setattr(QwenDocumentKIEService, "_init_manager", _patch_init_manager(fake))
+
+    import fitz
+
+    pdf_path = tmp_path / "doc.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "hi")
+    doc.save(str(pdf_path))
+    doc.close()
+
+    async def run_test():
+        svc = QwenDocumentKIEService()
+        res = await svc.extract_fields(str(pdf_path), "invoice", preprocessed_image_path=None)
+        assert res["fields"]["invoice_number"] == "INV-001"
+        assert fake.last_image.endswith(".png")
+        assert os.path.isfile(fake.last_image) is False
 
     asyncio.run(run_test())

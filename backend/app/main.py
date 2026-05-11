@@ -192,7 +192,7 @@ from app.services.table_service import TableService
 from app.services.formula_service import FormulaService
 from app.services.chart_service import ChartService
 from app.services.seal_service import SealService
-from app.services.kie_service import DocumentKIEService
+from app.services.kie_qwen_service import QwenDocumentKIEService
 from app.services.export_service import ExportService
 from app.services.batch_service import BatchService, BatchStatus
 from app.services.unified_layout_service import UnifiedLayoutService
@@ -275,7 +275,7 @@ table_service = TableService(
 formula_service = FormulaService(device="gpu" if use_gpu else "cpu")
 chart_service = ChartService(device="gpu" if use_gpu else "cpu")
 seal_service = SealService(device="gpu" if use_gpu else "cpu")
-kie_service = DocumentKIEService()
+kie_service = QwenDocumentKIEService()
 export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
 unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服

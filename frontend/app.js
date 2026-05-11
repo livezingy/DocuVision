@@ -1109,7 +1109,7 @@ function getProcessingOptions() {
         // Auto-enable KIE when user selects invoice/receipt/id_card processing mode
         enable_kie: (function() {
             const dt = isLayout ? 'auto' : selectedMode;
-            const kieTypes = new Set(['invoice', 'receipt', 'id_card']);
+            const kieTypes = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card', 'card_group']);
             return kieTypes.has(String(dt).toLowerCase());
         })(),
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',

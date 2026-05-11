@@ -1,0 +1,32 @@
+type_id: receipt
+display_name: 收据
+category: receipt
+prompt_template: |
+  你是一个专业的收据信息提取助手。
+  请仔细分析图片中的收据，将提取的信息严格填入下方 JSON 模板。
+  要求：
+  1. 只输出 JSON，不要任何额外解释。
+  2. 金额保留货币符号和数字，日期保持原格式。
+  3. 商品明细（items）按行记录为对象列表。
+  4. 所有字段都必须出现，找不到的用 "" 或 [] 表示。
+
+  JSON 模板：
+  ```json
+  {{ schema_json }}
+schema:
+  receipt_number: 收据编号
+  receipt_date: 收据日期
+  merchant_name: 商家名称
+  merchant_address: 商家地址
+  merchant_phone: 商家电话
+  subtotal: 小计
+  tax: 税额
+  tip: 小费/服务费
+  total: 总金额
+  payment_method: 支付方式
+  currency: 货币代码
+  items:
+    - description: 商品/服务描述
+      quantity: 数量
+      unit_price: 单价
+      amount: 行金额

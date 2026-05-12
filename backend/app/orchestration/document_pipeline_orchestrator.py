@@ -508,7 +508,10 @@ async def kie_step(ctx: PipelineContext) -> None:
         return
 
     # Prepare richer inputs for KIE: prefer preprocessed image and table meta when available
-    preprocessed_image_path = ctx["task"].get("preprocessed_image_path") or ctx.get("file_path")
+    _task = ctx.get("task")
+    if not isinstance(_task, dict):
+        _task = {}
+    preprocessed_image_path = _task.get("preprocessed_image_path") or ctx.get("file_path")
     layout = ctx["result"].get("layout", {}) if isinstance(ctx["result"].get("layout"), dict) else {}
     table_meta = ctx["result"].get("table_extraction_meta", {}) if isinstance(ctx["result"].get("table_extraction_meta"), dict) else {}
     tables = ctx["result"].get("tables", []) if isinstance(ctx["result"].get("tables"), list) else []

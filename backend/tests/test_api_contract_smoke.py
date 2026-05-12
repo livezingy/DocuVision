@@ -192,7 +192,7 @@ async def run_contract_checks(test_file: Path | None, res: Results) -> None:
         # Debug endpoint returns 404 for both missing job AND when DEBUG_MODE=false
         res.add("GET missing job debug (should 404)", r.status_code == 404, f"status={r.status_code}")
 
-        print(_info("\nStage C: Template/NLP service contract"))
+        print(_info("\nStage C: Template API frozen (410) contract"))
 
         r = await client.get("/api/v1/templates")
         ok = r.status_code == 410
@@ -205,12 +205,6 @@ async def run_contract_checks(test_file: Path | None, res: Results) -> None:
         r = await client.post("/api/v1/templates/match", data={"text": "Invoice No. 1001 Total 123.45"})
         ok = r.status_code == 410
         res.add("POST /api/v1/templates/match", ok, f"status={r.status_code}")
-
-        r = await client.post("/api/v1/nlp/keywords", json={"text": "hello world", "top_k_keywords": 5})
-        res.add("POST /api/v1/nlp/keywords", r.status_code == 410, f"status={r.status_code}")
-
-        r = await client.post("/api/v1/nlp/entities", json={"text": "John in New York"})
-        res.add("POST /api/v1/nlp/entities", r.status_code == 410, f"status={r.status_code}")
 
         if not test_file:
             print(_warn("No --file provided and no default test file found. Skipping upload lifecycle checks."))

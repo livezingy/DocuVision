@@ -16,7 +16,6 @@
 | Prompt / Schema | `backend/app/services/kie/kie_configs/*.yaml`，由 [`KieManager`](../../backend/app/services/kie/KieManager.py) 加载 |
 | 服务入口 | **`QwenDocumentKIEService.extract_fields(...)`**（[`kie_qwen_service.py`](../../backend/app/services/kie_qwen_service.py)） |
 | 编排 | `kie_step` 在 `document_pipeline_orchestrator.py` 中于表格等步骤之后执行；`phase1_envelope_step` 将非空 `kie_fields` 写入 `view.fields` |
-| 历史实现 | PaddleNLP UIE（`kie_service.py` 内 `DocumentKIEService`）保留在仓库中供对照与离线脚本，**主应用 `main.py` 已改为注入 Qwen 服务** |
 
 环境变量（可选）：`DOCUVISION_KIE_QWEN_MODEL_ID`（默认指向 ModelScope 本地缓存：`/root/.cache/modelscope/hub/models/Qwen/Qwen2___5-VL-3B-Instruct`）、`DOCUVISION_KIE_QWEN_DEVICE_MAP`、`DOCUVISION_KIE_QWEN_TORCH_DTYPE`（见 `app/core/config.py`）。
 
@@ -33,7 +32,7 @@ flowchart LR
 ```
 
 - **输入图像**：优先 `preprocessed_image_path`（与版面坐标对齐）；若无且上传为 **PDF**，服务内用 PyMuPDF 将 **第 1 页** 栅格化为临时 PNG 再推理，结束后删除临时文件。
-- **文本类 layout/tables**：传入 `extract_fields` 仅用于 `debug_input` 溯源；**VL 推理不依赖** `WordIndexer` 全文。
+- **文本类 layout/tables**：传入 `extract_fields` 仅用于 `debug_input` 溯源；**VL 推理不依赖**版面全文拼接。
 - **输出**：`extract_fields` 返回 `fields`（纯 JSON 兼容 dict，可能含 `raw_output` 键表示模型未产出合法 JSON）、`confidence_avg`（当前恒为 0.0）、`items_count`、`metadata`（含 `engine: qwen2.5-vl`、`resolved_document_type`、`kie_model_load_ms` 等）、`debug_input`。
 
 ## 4. Schema 与 `document_type` 路由
@@ -70,7 +69,7 @@ flowchart LR
 ## 7. 参考与测试
 
 - 契约单测：`backend/tests/test_kie_return_raw_contract.py`、`backend/tests/test_kie_service.py`（mock `KieManager`，不下载权重）。
-- Paddle UIE 聚合/映射链的离线校验仍见 `backend/tests/kie/_smoke_check.py`（针对 `kie_service.py` 与 mapper，不等价于线上主路径）。
+- 轻量脚本：`python -m tests.kie._smoke_check`（仅 `value_typer`，无模型）。
 
 ### 7.1 云端 GPU-environment 针对性 pytest（本阶段）
 
@@ -100,8 +99,8 @@ pytest tests/test_kie_service.py tests/test_kie_return_raw_contract.py tests/tes
 # Envelope / 表格策略等（不 import app.main 全量 Paddle 的优先单独列——若某文件 import main 仍会慢）
 pytest tests/test_envelope_builder.py tests/test_table_strategy_meta.py -q
 
-# kie 子包纯单测（mapper 等，不跑 main）
-pytest tests/kie/ -q --ignore=tests/kie/_smoke_check.py
+# kie 子包纯单测（value_typer 等，不跑 main）
+pytest tests/kie/test_value_typer.py -q
 ```
 
 全量回归：`pytest tests/ -q --tb=short`（耗时与 Paddle 模型缓存命中情况视环境而定）。

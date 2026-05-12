@@ -167,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initAnalysisView();
     initExportButtons();
     initBatchProcessing();
-    initNLPFeatures();
 
     // Insert a lightweight skeleton placeholder to avoid initial flash
     if (typeof insertInitialSkeleton === 'function') {
@@ -1076,7 +1075,6 @@ function resetAnalysisOptions() {
     document.getElementById('optEnableSeal').checked = false;
     document.getElementById('dialogOcrEngineSelect').value = 'paddleocr';
     document.getElementById('dialogLayoutEngineSelect').value = 'ppstructure';
-    document.getElementById('dialogNlpEngineSelect').value = 'spacy';
     document.getElementById('dialogTemplateSelect').value = '';
     document.getElementById('dialogTemplateSelector').style.display = 'none';
     const layoutSubOptions = document.getElementById('layoutSubOptions');
@@ -3390,102 +3388,6 @@ async function getBatchResults(batchId) {
 }
 
 // ============================================
-// P2 Features: NLP Analysis
-// ============================================
-
-/**
- * Initialize NLP features
- */
-function initNLPFeatures() {
-    // NLP state
-    window.nlpState = {
-        keywords: [],
-        entities: []
-    };
-}
-
-/**
- * Analyze text with NLP
- */
-async function analyzeTextNLP(text, topK = 10) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/nlp/analyze`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                text: text,
-                top_k_keywords: topK,
-                engine: document.getElementById('nlpEngineSelect')?.value || 'spacy'
-            })
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            window.nlpState.keywords = result.keywords || [];
-            window.nlpState.entities = result.entities || [];
-            return result;
-        }
-        return null;
-    } catch (error) {
-        console.error('NLP analysis failed:', error);
-        return null;
-    }
-}
-
-/**
- * Extract keywords only
- */
-async function extractKeywords(text, topK = 10) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/nlp/keywords`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                text: text,
-                top_k_keywords: topK
-            })
-        });
-
-        if (response.ok) {
-            return await response.json();
-        }
-        return null;
-    } catch (error) {
-        console.error('Keyword extraction failed:', error);
-        return null;
-    }
-}
-
-/**
- * Extract named entities
- */
-async function extractEntities(text) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/nlp/entities`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                text: text
-            })
-        });
-
-        if (response.ok) {
-            return await response.json();
-        }
-        return null;
-    } catch (error) {
-        console.error('Entity extraction failed:', error);
-        return null;
-    }
-}
-
-// ============================================
 // P2 Features: Template Management
 // ============================================
 
@@ -3704,6 +3606,34 @@ function initJsonViewButtons() {
 }
 
 /**
+ * Collect text-bearing elements from Phase1-style result.view.pages[].elements (payload.text).
+ */
+function collectViewPageTextElements(view) {
+    if (!view || !Array.isArray(view.pages)) return [];
+    const out = [];
+    for (const page of view.pages) {
+        const pageNum = page.page_num || page.page || 1;
+        const elements = page.elements || [];
+        let i = 0;
+        for (const elem of elements) {
+            if (!elem || typeof elem !== 'object') continue;
+            const payload = elem.payload || {};
+            const text = (typeof payload.text === 'string' ? payload.text : '').trim();
+            if (!text) continue;
+            const kind = String(elem.kind || elem.type || 'paragraph').toLowerCase();
+            out.push({
+                id: elem.id || `view_${pageNum}_${i++}`,
+                type: kind,
+                text,
+                confidence: payload.confidence ?? elem.confidence,
+                page: pageNum
+            });
+        }
+    }
+    return out;
+}
+
+/**
  * Update Content Text view
  */
 function updateContentText(result) {
@@ -3713,8 +3643,9 @@ function updateContentText(result) {
     // Prefer flat /blocks data when already fetched; fall back to result fields.
     const blocksData = lastFetchedBlocks;
     const textBlocks = result.text_blocks || [];
-    const semanticTextBlocks = blocksData
-        ? blocksData.blocks.filter(b => {
+    let semanticTextBlocks;
+    if (blocksData) {
+        semanticTextBlocks = blocksData.blocks.filter(b => {
               const t = String(b.type || b.role || '').toLowerCase();
               return [
                   'doc_title', 'paragraph_title', 'abstract_title', 'reference_title', 'content_title',
@@ -3732,8 +3663,11 @@ function updateContentText(result) {
               text: b.text || b.content || '',
               confidence: b.confidence,
               page: b.page || 1
-          }))
-        : result.semantic_text_blocks || [];
+          }));
+    } else {
+        const fromView = collectViewPageTextElements(result.view || {});
+        semanticTextBlocks = fromView.length ? fromView : (result.semantic_text_blocks || []);
+    }
     const fullText = result.full_text || '';
     const layout = result.layout || {};
     const elements = layout.elements || [];

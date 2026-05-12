@@ -1,16 +1,8 @@
-"""PaddleX 与 PaddleNLP 共用环境下的 ``aistudio-sdk`` 兼容层。
+"""PaddleX 3.x 在旧版 ``aistudio-sdk`` 环境下的 ``snapshot_download`` 兼容层。
 
-**背景**（见 PaddleNLP #10781、#11186）：
-
-- ``aistudio-sdk>=0.3``：提供 ``aistudio_sdk.snapshot_download``，PaddleX 3.3.x 依赖该入口。
-- ``aistudio-sdk<0.3``（如 0.2.6）：提供 ``aistudio_sdk.hub.download``，PaddleNLP / Taskflow 依赖该入口。
-
-二者在同一 venv 中无法仅靠升/降级同时满足。DocuVision 采用 **方案 A**：
-
-- 固定 ``aistudio-sdk==0.2.6`` 以满足 PaddleNLP。
-- 在 **任何** ``import paddlex`` 之前调用本模块，向 ``sys.modules`` 注册合成子模块
-  ``aistudio_sdk.snapshot_download``，将 ``snapshot_download`` 指向 ``hub.download``，
-  使 PaddleX 的 ``from aistudio_sdk.snapshot_download import snapshot_download`` 仍能工作。
+**背景**：部分环境固定 ``aistudio-sdk==0.2.x``，仅提供 ``aistudio_sdk.hub.download``，
+而 PaddleX 期望 ``aistudio_sdk.snapshot_download``。在 **任何** ``import paddlex`` 之前
+调用本模块，可向 ``sys.modules`` 注册合成子模块，将 ``snapshot_download`` 指向 ``hub.download``。
 
 必须在 ``app.main`` 中 ``import paddlex`` 之前调用（见 ``main.py``）。
 """

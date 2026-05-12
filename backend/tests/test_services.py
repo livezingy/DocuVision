@@ -122,8 +122,9 @@ class TestExportService:
         import asyncio
 
         test_data = {
-            "text_blocks": [{"text": "Test", "confidence": 0.95}],
-            "tables": []
+            "document_info": {"pages": 1, "file_name": "x.pdf"},
+            "tables": [],
+            "view": {"pages": [{"page_num": 1, "elements": []}]},
         }
 
         result = asyncio.run(service.to_json(test_data, "test_task"))

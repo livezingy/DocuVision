@@ -1,5 +1,7 @@
 # 测试文件准备清单
 
+按文档类型的**固定样例与人工/自动化验收**见 [acceptance/doc_types.md](acceptance/doc_types.md)。分类样例目录：`test_data/testfiles/`。云端截图仅放 `test_data/TestResult/`（不纳入 Git）。
+
 ## 📋 文件准备检查清单
 
 请准备以下测试文件，并在完成后勾选：

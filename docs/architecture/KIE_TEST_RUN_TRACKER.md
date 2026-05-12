@@ -51,5 +51,4 @@ Copy this block for each cloud run batch.
 
 - Acceptance criteria: backend/tests/KIE_ACCEPTANCE_CRITERIA.md
 - API check skeleton: backend/tests/test_kie_acceptance_baseline.py
-- Online report generator: backend/tests/generate_kie_hit_miss_report.py
-- Latest report markdown: backend/tests/reports/kie_hit_miss_report.md
+- 验收矩阵与样例目录约定：test_data/acceptance/doc_types.md、test_data/testfiles/

@@ -18,10 +18,8 @@ Track the remaining post-main stabilization work after Phase 2 convergence.
 Execution artifacts:
 - Acceptance criteria: `backend/tests/KIE_ACCEPTANCE_CRITERIA.md`
 - Regression/smoke skeleton: `backend/tests/test_kie_acceptance_baseline.py`
-- Report generator: `backend/tests/generate_kie_hit_miss_report.py`
-- Latest JSON report: `backend/tests/reports/kie_hit_miss_report.json`
-- Latest Markdown report: `backend/tests/reports/kie_hit_miss_report.md`
 - Ongoing docs tracker: `docs/architecture/KIE_TEST_RUN_TRACKER.md`
+- 验收矩阵: `test_data/acceptance/doc_types.md`
 
 Latest run snapshot:
 - generated_at_utc: 2026-04-10T00:19:43.010801+00:00

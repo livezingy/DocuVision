@@ -64,59 +64,6 @@ class TestEnginesAPI:
         print(f"   Table engines: {data['table']['available']}")
 
 
-class TestNLPAPI:
-    """NLP API 测试"""
-
-    @staticmethod
-    def _assert_service_only_deprecated(response, path: str):
-        """Service-only profile should return HTTP 410 for deprecated NLP routes."""
-        assert response.status_code == 410, f"Expected 410 for {path}, got {response.status_code}"
-        try:
-            detail = str(response.json().get("detail", ""))
-            assert "deprecated" in detail.lower() or "no longer available" in detail.lower()
-        except Exception:
-            pass
-
-    def test_nlp_analyze(self):
-        """测试 NLP 分析"""
-        test_text = "Apple Inc. was founded in 1976 in Cupertino, California. The company specializes in consumer electronics."
-
-        response = requests.post(
-            f"{API_BASE_URL}/nlp/analyze",
-            json={"text": test_text, "top_k_keywords": 5},
-            timeout=10
-        )
-
-        self._assert_service_only_deprecated(response, "/api/v1/nlp/analyze")
-        print(f"{PASS} NLP analyze route is deprecated as expected (410)")
-
-    def test_nlp_keywords(self):
-        """测试关键词提取"""
-        test_text = "Machine learning and artificial intelligence are transforming the technology industry."
-
-        response = requests.post(
-            f"{API_BASE_URL}/nlp/keywords",
-            json={"text": test_text, "top_k_keywords": 5},
-            timeout=10
-        )
-
-        self._assert_service_only_deprecated(response, "/api/v1/nlp/keywords")
-        print(f"{PASS} NLP keywords route is deprecated as expected (410)")
-
-    def test_nlp_entities(self):
-        """测试命名实体识别"""
-        test_text = "Microsoft Corporation is located in Redmond, Washington."
-
-        response = requests.post(
-            f"{API_BASE_URL}/nlp/entities",
-            json={"text": test_text},
-            timeout=10
-        )
-
-        self._assert_service_only_deprecated(response, "/api/v1/nlp/entities")
-        print(f"{PASS} NLP entities route is deprecated as expected (410)")
-
-
 class TestTemplateAPI:
     """模板 API 测试"""
 

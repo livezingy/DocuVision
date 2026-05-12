@@ -602,6 +602,7 @@ async def kie_step(ctx: PipelineContext) -> None:
             (kie_result.get("debug_input", {}) or {}).get("ocr_text_length", 0)
             if isinstance(kie_result, dict) else 0
         ),
+        "engine": str(metadata.get("engine", "") or "qwen2.5-vl"),
     }
     await orchestrator.update_progress(ctx, 80, f"KIE extraction completed | fields={len(fields)} | items={items_count}")
 
@@ -813,7 +814,10 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
             quality["kie_confidence_avg"] = float(kie_meta.get("confidence_avg", 0.0) or 0.0)
         except (TypeError, ValueError):
             quality["kie_confidence_avg"] = 0.0
-        quality["kie_confidence_source"] = "uie-m-base" if quality["kie_attempted"] else ""
+        if quality["kie_attempted"] and kie_meta.get("succeeded") is True:
+            quality["kie_confidence_source"] = str(kie_meta.get("engine", "") or "qwen2.5-vl")
+        else:
+            quality["kie_confidence_source"] = ""
         try:
             quality["kie_model_load_ms"] = int(kie_meta.get("kie_model_load_ms", 0) or 0)
         except (TypeError, ValueError):

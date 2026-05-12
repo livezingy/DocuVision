@@ -17,8 +17,7 @@ os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 os.environ['PADDLEX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 
-# PaddleNLP 需要 aistudio-sdk<0.3（hub.download）；PaddleX 3.3 需要 snapshot_download。
-# 固定 0.2.x 并在 import paddlex 前注册 shim（见 app.core.aistudio_compat）。
+# PaddleX 3.3 使用 snapshot_download；在 import paddlex 前注册 aistudio shim（见 app.core.aistudio_compat）。
 from app.core.aistudio_compat import install_aistudio_snapshot_shim_for_paddlex
 
 install_aistudio_snapshot_shim_for_paddlex()
@@ -506,12 +505,6 @@ class CreateTemplateModel(BaseModel):
 class BatchCreateModel(BaseModel):
     name: str
     options: Dict[str, Any] = {}
-
-
-class NLPAnalysisRequest(BaseModel):
-    text: str
-    top_k_keywords: int = 10
-    engine: Optional[str] = None
 
 
 # ============================================
@@ -1642,10 +1635,6 @@ async def delete_task(task_id: str):
     return {"message": "Task deleted", "task_id": task_id}
 
 
-# ============================================
-# API Routes - NLP (P2)
-# ============================================
-
 def _raise_deprecated_route(path: str) -> None:
     raise HTTPException(
         status_code=410,
@@ -1656,26 +1645,8 @@ def _raise_deprecated_route(path: str) -> None:
     )
 
 
-@app.post("/api/v1/nlp/analyze", deprecated=True)
-async def analyze_text_nlp(request: NLPAnalysisRequest):
-    """Deprecated: NLP route is no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/nlp/analyze")
-
-
-@app.post("/api/v1/nlp/keywords", deprecated=True)
-async def extract_keywords(request: NLPAnalysisRequest):
-    """Deprecated: NLP route is no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/nlp/keywords")
-
-
-@app.post("/api/v1/nlp/entities", deprecated=True)
-async def extract_entities(request: NLPAnalysisRequest):
-    """Deprecated: NLP route is no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/nlp/entities")
-
-
 # ============================================
-# API Routes - Templates (P2)
+# API Routes - Templates (P2) — frozen (410)
 # ============================================
 
 @app.get("/api/v1/templates", deprecated=True)

@@ -129,7 +129,7 @@ class QwenDocumentKIEService:
         table_meta: Optional[Dict[str, Any]] = None,
         tables: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
-        """Same contract as legacy DocumentKIEService for orchestrator kie_step."""
+        """Orchestrator-compatible KIE contract (fields + metadata + debug_input)."""
 
         image_path, temp_path = _resolve_kie_image_path(file_path, preprocessed_image_path)
         debug_input: Dict[str, Any] = {

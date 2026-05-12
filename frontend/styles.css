@@ -2164,25 +2164,6 @@ body.show-analysis .analyzed-region {
     background: linear-gradient(135deg, var(--error-400), var(--error-500));
 }
 
-/* NLP Engine Indicator */
-.nlp-engine-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    background: var(--bg-tertiary);
-    border-radius: 12px;
-    font-size: 11px;
-    color: var(--text-muted);
-}
-
-.nlp-engine-indicator .engine-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--success-500);
-}
-
 /* Animation for KIE field cards */
 .kie-field-card {
     animation: fadeIn 0.3s ease-out;
@@ -2194,26 +2175,6 @@ body.show-analysis .analyzed-region {
 .kie-field-card:nth-child(3) { animation-delay: 0.15s; }
 .kie-field-card:nth-child(4) { animation-delay: 0.2s; }
 .kie-field-card:nth-child(5) { animation-delay: 0.25s; }
-
-/* Loading state for NLP */
-.nlp-loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    color: var(--text-muted);
-}
-
-.nlp-loading::before {
-    content: '';
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--border-strong);
-    border-top-color: var(--primary-500);
-    border-radius: 50%;
-    margin-right: 10px;
-    animation: spin 0.8s linear infinite;
-}
 
 /* ========================================
    Modal Dialog Styles

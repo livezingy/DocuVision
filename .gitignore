@@ -201,6 +201,9 @@ backend/uploads/
 # Probe/debug generated artifacts
 scripts/outputs/
 
+# Cloud test screenshots / artifacts (not versioned)
+test_data/TestResult/
+
 # Test data (keep structure but ignore actual test files)
 test_data/**/*.pdf
 test_data/**/*.jpg

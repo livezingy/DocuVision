@@ -82,26 +82,26 @@ For field-level API behavior, response shapes, and debug semantics, rely on **`d
 Examples called out in architecture notes:
 
 ```bash
-pytest backend/tests/test_kie_service.py backend/tests/test_orchestrator_order.py
+pytest backend/tests/test_kie_service.py backend/tests/test_kie_return_raw_contract.py backend/tests/test_orchestrator_order.py
 ```
 
-Additional tests live under `backend/tests/` (e.g. table strategy, formula grading).
+Additional tests live under `backend/tests/` (e.g. table strategy, formula grading). Acceptance by document type: `test_data/acceptance/doc_types.md`.
 
 ---
 
 ## Roadmap (high level)
 
-Aligned with **Phase 3** in the architecture document—**document-level KIE with UIE is already integrated**; remaining themes include:
+Aligned with **Phase 3** in the architecture document—**document-level KIE uses Qwen2.5-VL**; remaining themes include:
 
 | Theme | Direction |
 |-------|-----------|
-| **Second KIE engine (optional)** | Evaluate models such as **Qwen2.5-VL**, **PP-ChatOCRv4-doc**, or **`uie-x-base`** while keeping **`view.fields` / `quality.kie_*`** stable or versioned |
-| **kie_confidence_source** | Today tied to `uie-m-base` in the orchestrator; should become configuration-driven when multiple engines exist |
+| **Second KIE engine (optional)** | Evaluate models such as **PP-ChatOCRv4-doc** or **`uie-x-base`** while keeping **`view.fields` / `quality.kie_*`** stable or versioned |
+| **kie_confidence_source** | Today derived from `kie_meta.engine` after successful KIE; should stay configuration-driven when multiple engines exist |
 | **Long-document Q&A** | PaddleOCR-VL–style scenarios |
 | **Translation** | PP-DocTranslation for multilingual output |
 | **Retrieval** | Vector indexing over processed content |
 
-See **`docs/architecture/智能文档处理系统设计方案.md`** §10 for the full phased checklist and **`docs/architecture/kie.md`** §8 for KIE-specific follow-ups.
+See **`docs/architecture/智能文档处理系统设计方案.md`** §10 for the full phased checklist and **`docs/architecture/kie.md`** for KIE-specific details.
 
 ---
 

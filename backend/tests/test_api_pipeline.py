@@ -182,7 +182,6 @@ async def run_tests(test_file: Path | None, lang: str, skip_pipeline: bool, resu
                         "enable_layout": "true",
                         "enable_ocr":    "true",
                         "enable_table":  "true",
-                        "enable_nlp":    "false",
                         "language":      lang,
                     },
                 )

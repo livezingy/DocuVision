@@ -31,47 +31,58 @@ TEST_DATA_DIR = PROJECT_ROOT / "test_data"
 
 class UserWorkflowBase:
     """用户工作流基类"""
-    
-    def wait_for_task(self, task_id, max_wait=300, interval=3):
-        """等待任务完成（增加超时时间和查询间隔）"""
+
+    def wait_for_task(self, task_id, max_wait=300, interval=3, max_consecutive_poll_errors=20):
+        """等待任务完成；连续轮询失败达到阈值则立即失败，避免空转。"""
         elapsed = 0
         last_status = None
-        
+        consecutive_errors = 0
+        last_diag = ""
+
         while elapsed < max_wait:
             time.sleep(interval)
             elapsed += interval
-            
+
             try:
-                # 增加超时时间到30秒，避免查询时超时
                 response = requests.get(f"{API_BASE_URL}/tasks/{task_id}", timeout=30)
-                if response.status_code != 200:
-                    print(f"{WARN} 查询任务状态失败: {response.status_code}")
-                    continue
-                
-                task_status = response.json()
-                status = task_status["status"]
-                progress = task_status.get("progress", 0)
-                message = task_status.get("message", "")
-                
-                # 只在状态变化时打印
-                if status != last_status:
-                    print(f"   状态: {status}, 进度: {progress}%, 消息: {message}")
-                    last_status = status
-                
-                if status == "completed":
-                    return task_status
-                elif status == "failed":
-                    error_msg = task_status.get("message", "Unknown error")
-                    print(f"{FAIL} 任务失败: {error_msg}")
-                    return None
-            except requests.exceptions.ReadTimeout:
-                print(f"{WARN} 查询任务状态超时，继续等待...")
+            except requests.exceptions.RequestException as exc:
+                consecutive_errors += 1
+                last_diag = f"request_error:{exc}"
+                if consecutive_errors >= max_consecutive_poll_errors:
+                    pytest.fail(
+                        f"任务轮询连续失败 {consecutive_errors} 次，中止等待: {last_diag}"
+                    )
+                print(f"{WARN} 查询任务状态网络异常: {exc}")
                 continue
-            except Exception as e:
-                print(f"{WARN} 查询任务状态异常: {e}")
+
+            if response.status_code != 200:
+                consecutive_errors += 1
+                last_diag = f"http_{response.status_code}"
+                if consecutive_errors >= max_consecutive_poll_errors:
+                    pytest.fail(
+                        f"任务轮询连续 HTTP 失败 {consecutive_errors} 次: {last_diag}"
+                    )
+                print(f"{WARN} 查询任务状态失败: {response.status_code}")
                 continue
-        
-        print(f"{FAIL} 任务在 {max_wait} 秒内未完成")
+
+            consecutive_errors = 0
+            task_status = response.json()
+            status = task_status["status"]
+            progress = task_status.get("progress", 0)
+            message = task_status.get("message", "")
+
+            if status != last_status:
+                print(f"   状态: {status}, 进度: {progress}%, 消息: {message}")
+                last_status = status
+
+            if status == "completed":
+                return task_status
+            if status == "failed":
+                error_msg = task_status.get("message", "Unknown error")
+                print(f"{FAIL} 任务失败: {error_msg}")
+                return None
+
+        print(f"{FAIL} 任务在 {max_wait} 秒内未完成 (last_status={last_status!r}, last_diag={last_diag!r})")
         return None
 
 
@@ -121,7 +132,6 @@ class TestDocumentAnalysisWorkflow(UserWorkflowBase):
                 "enable_ocr": "true",
                 "enable_layout": "true",
                 "enable_table": "true",
-                "enable_nlp": "true"
             }
             response = requests.post(
                 f"{API_BASE_URL}/analyze",
@@ -144,21 +154,26 @@ class TestDocumentAnalysisWorkflow(UserWorkflowBase):
         assert response.status_code == 200, "Should get result"
         result = response.json()
         
-        # 验证: 用户期望得到完整结果
+        # 验证: 编排器产物 — layout 或 view、tables 列表
         assert "document_info" in result, "Should have document info"
-        assert "text_blocks" in result or "full_text" in result, "Should have text"
-        
+        assert isinstance(result.get("tables", []), list), "Should have tables list"
+        has_layout = isinstance(result.get("layout"), dict) and bool(result.get("layout"))
+        view = result.get("view") if isinstance(result.get("view"), dict) else {}
+        has_view = bool(view.get("pages"))
+        assert has_layout or has_view, "Should have layout or view.pages from pipeline"
+
         print(f"{PASS} 文档分析完成")
         print(f"   页面: {result.get('document_info', {}).get('pages', 0)}")
-        print(f"   文本块: {len(result.get('text_blocks', []))}")
         print(f"   表格: {len(result.get('tables', []))}")
-        
-        # 不返回值，避免pytest警告
+        if has_view:
+            ne = sum(len(p.get("elements") or []) for p in view.get("pages") or [])
+            print(f"   view 元素数: {ne}")
 
 
 class TestInvoiceProcessingWorkflow(UserWorkflowBase):
-    """工作流 3: 发票处理"""
-    
+    """工作流 3: 发票处理（模板 API 已冻结为 410，改由 KIE 与验收表覆盖）"""
+
+    @pytest.mark.skip(reason="Template /templates/* 已冻结为 HTTP 410；见 test_data/acceptance 与 KIE 用例")
     def test_user_processes_invoice(self):
         """用户处理发票文档"""
         print(f"\n{INFO} 工作流: 发票信息提取")

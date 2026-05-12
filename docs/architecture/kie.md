@@ -81,4 +81,27 @@ cd backend
 pytest tests/test_kie_service.py tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
 ```
 
-**期望**：上述文件内用例全部 **passed**。说明：`test_kie_service.py` 不加载真实 Qwen 权重；若 `import app` 链仍依赖 Paddle 等，须在已安装 backend 的云端环境执行。全量回归可在合并前增加 `pytest tests/ -q`（耗时与跳过条件视环境而定）。
+**期望**：上述文件内用例全部 **passed**。说明：`test_kie_service.py` 不加载真实 Qwen 权重；若 `import app` 链仍依赖 Paddle 等，须在已安装 backend 的云端环境执行。
+
+**全量 `pytest tests/`**：须满足 `requirements.txt` 中的 **`httpx<0.28`**（与 FastAPI 0.109 的 `TestClient` 兼容）。若 venv 里误装了 `httpx>=0.28`，会出现 `Client.__init__() got an unexpected keyword argument 'app'`，请先执行 `pip install "httpx>=0.24,<0.28"` 再跑全量。
+
+**在修好 httpx 前临时跳过** 仅依赖 `TestClient` 的用例（不推荐长期如此）：
+
+```bash
+pytest tests/ -q --ignore=tests/test_analyze_kie_options.py
+```
+
+**按主题分批（期望均为 passed）**：
+
+```bash
+# KIE 与编排契约
+pytest tests/test_kie_service.py tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py tests/test_kie_acceptance_baseline.py -q
+
+# Envelope / 表格策略等（不 import app.main 全量 Paddle 的优先单独列——若某文件 import main 仍会慢）
+pytest tests/test_envelope_builder.py tests/test_table_strategy_meta.py -q
+
+# kie 子包纯单测（mapper 等，不跑 main）
+pytest tests/kie/ -q --ignore=tests/kie/_smoke_check.py
+```
+
+全量回归：`pytest tests/ -q --tb=short`（耗时与 Paddle 模型缓存命中情况视环境而定）。

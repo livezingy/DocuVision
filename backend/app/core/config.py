@@ -57,9 +57,10 @@ class Settings(BaseSettings):
     # env override: APP_TABLE_ALLOW_FULLPAGE_FALLBACK
     TABLE_ALLOW_FULLPAGE_FALLBACK: bool = Field(default=False, alias="APP_TABLE_ALLOW_FULLPAGE_FALLBACK")
 
-    # KIE (Qwen2.5-VL) — env: DOCUVISION_KIE_QWEN_MODEL_ID, DOCUVISION_KIE_QWEN_DEVICE_MAP, DOCUVISION_KIE_QWEN_TORCH_DTYPE
+    # KIE (Qwen2.5-VL) — HuggingFace id 或本地目录；env: DOCUVISION_KIE_QWEN_MODEL_ID
+    # 默认：ModelScope 缓存路径（云端 GPU /root 环境）；其他环境请设环境变量或 .env 覆盖
     KIE_QWEN_MODEL_ID: str = Field(
-        default="Qwen/Qwen2.5-VL-7B-Instruct",
+        default="/root/.cache/modelscope/hub/models/Qwen/Qwen2___5-VL-3B-Instruct",
         alias="DOCUVISION_KIE_QWEN_MODEL_ID",
     )
     KIE_QWEN_DEVICE_MAP: str = Field(default="auto", alias="DOCUVISION_KIE_QWEN_DEVICE_MAP")

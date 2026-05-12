@@ -8,6 +8,7 @@
 #   paddlex==3.3.x
 # 示例：pip install --no-deps paddlepaddle-gpu==3.3.0 paddleocr==3.3.2 paddlex==3.3.12
 # Qwen2.5-VL KIE 需要 torch（多数 GPU 镜像已预装）；与 Paddle 同机时注意显存。
+# 默认模型路径见 app/core/config.py KIE_QWEN_MODEL_ID（云端 ModelScope 缓存）；可通过 DOCUVISION_KIE_QWEN_MODEL_ID 覆盖。
 
 # ============================================
 # Web Framework & API

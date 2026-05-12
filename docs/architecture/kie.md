@@ -18,7 +18,7 @@
 | 编排 | `kie_step` 在 `document_pipeline_orchestrator.py` 中于表格等步骤之后执行；`phase1_envelope_step` 将非空 `kie_fields` 写入 `view.fields` |
 | 历史实现 | PaddleNLP UIE（`kie_service.py` 内 `DocumentKIEService`）保留在仓库中供对照与离线脚本，**主应用 `main.py` 已改为注入 Qwen 服务** |
 
-环境变量（可选）：`DOCUVISION_KIE_QWEN_MODEL_ID`、`DOCUVISION_KIE_QWEN_DEVICE_MAP`、`DOCUVISION_KIE_QWEN_TORCH_DTYPE`（见 `app/core/config.py`）。
+环境变量（可选）：`DOCUVISION_KIE_QWEN_MODEL_ID`（默认指向 ModelScope 本地缓存：`/root/.cache/modelscope/hub/models/Qwen/Qwen2___5-VL-3B-Instruct`）、`DOCUVISION_KIE_QWEN_DEVICE_MAP`、`DOCUVISION_KIE_QWEN_TORCH_DTYPE`（见 `app/core/config.py`）。
 
 ## 3. 数据流（简图）
 

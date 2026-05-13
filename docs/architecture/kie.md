@@ -17,7 +17,17 @@
 | 服务入口 | **`QwenDocumentKIEService.extract_fields(...)`**（[`kie_qwen_service.py`](../../backend/app/services/kie_qwen_service.py)） |
 | 编排 | `kie_step` 在 `document_pipeline_orchestrator.py` 中于表格等步骤之后执行；`phase1_envelope_step` 将非空 `kie_fields` 写入 `view.fields` |
 
-环境变量（可选）：`DOCUVISION_KIE_QWEN_MODEL_ID`（默认指向 ModelScope 本地缓存：`/root/.cache/modelscope/hub/models/Qwen/Qwen2___5-VL-3B-Instruct`）、`DOCUVISION_KIE_QWEN_DEVICE_MAP`、`DOCUVISION_KIE_QWEN_TORCH_DTYPE`（见 `app/core/config.py`）。
+环境变量（可选）：`DOCUVISION_KIE_QWEN_MODEL_ID`（默认指向 ModelScope 本地缓存：`/root/.cache/modelscope/hub/models/Qwen/Qwen2___5-VL-3B-Instruct`）、`DOCUVISION_KIE_QWEN_DEVICE_MAP`、`DOCUVISION_KIE_QWEN_TORCH_DTYPE`（见 `app/core/config.py`）。**`DOCUVISION_KIE_WARMUP`**：设为 `1`/`true`/`yes`/`on` 时，进程启动后在后台预加载 KIE 模型（不阻塞服务就绪；失败仅打日志）。首次真实推理仍可能较慢，取决于缓存与 GPU。
+
+## 2.1 进度与可观测性
+
+- WebSocket / 任务进度：进入 KIE 后依次推送 **`KIE: preparing model and inputs...`** 与 **`KIE: inference running...`**，完成仍为进度 80 的完成文案。
+- 服务端日志：`kie_step` 打 **`KIE step start`** / **`KIE step completed`**（含 `task_id`、`document_type`、`fields_count`、`kie_infer_ms`、`kie_wall_ms` 等）；跳过与失败路径带 `stage` / `error_code`。
+
+## 2.2 Python 依赖（torch / transformers）
+
+- **清单**：见仓库根下 [`backend/requirements.txt`](../../backend/requirements.txt) 中 **KIE** 小节：`transformers` 与 **`torch`**（CPU 默认可装版本；GPU 环境请按 [PyTorch 官方说明](https://pytorch.org/get-started/locally/) 选择与 CUDA 匹配的 wheel，例如 `pip install torch --index-url https://download.pytorch.org/whl/cu124`）。
+- **与 Paddle 同机**：两者可能同时占 GPU 显存，请预留或分时；KIE 首次加载模型可达数十秒，可用 `DOCUVISION_KIE_WARMUP` 在空闲时预热。
 
 ## 3. 数据流（简图）
 
@@ -57,7 +67,7 @@ flowchart LR
 
 ### 5.3 任务结果中的 `kie_meta` / `kie_fields` / `kie_input`
 
-- `kie_meta`：`attempted`、`succeeded`、`stage`、`error_code`、`error_message`、成功时的 `confidence_avg`、`items_count`、`items_source`、`kie_model_load_ms`、`ocr_text_length`（Qwen 路径下 `ocr_text_length` 可能为 0）。
+- `kie_meta`：`attempted`、`succeeded`、`stage`、`error_code`、`error_message`、成功时的 `confidence_avg`、`items_count`、`items_source`、`kie_model_load_ms`、**`kie_infer_ms`**（服务内纯推理毫秒）、**`kie_wall_ms`**（编排器包裹 `extract_fields` 的墙钟毫秒）、`ocr_text_length`（Qwen 路径下 `ocr_text_length` 可能为 0）。
 - `kie_input`：`file_path`、`preprocessed_image_path`、`layout_present`、`table_meta`、`tables_count`。
 - 前端：`pickKieFieldsMap` 优先 `result.kie_fields`，否则 `result.view.fields`。
 

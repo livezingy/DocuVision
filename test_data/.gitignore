@@ -1,13 +1,2 @@
-# 测试文件（不提交到 Git）
-# 用户需要自己准备测试文件
-
-*.pdf
-*.jpg
-*.jpeg
-*.png
-*.tiff
-*.tif
-
-# 但保留目录结构
-!.gitkeep
-
+# 仅忽略本地/云端生成的结果目录（不纳入 Git）
+TestResult/

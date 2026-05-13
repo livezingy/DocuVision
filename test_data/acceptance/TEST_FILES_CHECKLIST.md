@@ -8,37 +8,37 @@
 
 ### PDF 测试文件
 
-#### 文本型 PDF (`test_data/pdf/text_based/`)
+#### 文本型 PDF (`test_data/testfiles/pdf/text_based/`)
 - [ ] `sample_report.pdf` - 包含文本和表格的报告文档
 - [ ] `sample_article.pdf` - 纯文本文章
 - [ ] `sample_form.pdf` - 表单文档
 
-#### 图像型 PDF (`test_data/pdf/image_based/`)
+#### 图像型 PDF (`test_data/testfiles/pdf/image_based/`)
 - [ ] `scanned_document.pdf` - 扫描的文档
 - [ ] `scanned_invoice.pdf` - 扫描的发票
 - [ ] `scanned_receipt.pdf` - 扫描的收据
 
-#### 混合型 PDF (`test_data/pdf/mixed/`)
+#### 混合型 PDF (`test_data/testfiles/pdf/mixed/`)
 - [ ] `mixed_document.pdf` - 包含文本和图像的混合文档
 
 ### 图片测试文件
 
-#### 扫描图片 (`test_data/images/scanned/`)
+#### 扫描图片 (`test_data/testfiles/images/scanned/`)
 - [ ] `scanned_page_01.jpg` - 扫描页面（JPG格式）
 - [ ] `scanned_invoice.png` - 扫描发票（PNG格式）
 - [ ] `scanned_receipt.tiff` - 扫描收据（TIFF格式）
 
-#### 照片 (`test_data/images/photos/`)
+#### 照片 (`test_data/testfiles/images/photos/`)
 - [ ] `document_photo.jpg` - 文档照片
 - [ ] `id_card_photo.png` - 证件照片
 
-#### 截图 (`test_data/images/screenshots/`)
+#### 截图 (`test_data/testfiles/images/screenshots/`)
 - [ ] `webpage_screenshot.png` - 网页截图
 - [ ] `app_screenshot.jpg` - 应用截图
 
 ### 模板测试文档
 
-#### 发票 (`test_data/templates/invoice/`)
+#### 发票 (`test_data/testfiles/templates/invoice/`)
 - [ ] `invoice_sample_01.pdf` - PDF格式发票
 - [ ] `invoice_sample_02.jpg` - JPG格式发票
 - [ ] `invoice_sample_03.png` - PNG格式发票
@@ -50,7 +50,7 @@
 - [ ] 包含供应商 (Vendor)
 - [ ] 包含客户 (Customer)
 
-#### 收据 (`test_data/templates/receipt/`)
+#### 收据 (`test_data/testfiles/templates/receipt/`)
 - [ ] `receipt_sample_01.pdf` - PDF格式收据
 - [ ] `receipt_sample_02.jpg` - JPG格式收据
 
@@ -60,7 +60,7 @@
 - [ ] 包含总金额 (Total)
 - [ ] 包含商户名称 (Merchant)
 
-#### 证件 (`test_data/templates/id_document/`)
+#### 证件 (`test_data/testfiles/templates/id_document/`)
 - [ ] `id_card_sample_01.jpg` - 身份证样本
 - [ ] `passport_sample_01.jpg` - 护照样本
 - [ ] `driver_license_sample_01.jpg` - 驾照样本
@@ -71,7 +71,7 @@
 - [ ] 包含出生日期 (Date of Birth)
 - [ ] 包含有效期 (Expiry Date)
 
-#### 名片 (`test_data/templates/business_card/`)
+#### 名片 (`test_data/testfiles/templates/business_card/`)
 - [ ] `business_card_sample_01.jpg` - 名片样本1
 - [ ] `business_card_sample_02.png` - 名片样本2
 
@@ -82,7 +82,7 @@
 - [ ] 包含电话 (Phone)
 - [ ] 包含邮箱 (Email)
 
-#### 合同 (`test_data/templates/contract/`)
+#### 合同 (`test_data/testfiles/templates/contract/`)
 - [ ] `contract_sample_01.pdf` - 合同样本
 
 **必需字段检查**：
@@ -150,9 +150,9 @@
 1. **文件存在性**
    ```bash
    # 检查文件是否存在
-   ls test_data/templates/invoice/
-   ls test_data/templates/receipt/
-   ls test_data/templates/id_document/
+   ls test_data/testfiles/templates/invoice/
+   ls test_data/testfiles/templates/receipt/
+   ls test_data/testfiles/templates/id_document/
    ```
 
 2. **文件格式**
@@ -167,7 +167,7 @@
 
 ## 📚 相关文档
 
-- 测试数据说明：`test_data/README.md`
+- 测试数据说明：`test_data/acceptance/README.md`
 - 手动测试步骤：`docs/MANUAL_TESTING_GUIDE.md`
 - API 文档：`http://localhost:8000/docs`
 

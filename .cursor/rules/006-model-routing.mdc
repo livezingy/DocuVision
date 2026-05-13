@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+## Model Routing Strategy
+
+You are to analyze every user request and categorize it:
+
+### Category 1: Complex Tasks (Use Premium Model)
+If the task involves ANY of the following, suggest switching to the premium model:
+- Architecture design or system refactoring
+- Multi-file feature implementation
+- Complex bug fixing requiring deep codebase understanding
+- Algorithm design or performance optimization
+- Security audit or code review
+- Large-scale code generation (>100 lines)
+
+Response format for complex tasks:
+> **Suggested Model**: Switch to [your-premium-model-name]
+> **Task Category**: Complex
+> Then proceed with analysis.
+
+### Category 2: Simple Tasks (Use Free Model)
+If the task is:
+- Git push, commit, or basic Git operations
+- Simple file operations (rename, move, delete)
+- Basic syntax fixes or typo corrections
+- Running predefined scripts or commands
+- Simple Q&A about code
+
+Response format for simple tasks:
+> **Model**: Using free model is sufficient
+> Then proceed with the task.

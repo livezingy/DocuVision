@@ -1,6 +1,6 @@
 ## 关于项目
 
-当前项目是使用paddle组件 [仿Azure智能文档处理系统] ，D:\3_PROJECTS\DocuVision\test_data\Azure\AzureDocs路径下有Azure智能文档处理系统处理不同类型的文件得到的json文件，D:\3_PROJECTS\DocuVision\test_data\Azure的图像是处理部分文件时的界面截图。
+当前项目是使用paddle组件 [仿Azure智能文档处理系统] 。`test_data/Azure/` 下为 Azure 风格参考 JSON；历史若曾使用 `test_data/Azure/AzureDocs` 等路径，以仓库当前 `test_data` 四目录布局为准。
 
 ## 技术栈
 
@@ -40,13 +40,16 @@ DocuVision/
 ├── docs/
 │   └── architecture/   # 架构文档，启动时阅读
 ├── test_data/
-│   └── Azure/      # Azure 处理结果，作为参考基准
+│   ├── acceptance/   # 验收矩阵与说明
+│   ├── testfiles/    # 分类样例
+│   ├── Azure/        # Azure 参考 JSON（纳入 Git）
+│   └── TestResult/   # 临时输出（不纳入 Git）
 ```
 
 ## 启动时必读
 
 1. `docs/architecture/` 目录下的所有文档
-2. `test_data/Azure/` 目录下的 Azure 处理结果（JSON文件）
+2. `test_data/Azure/` 参考 JSON，并与 `test_data/testfiles/`、`test_data/acceptance/` 对照阅读
 
 ## 思维原则
 

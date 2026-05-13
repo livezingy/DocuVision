@@ -275,7 +275,7 @@ def main() -> None:
         test_file = _find_default_test_file()
         if test_file is None:
             print(_warn("No default test file found. Pipeline stages will be skipped."))
-            print(_warn("Hint: add an image under test_data/images/scanned/ or pass --file."))
+            print(_warn("Hint: add an image under test_data/testfiles/images/scanned/ or pass --file."))
         else:
             print(_info(f"Auto-selected test file: {test_file}"))
     else:

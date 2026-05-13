@@ -18,7 +18,7 @@ An intelligent document processing system built on [PaddleX](https://github.com/
 
 ### Reference data
 
-- **`test_data/Azure/`**: Azure Layout / DI–style JSON outputs used as a behavioral benchmark (not authoritative for this codebase—implementation details follow `docs/architecture/` and the code).
+- **`test_data/`**（根下仅 `acceptance/`、`testfiles/`、`Azure/`、`TestResult/`）：`Azure/` 为 Azure Layout / DI 风格参考 JSON；`testfiles/` 为固定样例；`acceptance/` 为验收矩阵与说明；`TestResult/` 仅本地/流水线临时输出（不提交）。
 
 ### Documentation (source of truth)
 
@@ -53,7 +53,7 @@ DocuVision/
 ├── backend/           # FastAPI app, orchestrator, PaddleX services, tests
 ├── frontend/          # Static SPA + README_FRONTEND.md
 ├── docs/architecture/ # Design specs and trackers (Chinese + technical detail)
-├── test_data/         # Sample inputs and Azure reference JSON
+├── test_data/         # 仅 acceptance、testfiles、Azure（纳入 Git）；TestResult 本地输出不提交
 └── CLAUDE.md          # Maintainer conventions for this repo
 ```
 

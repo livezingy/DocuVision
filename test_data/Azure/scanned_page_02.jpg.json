@@ -1,0 +1,11922 @@
+{
+	"status": "succeeded",
+	"createdDateTime": "2026-01-28T08:17:46Z",
+	"lastUpdatedDateTime": "2026-01-28T08:17:47Z",
+	"analyzeResult": {
+		"apiVersion": "2024-11-30",
+		"modelId": "prebuilt-layout",
+		"stringIndexType": "utf16CodeUnit",
+		"content": "2 Quantifying Fuel-Saving Opportunities from Specific Driving Behavior Changes\n2.1 Savings from Improving Individual Driving Profiles\n2.1.1 Drive Profile Subsample from Real-World Travel Survey\nThe interim report (Gonder et al. 2010) included results from detailed analyses on five cycles selected from a large set of real-world global positioning system (GPS) travel data collected in 2006 as part of a study by the Texas Transportation Institute and the Texas Department of Transportation (Ojah and Pearson 2008). The cycles were selected to reflect a range of kinetic intensity (KI) values. (KI represents a ratio of characteristic acceleration to aerodynamic speed and has been shown to be a useful drive cycle classification parameter [O'Keefe et al. 2007].) To determine the maximum possible cycle improvement fuel savings, the real-world cycles were converted into equivalent \"ideal\" cycles using the following steps:\n1. Calculate the trip distance of each sample trip.\n2. Eliminate stop-and-go and idling within each trip.\n3. Set the acceleration rate to 3 mph/s.\n4. Set the cruising speed to 40 mph.\n5. Continue cruising at 40 mph until the trip distance is reached.\nTo compare vehicle simulations over each real-world cycle and its corresponding ideal cycle, a midsize conventional vehicle model from a previous NREL study was used (Earleywine et al. 2010). The results indicated a fuel savings potential of roughly 60% for the drive profiles with either very high or very low KI and of 30%-40% for the cycles with moderate KI values.\nTable 2-1 takes the analysis of these five cycles from the interim report a step further by examining the impact of the optimization steps one at a time in isolation. As indicated by other simulations from the interim report (Gonder et al. 2010), acceleration rate reductions can deliver some small fuel savings, but avoiding accelerations and decelerations (accel/decel) altogether saves larger amounts of fuel. This suggests that driving style improvements should focus on reducing the number of stops in high KI cycles, and not just the rate of accelerating out of a stop.\nTable 2-1. Simulated fuel savings from isolated cycle improvements\nCycle Name\nKI (1/km)\nDistance (mi)\nPercent Fuel Savings\nImproved Speed\nDecreased Accel\nEliminate Stops\nDecreased Idle\n2012_2\n3.30\n1.3\n5.9%\n9.5%\n29.2%\n17.4%\n2145_1\n0.68\n11.2\n2.4%\n0.1%\n9.5%\n2.7%\n4234_1\n0.59\n58.7\n8.5%\n1.3%\n8.5%\n3.3%\n2032_2\n0.17\n57.8\n21.7%\n0.3%\n2.7%\n1.2%\n4171_1\n0.07\n173.9\n58.1%\n1.6%\n2.1%\n0.5%\nFigure 2-1 extends the analysis from eliminating stops for the five example cycles and examines the additional benefit from avoiding slow-and-go driving below various speed thresholds.\n3",
+		"pages": [
+			{
+				"pageNumber": 1,
+				"angle": 0.05010668933391571,
+				"width": 597,
+				"height": 760,
+				"unit": "pixel",
+				"words": [
+					{
+						"content": "2",
+						"polygon": [
+							63,
+							60,
+							72,
+							61,
+							72,
+							78,
+							63,
+							78
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 0,
+							"length": 1
+						}
+					},
+					{
+						"content": "Quantifying",
+						"polygon": [
+							86,
+							61,
+							168,
+							61,
+							168,
+							79,
+							86,
+							78
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2,
+							"length": 11
+						}
+					},
+					{
+						"content": "Fuel-Saving",
+						"polygon": [
+							174,
+							61,
+							257,
+							61,
+							257,
+							79,
+							174,
+							79
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 14,
+							"length": 11
+						}
+					},
+					{
+						"content": "Opportunities",
+						"polygon": [
+							262,
+							61,
+							360,
+							61,
+							360,
+							79,
+							262,
+							79
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 26,
+							"length": 13
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							364,
+							61,
+							398,
+							61,
+							397,
+							79,
+							364,
+							79
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 40,
+							"length": 4
+						}
+					},
+					{
+						"content": "Specific",
+						"polygon": [
+							403,
+							61,
+							459,
+							61,
+							459,
+							79,
+							403,
+							79
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 45,
+							"length": 8
+						}
+					},
+					{
+						"content": "Driving",
+						"polygon": [
+							464,
+							61,
+							517,
+							61,
+							517,
+							80,
+							464,
+							79
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 54,
+							"length": 7
+						}
+					},
+					{
+						"content": "Behavior",
+						"polygon": [
+							85,
+							78,
+							150,
+							79,
+							150,
+							95,
+							85,
+							95
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 62,
+							"length": 8
+						}
+					},
+					{
+						"content": "Changes",
+						"polygon": [
+							154,
+							79,
+							218,
+							79,
+							218,
+							96,
+							154,
+							95
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 71,
+							"length": 7
+						}
+					},
+					{
+						"content": "2.1",
+						"polygon": [
+							64,
+							107,
+							78,
+							107,
+							78,
+							122,
+							64,
+							122
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 79,
+							"length": 3
+						}
+					},
+					{
+						"content": "Savings",
+						"polygon": [
+							93,
+							107,
+							137,
+							107,
+							137,
+							122,
+							93,
+							122
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 83,
+							"length": 7
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							140,
+							107,
+							164,
+							107,
+							165,
+							122,
+							140,
+							122
+						],
+						"confidence": 0.99,
+						"span": {
+							"offset": 91,
+							"length": 4
+						}
+					},
+					{
+						"content": "Improving",
+						"polygon": [
+							170,
+							107,
+							228,
+							107,
+							228,
+							122,
+							170,
+							122
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 96,
+							"length": 9
+						}
+					},
+					{
+						"content": "Individual",
+						"polygon": [
+							231,
+							107,
+							289,
+							107,
+							289,
+							122,
+							231,
+							122
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 106,
+							"length": 10
+						}
+					},
+					{
+						"content": "Driving",
+						"polygon": [
+							293,
+							107,
+							334,
+							107,
+							334,
+							122,
+							293,
+							122
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 117,
+							"length": 7
+						}
+					},
+					{
+						"content": "Profiles",
+						"polygon": [
+							338,
+							107,
+							383,
+							107,
+							383,
+							122,
+							338,
+							122
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 125,
+							"length": 8
+						}
+					},
+					{
+						"content": "2.1.1",
+						"polygon": [
+							64,
+							126,
+							89,
+							126,
+							89,
+							140,
+							64,
+							140
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 134,
+							"length": 5
+						}
+					},
+					{
+						"content": "Drive",
+						"polygon": [
+							100,
+							126,
+							128,
+							126,
+							128,
+							140,
+							100,
+							140
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 140,
+							"length": 5
+						}
+					},
+					{
+						"content": "Profile",
+						"polygon": [
+							131,
+							126,
+							165,
+							126,
+							165,
+							140,
+							131,
+							140
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 146,
+							"length": 7
+						}
+					},
+					{
+						"content": "Subsample",
+						"polygon": [
+							168,
+							126,
+							225,
+							126,
+							225,
+							140,
+							168,
+							140
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 154,
+							"length": 9
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							228,
+							126,
+							254,
+							126,
+							254,
+							140,
+							228,
+							140
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 164,
+							"length": 4
+						}
+					},
+					{
+						"content": "Real-World",
+						"polygon": [
+							257,
+							126,
+							316,
+							126,
+							316,
+							140,
+							257,
+							140
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 169,
+							"length": 10
+						}
+					},
+					{
+						"content": "Travel",
+						"polygon": [
+							319,
+							126,
+							351,
+							126,
+							351,
+							140,
+							319,
+							141
+						],
+						"confidence": 0.988,
+						"span": {
+							"offset": 180,
+							"length": 6
+						}
+					},
+					{
+						"content": "Survey",
+						"polygon": [
+							353,
+							126,
+							392,
+							126,
+							392,
+							141,
+							353,
+							140
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 187,
+							"length": 6
+						}
+					},
+					{
+						"content": "The",
+						"polygon": [
+							63,
+							146,
+							81,
+							146,
+							81,
+							160,
+							63,
+							160
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 194,
+							"length": 3
+						}
+					},
+					{
+						"content": "interim",
+						"polygon": [
+							84,
+							146,
+							117,
+							146,
+							117,
+							160,
+							84,
+							160
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 198,
+							"length": 7
+						}
+					},
+					{
+						"content": "report",
+						"polygon": [
+							121,
+							146,
+							152,
+							146,
+							152,
+							160,
+							121,
+							160
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 206,
+							"length": 6
+						}
+					},
+					{
+						"content": "(Gonder",
+						"polygon": [
+							155,
+							146,
+							194,
+							146,
+							194,
+							160,
+							155,
+							160
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 213,
+							"length": 7
+						}
+					},
+					{
+						"content": "et",
+						"polygon": [
+							197,
+							146,
+							206,
+							146,
+							206,
+							160,
+							197,
+							160
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 221,
+							"length": 2
+						}
+					},
+					{
+						"content": "al.",
+						"polygon": [
+							209,
+							146,
+							221,
+							146,
+							221,
+							160,
+							209,
+							160
+						],
+						"confidence": 0.99,
+						"span": {
+							"offset": 224,
+							"length": 3
+						}
+					},
+					{
+						"content": "2010)",
+						"polygon": [
+							224,
+							146,
+							251,
+							146,
+							251,
+							160,
+							224,
+							160
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 228,
+							"length": 5
+						}
+					},
+					{
+						"content": "included",
+						"polygon": [
+							254,
+							146,
+							297,
+							146,
+							297,
+							160,
+							254,
+							160
+						],
+						"confidence": 0.962,
+						"span": {
+							"offset": 234,
+							"length": 8
+						}
+					},
+					{
+						"content": "results",
+						"polygon": [
+							300,
+							146,
+							331,
+							146,
+							331,
+							160,
+							300,
+							160
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 243,
+							"length": 7
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							334,
+							146,
+							357,
+							146,
+							357,
+							160,
+							334,
+							160
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 251,
+							"length": 4
+						}
+					},
+					{
+						"content": "detailed",
+						"polygon": [
+							360,
+							146,
+							398,
+							146,
+							398,
+							160,
+							360,
+							160
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 256,
+							"length": 8
+						}
+					},
+					{
+						"content": "analyses",
+						"polygon": [
+							401,
+							146,
+							441,
+							146,
+							441,
+							160,
+							401,
+							160
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 265,
+							"length": 8
+						}
+					},
+					{
+						"content": "on",
+						"polygon": [
+							444,
+							146,
+							457,
+							146,
+							457,
+							160,
+							444,
+							160
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 274,
+							"length": 2
+						}
+					},
+					{
+						"content": "five",
+						"polygon": [
+							460,
+							146,
+							477,
+							146,
+							477,
+							160,
+							460,
+							160
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 277,
+							"length": 4
+						}
+					},
+					{
+						"content": "cycles",
+						"polygon": [
+							480,
+							146,
+							513,
+							146,
+							513,
+							160,
+							480,
+							160
+						],
+						"confidence": 0.96,
+						"span": {
+							"offset": 282,
+							"length": 6
+						}
+					},
+					{
+						"content": "selected",
+						"polygon": [
+							63,
+							160,
+							101,
+							160,
+							101,
+							174,
+							63,
+							174
+						],
+						"confidence": 0.99,
+						"span": {
+							"offset": 289,
+							"length": 8
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							104,
+							160,
+							129,
+							160,
+							129,
+							174,
+							104,
+							174
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 298,
+							"length": 4
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							132,
+							160,
+							137,
+							160,
+							137,
+							174,
+							132,
+							174
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 303,
+							"length": 1
+						}
+					},
+					{
+						"content": "large",
+						"polygon": [
+							141,
+							160,
+							164,
+							160,
+							164,
+							174,
+							141,
+							174
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 305,
+							"length": 5
+						}
+					},
+					{
+						"content": "set",
+						"polygon": [
+							167,
+							160,
+							179,
+							160,
+							179,
+							174,
+							167,
+							174
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 311,
+							"length": 3
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							182,
+							160,
+							192,
+							160,
+							192,
+							174,
+							182,
+							174
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 315,
+							"length": 2
+						}
+					},
+					{
+						"content": "real-world",
+						"polygon": [
+							195,
+							160,
+							246,
+							160,
+							246,
+							174,
+							195,
+							174
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 318,
+							"length": 10
+						}
+					},
+					{
+						"content": "global",
+						"polygon": [
+							249,
+							160,
+							279,
+							160,
+							279,
+							174,
+							249,
+							174
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 329,
+							"length": 6
+						}
+					},
+					{
+						"content": "positioning",
+						"polygon": [
+							282,
+							160,
+							337,
+							160,
+							337,
+							174,
+							282,
+							174
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 336,
+							"length": 11
+						}
+					},
+					{
+						"content": "system",
+						"polygon": [
+							339,
+							160,
+							373,
+							160,
+							373,
+							174,
+							339,
+							174
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 348,
+							"length": 6
+						}
+					},
+					{
+						"content": "(GPS)",
+						"polygon": [
+							375,
+							160,
+							406,
+							160,
+							406,
+							174,
+							375,
+							174
+						],
+						"confidence": 0.976,
+						"span": {
+							"offset": 355,
+							"length": 5
+						}
+					},
+					{
+						"content": "travel",
+						"polygon": [
+							408,
+							160,
+							436,
+							160,
+							436,
+							174,
+							408,
+							174
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 361,
+							"length": 6
+						}
+					},
+					{
+						"content": "data",
+						"polygon": [
+							439,
+							160,
+							459,
+							160,
+							459,
+							174,
+							439,
+							174
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 368,
+							"length": 4
+						}
+					},
+					{
+						"content": "collected",
+						"polygon": [
+							462,
+							160,
+							505,
+							160,
+							505,
+							174,
+							462,
+							174
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 373,
+							"length": 9
+						}
+					},
+					{
+						"content": "in",
+						"polygon": [
+							509,
+							160,
+							519,
+							160,
+							519,
+							174,
+							509,
+							174
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 383,
+							"length": 2
+						}
+					},
+					{
+						"content": "2006",
+						"polygon": [
+							63,
+							173,
+							86,
+							173,
+							86,
+							187,
+							63,
+							187
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 386,
+							"length": 4
+						}
+					},
+					{
+						"content": "as",
+						"polygon": [
+							89,
+							173,
+							99,
+							173,
+							99,
+							187,
+							89,
+							187
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 391,
+							"length": 2
+						}
+					},
+					{
+						"content": "part",
+						"polygon": [
+							102,
+							173,
+							121,
+							173,
+							121,
+							187,
+							102,
+							187
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 394,
+							"length": 4
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							124,
+							173,
+							134,
+							173,
+							134,
+							187,
+							124,
+							187
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 399,
+							"length": 2
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							137,
+							173,
+							144,
+							173,
+							144,
+							187,
+							137,
+							187
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 402,
+							"length": 1
+						}
+					},
+					{
+						"content": "study",
+						"polygon": [
+							147,
+							173,
+							173,
+							173,
+							173,
+							187,
+							147,
+							187
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 404,
+							"length": 5
+						}
+					},
+					{
+						"content": "by",
+						"polygon": [
+							176,
+							173,
+							187,
+							173,
+							187,
+							187,
+							176,
+							187
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 410,
+							"length": 2
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							189,
+							173,
+							206,
+							173,
+							206,
+							187,
+							189,
+							187
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 413,
+							"length": 3
+						}
+					},
+					{
+						"content": "Texas",
+						"polygon": [
+							208,
+							173,
+							237,
+							173,
+							237,
+							188,
+							208,
+							187
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 417,
+							"length": 5
+						}
+					},
+					{
+						"content": "Transportation",
+						"polygon": [
+							240,
+							173,
+							311,
+							174,
+							311,
+							188,
+							240,
+							188
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 423,
+							"length": 14
+						}
+					},
+					{
+						"content": "Institute",
+						"polygon": [
+							314,
+							174,
+							353,
+							173,
+							353,
+							188,
+							314,
+							188
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 438,
+							"length": 9
+						}
+					},
+					{
+						"content": "and",
+						"polygon": [
+							356,
+							173,
+							374,
+							174,
+							374,
+							188,
+							356,
+							188
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 448,
+							"length": 3
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							377,
+							174,
+							391,
+							174,
+							391,
+							188,
+							377,
+							188
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 452,
+							"length": 3
+						}
+					},
+					{
+						"content": "Texas",
+						"polygon": [
+							394,
+							174,
+							423,
+							174,
+							423,
+							188,
+							394,
+							188
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 456,
+							"length": 5
+						}
+					},
+					{
+						"content": "Department",
+						"polygon": [
+							426,
+							174,
+							482,
+							174,
+							482,
+							188,
+							426,
+							188
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 462,
+							"length": 10
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							485,
+							174,
+							498,
+							173,
+							498,
+							187,
+							485,
+							187
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 473,
+							"length": 2
+						}
+					},
+					{
+						"content": "Transportation",
+						"polygon": [
+							63,
+							187,
+							135,
+							187,
+							135,
+							201,
+							63,
+							201
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 476,
+							"length": 14
+						}
+					},
+					{
+						"content": "(Ojah",
+						"polygon": [
+							138,
+							187,
+							165,
+							187,
+							165,
+							201,
+							138,
+							201
+						],
+						"confidence": 0.963,
+						"span": {
+							"offset": 491,
+							"length": 5
+						}
+					},
+					{
+						"content": "and",
+						"polygon": [
+							168,
+							187,
+							185,
+							187,
+							185,
+							201,
+							168,
+							201
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 497,
+							"length": 3
+						}
+					},
+					{
+						"content": "Pearson",
+						"polygon": [
+							188,
+							187,
+							226,
+							187,
+							226,
+							201,
+							189,
+							201
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 501,
+							"length": 7
+						}
+					},
+					{
+						"content": "2008).",
+						"polygon": [
+							229,
+							187,
+							260,
+							187,
+							260,
+							201,
+							229,
+							201
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 509,
+							"length": 6
+						}
+					},
+					{
+						"content": "The",
+						"polygon": [
+							263,
+							187,
+							281,
+							187,
+							281,
+							201,
+							263,
+							201
+						],
+						"confidence": 0.999,
+						"span": {
+							"offset": 516,
+							"length": 3
+						}
+					},
+					{
+						"content": "cycles",
+						"polygon": [
+							284,
+							187,
+							313,
+							187,
+							313,
+							201,
+							284,
+							201
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 520,
+							"length": 6
+						}
+					},
+					{
+						"content": "were",
+						"polygon": [
+							316,
+							187,
+							341,
+							187,
+							341,
+							201,
+							316,
+							201
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 527,
+							"length": 4
+						}
+					},
+					{
+						"content": "selected",
+						"polygon": [
+							344,
+							187,
+							383,
+							187,
+							383,
+							201,
+							344,
+							201
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 532,
+							"length": 8
+						}
+					},
+					{
+						"content": "to",
+						"polygon": [
+							386,
+							187,
+							394,
+							187,
+							394,
+							201,
+							386,
+							201
+						],
+						"confidence": 0.999,
+						"span": {
+							"offset": 541,
+							"length": 2
+						}
+					},
+					{
+						"content": "reflect",
+						"polygon": [
+							396,
+							187,
+							428,
+							187,
+							428,
+							201,
+							396,
+							201
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 544,
+							"length": 7
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							430,
+							187,
+							437,
+							187,
+							437,
+							201,
+							430,
+							201
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 552,
+							"length": 1
+						}
+					},
+					{
+						"content": "range",
+						"polygon": [
+							440,
+							187,
+							465,
+							187,
+							465,
+							201,
+							440,
+							201
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 554,
+							"length": 5
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							468,
+							187,
+							478,
+							187,
+							478,
+							201,
+							468,
+							201
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 560,
+							"length": 2
+						}
+					},
+					{
+						"content": "kinetic",
+						"polygon": [
+							481,
+							187,
+							517,
+							187,
+							517,
+							201,
+							481,
+							201
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 563,
+							"length": 7
+						}
+					},
+					{
+						"content": "intensity",
+						"polygon": [
+							63,
+							201,
+							106,
+							201,
+							106,
+							216,
+							63,
+							215
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 571,
+							"length": 9
+						}
+					},
+					{
+						"content": "(KI)",
+						"polygon": [
+							108,
+							201,
+							129,
+							201,
+							129,
+							216,
+							108,
+							216
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 581,
+							"length": 4
+						}
+					},
+					{
+						"content": "values.",
+						"polygon": [
+							132,
+							201,
+							165,
+							201,
+							165,
+							216,
+							132,
+							216
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 586,
+							"length": 7
+						}
+					},
+					{
+						"content": "(KI",
+						"polygon": [
+							168,
+							201,
+							185,
+							201,
+							185,
+							216,
+							168,
+							216
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 594,
+							"length": 3
+						}
+					},
+					{
+						"content": "represents",
+						"polygon": [
+							188,
+							201,
+							236,
+							201,
+							236,
+							216,
+							188,
+							216
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 598,
+							"length": 10
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							238,
+							201,
+							243,
+							201,
+							243,
+							216,
+							238,
+							216
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 609,
+							"length": 1
+						}
+					},
+					{
+						"content": "ratio",
+						"polygon": [
+							246,
+							201,
+							270,
+							201,
+							270,
+							216,
+							246,
+							216
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 611,
+							"length": 5
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							273,
+							201,
+							282,
+							201,
+							282,
+							216,
+							273,
+							216
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 617,
+							"length": 2
+						}
+					},
+					{
+						"content": "characteristic",
+						"polygon": [
+							285,
+							201,
+							350,
+							201,
+							350,
+							216,
+							285,
+							216
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 620,
+							"length": 14
+						}
+					},
+					{
+						"content": "acceleration",
+						"polygon": [
+							353,
+							201,
+							411,
+							201,
+							411,
+							215,
+							353,
+							216
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 635,
+							"length": 12
+						}
+					},
+					{
+						"content": "to",
+						"polygon": [
+							414,
+							201,
+							423,
+							201,
+							423,
+							215,
+							414,
+							215
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 648,
+							"length": 2
+						}
+					},
+					{
+						"content": "aerodynamic",
+						"polygon": [
+							426,
+							201,
+							488,
+							201,
+							488,
+							216,
+							426,
+							215
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 651,
+							"length": 11
+						}
+					},
+					{
+						"content": "speed",
+						"polygon": [
+							491,
+							201,
+							520,
+							201,
+							520,
+							216,
+							491,
+							216
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 663,
+							"length": 5
+						}
+					},
+					{
+						"content": "and",
+						"polygon": [
+							63,
+							215,
+							80,
+							215,
+							80,
+							229,
+							63,
+							229
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 669,
+							"length": 3
+						}
+					},
+					{
+						"content": "has",
+						"polygon": [
+							82,
+							215,
+							99,
+							215,
+							99,
+							229,
+							82,
+							229
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 673,
+							"length": 3
+						}
+					},
+					{
+						"content": "been",
+						"polygon": [
+							102,
+							215,
+							126,
+							215,
+							126,
+							229,
+							102,
+							229
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 677,
+							"length": 4
+						}
+					},
+					{
+						"content": "shown",
+						"polygon": [
+							129,
+							215,
+							160,
+							215,
+							160,
+							229,
+							129,
+							229
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 682,
+							"length": 5
+						}
+					},
+					{
+						"content": "to",
+						"polygon": [
+							163,
+							215,
+							171,
+							215,
+							171,
+							229,
+							163,
+							229
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 688,
+							"length": 2
+						}
+					},
+					{
+						"content": "be",
+						"polygon": [
+							174,
+							215,
+							187,
+							215,
+							187,
+							229,
+							174,
+							229
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 691,
+							"length": 2
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							190,
+							215,
+							195,
+							215,
+							195,
+							229,
+							190,
+							229
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 694,
+							"length": 1
+						}
+					},
+					{
+						"content": "useful",
+						"polygon": [
+							198,
+							215,
+							227,
+							215,
+							227,
+							229,
+							198,
+							229
+						],
+						"confidence": 0.986,
+						"span": {
+							"offset": 696,
+							"length": 6
+						}
+					},
+					{
+						"content": "drive",
+						"polygon": [
+							230,
+							215,
+							255,
+							215,
+							256,
+							229,
+							230,
+							229
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 703,
+							"length": 5
+						}
+					},
+					{
+						"content": "cycle",
+						"polygon": [
+							258,
+							215,
+							283,
+							215,
+							283,
+							229,
+							258,
+							229
+						],
+						"confidence": 0.95,
+						"span": {
+							"offset": 709,
+							"length": 5
+						}
+					},
+					{
+						"content": "classification",
+						"polygon": [
+							286,
+							215,
+							350,
+							215,
+							350,
+							229,
+							286,
+							229
+						],
+						"confidence": 0.976,
+						"span": {
+							"offset": 715,
+							"length": 14
+						}
+					},
+					{
+						"content": "parameter",
+						"polygon": [
+							353,
+							215,
+							399,
+							215,
+							399,
+							229,
+							353,
+							229
+						],
+						"confidence": 0.988,
+						"span": {
+							"offset": 730,
+							"length": 9
+						}
+					},
+					{
+						"content": "[O'Keefe",
+						"polygon": [
+							402,
+							215,
+							449,
+							215,
+							449,
+							229,
+							402,
+							229
+						],
+						"confidence": 0.877,
+						"span": {
+							"offset": 740,
+							"length": 8
+						}
+					},
+					{
+						"content": "et",
+						"polygon": [
+							452,
+							215,
+							460,
+							215,
+							460,
+							229,
+							452,
+							229
+						],
+						"confidence": 0.977,
+						"span": {
+							"offset": 749,
+							"length": 2
+						}
+					},
+					{
+						"content": "al.",
+						"polygon": [
+							463,
+							215,
+							475,
+							215,
+							475,
+							229,
+							463,
+							229
+						],
+						"confidence": 0.977,
+						"span": {
+							"offset": 752,
+							"length": 3
+						}
+					},
+					{
+						"content": "2007].)",
+						"polygon": [
+							478,
+							215,
+							514,
+							215,
+							514,
+							229,
+							478,
+							229
+						],
+						"confidence": 0.963,
+						"span": {
+							"offset": 756,
+							"length": 7
+						}
+					},
+					{
+						"content": "To",
+						"polygon": [
+							63,
+							229,
+							76,
+							229,
+							76,
+							243,
+							63,
+							242
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 764,
+							"length": 2
+						}
+					},
+					{
+						"content": "determine",
+						"polygon": [
+							79,
+							229,
+							127,
+							229,
+							127,
+							243,
+							79,
+							243
+						],
+						"confidence": 0.988,
+						"span": {
+							"offset": 767,
+							"length": 9
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							130,
+							229,
+							145,
+							229,
+							145,
+							243,
+							130,
+							243
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 777,
+							"length": 3
+						}
+					},
+					{
+						"content": "maximum",
+						"polygon": [
+							147,
+							229,
+							198,
+							229,
+							198,
+							243,
+							147,
+							243
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 781,
+							"length": 7
+						}
+					},
+					{
+						"content": "possible",
+						"polygon": [
+							201,
+							229,
+							239,
+							229,
+							239,
+							243,
+							201,
+							243
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 789,
+							"length": 8
+						}
+					},
+					{
+						"content": "cycle",
+						"polygon": [
+							242,
+							229,
+							269,
+							229,
+							269,
+							243,
+							242,
+							243
+						],
+						"confidence": 0.986,
+						"span": {
+							"offset": 798,
+							"length": 5
+						}
+					},
+					{
+						"content": "improvement",
+						"polygon": [
+							272,
+							229,
+							335,
+							229,
+							335,
+							243,
+							272,
+							243
+						],
+						"confidence": 0.988,
+						"span": {
+							"offset": 804,
+							"length": 11
+						}
+					},
+					{
+						"content": "fuel",
+						"polygon": [
+							339,
+							229,
+							356,
+							229,
+							356,
+							243,
+							339,
+							243
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 816,
+							"length": 4
+						}
+					},
+					{
+						"content": "savings,",
+						"polygon": [
+							360,
+							229,
+							399,
+							229,
+							399,
+							243,
+							360,
+							243
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 821,
+							"length": 8
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							402,
+							229,
+							416,
+							229,
+							416,
+							243,
+							402,
+							243
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 830,
+							"length": 3
+						}
+					},
+					{
+						"content": "real-world",
+						"polygon": [
+							418,
+							229,
+							469,
+							229,
+							469,
+							243,
+							418,
+							243
+						],
+						"confidence": 0.987,
+						"span": {
+							"offset": 834,
+							"length": 10
+						}
+					},
+					{
+						"content": "cycles",
+						"polygon": [
+							472,
+							229,
+							503,
+							229,
+							503,
+							243,
+							472,
+							243
+						],
+						"confidence": 0.873,
+						"span": {
+							"offset": 845,
+							"length": 6
+						}
+					},
+					{
+						"content": "were",
+						"polygon": [
+							505,
+							229,
+							530,
+							229,
+							530,
+							243,
+							505,
+							243
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 852,
+							"length": 4
+						}
+					},
+					{
+						"content": "converted",
+						"polygon": [
+							63,
+							243,
+							109,
+							243,
+							109,
+							257,
+							63,
+							257
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 857,
+							"length": 9
+						}
+					},
+					{
+						"content": "into",
+						"polygon": [
+							112,
+							243,
+							132,
+							243,
+							132,
+							257,
+							112,
+							257
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 867,
+							"length": 4
+						}
+					},
+					{
+						"content": "equivalent",
+						"polygon": [
+							135,
+							243,
+							184,
+							243,
+							184,
+							257,
+							135,
+							257
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 872,
+							"length": 10
+						}
+					},
+					{
+						"content": "\"ideal\"",
+						"polygon": [
+							187,
+							243,
+							222,
+							243,
+							222,
+							257,
+							187,
+							257
+						],
+						"confidence": 0.915,
+						"span": {
+							"offset": 883,
+							"length": 7
+						}
+					},
+					{
+						"content": "cycles",
+						"polygon": [
+							225,
+							243,
+							254,
+							243,
+							254,
+							257,
+							225,
+							257
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 891,
+							"length": 6
+						}
+					},
+					{
+						"content": "using",
+						"polygon": [
+							257,
+							243,
+							285,
+							243,
+							285,
+							257,
+							257,
+							257
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 898,
+							"length": 5
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							288,
+							243,
+							303,
+							243,
+							303,
+							257,
+							288,
+							257
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 904,
+							"length": 3
+						}
+					},
+					{
+						"content": "following",
+						"polygon": [
+							306,
+							243,
+							352,
+							243,
+							352,
+							257,
+							306,
+							257
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 908,
+							"length": 9
+						}
+					},
+					{
+						"content": "steps:",
+						"polygon": [
+							355,
+							243,
+							384,
+							243,
+							384,
+							257,
+							355,
+							257
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 918,
+							"length": 6
+						}
+					},
+					{
+						"content": "1.",
+						"polygon": [
+							82,
+							262,
+							91,
+							262,
+							91,
+							277,
+							82,
+							277
+						],
+						"confidence": 0.99,
+						"span": {
+							"offset": 925,
+							"length": 2
+						}
+					},
+					{
+						"content": "Calculate",
+						"polygon": [
+							100,
+							262,
+							144,
+							262,
+							144,
+							277,
+							100,
+							277
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 928,
+							"length": 9
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							147,
+							262,
+							163,
+							262,
+							163,
+							277,
+							147,
+							277
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 938,
+							"length": 3
+						}
+					},
+					{
+						"content": "trip",
+						"polygon": [
+							166,
+							262,
+							181,
+							262,
+							181,
+							277,
+							166,
+							277
+						],
+						"confidence": 0.987,
+						"span": {
+							"offset": 942,
+							"length": 4
+						}
+					},
+					{
+						"content": "distance",
+						"polygon": [
+							184,
+							262,
+							224,
+							262,
+							224,
+							277,
+							184,
+							277
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 947,
+							"length": 8
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							227,
+							262,
+							237,
+							262,
+							237,
+							277,
+							227,
+							277
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 956,
+							"length": 2
+						}
+					},
+					{
+						"content": "each",
+						"polygon": [
+							240,
+							262,
+							263,
+							262,
+							263,
+							277,
+							240,
+							277
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 959,
+							"length": 4
+						}
+					},
+					{
+						"content": "sample",
+						"polygon": [
+							266,
+							262,
+							298,
+							262,
+							298,
+							277,
+							266,
+							277
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 964,
+							"length": 6
+						}
+					},
+					{
+						"content": "trip.",
+						"polygon": [
+							301,
+							262,
+							323,
+							262,
+							323,
+							277,
+							301,
+							277
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 971,
+							"length": 5
+						}
+					},
+					{
+						"content": "2.",
+						"polygon": [
+							81,
+							282,
+							91,
+							282,
+							91,
+							297,
+							81,
+							296
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 977,
+							"length": 2
+						}
+					},
+					{
+						"content": "Eliminate",
+						"polygon": [
+							100,
+							282,
+							145,
+							282,
+							145,
+							297,
+							100,
+							297
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 980,
+							"length": 9
+						}
+					},
+					{
+						"content": "stop-and-go",
+						"polygon": [
+							148,
+							282,
+							206,
+							282,
+							206,
+							297,
+							148,
+							297
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 990,
+							"length": 11
+						}
+					},
+					{
+						"content": "and",
+						"polygon": [
+							209,
+							282,
+							226,
+							282,
+							226,
+							297,
+							209,
+							297
+						],
+						"confidence": 0.999,
+						"span": {
+							"offset": 1002,
+							"length": 3
+						}
+					},
+					{
+						"content": "idling",
+						"polygon": [
+							229,
+							282,
+							256,
+							282,
+							256,
+							297,
+							229,
+							297
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 1006,
+							"length": 6
+						}
+					},
+					{
+						"content": "within",
+						"polygon": [
+							259,
+							282,
+							290,
+							282,
+							290,
+							297,
+							259,
+							297
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1013,
+							"length": 6
+						}
+					},
+					{
+						"content": "each",
+						"polygon": [
+							293,
+							282,
+							317,
+							282,
+							317,
+							297,
+							293,
+							297
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1020,
+							"length": 4
+						}
+					},
+					{
+						"content": "trip.",
+						"polygon": [
+							320,
+							282,
+							340,
+							282,
+							340,
+							297,
+							320,
+							297
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1025,
+							"length": 5
+						}
+					},
+					{
+						"content": "3.",
+						"polygon": [
+							81,
+							302,
+							91,
+							301,
+							91,
+							316,
+							81,
+							316
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1031,
+							"length": 2
+						}
+					},
+					{
+						"content": "Set",
+						"polygon": [
+							100,
+							301,
+							113,
+							301,
+							113,
+							316,
+							100,
+							316
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1034,
+							"length": 3
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							116,
+							301,
+							133,
+							301,
+							133,
+							316,
+							116,
+							316
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1038,
+							"length": 3
+						}
+					},
+					{
+						"content": "acceleration",
+						"polygon": [
+							136,
+							301,
+							192,
+							301,
+							192,
+							316,
+							136,
+							316
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 1042,
+							"length": 12
+						}
+					},
+					{
+						"content": "rate",
+						"polygon": [
+							195,
+							301,
+							215,
+							301,
+							215,
+							316,
+							195,
+							316
+						],
+						"confidence": 0.99,
+						"span": {
+							"offset": 1055,
+							"length": 4
+						}
+					},
+					{
+						"content": "to",
+						"polygon": [
+							218,
+							301,
+							227,
+							301,
+							227,
+							316,
+							218,
+							316
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1060,
+							"length": 2
+						}
+					},
+					{
+						"content": "3",
+						"polygon": [
+							230,
+							301,
+							236,
+							301,
+							236,
+							316,
+							230,
+							316
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1063,
+							"length": 1
+						}
+					},
+					{
+						"content": "mph/s.",
+						"polygon": [
+							239,
+							301,
+							272,
+							301,
+							272,
+							317,
+							239,
+							316
+						],
+						"confidence": 0.963,
+						"span": {
+							"offset": 1065,
+							"length": 6
+						}
+					},
+					{
+						"content": "4.",
+						"polygon": [
+							81,
+							321,
+							91,
+							321,
+							91,
+							336,
+							81,
+							336
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1072,
+							"length": 2
+						}
+					},
+					{
+						"content": "Set",
+						"polygon": [
+							100,
+							321,
+							113,
+							321,
+							113,
+							336,
+							100,
+							336
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 1075,
+							"length": 3
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							116,
+							321,
+							133,
+							321,
+							133,
+							336,
+							116,
+							336
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1079,
+							"length": 3
+						}
+					},
+					{
+						"content": "cruising",
+						"polygon": [
+							136,
+							321,
+							174,
+							321,
+							174,
+							336,
+							136,
+							336
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1083,
+							"length": 8
+						}
+					},
+					{
+						"content": "speed",
+						"polygon": [
+							177,
+							321,
+							203,
+							321,
+							203,
+							337,
+							177,
+							336
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1092,
+							"length": 5
+						}
+					},
+					{
+						"content": "to",
+						"polygon": [
+							206,
+							321,
+							217,
+							322,
+							217,
+							337,
+							206,
+							337
+						],
+						"confidence": 0.999,
+						"span": {
+							"offset": 1098,
+							"length": 2
+						}
+					},
+					{
+						"content": "40",
+						"polygon": [
+							220,
+							322,
+							231,
+							322,
+							231,
+							337,
+							220,
+							337
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1101,
+							"length": 2
+						}
+					},
+					{
+						"content": "mph.",
+						"polygon": [
+							234,
+							322,
+							260,
+							322,
+							260,
+							337,
+							234,
+							337
+						],
+						"confidence": 0.977,
+						"span": {
+							"offset": 1104,
+							"length": 4
+						}
+					},
+					{
+						"content": "5.",
+						"polygon": [
+							81,
+							341,
+							91,
+							341,
+							91,
+							356,
+							81,
+							356
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1109,
+							"length": 2
+						}
+					},
+					{
+						"content": "Continue",
+						"polygon": [
+							100,
+							341,
+							144,
+							341,
+							144,
+							356,
+							100,
+							356
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1112,
+							"length": 8
+						}
+					},
+					{
+						"content": "cruising",
+						"polygon": [
+							147,
+							341,
+							185,
+							341,
+							185,
+							356,
+							147,
+							356
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1121,
+							"length": 8
+						}
+					},
+					{
+						"content": "at",
+						"polygon": [
+							188,
+							341,
+							197,
+							341,
+							197,
+							356,
+							188,
+							356
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1130,
+							"length": 2
+						}
+					},
+					{
+						"content": "40",
+						"polygon": [
+							200,
+							341,
+							210,
+							341,
+							210,
+							356,
+							200,
+							356
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1133,
+							"length": 2
+						}
+					},
+					{
+						"content": "mph",
+						"polygon": [
+							213,
+							341,
+							237,
+							341,
+							237,
+							356,
+							213,
+							356
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1136,
+							"length": 3
+						}
+					},
+					{
+						"content": "until",
+						"polygon": [
+							240,
+							341,
+							261,
+							341,
+							261,
+							356,
+							240,
+							356
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1140,
+							"length": 5
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							265,
+							341,
+							277,
+							341,
+							277,
+							356,
+							265,
+							356
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1146,
+							"length": 3
+						}
+					},
+					{
+						"content": "trip",
+						"polygon": [
+							280,
+							341,
+							298,
+							341,
+							298,
+							356,
+							280,
+							356
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1150,
+							"length": 4
+						}
+					},
+					{
+						"content": "distance",
+						"polygon": [
+							301,
+							341,
+							339,
+							341,
+							339,
+							356,
+							301,
+							356
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1155,
+							"length": 8
+						}
+					},
+					{
+						"content": "is",
+						"polygon": [
+							342,
+							341,
+							350,
+							341,
+							350,
+							356,
+							342,
+							356
+						],
+						"confidence": 0.99,
+						"span": {
+							"offset": 1164,
+							"length": 2
+						}
+					},
+					{
+						"content": "reached.",
+						"polygon": [
+							353,
+							341,
+							396,
+							341,
+							396,
+							356,
+							353,
+							356
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 1167,
+							"length": 8
+						}
+					},
+					{
+						"content": "To",
+						"polygon": [
+							63,
+							367,
+							77,
+							367,
+							77,
+							381,
+							63,
+							381
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1176,
+							"length": 2
+						}
+					},
+					{
+						"content": "compare",
+						"polygon": [
+							79,
+							367,
+							122,
+							367,
+							122,
+							381,
+							79,
+							381
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1179,
+							"length": 7
+						}
+					},
+					{
+						"content": "vehicle",
+						"polygon": [
+							125,
+							367,
+							158,
+							367,
+							158,
+							382,
+							125,
+							381
+						],
+						"confidence": 0.983,
+						"span": {
+							"offset": 1187,
+							"length": 7
+						}
+					},
+					{
+						"content": "simulations",
+						"polygon": [
+							161,
+							367,
+							216,
+							367,
+							216,
+							382,
+							161,
+							382
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1195,
+							"length": 11
+						}
+					},
+					{
+						"content": "over",
+						"polygon": [
+							219,
+							367,
+							241,
+							367,
+							241,
+							382,
+							219,
+							382
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1207,
+							"length": 4
+						}
+					},
+					{
+						"content": "each",
+						"polygon": [
+							244,
+							367,
+							265,
+							367,
+							265,
+							382,
+							244,
+							382
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 1212,
+							"length": 4
+						}
+					},
+					{
+						"content": "real-world",
+						"polygon": [
+							268,
+							367,
+							319,
+							367,
+							319,
+							382,
+							268,
+							382
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1217,
+							"length": 10
+						}
+					},
+					{
+						"content": "cycle",
+						"polygon": [
+							321,
+							367,
+							348,
+							367,
+							348,
+							382,
+							321,
+							382
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1228,
+							"length": 5
+						}
+					},
+					{
+						"content": "and",
+						"polygon": [
+							351,
+							367,
+							369,
+							367,
+							368,
+							382,
+							351,
+							382
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1234,
+							"length": 3
+						}
+					},
+					{
+						"content": "its",
+						"polygon": [
+							372,
+							367,
+							382,
+							367,
+							382,
+							382,
+							372,
+							382
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1238,
+							"length": 3
+						}
+					},
+					{
+						"content": "corresponding",
+						"polygon": [
+							385,
+							367,
+							455,
+							367,
+							455,
+							382,
+							385,
+							382
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1242,
+							"length": 13
+						}
+					},
+					{
+						"content": "ideal",
+						"polygon": [
+							458,
+							367,
+							480,
+							367,
+							480,
+							382,
+							458,
+							382
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1256,
+							"length": 5
+						}
+					},
+					{
+						"content": "cycle,",
+						"polygon": [
+							484,
+							367,
+							511,
+							367,
+							511,
+							382,
+							483,
+							382
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1262,
+							"length": 6
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							514,
+							367,
+							522,
+							367,
+							522,
+							382,
+							514,
+							382
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1269,
+							"length": 1
+						}
+					},
+					{
+						"content": "midsize",
+						"polygon": [
+							63,
+							381,
+							100,
+							381,
+							100,
+							395,
+							63,
+							395
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1271,
+							"length": 7
+						}
+					},
+					{
+						"content": "conventional",
+						"polygon": [
+							103,
+							381,
+							166,
+							381,
+							166,
+							395,
+							103,
+							395
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1279,
+							"length": 12
+						}
+					},
+					{
+						"content": "vehicle",
+						"polygon": [
+							169,
+							381,
+							203,
+							381,
+							203,
+							395,
+							169,
+							395
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1292,
+							"length": 7
+						}
+					},
+					{
+						"content": "model",
+						"polygon": [
+							205,
+							381,
+							237,
+							381,
+							237,
+							395,
+							205,
+							395
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1300,
+							"length": 5
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							240,
+							381,
+							263,
+							381,
+							263,
+							395,
+							240,
+							395
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1306,
+							"length": 4
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							266,
+							381,
+							272,
+							381,
+							272,
+							395,
+							266,
+							395
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1311,
+							"length": 1
+						}
+					},
+					{
+						"content": "previous",
+						"polygon": [
+							274,
+							381,
+							314,
+							381,
+							314,
+							395,
+							274,
+							395
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1313,
+							"length": 8
+						}
+					},
+					{
+						"content": "NREL",
+						"polygon": [
+							317,
+							381,
+							350,
+							381,
+							350,
+							395,
+							317,
+							395
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 1322,
+							"length": 4
+						}
+					},
+					{
+						"content": "study",
+						"polygon": [
+							353,
+							381,
+							379,
+							381,
+							379,
+							395,
+							353,
+							395
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1327,
+							"length": 5
+						}
+					},
+					{
+						"content": "was",
+						"polygon": [
+							382,
+							381,
+							401,
+							381,
+							401,
+							395,
+							382,
+							395
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1333,
+							"length": 3
+						}
+					},
+					{
+						"content": "used",
+						"polygon": [
+							404,
+							381,
+							426,
+							381,
+							426,
+							395,
+							404,
+							395
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1337,
+							"length": 4
+						}
+					},
+					{
+						"content": "(Earleywine",
+						"polygon": [
+							429,
+							381,
+							487,
+							381,
+							487,
+							395,
+							429,
+							395
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1342,
+							"length": 11
+						}
+					},
+					{
+						"content": "et",
+						"polygon": [
+							490,
+							381,
+							499,
+							381,
+							499,
+							395,
+							490,
+							395
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1354,
+							"length": 2
+						}
+					},
+					{
+						"content": "al.",
+						"polygon": [
+							502,
+							381,
+							515,
+							381,
+							515,
+							395,
+							502,
+							395
+						],
+						"confidence": 0.988,
+						"span": {
+							"offset": 1357,
+							"length": 3
+						}
+					},
+					{
+						"content": "2010).",
+						"polygon": [
+							63,
+							394,
+							95,
+							394,
+							95,
+							409,
+							63,
+							409
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1361,
+							"length": 6
+						}
+					},
+					{
+						"content": "The",
+						"polygon": [
+							98,
+							394,
+							115,
+							394,
+							115,
+							409,
+							98,
+							409
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1368,
+							"length": 3
+						}
+					},
+					{
+						"content": "results",
+						"polygon": [
+							118,
+							394,
+							149,
+							395,
+							149,
+							409,
+							118,
+							409
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1372,
+							"length": 7
+						}
+					},
+					{
+						"content": "indicated",
+						"polygon": [
+							152,
+							395,
+							198,
+							395,
+							198,
+							409,
+							152,
+							409
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1380,
+							"length": 9
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							201,
+							395,
+							206,
+							395,
+							206,
+							409,
+							201,
+							409
+						],
+						"confidence": 0.985,
+						"span": {
+							"offset": 1390,
+							"length": 1
+						}
+					},
+					{
+						"content": "fuel",
+						"polygon": [
+							210,
+							395,
+							228,
+							395,
+							228,
+							409,
+							210,
+							409
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1392,
+							"length": 4
+						}
+					},
+					{
+						"content": "savings",
+						"polygon": [
+							231,
+							395,
+							267,
+							395,
+							267,
+							409,
+							231,
+							409
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1397,
+							"length": 7
+						}
+					},
+					{
+						"content": "potential",
+						"polygon": [
+							270,
+							395,
+							312,
+							395,
+							312,
+							409,
+							270,
+							409
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1405,
+							"length": 9
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							314,
+							395,
+							324,
+							395,
+							324,
+							409,
+							315,
+							409
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1415,
+							"length": 2
+						}
+					},
+					{
+						"content": "roughly",
+						"polygon": [
+							327,
+							395,
+							365,
+							395,
+							365,
+							409,
+							327,
+							409
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1418,
+							"length": 7
+						}
+					},
+					{
+						"content": "60%",
+						"polygon": [
+							368,
+							395,
+							390,
+							395,
+							390,
+							409,
+							368,
+							409
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1426,
+							"length": 3
+						}
+					},
+					{
+						"content": "for",
+						"polygon": [
+							393,
+							395,
+							406,
+							395,
+							406,
+							409,
+							393,
+							409
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1430,
+							"length": 3
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							409,
+							395,
+							424,
+							395,
+							424,
+							409,
+							409,
+							409
+						],
+						"confidence": 0.999,
+						"span": {
+							"offset": 1434,
+							"length": 3
+						}
+					},
+					{
+						"content": "drive",
+						"polygon": [
+							427,
+							395,
+							453,
+							395,
+							453,
+							409,
+							427,
+							409
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1438,
+							"length": 5
+						}
+					},
+					{
+						"content": "profiles",
+						"polygon": [
+							455,
+							395,
+							492,
+							395,
+							492,
+							409,
+							455,
+							409
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1444,
+							"length": 8
+						}
+					},
+					{
+						"content": "with",
+						"polygon": [
+							495,
+							395,
+							518,
+							395,
+							518,
+							409,
+							495,
+							409
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1453,
+							"length": 4
+						}
+					},
+					{
+						"content": "either",
+						"polygon": [
+							63,
+							409,
+							90,
+							409,
+							90,
+							423,
+							63,
+							423
+						],
+						"confidence": 0.957,
+						"span": {
+							"offset": 1458,
+							"length": 6
+						}
+					},
+					{
+						"content": "very",
+						"polygon": [
+							93,
+							409,
+							114,
+							409,
+							114,
+							423,
+							93,
+							423
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1465,
+							"length": 4
+						}
+					},
+					{
+						"content": "high",
+						"polygon": [
+							117,
+							409,
+							140,
+							409,
+							140,
+							423,
+							117,
+							423
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1470,
+							"length": 4
+						}
+					},
+					{
+						"content": "or",
+						"polygon": [
+							143,
+							409,
+							152,
+							409,
+							152,
+							423,
+							143,
+							423
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1475,
+							"length": 2
+						}
+					},
+					{
+						"content": "very",
+						"polygon": [
+							155,
+							409,
+							178,
+							409,
+							178,
+							423,
+							155,
+							423
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1478,
+							"length": 4
+						}
+					},
+					{
+						"content": "low",
+						"polygon": [
+							181,
+							409,
+							198,
+							409,
+							198,
+							423,
+							181,
+							423
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1483,
+							"length": 3
+						}
+					},
+					{
+						"content": "KI",
+						"polygon": [
+							202,
+							409,
+							213,
+							409,
+							213,
+							423,
+							202,
+							423
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1487,
+							"length": 2
+						}
+					},
+					{
+						"content": "and",
+						"polygon": [
+							217,
+							409,
+							234,
+							409,
+							234,
+							423,
+							217,
+							423
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1490,
+							"length": 3
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							237,
+							409,
+							246,
+							409,
+							247,
+							423,
+							237,
+							423
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1494,
+							"length": 2
+						}
+					},
+					{
+						"content": "30%-40%",
+						"polygon": [
+							249,
+							409,
+							300,
+							409,
+							300,
+							423,
+							249,
+							423
+						],
+						"confidence": 0.741,
+						"span": {
+							"offset": 1497,
+							"length": 7
+						}
+					},
+					{
+						"content": "for",
+						"polygon": [
+							304,
+							409,
+							316,
+							409,
+							316,
+							423,
+							304,
+							423
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1505,
+							"length": 3
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							319,
+							409,
+							334,
+							409,
+							334,
+							423,
+							319,
+							423
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1509,
+							"length": 3
+						}
+					},
+					{
+						"content": "cycles",
+						"polygon": [
+							336,
+							409,
+							368,
+							409,
+							368,
+							423,
+							336,
+							423
+						],
+						"confidence": 0.943,
+						"span": {
+							"offset": 1513,
+							"length": 6
+						}
+					},
+					{
+						"content": "with",
+						"polygon": [
+							371,
+							409,
+							390,
+							409,
+							390,
+							423,
+							371,
+							423
+						],
+						"confidence": 0.987,
+						"span": {
+							"offset": 1520,
+							"length": 4
+						}
+					},
+					{
+						"content": "moderate",
+						"polygon": [
+							393,
+							409,
+							438,
+							409,
+							438,
+							423,
+							393,
+							423
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1525,
+							"length": 8
+						}
+					},
+					{
+						"content": "KI",
+						"polygon": [
+							441,
+							409,
+							455,
+							409,
+							455,
+							423,
+							441,
+							423
+						],
+						"confidence": 0.983,
+						"span": {
+							"offset": 1534,
+							"length": 2
+						}
+					},
+					{
+						"content": "values.",
+						"polygon": [
+							458,
+							409,
+							493,
+							408,
+							493,
+							423,
+							458,
+							423
+						],
+						"confidence": 0.953,
+						"span": {
+							"offset": 1537,
+							"length": 7
+						}
+					},
+					{
+						"content": "Table",
+						"polygon": [
+							63,
+							434,
+							92,
+							434,
+							92,
+							448,
+							63,
+							448
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1545,
+							"length": 5
+						}
+					},
+					{
+						"content": "2-1",
+						"polygon": [
+							94,
+							434,
+							109,
+							434,
+							109,
+							448,
+							94,
+							448
+						],
+						"confidence": 0.861,
+						"span": {
+							"offset": 1551,
+							"length": 3
+						}
+					},
+					{
+						"content": "takes",
+						"polygon": [
+							113,
+							434,
+							136,
+							434,
+							136,
+							448,
+							113,
+							448
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1555,
+							"length": 5
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							139,
+							434,
+							154,
+							434,
+							154,
+							448,
+							139,
+							448
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1561,
+							"length": 3
+						}
+					},
+					{
+						"content": "analysis",
+						"polygon": [
+							157,
+							434,
+							196,
+							434,
+							196,
+							448,
+							157,
+							448
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1565,
+							"length": 8
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							199,
+							434,
+							208,
+							434,
+							208,
+							449,
+							199,
+							449
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 1574,
+							"length": 2
+						}
+					},
+					{
+						"content": "these",
+						"polygon": [
+							211,
+							434,
+							238,
+							434,
+							238,
+							449,
+							211,
+							449
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1577,
+							"length": 5
+						}
+					},
+					{
+						"content": "five",
+						"polygon": [
+							241,
+							434,
+							259,
+							434,
+							259,
+							449,
+							241,
+							449
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1583,
+							"length": 4
+						}
+					},
+					{
+						"content": "cycles",
+						"polygon": [
+							262,
+							434,
+							291,
+							434,
+							291,
+							449,
+							262,
+							449
+						],
+						"confidence": 0.946,
+						"span": {
+							"offset": 1588,
+							"length": 6
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							294,
+							434,
+							319,
+							434,
+							319,
+							449,
+							294,
+							449
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1595,
+							"length": 4
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							322,
+							434,
+							335,
+							434,
+							335,
+							449,
+							322,
+							449
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1600,
+							"length": 3
+						}
+					},
+					{
+						"content": "interim",
+						"polygon": [
+							338,
+							434,
+							374,
+							434,
+							374,
+							449,
+							338,
+							449
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1604,
+							"length": 7
+						}
+					},
+					{
+						"content": "report",
+						"polygon": [
+							377,
+							434,
+							405,
+							434,
+							405,
+							449,
+							377,
+							449
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1612,
+							"length": 6
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							408,
+							434,
+							414,
+							434,
+							414,
+							449,
+							408,
+							449
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1619,
+							"length": 1
+						}
+					},
+					{
+						"content": "step",
+						"polygon": [
+							417,
+							434,
+							437,
+							434,
+							437,
+							449,
+							417,
+							449
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1621,
+							"length": 4
+						}
+					},
+					{
+						"content": "further",
+						"polygon": [
+							440,
+							434,
+							471,
+							434,
+							471,
+							449,
+							440,
+							449
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1626,
+							"length": 7
+						}
+					},
+					{
+						"content": "by",
+						"polygon": [
+							473,
+							434,
+							488,
+							434,
+							488,
+							449,
+							473,
+							449
+						],
+						"confidence": 0.999,
+						"span": {
+							"offset": 1634,
+							"length": 2
+						}
+					},
+					{
+						"content": "examining",
+						"polygon": [
+							63,
+							449,
+							113,
+							448,
+							113,
+							462,
+							63,
+							462
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 1637,
+							"length": 9
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							116,
+							449,
+							130,
+							449,
+							130,
+							462,
+							116,
+							462
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1647,
+							"length": 3
+						}
+					},
+					{
+						"content": "impact",
+						"polygon": [
+							133,
+							449,
+							167,
+							448,
+							167,
+							462,
+							133,
+							462
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1651,
+							"length": 6
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							170,
+							448,
+							180,
+							448,
+							180,
+							462,
+							170,
+							462
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1658,
+							"length": 2
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							182,
+							448,
+							198,
+							448,
+							198,
+							462,
+							183,
+							462
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1661,
+							"length": 3
+						}
+					},
+					{
+						"content": "optimization",
+						"polygon": [
+							201,
+							448,
+							262,
+							448,
+							262,
+							462,
+							201,
+							462
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1665,
+							"length": 12
+						}
+					},
+					{
+						"content": "steps",
+						"polygon": [
+							265,
+							448,
+							289,
+							448,
+							289,
+							462,
+							265,
+							462
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1678,
+							"length": 5
+						}
+					},
+					{
+						"content": "one",
+						"polygon": [
+							292,
+							448,
+							310,
+							448,
+							310,
+							462,
+							292,
+							462
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1684,
+							"length": 3
+						}
+					},
+					{
+						"content": "at",
+						"polygon": [
+							312,
+							448,
+							321,
+							448,
+							321,
+							462,
+							312,
+							462
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1688,
+							"length": 2
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							324,
+							448,
+							328,
+							448,
+							328,
+							462,
+							324,
+							462
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 1691,
+							"length": 1
+						}
+					},
+					{
+						"content": "time",
+						"polygon": [
+							331,
+							448,
+							352,
+							448,
+							352,
+							462,
+							331,
+							462
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1693,
+							"length": 4
+						}
+					},
+					{
+						"content": "in",
+						"polygon": [
+							355,
+							448,
+							366,
+							448,
+							366,
+							462,
+							355,
+							462
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1698,
+							"length": 2
+						}
+					},
+					{
+						"content": "isolation.",
+						"polygon": [
+							369,
+							448,
+							413,
+							448,
+							413,
+							462,
+							369,
+							462
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1701,
+							"length": 10
+						}
+					},
+					{
+						"content": "As",
+						"polygon": [
+							416,
+							448,
+							428,
+							448,
+							428,
+							462,
+							416,
+							462
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1712,
+							"length": 2
+						}
+					},
+					{
+						"content": "indicated",
+						"polygon": [
+							431,
+							448,
+							477,
+							448,
+							477,
+							462,
+							431,
+							462
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1715,
+							"length": 9
+						}
+					},
+					{
+						"content": "by",
+						"polygon": [
+							479,
+							448,
+							491,
+							448,
+							491,
+							462,
+							479,
+							462
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1725,
+							"length": 2
+						}
+					},
+					{
+						"content": "other",
+						"polygon": [
+							494,
+							448,
+							521,
+							448,
+							521,
+							462,
+							494,
+							462
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1728,
+							"length": 5
+						}
+					},
+					{
+						"content": "simulations",
+						"polygon": [
+							63,
+							462,
+							120,
+							462,
+							120,
+							476,
+							63,
+							476
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1734,
+							"length": 11
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							123,
+							462,
+							142,
+							462,
+							142,
+							476,
+							123,
+							476
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1746,
+							"length": 4
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							147,
+							462,
+							163,
+							462,
+							164,
+							476,
+							147,
+							476
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 1751,
+							"length": 3
+						}
+					},
+					{
+						"content": "interim",
+						"polygon": [
+							166,
+							462,
+							197,
+							462,
+							197,
+							476,
+							166,
+							476
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1755,
+							"length": 7
+						}
+					},
+					{
+						"content": "report",
+						"polygon": [
+							202,
+							462,
+							233,
+							462,
+							233,
+							476,
+							202,
+							476
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1763,
+							"length": 6
+						}
+					},
+					{
+						"content": "(Gonder",
+						"polygon": [
+							235,
+							462,
+							274,
+							462,
+							275,
+							476,
+							235,
+							476
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1770,
+							"length": 7
+						}
+					},
+					{
+						"content": "et",
+						"polygon": [
+							277,
+							462,
+							287,
+							462,
+							287,
+							476,
+							277,
+							476
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1778,
+							"length": 2
+						}
+					},
+					{
+						"content": "al.",
+						"polygon": [
+							290,
+							462,
+							302,
+							462,
+							302,
+							476,
+							290,
+							476
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1781,
+							"length": 3
+						}
+					},
+					{
+						"content": "2010),",
+						"polygon": [
+							305,
+							462,
+							335,
+							462,
+							335,
+							476,
+							305,
+							476
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1785,
+							"length": 6
+						}
+					},
+					{
+						"content": "acceleration",
+						"polygon": [
+							338,
+							462,
+							395,
+							462,
+							395,
+							476,
+							338,
+							476
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1792,
+							"length": 12
+						}
+					},
+					{
+						"content": "rate",
+						"polygon": [
+							398,
+							462,
+							418,
+							462,
+							418,
+							476,
+							398,
+							476
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1805,
+							"length": 4
+						}
+					},
+					{
+						"content": "reductions",
+						"polygon": [
+							421,
+							462,
+							470,
+							462,
+							470,
+							476,
+							421,
+							476
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1810,
+							"length": 10
+						}
+					},
+					{
+						"content": "can",
+						"polygon": [
+							473,
+							462,
+							490,
+							462,
+							490,
+							476,
+							473,
+							476
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1821,
+							"length": 3
+						}
+					},
+					{
+						"content": "deliver",
+						"polygon": [
+							493,
+							462,
+							528,
+							462,
+							528,
+							476,
+							493,
+							476
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1825,
+							"length": 7
+						}
+					},
+					{
+						"content": "some",
+						"polygon": [
+							63,
+							477,
+							89,
+							476,
+							89,
+							490,
+							63,
+							490
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1833,
+							"length": 4
+						}
+					},
+					{
+						"content": "small",
+						"polygon": [
+							92,
+							476,
+							118,
+							476,
+							118,
+							490,
+							92,
+							490
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1838,
+							"length": 5
+						}
+					},
+					{
+						"content": "fuel",
+						"polygon": [
+							122,
+							476,
+							140,
+							476,
+							140,
+							490,
+							122,
+							490
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1844,
+							"length": 4
+						}
+					},
+					{
+						"content": "savings,",
+						"polygon": [
+							143,
+							476,
+							180,
+							476,
+							180,
+							490,
+							143,
+							490
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1849,
+							"length": 8
+						}
+					},
+					{
+						"content": "but",
+						"polygon": [
+							183,
+							476,
+							200,
+							476,
+							200,
+							490,
+							183,
+							490
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 1858,
+							"length": 3
+						}
+					},
+					{
+						"content": "avoiding",
+						"polygon": [
+							203,
+							476,
+							245,
+							476,
+							245,
+							490,
+							203,
+							490
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 1862,
+							"length": 8
+						}
+					},
+					{
+						"content": "accelerations",
+						"polygon": [
+							248,
+							476,
+							311,
+							476,
+							311,
+							490,
+							248,
+							490
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1871,
+							"length": 13
+						}
+					},
+					{
+						"content": "and",
+						"polygon": [
+							314,
+							476,
+							331,
+							476,
+							331,
+							490,
+							314,
+							490
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1885,
+							"length": 3
+						}
+					},
+					{
+						"content": "decelerations",
+						"polygon": [
+							334,
+							476,
+							397,
+							476,
+							397,
+							490,
+							334,
+							490
+						],
+						"confidence": 0.963,
+						"span": {
+							"offset": 1889,
+							"length": 13
+						}
+					},
+					{
+						"content": "(accel/decel)",
+						"polygon": [
+							400,
+							476,
+							461,
+							476,
+							460,
+							490,
+							400,
+							490
+						],
+						"confidence": 0.986,
+						"span": {
+							"offset": 1903,
+							"length": 13
+						}
+					},
+					{
+						"content": "altogether",
+						"polygon": [
+							463,
+							476,
+							514,
+							476,
+							514,
+							490,
+							463,
+							490
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1917,
+							"length": 10
+						}
+					},
+					{
+						"content": "saves",
+						"polygon": [
+							63,
+							490,
+							89,
+							490,
+							89,
+							504,
+							63,
+							504
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 1928,
+							"length": 5
+						}
+					},
+					{
+						"content": "larger",
+						"polygon": [
+							91,
+							490,
+							120,
+							490,
+							120,
+							504,
+							91,
+							504
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1934,
+							"length": 6
+						}
+					},
+					{
+						"content": "amounts",
+						"polygon": [
+							123,
+							490,
+							165,
+							490,
+							165,
+							504,
+							123,
+							504
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1941,
+							"length": 7
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							167,
+							490,
+							177,
+							490,
+							177,
+							504,
+							167,
+							504
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1949,
+							"length": 2
+						}
+					},
+					{
+						"content": "fuel.",
+						"polygon": [
+							179,
+							490,
+							202,
+							490,
+							202,
+							504,
+							179,
+							504
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1952,
+							"length": 5
+						}
+					},
+					{
+						"content": "This",
+						"polygon": [
+							205,
+							490,
+							227,
+							490,
+							227,
+							504,
+							205,
+							504
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1958,
+							"length": 4
+						}
+					},
+					{
+						"content": "suggests",
+						"polygon": [
+							229,
+							490,
+							269,
+							490,
+							269,
+							504,
+							229,
+							504
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1963,
+							"length": 8
+						}
+					},
+					{
+						"content": "that",
+						"polygon": [
+							272,
+							490,
+							291,
+							490,
+							291,
+							504,
+							272,
+							504
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 1972,
+							"length": 4
+						}
+					},
+					{
+						"content": "driving",
+						"polygon": [
+							294,
+							490,
+							329,
+							490,
+							329,
+							504,
+							294,
+							504
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1977,
+							"length": 7
+						}
+					},
+					{
+						"content": "style",
+						"polygon": [
+							332,
+							490,
+							355,
+							490,
+							355,
+							504,
+							332,
+							504
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 1985,
+							"length": 5
+						}
+					},
+					{
+						"content": "improvements",
+						"polygon": [
+							358,
+							490,
+							426,
+							490,
+							426,
+							504,
+							358,
+							504
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 1991,
+							"length": 12
+						}
+					},
+					{
+						"content": "should",
+						"polygon": [
+							429,
+							490,
+							461,
+							490,
+							461,
+							504,
+							429,
+							504
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2004,
+							"length": 6
+						}
+					},
+					{
+						"content": "focus",
+						"polygon": [
+							465,
+							490,
+							490,
+							490,
+							490,
+							504,
+							465,
+							504
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2011,
+							"length": 5
+						}
+					},
+					{
+						"content": "on",
+						"polygon": [
+							493,
+							490,
+							507,
+							490,
+							507,
+							504,
+							493,
+							504
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 2017,
+							"length": 2
+						}
+					},
+					{
+						"content": "reducing",
+						"polygon": [
+							63,
+							504,
+							104,
+							504,
+							104,
+							518,
+							63,
+							518
+						],
+						"confidence": 0.979,
+						"span": {
+							"offset": 2020,
+							"length": 8
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							107,
+							504,
+							122,
+							504,
+							122,
+							518,
+							107,
+							518
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 2029,
+							"length": 3
+						}
+					},
+					{
+						"content": "number",
+						"polygon": [
+							124,
+							504,
+							162,
+							504,
+							162,
+							518,
+							124,
+							518
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2033,
+							"length": 6
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							165,
+							504,
+							175,
+							504,
+							175,
+							518,
+							165,
+							518
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 2040,
+							"length": 2
+						}
+					},
+					{
+						"content": "stops",
+						"polygon": [
+							178,
+							504,
+							202,
+							504,
+							202,
+							518,
+							178,
+							518
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 2043,
+							"length": 5
+						}
+					},
+					{
+						"content": "in",
+						"polygon": [
+							205,
+							504,
+							214,
+							504,
+							214,
+							518,
+							205,
+							518
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 2049,
+							"length": 2
+						}
+					},
+					{
+						"content": "high",
+						"polygon": [
+							217,
+							504,
+							239,
+							504,
+							239,
+							518,
+							217,
+							518
+						],
+						"confidence": 0.988,
+						"span": {
+							"offset": 2052,
+							"length": 4
+						}
+					},
+					{
+						"content": "KI",
+						"polygon": [
+							242,
+							504,
+							256,
+							504,
+							256,
+							518,
+							242,
+							518
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2057,
+							"length": 2
+						}
+					},
+					{
+						"content": "cycles,",
+						"polygon": [
+							259,
+							504,
+							292,
+							504,
+							292,
+							518,
+							259,
+							518
+						],
+						"confidence": 0.895,
+						"span": {
+							"offset": 2060,
+							"length": 7
+						}
+					},
+					{
+						"content": "and",
+						"polygon": [
+							295,
+							504,
+							311,
+							504,
+							311,
+							518,
+							295,
+							518
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 2068,
+							"length": 3
+						}
+					},
+					{
+						"content": "not",
+						"polygon": [
+							313,
+							504,
+							329,
+							504,
+							329,
+							518,
+							314,
+							518
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2072,
+							"length": 3
+						}
+					},
+					{
+						"content": "just",
+						"polygon": [
+							332,
+							504,
+							351,
+							504,
+							351,
+							518,
+							332,
+							518
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2076,
+							"length": 4
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							354,
+							504,
+							369,
+							504,
+							369,
+							518,
+							354,
+							518
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 2081,
+							"length": 3
+						}
+					},
+					{
+						"content": "rate",
+						"polygon": [
+							372,
+							504,
+							389,
+							504,
+							389,
+							518,
+							372,
+							518
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2085,
+							"length": 4
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							391,
+							504,
+							402,
+							504,
+							402,
+							518,
+							392,
+							518
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 2090,
+							"length": 2
+						}
+					},
+					{
+						"content": "accelerating",
+						"polygon": [
+							404,
+							504,
+							463,
+							504,
+							463,
+							518,
+							404,
+							518
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 2093,
+							"length": 12
+						}
+					},
+					{
+						"content": "out",
+						"polygon": [
+							466,
+							504,
+							481,
+							504,
+							481,
+							518,
+							466,
+							518
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2106,
+							"length": 3
+						}
+					},
+					{
+						"content": "of",
+						"polygon": [
+							484,
+							504,
+							494,
+							504,
+							494,
+							518,
+							484,
+							518
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 2110,
+							"length": 2
+						}
+					},
+					{
+						"content": "a",
+						"polygon": [
+							497,
+							504,
+							503,
+							504,
+							503,
+							518,
+							497,
+							518
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2113,
+							"length": 1
+						}
+					},
+					{
+						"content": "stop.",
+						"polygon": [
+							506,
+							504,
+							530,
+							504,
+							530,
+							518,
+							506,
+							518
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2115,
+							"length": 5
+						}
+					},
+					{
+						"content": "Table",
+						"polygon": [
+							136,
+							528,
+							163,
+							528,
+							163,
+							541,
+							136,
+							541
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2121,
+							"length": 5
+						}
+					},
+					{
+						"content": "2-1.",
+						"polygon": [
+							166,
+							528,
+							183,
+							528,
+							183,
+							541,
+							166,
+							541
+						],
+						"confidence": 0.977,
+						"span": {
+							"offset": 2127,
+							"length": 4
+						}
+					},
+					{
+						"content": "Simulated",
+						"polygon": [
+							186,
+							528,
+							234,
+							528,
+							234,
+							541,
+							186,
+							541
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2132,
+							"length": 9
+						}
+					},
+					{
+						"content": "fuel",
+						"polygon": [
+							236,
+							528,
+							254,
+							528,
+							254,
+							541,
+							236,
+							541
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2142,
+							"length": 4
+						}
+					},
+					{
+						"content": "savings",
+						"polygon": [
+							257,
+							528,
+							294,
+							528,
+							294,
+							541,
+							257,
+							541
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 2147,
+							"length": 7
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							297,
+							528,
+							319,
+							528,
+							319,
+							541,
+							297,
+							541
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 2155,
+							"length": 4
+						}
+					},
+					{
+						"content": "isolated",
+						"polygon": [
+							322,
+							528,
+							360,
+							528,
+							360,
+							541,
+							322,
+							541
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2160,
+							"length": 8
+						}
+					},
+					{
+						"content": "cycle",
+						"polygon": [
+							362,
+							528,
+							386,
+							528,
+							386,
+							541,
+							362,
+							541
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 2169,
+							"length": 5
+						}
+					},
+					{
+						"content": "improvements",
+						"polygon": [
+							388,
+							528,
+							460,
+							529,
+							460,
+							541,
+							388,
+							541
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 2175,
+							"length": 12
+						}
+					},
+					{
+						"content": "Cycle",
+						"polygon": [
+							121,
+							555,
+							149,
+							555,
+							149,
+							566,
+							121,
+							566
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2188,
+							"length": 5
+						}
+					},
+					{
+						"content": "Name",
+						"polygon": [
+							120,
+							567,
+							149,
+							567,
+							149,
+							577,
+							120,
+							577
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2194,
+							"length": 4
+						}
+					},
+					{
+						"content": "KI",
+						"polygon": [
+							171,
+							555,
+							183,
+							555,
+							183,
+							565,
+							171,
+							565
+						],
+						"confidence": 0.914,
+						"span": {
+							"offset": 2199,
+							"length": 2
+						}
+					},
+					{
+						"content": "(1/km)",
+						"polygon": [
+							162,
+							566,
+							193,
+							567,
+							193,
+							578,
+							162,
+							578
+						],
+						"confidence": 0.973,
+						"span": {
+							"offset": 2202,
+							"length": 6
+						}
+					},
+					{
+						"content": "Distance",
+						"polygon": [
+							202,
+							555,
+							245,
+							555,
+							245,
+							566,
+							202,
+							565
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 2209,
+							"length": 8
+						}
+					},
+					{
+						"content": "(mi)",
+						"polygon": [
+							214,
+							567,
+							233,
+							567,
+							234,
+							578,
+							214,
+							578
+						],
+						"confidence": 0.979,
+						"span": {
+							"offset": 2218,
+							"length": 4
+						}
+					},
+					{
+						"content": "Percent",
+						"polygon": [
+							315,
+							548,
+							353,
+							548,
+							353,
+							560,
+							315,
+							560
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2223,
+							"length": 7
+						}
+					},
+					{
+						"content": "Fuel",
+						"polygon": [
+							355,
+							548,
+							376,
+							548,
+							376,
+							560,
+							355,
+							560
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2231,
+							"length": 4
+						}
+					},
+					{
+						"content": "Savings",
+						"polygon": [
+							379,
+							548,
+							418,
+							549,
+							418,
+							561,
+							379,
+							560
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2236,
+							"length": 7
+						}
+					},
+					{
+						"content": "Improved",
+						"polygon": [
+							254,
+							563,
+							301,
+							563,
+							301,
+							574,
+							254,
+							574
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2244,
+							"length": 8
+						}
+					},
+					{
+						"content": "Speed",
+						"polygon": [
+							262,
+							574,
+							293,
+							574,
+							294,
+							585,
+							262,
+							585
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2253,
+							"length": 5
+						}
+					},
+					{
+						"content": "Decreased",
+						"polygon": [
+							310,
+							563,
+							362,
+							563,
+							362,
+							574,
+							310,
+							574
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2259,
+							"length": 9
+						}
+					},
+					{
+						"content": "Accel",
+						"polygon": [
+							322,
+							574,
+							351,
+							574,
+							351,
+							585,
+							322,
+							585
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2269,
+							"length": 5
+						}
+					},
+					{
+						"content": "Eliminate",
+						"polygon": [
+							371,
+							562,
+							418,
+							563,
+							418,
+							574,
+							371,
+							573
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2275,
+							"length": 9
+						}
+					},
+					{
+						"content": "Stops",
+						"polygon": [
+							380,
+							574,
+							409,
+							574,
+							409,
+							585,
+							380,
+							585
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 2285,
+							"length": 5
+						}
+					},
+					{
+						"content": "Decreased",
+						"polygon": [
+							427,
+							563,
+							479,
+							563,
+							479,
+							574,
+							427,
+							574
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2291,
+							"length": 9
+						}
+					},
+					{
+						"content": "Idle",
+						"polygon": [
+							444,
+							574,
+							462,
+							575,
+							462,
+							584,
+							444,
+							584
+						],
+						"confidence": 0.94,
+						"span": {
+							"offset": 2301,
+							"length": 4
+						}
+					},
+					{
+						"content": "2012_2",
+						"polygon": [
+							117,
+							587,
+							152,
+							587,
+							152,
+							599,
+							117,
+							599
+						],
+						"confidence": 0.99,
+						"span": {
+							"offset": 2306,
+							"length": 6
+						}
+					},
+					{
+						"content": "3.30",
+						"polygon": [
+							166,
+							587,
+							188,
+							588,
+							188,
+							598,
+							166,
+							598
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 2313,
+							"length": 4
+						}
+					},
+					{
+						"content": "1.3",
+						"polygon": [
+							216,
+							588,
+							231,
+							588,
+							231,
+							598,
+							216,
+							598
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2318,
+							"length": 3
+						}
+					},
+					{
+						"content": "5.9%",
+						"polygon": [
+							265,
+							588,
+							289,
+							588,
+							289,
+							598,
+							265,
+							598
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 2322,
+							"length": 4
+						}
+					},
+					{
+						"content": "9.5%",
+						"polygon": [
+							324,
+							588,
+							348,
+							588,
+							348,
+							598,
+							324,
+							598
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2327,
+							"length": 4
+						}
+					},
+					{
+						"content": "29.2%",
+						"polygon": [
+							379,
+							587,
+							409,
+							588,
+							409,
+							599,
+							379,
+							598
+						],
+						"confidence": 0.985,
+						"span": {
+							"offset": 2332,
+							"length": 5
+						}
+					},
+					{
+						"content": "17.4%",
+						"polygon": [
+							439,
+							588,
+							468,
+							588,
+							468,
+							598,
+							439,
+							598
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2338,
+							"length": 5
+						}
+					},
+					{
+						"content": "2145_1",
+						"polygon": [
+							117,
+							603,
+							151,
+							603,
+							151,
+							614,
+							117,
+							614
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2344,
+							"length": 6
+						}
+					},
+					{
+						"content": "0.68",
+						"polygon": [
+							167,
+							603,
+							188,
+							603,
+							188,
+							614,
+							167,
+							614
+						],
+						"confidence": 0.963,
+						"span": {
+							"offset": 2351,
+							"length": 4
+						}
+					},
+					{
+						"content": "11.2",
+						"polygon": [
+							214,
+							603,
+							234,
+							603,
+							235,
+							614,
+							214,
+							614
+						],
+						"confidence": 0.963,
+						"span": {
+							"offset": 2356,
+							"length": 4
+						}
+					},
+					{
+						"content": "2.4%",
+						"polygon": [
+							265,
+							603,
+							290,
+							603,
+							290,
+							614,
+							265,
+							614
+						],
+						"confidence": 0.943,
+						"span": {
+							"offset": 2361,
+							"length": 4
+						}
+					},
+					{
+						"content": "0.1%",
+						"polygon": [
+							324,
+							603,
+							348,
+							603,
+							348,
+							614,
+							324,
+							614
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 2366,
+							"length": 4
+						}
+					},
+					{
+						"content": "9.5%",
+						"polygon": [
+							382,
+							603,
+							407,
+							603,
+							407,
+							614,
+							382,
+							614
+						],
+						"confidence": 0.979,
+						"span": {
+							"offset": 2371,
+							"length": 4
+						}
+					},
+					{
+						"content": "2.7%",
+						"polygon": [
+							440,
+							603,
+							465,
+							603,
+							465,
+							614,
+							440,
+							614
+						],
+						"confidence": 0.957,
+						"span": {
+							"offset": 2376,
+							"length": 4
+						}
+					},
+					{
+						"content": "4234_1",
+						"polygon": [
+							117,
+							619,
+							151,
+							619,
+							151,
+							630,
+							117,
+							629
+						],
+						"confidence": 0.977,
+						"span": {
+							"offset": 2381,
+							"length": 6
+						}
+					},
+					{
+						"content": "0.59",
+						"polygon": [
+							167,
+							619,
+							188,
+							619,
+							188,
+							629,
+							167,
+							629
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 2388,
+							"length": 4
+						}
+					},
+					{
+						"content": "58.7",
+						"polygon": [
+							213,
+							619,
+							234,
+							619,
+							234,
+							629,
+							213,
+							629
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2393,
+							"length": 4
+						}
+					},
+					{
+						"content": "8.5%",
+						"polygon": [
+							265,
+							619,
+							290,
+							619,
+							290,
+							629,
+							266,
+							629
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 2398,
+							"length": 4
+						}
+					},
+					{
+						"content": "1.3%",
+						"polygon": [
+							325,
+							619,
+							348,
+							619,
+							348,
+							629,
+							325,
+							629
+						],
+						"confidence": 0.982,
+						"span": {
+							"offset": 2403,
+							"length": 4
+						}
+					},
+					{
+						"content": "8.5%",
+						"polygon": [
+							382,
+							619,
+							407,
+							619,
+							407,
+							629,
+							383,
+							629
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2408,
+							"length": 4
+						}
+					},
+					{
+						"content": "3.3%",
+						"polygon": [
+							441,
+							618,
+							465,
+							619,
+							465,
+							629,
+							441,
+							629
+						],
+						"confidence": 0.977,
+						"span": {
+							"offset": 2413,
+							"length": 4
+						}
+					},
+					{
+						"content": "2032_2",
+						"polygon": [
+							117,
+							634,
+							152,
+							634,
+							153,
+							645,
+							117,
+							645
+						],
+						"confidence": 0.969,
+						"span": {
+							"offset": 2418,
+							"length": 6
+						}
+					},
+					{
+						"content": "0.17",
+						"polygon": [
+							167,
+							634,
+							188,
+							634,
+							188,
+							645,
+							167,
+							645
+						],
+						"confidence": 0.945,
+						"span": {
+							"offset": 2425,
+							"length": 4
+						}
+					},
+					{
+						"content": "57.8",
+						"polygon": [
+							213,
+							634,
+							234,
+							634,
+							234,
+							645,
+							213,
+							645
+						],
+						"confidence": 0.989,
+						"span": {
+							"offset": 2430,
+							"length": 4
+						}
+					},
+					{
+						"content": "21.7%",
+						"polygon": [
+							263,
+							634,
+							292,
+							634,
+							292,
+							645,
+							263,
+							645
+						],
+						"confidence": 0.98,
+						"span": {
+							"offset": 2435,
+							"length": 5
+						}
+					},
+					{
+						"content": "0.3%",
+						"polygon": [
+							324,
+							634,
+							348,
+							634,
+							348,
+							645,
+							324,
+							645
+						],
+						"confidence": 0.988,
+						"span": {
+							"offset": 2441,
+							"length": 4
+						}
+					},
+					{
+						"content": "2.7%",
+						"polygon": [
+							382,
+							634,
+							406,
+							634,
+							406,
+							645,
+							382,
+							645
+						],
+						"confidence": 0.977,
+						"span": {
+							"offset": 2446,
+							"length": 4
+						}
+					},
+					{
+						"content": "1.2%",
+						"polygon": [
+							441,
+							634,
+							465,
+							634,
+							465,
+							645,
+							442,
+							645
+						],
+						"confidence": 0.964,
+						"span": {
+							"offset": 2451,
+							"length": 4
+						}
+					},
+					{
+						"content": "4171_1",
+						"polygon": [
+							117,
+							650,
+							152,
+							650,
+							152,
+							661,
+							117,
+							661
+						],
+						"confidence": 0.972,
+						"span": {
+							"offset": 2456,
+							"length": 6
+						}
+					},
+					{
+						"content": "0.07",
+						"polygon": [
+							167,
+							650,
+							187,
+							650,
+							187,
+							660,
+							167,
+							660
+						],
+						"confidence": 0.99,
+						"span": {
+							"offset": 2463,
+							"length": 4
+						}
+					},
+					{
+						"content": "173.9",
+						"polygon": [
+							211,
+							650,
+							237,
+							650,
+							237,
+							660,
+							211,
+							660
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 2468,
+							"length": 5
+						}
+					},
+					{
+						"content": "58.1%",
+						"polygon": [
+							263,
+							650,
+							292,
+							650,
+							292,
+							660,
+							263,
+							660
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2474,
+							"length": 5
+						}
+					},
+					{
+						"content": "1.6%",
+						"polygon": [
+							325,
+							650,
+							348,
+							650,
+							348,
+							660,
+							325,
+							660
+						],
+						"confidence": 0.986,
+						"span": {
+							"offset": 2480,
+							"length": 4
+						}
+					},
+					{
+						"content": "2.1%",
+						"polygon": [
+							382,
+							650,
+							406,
+							650,
+							406,
+							660,
+							382,
+							660
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2485,
+							"length": 4
+						}
+					},
+					{
+						"content": "0.5%",
+						"polygon": [
+							440,
+							650,
+							464,
+							650,
+							464,
+							660,
+							441,
+							660
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2490,
+							"length": 4
+						}
+					},
+					{
+						"content": "Figure",
+						"polygon": [
+							63,
+							676,
+							96,
+							676,
+							96,
+							690,
+							63,
+							690
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2495,
+							"length": 6
+						}
+					},
+					{
+						"content": "2-1",
+						"polygon": [
+							98,
+							676,
+							113,
+							676,
+							113,
+							690,
+							98,
+							690
+						],
+						"confidence": 0.913,
+						"span": {
+							"offset": 2502,
+							"length": 3
+						}
+					},
+					{
+						"content": "extends",
+						"polygon": [
+							117,
+							676,
+							154,
+							676,
+							154,
+							690,
+							117,
+							690
+						],
+						"confidence": 0.981,
+						"span": {
+							"offset": 2506,
+							"length": 7
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							157,
+							676,
+							172,
+							677,
+							172,
+							690,
+							157,
+							690
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 2514,
+							"length": 3
+						}
+					},
+					{
+						"content": "analysis",
+						"polygon": [
+							174,
+							677,
+							214,
+							677,
+							214,
+							690,
+							174,
+							690
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2518,
+							"length": 8
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							217,
+							677,
+							240,
+							677,
+							240,
+							690,
+							217,
+							690
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 2527,
+							"length": 4
+						}
+					},
+					{
+						"content": "eliminating",
+						"polygon": [
+							242,
+							677,
+							297,
+							677,
+							297,
+							690,
+							242,
+							690
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2532,
+							"length": 11
+						}
+					},
+					{
+						"content": "stops",
+						"polygon": [
+							300,
+							677,
+							325,
+							677,
+							325,
+							690,
+							300,
+							690
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2544,
+							"length": 5
+						}
+					},
+					{
+						"content": "for",
+						"polygon": [
+							328,
+							677,
+							342,
+							677,
+							342,
+							690,
+							328,
+							690
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2550,
+							"length": 3
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							345,
+							677,
+							360,
+							677,
+							360,
+							690,
+							345,
+							690
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 2554,
+							"length": 3
+						}
+					},
+					{
+						"content": "five",
+						"polygon": [
+							363,
+							677,
+							381,
+							677,
+							381,
+							690,
+							363,
+							690
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2558,
+							"length": 4
+						}
+					},
+					{
+						"content": "example",
+						"polygon": [
+							384,
+							677,
+							425,
+							677,
+							425,
+							690,
+							384,
+							690
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2563,
+							"length": 7
+						}
+					},
+					{
+						"content": "cycles",
+						"polygon": [
+							427,
+							677,
+							457,
+							677,
+							457,
+							690,
+							427,
+							690
+						],
+						"confidence": 0.988,
+						"span": {
+							"offset": 2571,
+							"length": 6
+						}
+					},
+					{
+						"content": "and",
+						"polygon": [
+							460,
+							677,
+							478,
+							677,
+							478,
+							690,
+							460,
+							690
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 2578,
+							"length": 3
+						}
+					},
+					{
+						"content": "examines",
+						"polygon": [
+							481,
+							677,
+							527,
+							677,
+							527,
+							690,
+							481,
+							690
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2582,
+							"length": 8
+						}
+					},
+					{
+						"content": "the",
+						"polygon": [
+							63,
+							691,
+							79,
+							691,
+							79,
+							704,
+							63,
+							704
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 2591,
+							"length": 3
+						}
+					},
+					{
+						"content": "additional",
+						"polygon": [
+							81,
+							691,
+							129,
+							691,
+							129,
+							704,
+							81,
+							704
+						],
+						"confidence": 0.993,
+						"span": {
+							"offset": 2595,
+							"length": 10
+						}
+					},
+					{
+						"content": "benefit",
+						"polygon": [
+							133,
+							691,
+							166,
+							691,
+							166,
+							704,
+							133,
+							704
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2606,
+							"length": 7
+						}
+					},
+					{
+						"content": "from",
+						"polygon": [
+							169,
+							691,
+							192,
+							691,
+							192,
+							704,
+							169,
+							704
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2614,
+							"length": 4
+						}
+					},
+					{
+						"content": "avoiding",
+						"polygon": [
+							195,
+							691,
+							238,
+							691,
+							238,
+							704,
+							195,
+							704
+						],
+						"confidence": 0.995,
+						"span": {
+							"offset": 2619,
+							"length": 8
+						}
+					},
+					{
+						"content": "slow-and-go",
+						"polygon": [
+							240,
+							691,
+							300,
+							691,
+							300,
+							704,
+							240,
+							704
+						],
+						"confidence": 0.991,
+						"span": {
+							"offset": 2628,
+							"length": 11
+						}
+					},
+					{
+						"content": "driving",
+						"polygon": [
+							303,
+							691,
+							336,
+							691,
+							336,
+							704,
+							303,
+							704
+						],
+						"confidence": 0.996,
+						"span": {
+							"offset": 2640,
+							"length": 7
+						}
+					},
+					{
+						"content": "below",
+						"polygon": [
+							339,
+							691,
+							370,
+							691,
+							370,
+							704,
+							339,
+							704
+						],
+						"confidence": 0.998,
+						"span": {
+							"offset": 2648,
+							"length": 5
+						}
+					},
+					{
+						"content": "various",
+						"polygon": [
+							373,
+							691,
+							409,
+							691,
+							409,
+							704,
+							373,
+							704
+						],
+						"confidence": 0.994,
+						"span": {
+							"offset": 2654,
+							"length": 7
+						}
+					},
+					{
+						"content": "speed",
+						"polygon": [
+							412,
+							691,
+							439,
+							691,
+							439,
+							704,
+							412,
+							704
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 2662,
+							"length": 5
+						}
+					},
+					{
+						"content": "thresholds.",
+						"polygon": [
+							442,
+							691,
+							494,
+							691,
+							494,
+							704,
+							442,
+							704
+						],
+						"confidence": 0.992,
+						"span": {
+							"offset": 2668,
+							"length": 11
+						}
+					},
+					{
+						"content": "3",
+						"polygon": [
+							295,
+							719,
+							301,
+							718,
+							301,
+							729,
+							295,
+							729
+						],
+						"confidence": 0.997,
+						"span": {
+							"offset": 2680,
+							"length": 1
+						}
+					}
+				],
+				"lines": [
+					{
+						"content": "2 Quantifying Fuel-Saving Opportunities from Specific Driving",
+						"polygon": [
+							63,
+							60,
+							516,
+							61,
+							516,
+							79,
+							63,
+							78
+						],
+						"spans": [
+							{
+								"offset": 0,
+								"length": 61
+							}
+						]
+					},
+					{
+						"content": "Behavior Changes",
+						"polygon": [
+							85,
+							78,
+							218,
+							79,
+							218,
+							95,
+							85,
+							95
+						],
+						"spans": [
+							{
+								"offset": 62,
+								"length": 16
+							}
+						]
+					},
+					{
+						"content": "2.1 Savings from Improving Individual Driving Profiles",
+						"polygon": [
+							64,
+							107,
+							382,
+							107,
+							382,
+							122,
+							64,
+							122
+						],
+						"spans": [
+							{
+								"offset": 79,
+								"length": 54
+							}
+						]
+					},
+					{
+						"content": "2.1.1 Drive Profile Subsample from Real-World Travel Survey",
+						"polygon": [
+							64,
+							126,
+							392,
+							126,
+							392,
+							140,
+							64,
+							140
+						],
+						"spans": [
+							{
+								"offset": 134,
+								"length": 59
+							}
+						]
+					},
+					{
+						"content": "The interim report (Gonder et al. 2010) included results from detailed analyses on five cycles",
+						"polygon": [
+							63,
+							146,
+							513,
+							146,
+							513,
+							160,
+							63,
+							160
+						],
+						"spans": [
+							{
+								"offset": 194,
+								"length": 94
+							}
+						]
+					},
+					{
+						"content": "selected from a large set of real-world global positioning system (GPS) travel data collected in",
+						"polygon": [
+							63,
+							160,
+							519,
+							160,
+							519,
+							174,
+							63,
+							174
+						],
+						"spans": [
+							{
+								"offset": 289,
+								"length": 96
+							}
+						]
+					},
+					{
+						"content": "2006 as part of a study by the Texas Transportation Institute and the Texas Department of",
+						"polygon": [
+							63,
+							173,
+							498,
+							173,
+							498,
+							188,
+							63,
+							187
+						],
+						"spans": [
+							{
+								"offset": 386,
+								"length": 89
+							}
+						]
+					},
+					{
+						"content": "Transportation (Ojah and Pearson 2008). The cycles were selected to reflect a range of kinetic",
+						"polygon": [
+							63,
+							187,
+							517,
+							187,
+							517,
+							201,
+							63,
+							201
+						],
+						"spans": [
+							{
+								"offset": 476,
+								"length": 94
+							}
+						]
+					},
+					{
+						"content": "intensity (KI) values. (KI represents a ratio of characteristic acceleration to aerodynamic speed",
+						"polygon": [
+							63,
+							201,
+							520,
+							201,
+							520,
+							215,
+							63,
+							215
+						],
+						"spans": [
+							{
+								"offset": 571,
+								"length": 97
+							}
+						]
+					},
+					{
+						"content": "and has been shown to be a useful drive cycle classification parameter [O'Keefe et al. 2007].)",
+						"polygon": [
+							63,
+							215,
+							514,
+							215,
+							514,
+							229,
+							63,
+							229
+						],
+						"spans": [
+							{
+								"offset": 669,
+								"length": 94
+							}
+						]
+					},
+					{
+						"content": "To determine the maximum possible cycle improvement fuel savings, the real-world cycles were",
+						"polygon": [
+							63,
+							228,
+							530,
+							229,
+							530,
+							243,
+							63,
+							243
+						],
+						"spans": [
+							{
+								"offset": 764,
+								"length": 92
+							}
+						]
+					},
+					{
+						"content": "converted into equivalent \"ideal\" cycles using the following steps:",
+						"polygon": [
+							63,
+							242,
+							383,
+							243,
+							383,
+							257,
+							63,
+							257
+						],
+						"spans": [
+							{
+								"offset": 857,
+								"length": 67
+							}
+						]
+					},
+					{
+						"content": "1. Calculate the trip distance of each sample trip.",
+						"polygon": [
+							82,
+							261,
+							323,
+							262,
+							323,
+							277,
+							82,
+							277
+						],
+						"spans": [
+							{
+								"offset": 925,
+								"length": 51
+							}
+						]
+					},
+					{
+						"content": "2. Eliminate stop-and-go and idling within each trip.",
+						"polygon": [
+							81,
+							281,
+							340,
+							282,
+							340,
+							297,
+							81,
+							297
+						],
+						"spans": [
+							{
+								"offset": 977,
+								"length": 53
+							}
+						]
+					},
+					{
+						"content": "3. Set the acceleration rate to 3 mph/s.",
+						"polygon": [
+							81,
+							301,
+							272,
+							301,
+							272,
+							316,
+							81,
+							316
+						],
+						"spans": [
+							{
+								"offset": 1031,
+								"length": 40
+							}
+						]
+					},
+					{
+						"content": "4. Set the cruising speed to 40 mph.",
+						"polygon": [
+							81,
+							321,
+							260,
+							322,
+							260,
+							336,
+							81,
+							336
+						],
+						"spans": [
+							{
+								"offset": 1072,
+								"length": 36
+							}
+						]
+					},
+					{
+						"content": "5. Continue cruising at 40 mph until the trip distance is reached.",
+						"polygon": [
+							81,
+							341,
+							396,
+							341,
+							396,
+							356,
+							81,
+							356
+						],
+						"spans": [
+							{
+								"offset": 1109,
+								"length": 66
+							}
+						]
+					},
+					{
+						"content": "To compare vehicle simulations over each real-world cycle and its corresponding ideal cycle, a",
+						"polygon": [
+							63,
+							367,
+							521,
+							367,
+							521,
+							382,
+							63,
+							381
+						],
+						"spans": [
+							{
+								"offset": 1176,
+								"length": 94
+							}
+						]
+					},
+					{
+						"content": "midsize conventional vehicle model from a previous NREL study was used (Earleywine et al.",
+						"polygon": [
+							63,
+							381,
+							515,
+							381,
+							515,
+							395,
+							63,
+							395
+						],
+						"spans": [
+							{
+								"offset": 1271,
+								"length": 89
+							}
+						]
+					},
+					{
+						"content": "2010). The results indicated a fuel savings potential of roughly 60% for the drive profiles with",
+						"polygon": [
+							63,
+							394,
+							518,
+							395,
+							517,
+							409,
+							63,
+							409
+						],
+						"spans": [
+							{
+								"offset": 1361,
+								"length": 96
+							}
+						]
+					},
+					{
+						"content": "either very high or very low KI and of 30%-40% for the cycles with moderate KI values.",
+						"polygon": [
+							63,
+							409,
+							492,
+							408,
+							492,
+							423,
+							63,
+							423
+						],
+						"spans": [
+							{
+								"offset": 1458,
+								"length": 86
+							}
+						]
+					},
+					{
+						"content": "Table 2-1 takes the analysis of these five cycles from the interim report a step further by",
+						"polygon": [
+							63,
+							434,
+							488,
+							434,
+							488,
+							449,
+							63,
+							448
+						],
+						"spans": [
+							{
+								"offset": 1545,
+								"length": 91
+							}
+						]
+					},
+					{
+						"content": "examining the impact of the optimization steps one at a time in isolation. As indicated by other",
+						"polygon": [
+							63,
+							448,
+							521,
+							448,
+							521,
+							462,
+							63,
+							462
+						],
+						"spans": [
+							{
+								"offset": 1637,
+								"length": 96
+							}
+						]
+					},
+					{
+						"content": "simulations from the interim report (Gonder et al. 2010), acceleration rate reductions can deliver",
+						"polygon": [
+							63,
+							462,
+							528,
+							462,
+							528,
+							476,
+							63,
+							476
+						],
+						"spans": [
+							{
+								"offset": 1734,
+								"length": 98
+							}
+						]
+					},
+					{
+						"content": "some small fuel savings, but avoiding accelerations and decelerations (accel/decel) altogether",
+						"polygon": [
+							63,
+							476,
+							514,
+							476,
+							514,
+							490,
+							63,
+							490
+						],
+						"spans": [
+							{
+								"offset": 1833,
+								"length": 94
+							}
+						]
+					},
+					{
+						"content": "saves larger amounts of fuel. This suggests that driving style improvements should focus on",
+						"polygon": [
+							63,
+							490,
+							506,
+							490,
+							506,
+							504,
+							63,
+							503
+						],
+						"spans": [
+							{
+								"offset": 1928,
+								"length": 91
+							}
+						]
+					},
+					{
+						"content": "reducing the number of stops in high KI cycles, and not just the rate of accelerating out of a stop.",
+						"polygon": [
+							63,
+							504,
+							530,
+							504,
+							530,
+							518,
+							63,
+							518
+						],
+						"spans": [
+							{
+								"offset": 2020,
+								"length": 100
+							}
+						]
+					},
+					{
+						"content": "Table 2-1. Simulated fuel savings from isolated cycle improvements",
+						"polygon": [
+							136,
+							528,
+							460,
+							528,
+							460,
+							541,
+							136,
+							541
+						],
+						"spans": [
+							{
+								"offset": 2121,
+								"length": 66
+							}
+						]
+					},
+					{
+						"content": "Cycle",
+						"polygon": [
+							121,
+							555,
+							149,
+							555,
+							149,
+							566,
+							121,
+							566
+						],
+						"spans": [
+							{
+								"offset": 2188,
+								"length": 5
+							}
+						]
+					},
+					{
+						"content": "Name",
+						"polygon": [
+							120,
+							567,
+							149,
+							567,
+							149,
+							577,
+							120,
+							577
+						],
+						"spans": [
+							{
+								"offset": 2194,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "KI",
+						"polygon": [
+							171,
+							555,
+							183,
+							555,
+							183,
+							565,
+							171,
+							565
+						],
+						"spans": [
+							{
+								"offset": 2199,
+								"length": 2
+							}
+						]
+					},
+					{
+						"content": "(1/km)",
+						"polygon": [
+							162,
+							566,
+							192,
+							566,
+							192,
+							577,
+							162,
+							577
+						],
+						"spans": [
+							{
+								"offset": 2202,
+								"length": 6
+							}
+						]
+					},
+					{
+						"content": "Distance",
+						"polygon": [
+							202,
+							555,
+							245,
+							555,
+							245,
+							566,
+							202,
+							565
+						],
+						"spans": [
+							{
+								"offset": 2209,
+								"length": 8
+							}
+						]
+					},
+					{
+						"content": "(mi)",
+						"polygon": [
+							214,
+							567,
+							233,
+							567,
+							233,
+							578,
+							214,
+							578
+						],
+						"spans": [
+							{
+								"offset": 2218,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "Percent Fuel Savings",
+						"polygon": [
+							315,
+							548,
+							417,
+							549,
+							417,
+							561,
+							315,
+							560
+						],
+						"spans": [
+							{
+								"offset": 2223,
+								"length": 20
+							}
+						]
+					},
+					{
+						"content": "Improved",
+						"polygon": [
+							254,
+							563,
+							300,
+							563,
+							300,
+							574,
+							254,
+							573
+						],
+						"spans": [
+							{
+								"offset": 2244,
+								"length": 8
+							}
+						]
+					},
+					{
+						"content": "Speed",
+						"polygon": [
+							262,
+							574,
+							293,
+							574,
+							293,
+							585,
+							262,
+							585
+						],
+						"spans": [
+							{
+								"offset": 2253,
+								"length": 5
+							}
+						]
+					},
+					{
+						"content": "Decreased",
+						"polygon": [
+							310,
+							563,
+							362,
+							563,
+							362,
+							574,
+							310,
+							574
+						],
+						"spans": [
+							{
+								"offset": 2259,
+								"length": 9
+							}
+						]
+					},
+					{
+						"content": "Accel",
+						"polygon": [
+							322,
+							574,
+							350,
+							574,
+							350,
+							584,
+							322,
+							585
+						],
+						"spans": [
+							{
+								"offset": 2269,
+								"length": 5
+							}
+						]
+					},
+					{
+						"content": "Eliminate",
+						"polygon": [
+							371,
+							562,
+							417,
+							562,
+							417,
+							573,
+							371,
+							573
+						],
+						"spans": [
+							{
+								"offset": 2275,
+								"length": 9
+							}
+						]
+					},
+					{
+						"content": "Stops",
+						"polygon": [
+							380,
+							574,
+							409,
+							574,
+							408,
+							585,
+							380,
+							585
+						],
+						"spans": [
+							{
+								"offset": 2285,
+								"length": 5
+							}
+						]
+					},
+					{
+						"content": "Decreased",
+						"polygon": [
+							427,
+							563,
+							478,
+							563,
+							478,
+							574,
+							427,
+							573
+						],
+						"spans": [
+							{
+								"offset": 2291,
+								"length": 9
+							}
+						]
+					},
+					{
+						"content": "Idle",
+						"polygon": [
+							444,
+							574,
+							461,
+							574,
+							461,
+							584,
+							444,
+							584
+						],
+						"spans": [
+							{
+								"offset": 2301,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "2012_2",
+						"polygon": [
+							117,
+							587,
+							152,
+							587,
+							152,
+							599,
+							117,
+							599
+						],
+						"spans": [
+							{
+								"offset": 2306,
+								"length": 6
+							}
+						]
+					},
+					{
+						"content": "3.30",
+						"polygon": [
+							166,
+							587,
+							187,
+							587,
+							187,
+							598,
+							166,
+							598
+						],
+						"spans": [
+							{
+								"offset": 2313,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "1.3",
+						"polygon": [
+							216,
+							588,
+							231,
+							588,
+							231,
+							598,
+							216,
+							598
+						],
+						"spans": [
+							{
+								"offset": 2318,
+								"length": 3
+							}
+						]
+					},
+					{
+						"content": "5.9%",
+						"polygon": [
+							265,
+							588,
+							289,
+							588,
+							289,
+							598,
+							265,
+							598
+						],
+						"spans": [
+							{
+								"offset": 2322,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "9.5%",
+						"polygon": [
+							324,
+							588,
+							348,
+							588,
+							348,
+							598,
+							324,
+							598
+						],
+						"spans": [
+							{
+								"offset": 2327,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "29.2%",
+						"polygon": [
+							379,
+							587,
+							409,
+							587,
+							409,
+							598,
+							379,
+							598
+						],
+						"spans": [
+							{
+								"offset": 2332,
+								"length": 5
+							}
+						]
+					},
+					{
+						"content": "17.4%",
+						"polygon": [
+							439,
+							588,
+							467,
+							588,
+							467,
+							598,
+							439,
+							598
+						],
+						"spans": [
+							{
+								"offset": 2338,
+								"length": 5
+							}
+						]
+					},
+					{
+						"content": "2145_1",
+						"polygon": [
+							117,
+							603,
+							151,
+							603,
+							151,
+							614,
+							117,
+							614
+						],
+						"spans": [
+							{
+								"offset": 2344,
+								"length": 6
+							}
+						]
+					},
+					{
+						"content": "0.68",
+						"polygon": [
+							167,
+							603,
+							187,
+							603,
+							187,
+							614,
+							166,
+							614
+						],
+						"spans": [
+							{
+								"offset": 2351,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "11.2",
+						"polygon": [
+							214,
+							603,
+							234,
+							603,
+							234,
+							614,
+							214,
+							614
+						],
+						"spans": [
+							{
+								"offset": 2356,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "2.4%",
+						"polygon": [
+							265,
+							603,
+							289,
+							603,
+							289,
+							614,
+							265,
+							614
+						],
+						"spans": [
+							{
+								"offset": 2361,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "0.1%",
+						"polygon": [
+							324,
+							603,
+							348,
+							603,
+							348,
+							614,
+							324,
+							614
+						],
+						"spans": [
+							{
+								"offset": 2366,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "9.5%",
+						"polygon": [
+							382,
+							603,
+							406,
+							603,
+							406,
+							614,
+							382,
+							614
+						],
+						"spans": [
+							{
+								"offset": 2371,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "2.7%",
+						"polygon": [
+							440,
+							603,
+							464,
+							603,
+							464,
+							614,
+							440,
+							614
+						],
+						"spans": [
+							{
+								"offset": 2376,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "4234_1",
+						"polygon": [
+							117,
+							619,
+							151,
+							619,
+							151,
+							629,
+							117,
+							629
+						],
+						"spans": [
+							{
+								"offset": 2381,
+								"length": 6
+							}
+						]
+					},
+					{
+						"content": "0.59",
+						"polygon": [
+							167,
+							619,
+							187,
+							619,
+							187,
+							629,
+							167,
+							629
+						],
+						"spans": [
+							{
+								"offset": 2388,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "58.7",
+						"polygon": [
+							213,
+							619,
+							233,
+							619,
+							233,
+							629,
+							213,
+							629
+						],
+						"spans": [
+							{
+								"offset": 2393,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "8.5%",
+						"polygon": [
+							265,
+							619,
+							289,
+							619,
+							289,
+							629,
+							265,
+							629
+						],
+						"spans": [
+							{
+								"offset": 2398,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "1.3%",
+						"polygon": [
+							325,
+							619,
+							348,
+							619,
+							348,
+							629,
+							325,
+							629
+						],
+						"spans": [
+							{
+								"offset": 2403,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "8.5%",
+						"polygon": [
+							382,
+							619,
+							406,
+							619,
+							406,
+							629,
+							382,
+							629
+						],
+						"spans": [
+							{
+								"offset": 2408,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "3.3%",
+						"polygon": [
+							441,
+							618,
+							464,
+							619,
+							464,
+							629,
+							441,
+							629
+						],
+						"spans": [
+							{
+								"offset": 2413,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "2032_2",
+						"polygon": [
+							117,
+							634,
+							152,
+							634,
+							152,
+							645,
+							117,
+							645
+						],
+						"spans": [
+							{
+								"offset": 2418,
+								"length": 6
+							}
+						]
+					},
+					{
+						"content": "0.17",
+						"polygon": [
+							167,
+							634,
+							187,
+							634,
+							187,
+							644,
+							167,
+							644
+						],
+						"spans": [
+							{
+								"offset": 2425,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "57.8",
+						"polygon": [
+							213,
+							634,
+							234,
+							634,
+							234,
+							644,
+							213,
+							644
+						],
+						"spans": [
+							{
+								"offset": 2430,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "21.7%",
+						"polygon": [
+							263,
+							634,
+							292,
+							634,
+							292,
+							645,
+							263,
+							644
+						],
+						"spans": [
+							{
+								"offset": 2435,
+								"length": 5
+							}
+						]
+					},
+					{
+						"content": "0.3%",
+						"polygon": [
+							324,
+							634,
+							347,
+							634,
+							347,
+							645,
+							324,
+							645
+						],
+						"spans": [
+							{
+								"offset": 2441,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "2.7%",
+						"polygon": [
+							382,
+							634,
+							406,
+							634,
+							406,
+							645,
+							382,
+							645
+						],
+						"spans": [
+							{
+								"offset": 2446,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "1.2%",
+						"polygon": [
+							441,
+							634,
+							464,
+							634,
+							464,
+							645,
+							441,
+							645
+						],
+						"spans": [
+							{
+								"offset": 2451,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "4171_1",
+						"polygon": [
+							117,
+							650,
+							151,
+							650,
+							151,
+							661,
+							117,
+							661
+						],
+						"spans": [
+							{
+								"offset": 2456,
+								"length": 6
+							}
+						]
+					},
+					{
+						"content": "0.07",
+						"polygon": [
+							167,
+							650,
+							187,
+							650,
+							187,
+							660,
+							167,
+							660
+						],
+						"spans": [
+							{
+								"offset": 2463,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "173.9",
+						"polygon": [
+							211,
+							650,
+							237,
+							650,
+							237,
+							660,
+							211,
+							660
+						],
+						"spans": [
+							{
+								"offset": 2468,
+								"length": 5
+							}
+						]
+					},
+					{
+						"content": "58.1%",
+						"polygon": [
+							263,
+							650,
+							292,
+							650,
+							292,
+							660,
+							263,
+							660
+						],
+						"spans": [
+							{
+								"offset": 2474,
+								"length": 5
+							}
+						]
+					},
+					{
+						"content": "1.6%",
+						"polygon": [
+							325,
+							650,
+							347,
+							650,
+							347,
+							660,
+							325,
+							660
+						],
+						"spans": [
+							{
+								"offset": 2480,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "2.1%",
+						"polygon": [
+							382,
+							650,
+							406,
+							650,
+							406,
+							660,
+							382,
+							660
+						],
+						"spans": [
+							{
+								"offset": 2485,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "0.5%",
+						"polygon": [
+							440,
+							650,
+							464,
+							650,
+							464,
+							660,
+							441,
+							660
+						],
+						"spans": [
+							{
+								"offset": 2490,
+								"length": 4
+							}
+						]
+					},
+					{
+						"content": "Figure 2-1 extends the analysis from eliminating stops for the five example cycles and examines",
+						"polygon": [
+							63,
+							676,
+							527,
+							677,
+							527,
+							690,
+							63,
+							690
+						],
+						"spans": [
+							{
+								"offset": 2495,
+								"length": 95
+							}
+						]
+					},
+					{
+						"content": "the additional benefit from avoiding slow-and-go driving below various speed thresholds.",
+						"polygon": [
+							63,
+							691,
+							494,
+							691,
+							494,
+							704,
+							63,
+							704
+						],
+						"spans": [
+							{
+								"offset": 2591,
+								"length": 88
+							}
+						]
+					},
+					{
+						"content": "3",
+						"polygon": [
+							295,
+							718,
+							301,
+							718,
+							301,
+							729,
+							295,
+							729
+						],
+						"spans": [
+							{
+								"offset": 2680,
+								"length": 1
+							}
+						]
+					}
+				],
+				"spans": [
+					{
+						"offset": 0,
+						"length": 2681
+					}
+				]
+			}
+		],
+		"tables": [
+			{
+				"rowCount": 7,
+				"columnCount": 7,
+				"cells": [
+					{
+						"kind": "columnHeader",
+						"rowIndex": 0,
+						"columnIndex": 0,
+						"rowSpan": 2,
+						"content": "Cycle Name",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									112,
+									546,
+									157,
+									546,
+									157,
+									586,
+									112,
+									586
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2188,
+								"length": 10
+							}
+						],
+						"elements": [
+							"/paragraphs/12"
+						]
+					},
+					{
+						"kind": "columnHeader",
+						"rowIndex": 0,
+						"columnIndex": 1,
+						"rowSpan": 2,
+						"content": "KI (1/km)",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									157,
+									546,
+									196,
+									546,
+									196,
+									586,
+									157,
+									586
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2199,
+								"length": 9
+							}
+						],
+						"elements": [
+							"/paragraphs/13"
+						]
+					},
+					{
+						"kind": "columnHeader",
+						"rowIndex": 0,
+						"columnIndex": 2,
+						"rowSpan": 2,
+						"content": "Distance (mi)",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									196,
+									546,
+									249,
+									546,
+									249,
+									586,
+									196,
+									586
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2209,
+								"length": 13
+							}
+						],
+						"elements": [
+							"/paragraphs/14"
+						]
+					},
+					{
+						"kind": "columnHeader",
+						"rowIndex": 0,
+						"columnIndex": 3,
+						"columnSpan": 4,
+						"content": "Percent Fuel Savings",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									249,
+									546,
+									482,
+									546,
+									482,
+									562,
+									249,
+									562
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2223,
+								"length": 20
+							}
+						],
+						"elements": [
+							"/paragraphs/15"
+						]
+					},
+					{
+						"kind": "columnHeader",
+						"rowIndex": 1,
+						"columnIndex": 3,
+						"content": "Improved Speed",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									249,
+									562,
+									305,
+									562,
+									305,
+									586,
+									249,
+									586
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2244,
+								"length": 14
+							}
+						],
+						"elements": [
+							"/paragraphs/16"
+						]
+					},
+					{
+						"kind": "columnHeader",
+						"rowIndex": 1,
+						"columnIndex": 4,
+						"content": "Decreased Accel",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									305,
+									562,
+									365,
+									562,
+									366,
+									586,
+									305,
+									586
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2259,
+								"length": 15
+							}
+						],
+						"elements": [
+							"/paragraphs/17"
+						]
+					},
+					{
+						"kind": "columnHeader",
+						"rowIndex": 1,
+						"columnIndex": 5,
+						"content": "Eliminate Stops",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									365,
+									562,
+									421,
+									562,
+									421,
+									586,
+									366,
+									586
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2275,
+								"length": 15
+							}
+						],
+						"elements": [
+							"/paragraphs/18"
+						]
+					},
+					{
+						"kind": "columnHeader",
+						"rowIndex": 1,
+						"columnIndex": 6,
+						"content": "Decreased Idle",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									421,
+									562,
+									482,
+									562,
+									482,
+									586,
+									421,
+									586
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2291,
+								"length": 14
+							}
+						],
+						"elements": [
+							"/paragraphs/19"
+						]
+					},
+					{
+						"rowIndex": 2,
+						"columnIndex": 0,
+						"content": "2012_2",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									112,
+									586,
+									157,
+									586,
+									157,
+									601,
+									112,
+									601
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2306,
+								"length": 6
+							}
+						],
+						"elements": [
+							"/paragraphs/20"
+						]
+					},
+					{
+						"rowIndex": 2,
+						"columnIndex": 1,
+						"content": "3.30",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									157,
+									586,
+									196,
+									586,
+									196,
+									601,
+									157,
+									601
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2313,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/21"
+						]
+					},
+					{
+						"rowIndex": 2,
+						"columnIndex": 2,
+						"content": "1.3",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									196,
+									586,
+									249,
+									586,
+									249,
+									601,
+									196,
+									601
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2318,
+								"length": 3
+							}
+						],
+						"elements": [
+							"/paragraphs/22"
+						]
+					},
+					{
+						"rowIndex": 2,
+						"columnIndex": 3,
+						"content": "5.9%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									249,
+									586,
+									305,
+									586,
+									305,
+									601,
+									249,
+									601
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2322,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/23"
+						]
+					},
+					{
+						"rowIndex": 2,
+						"columnIndex": 4,
+						"content": "9.5%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									305,
+									586,
+									366,
+									586,
+									366,
+									601,
+									305,
+									601
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2327,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/24"
+						]
+					},
+					{
+						"rowIndex": 2,
+						"columnIndex": 5,
+						"content": "29.2%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									366,
+									586,
+									421,
+									586,
+									421,
+									601,
+									366,
+									601
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2332,
+								"length": 5
+							}
+						],
+						"elements": [
+							"/paragraphs/25"
+						]
+					},
+					{
+						"rowIndex": 2,
+						"columnIndex": 6,
+						"content": "17.4%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									421,
+									586,
+									482,
+									586,
+									482,
+									601,
+									421,
+									601
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2338,
+								"length": 5
+							}
+						],
+						"elements": [
+							"/paragraphs/26"
+						]
+					},
+					{
+						"rowIndex": 3,
+						"columnIndex": 0,
+						"content": "2145_1",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									112,
+									601,
+									157,
+									601,
+									157,
+									616,
+									112,
+									616
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2344,
+								"length": 6
+							}
+						],
+						"elements": [
+							"/paragraphs/27"
+						]
+					},
+					{
+						"rowIndex": 3,
+						"columnIndex": 1,
+						"content": "0.68",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									157,
+									601,
+									196,
+									601,
+									196,
+									616,
+									157,
+									616
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2351,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/28"
+						]
+					},
+					{
+						"rowIndex": 3,
+						"columnIndex": 2,
+						"content": "11.2",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									196,
+									601,
+									249,
+									601,
+									249,
+									616,
+									196,
+									616
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2356,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/29"
+						]
+					},
+					{
+						"rowIndex": 3,
+						"columnIndex": 3,
+						"content": "2.4%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									249,
+									601,
+									305,
+									601,
+									305,
+									616,
+									249,
+									616
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2361,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/30"
+						]
+					},
+					{
+						"rowIndex": 3,
+						"columnIndex": 4,
+						"content": "0.1%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									305,
+									601,
+									366,
+									601,
+									366,
+									616,
+									305,
+									616
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2366,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/31"
+						]
+					},
+					{
+						"rowIndex": 3,
+						"columnIndex": 5,
+						"content": "9.5%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									366,
+									601,
+									421,
+									601,
+									421,
+									616,
+									366,
+									616
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2371,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/32"
+						]
+					},
+					{
+						"rowIndex": 3,
+						"columnIndex": 6,
+						"content": "2.7%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									421,
+									601,
+									482,
+									601,
+									482,
+									616,
+									421,
+									616
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2376,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/33"
+						]
+					},
+					{
+						"rowIndex": 4,
+						"columnIndex": 0,
+						"content": "4234_1",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									112,
+									616,
+									157,
+									616,
+									157,
+									632,
+									112,
+									632
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2381,
+								"length": 6
+							}
+						],
+						"elements": [
+							"/paragraphs/34"
+						]
+					},
+					{
+						"rowIndex": 4,
+						"columnIndex": 1,
+						"content": "0.59",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									157,
+									616,
+									196,
+									616,
+									196,
+									632,
+									157,
+									632
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2388,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/35"
+						]
+					},
+					{
+						"rowIndex": 4,
+						"columnIndex": 2,
+						"content": "58.7",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									196,
+									616,
+									249,
+									616,
+									249,
+									632,
+									196,
+									632
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2393,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/36"
+						]
+					},
+					{
+						"rowIndex": 4,
+						"columnIndex": 3,
+						"content": "8.5%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									249,
+									616,
+									305,
+									616,
+									305,
+									632,
+									249,
+									632
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2398,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/37"
+						]
+					},
+					{
+						"rowIndex": 4,
+						"columnIndex": 4,
+						"content": "1.3%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									305,
+									616,
+									366,
+									616,
+									366,
+									632,
+									305,
+									632
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2403,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/38"
+						]
+					},
+					{
+						"rowIndex": 4,
+						"columnIndex": 5,
+						"content": "8.5%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									366,
+									616,
+									421,
+									616,
+									421,
+									632,
+									366,
+									632
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2408,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/39"
+						]
+					},
+					{
+						"rowIndex": 4,
+						"columnIndex": 6,
+						"content": "3.3%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									421,
+									616,
+									482,
+									616,
+									482,
+									632,
+									421,
+									632
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2413,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/40"
+						]
+					},
+					{
+						"rowIndex": 5,
+						"columnIndex": 0,
+						"content": "2032_2",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									112,
+									632,
+									157,
+									632,
+									157,
+									647,
+									112,
+									647
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2418,
+								"length": 6
+							}
+						],
+						"elements": [
+							"/paragraphs/41"
+						]
+					},
+					{
+						"rowIndex": 5,
+						"columnIndex": 1,
+						"content": "0.17",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									157,
+									632,
+									196,
+									632,
+									196,
+									647,
+									157,
+									647
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2425,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/42"
+						]
+					},
+					{
+						"rowIndex": 5,
+						"columnIndex": 2,
+						"content": "57.8",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									196,
+									632,
+									249,
+									632,
+									249,
+									647,
+									196,
+									647
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2430,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/43"
+						]
+					},
+					{
+						"rowIndex": 5,
+						"columnIndex": 3,
+						"content": "21.7%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									249,
+									632,
+									305,
+									632,
+									305,
+									647,
+									249,
+									647
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2435,
+								"length": 5
+							}
+						],
+						"elements": [
+							"/paragraphs/44"
+						]
+					},
+					{
+						"rowIndex": 5,
+						"columnIndex": 4,
+						"content": "0.3%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									305,
+									632,
+									366,
+									632,
+									366,
+									647,
+									305,
+									647
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2441,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/45"
+						]
+					},
+					{
+						"rowIndex": 5,
+						"columnIndex": 5,
+						"content": "2.7%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									366,
+									632,
+									421,
+									632,
+									421,
+									647,
+									366,
+									647
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2446,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/46"
+						]
+					},
+					{
+						"rowIndex": 5,
+						"columnIndex": 6,
+						"content": "1.2%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									421,
+									632,
+									482,
+									632,
+									482,
+									647,
+									421,
+									647
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2451,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/47"
+						]
+					},
+					{
+						"rowIndex": 6,
+						"columnIndex": 0,
+						"content": "4171_1",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									112,
+									647,
+									157,
+									647,
+									157,
+									662,
+									112,
+									662
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2456,
+								"length": 6
+							}
+						],
+						"elements": [
+							"/paragraphs/48"
+						]
+					},
+					{
+						"rowIndex": 6,
+						"columnIndex": 1,
+						"content": "0.07",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									157,
+									647,
+									196,
+									647,
+									196,
+									662,
+									157,
+									662
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2463,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/49"
+						]
+					},
+					{
+						"rowIndex": 6,
+						"columnIndex": 2,
+						"content": "173.9",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									196,
+									647,
+									249,
+									647,
+									249,
+									662,
+									196,
+									662
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2468,
+								"length": 5
+							}
+						],
+						"elements": [
+							"/paragraphs/50"
+						]
+					},
+					{
+						"rowIndex": 6,
+						"columnIndex": 3,
+						"content": "58.1%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									249,
+									647,
+									305,
+									647,
+									305,
+									662,
+									249,
+									662
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2474,
+								"length": 5
+							}
+						],
+						"elements": [
+							"/paragraphs/51"
+						]
+					},
+					{
+						"rowIndex": 6,
+						"columnIndex": 4,
+						"content": "1.6%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									305,
+									647,
+									366,
+									647,
+									366,
+									662,
+									305,
+									662
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2480,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/52"
+						]
+					},
+					{
+						"rowIndex": 6,
+						"columnIndex": 5,
+						"content": "2.1%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									366,
+									647,
+									421,
+									647,
+									422,
+									662,
+									366,
+									662
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2485,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/53"
+						]
+					},
+					{
+						"rowIndex": 6,
+						"columnIndex": 6,
+						"content": "0.5%",
+						"boundingRegions": [
+							{
+								"pageNumber": 1,
+								"polygon": [
+									421,
+									647,
+									482,
+									647,
+									482,
+									662,
+									422,
+									662
+								]
+							}
+						],
+						"spans": [
+							{
+								"offset": 2490,
+								"length": 4
+							}
+						],
+						"elements": [
+							"/paragraphs/54"
+						]
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							111,
+							545,
+							484,
+							545,
+							484,
+							664,
+							111,
+							664
+						]
+					}
+				],
+				"spans": [
+					{
+						"offset": 2188,
+						"length": 306
+					}
+				],
+				"caption": {
+					"content": "Table 2-1. Simulated fuel savings from isolated cycle improvements",
+					"boundingRegions": [
+						{
+							"pageNumber": 1,
+							"polygon": [
+								136,
+								528,
+								460,
+								528,
+								460,
+								541,
+								136,
+								541
+							]
+						}
+					],
+					"spans": [
+						{
+							"offset": 2121,
+							"length": 66
+						}
+					],
+					"elements": [
+						"/paragraphs/11"
+					]
+				}
+			}
+		],
+		"paragraphs": [
+			{
+				"spans": [
+					{
+						"offset": 0,
+						"length": 78
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							63,
+							60,
+							516,
+							61,
+							516,
+							96,
+							63,
+							95
+						]
+					}
+				],
+				"role": "sectionHeading",
+				"content": "2 Quantifying Fuel-Saving Opportunities from Specific Driving Behavior Changes"
+			},
+			{
+				"spans": [
+					{
+						"offset": 79,
+						"length": 54
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							64,
+							107,
+							382,
+							107,
+							382,
+							122,
+							64,
+							122
+						]
+					}
+				],
+				"role": "sectionHeading",
+				"content": "2.1 Savings from Improving Individual Driving Profiles"
+			},
+			{
+				"spans": [
+					{
+						"offset": 134,
+						"length": 59
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							64,
+							126,
+							392,
+							126,
+							392,
+							140,
+							64,
+							140
+						]
+					}
+				],
+				"role": "sectionHeading",
+				"content": "2.1.1 Drive Profile Subsample from Real-World Travel Survey"
+			},
+			{
+				"spans": [
+					{
+						"offset": 194,
+						"length": 730
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							63,
+							146,
+							530,
+							146,
+							530,
+							257,
+							63,
+							257
+						]
+					}
+				],
+				"content": "The interim report (Gonder et al. 2010) included results from detailed analyses on five cycles selected from a large set of real-world global positioning system (GPS) travel data collected in 2006 as part of a study by the Texas Transportation Institute and the Texas Department of Transportation (Ojah and Pearson 2008). The cycles were selected to reflect a range of kinetic intensity (KI) values. (KI represents a ratio of characteristic acceleration to aerodynamic speed and has been shown to be a useful drive cycle classification parameter [O'Keefe et al. 2007].) To determine the maximum possible cycle improvement fuel savings, the real-world cycles were converted into equivalent \"ideal\" cycles using the following steps:"
+			},
+			{
+				"spans": [
+					{
+						"offset": 925,
+						"length": 51
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							82,
+							261,
+							323,
+							262,
+							323,
+							277,
+							82,
+							277
+						]
+					}
+				],
+				"content": "1. Calculate the trip distance of each sample trip."
+			},
+			{
+				"spans": [
+					{
+						"offset": 977,
+						"length": 53
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							81,
+							281,
+							340,
+							282,
+							340,
+							297,
+							81,
+							297
+						]
+					}
+				],
+				"content": "2. Eliminate stop-and-go and idling within each trip."
+			},
+			{
+				"spans": [
+					{
+						"offset": 1031,
+						"length": 40
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							81,
+							301,
+							272,
+							301,
+							272,
+							316,
+							81,
+							316
+						]
+					}
+				],
+				"content": "3. Set the acceleration rate to 3 mph/s."
+			},
+			{
+				"spans": [
+					{
+						"offset": 1072,
+						"length": 36
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							81,
+							321,
+							260,
+							322,
+							260,
+							336,
+							81,
+							336
+						]
+					}
+				],
+				"content": "4. Set the cruising speed to 40 mph."
+			},
+			{
+				"spans": [
+					{
+						"offset": 1109,
+						"length": 66
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							81,
+							341,
+							396,
+							341,
+							396,
+							356,
+							81,
+							356
+						]
+					}
+				],
+				"content": "5. Continue cruising at 40 mph until the trip distance is reached."
+			},
+			{
+				"spans": [
+					{
+						"offset": 1176,
+						"length": 368
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							63,
+							367,
+							521,
+							367,
+							521,
+							423,
+							63,
+							423
+						]
+					}
+				],
+				"content": "To compare vehicle simulations over each real-world cycle and its corresponding ideal cycle, a midsize conventional vehicle model from a previous NREL study was used (Earleywine et al. 2010). The results indicated a fuel savings potential of roughly 60% for the drive profiles with either very high or very low KI and of 30%-40% for the cycles with moderate KI values."
+			},
+			{
+				"spans": [
+					{
+						"offset": 1545,
+						"length": 575
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							63,
+							434,
+							530,
+							434,
+							530,
+							518,
+							63,
+							518
+						]
+					}
+				],
+				"content": "Table 2-1 takes the analysis of these five cycles from the interim report a step further by examining the impact of the optimization steps one at a time in isolation. As indicated by other simulations from the interim report (Gonder et al. 2010), acceleration rate reductions can deliver some small fuel savings, but avoiding accelerations and decelerations (accel/decel) altogether saves larger amounts of fuel. This suggests that driving style improvements should focus on reducing the number of stops in high KI cycles, and not just the rate of accelerating out of a stop."
+			},
+			{
+				"spans": [
+					{
+						"offset": 2121,
+						"length": 66
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							136,
+							528,
+							460,
+							528,
+							460,
+							541,
+							136,
+							541
+						]
+					}
+				],
+				"content": "Table 2-1. Simulated fuel savings from isolated cycle improvements"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2188,
+						"length": 10
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							112,
+							546,
+							157,
+							546,
+							157,
+							586,
+							112,
+							586
+						]
+					}
+				],
+				"content": "Cycle Name"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2199,
+						"length": 9
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							157,
+							546,
+							196,
+							546,
+							196,
+							586,
+							157,
+							586
+						]
+					}
+				],
+				"content": "KI (1/km)"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2209,
+						"length": 13
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							196,
+							546,
+							249,
+							546,
+							249,
+							586,
+							196,
+							586
+						]
+					}
+				],
+				"content": "Distance (mi)"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2223,
+						"length": 20
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							249,
+							546,
+							482,
+							546,
+							482,
+							562,
+							249,
+							562
+						]
+					}
+				],
+				"content": "Percent Fuel Savings"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2244,
+						"length": 14
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							249,
+							562,
+							305,
+							562,
+							305,
+							586,
+							249,
+							586
+						]
+					}
+				],
+				"content": "Improved Speed"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2259,
+						"length": 15
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							305,
+							562,
+							365,
+							562,
+							366,
+							586,
+							305,
+							586
+						]
+					}
+				],
+				"content": "Decreased Accel"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2275,
+						"length": 15
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							365,
+							562,
+							421,
+							562,
+							421,
+							586,
+							366,
+							586
+						]
+					}
+				],
+				"content": "Eliminate Stops"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2291,
+						"length": 14
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							421,
+							562,
+							482,
+							562,
+							482,
+							586,
+							421,
+							586
+						]
+					}
+				],
+				"content": "Decreased Idle"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2306,
+						"length": 6
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							112,
+							586,
+							157,
+							586,
+							157,
+							601,
+							112,
+							601
+						]
+					}
+				],
+				"content": "2012_2"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2313,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							157,
+							586,
+							196,
+							586,
+							196,
+							601,
+							157,
+							601
+						]
+					}
+				],
+				"content": "3.30"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2318,
+						"length": 3
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							196,
+							586,
+							249,
+							586,
+							249,
+							601,
+							196,
+							601
+						]
+					}
+				],
+				"content": "1.3"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2322,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							249,
+							586,
+							305,
+							586,
+							305,
+							601,
+							249,
+							601
+						]
+					}
+				],
+				"content": "5.9%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2327,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							305,
+							586,
+							366,
+							586,
+							366,
+							601,
+							305,
+							601
+						]
+					}
+				],
+				"content": "9.5%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2332,
+						"length": 5
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							366,
+							586,
+							421,
+							586,
+							421,
+							601,
+							366,
+							601
+						]
+					}
+				],
+				"content": "29.2%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2338,
+						"length": 5
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							421,
+							586,
+							482,
+							586,
+							482,
+							601,
+							421,
+							601
+						]
+					}
+				],
+				"content": "17.4%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2344,
+						"length": 6
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							112,
+							601,
+							157,
+							601,
+							157,
+							616,
+							112,
+							616
+						]
+					}
+				],
+				"content": "2145_1"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2351,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							157,
+							601,
+							196,
+							601,
+							196,
+							616,
+							157,
+							616
+						]
+					}
+				],
+				"content": "0.68"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2356,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							196,
+							601,
+							249,
+							601,
+							249,
+							616,
+							196,
+							616
+						]
+					}
+				],
+				"content": "11.2"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2361,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							249,
+							601,
+							305,
+							601,
+							305,
+							616,
+							249,
+							616
+						]
+					}
+				],
+				"content": "2.4%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2366,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							305,
+							601,
+							366,
+							601,
+							366,
+							616,
+							305,
+							616
+						]
+					}
+				],
+				"content": "0.1%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2371,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							366,
+							601,
+							421,
+							601,
+							421,
+							616,
+							366,
+							616
+						]
+					}
+				],
+				"content": "9.5%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2376,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							421,
+							601,
+							482,
+							601,
+							482,
+							616,
+							421,
+							616
+						]
+					}
+				],
+				"content": "2.7%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2381,
+						"length": 6
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							112,
+							616,
+							157,
+							616,
+							157,
+							632,
+							112,
+							632
+						]
+					}
+				],
+				"content": "4234_1"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2388,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							157,
+							616,
+							196,
+							616,
+							196,
+							632,
+							157,
+							632
+						]
+					}
+				],
+				"content": "0.59"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2393,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							196,
+							616,
+							249,
+							616,
+							249,
+							632,
+							196,
+							632
+						]
+					}
+				],
+				"content": "58.7"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2398,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							249,
+							616,
+							305,
+							616,
+							305,
+							632,
+							249,
+							632
+						]
+					}
+				],
+				"content": "8.5%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2403,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							305,
+							616,
+							366,
+							616,
+							366,
+							632,
+							305,
+							632
+						]
+					}
+				],
+				"content": "1.3%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2408,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							366,
+							616,
+							421,
+							616,
+							421,
+							632,
+							366,
+							632
+						]
+					}
+				],
+				"content": "8.5%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2413,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							421,
+							616,
+							482,
+							616,
+							482,
+							632,
+							421,
+							632
+						]
+					}
+				],
+				"content": "3.3%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2418,
+						"length": 6
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							112,
+							632,
+							157,
+							632,
+							157,
+							647,
+							112,
+							647
+						]
+					}
+				],
+				"content": "2032_2"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2425,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							157,
+							632,
+							196,
+							632,
+							196,
+							647,
+							157,
+							647
+						]
+					}
+				],
+				"content": "0.17"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2430,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							196,
+							632,
+							249,
+							632,
+							249,
+							647,
+							196,
+							647
+						]
+					}
+				],
+				"content": "57.8"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2435,
+						"length": 5
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							249,
+							632,
+							305,
+							632,
+							305,
+							647,
+							249,
+							647
+						]
+					}
+				],
+				"content": "21.7%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2441,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							305,
+							632,
+							366,
+							632,
+							366,
+							647,
+							305,
+							647
+						]
+					}
+				],
+				"content": "0.3%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2446,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							366,
+							632,
+							421,
+							632,
+							421,
+							647,
+							366,
+							647
+						]
+					}
+				],
+				"content": "2.7%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2451,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							421,
+							632,
+							482,
+							632,
+							482,
+							647,
+							421,
+							647
+						]
+					}
+				],
+				"content": "1.2%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2456,
+						"length": 6
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							112,
+							647,
+							157,
+							647,
+							157,
+							662,
+							112,
+							662
+						]
+					}
+				],
+				"content": "4171_1"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2463,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							157,
+							647,
+							196,
+							647,
+							196,
+							662,
+							157,
+							662
+						]
+					}
+				],
+				"content": "0.07"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2468,
+						"length": 5
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							196,
+							647,
+							249,
+							647,
+							249,
+							662,
+							196,
+							662
+						]
+					}
+				],
+				"content": "173.9"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2474,
+						"length": 5
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							249,
+							647,
+							305,
+							647,
+							305,
+							662,
+							249,
+							662
+						]
+					}
+				],
+				"content": "58.1%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2480,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							305,
+							647,
+							366,
+							647,
+							366,
+							662,
+							305,
+							662
+						]
+					}
+				],
+				"content": "1.6%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2485,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							366,
+							647,
+							421,
+							647,
+							422,
+							662,
+							366,
+							662
+						]
+					}
+				],
+				"content": "2.1%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2490,
+						"length": 4
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							421,
+							647,
+							482,
+							647,
+							482,
+							662,
+							422,
+							662
+						]
+					}
+				],
+				"content": "0.5%"
+			},
+			{
+				"spans": [
+					{
+						"offset": 2495,
+						"length": 184
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							63,
+							676,
+							527,
+							677,
+							527,
+							704,
+							63,
+							704
+						]
+					}
+				],
+				"content": "Figure 2-1 extends the analysis from eliminating stops for the five example cycles and examines the additional benefit from avoiding slow-and-go driving below various speed thresholds."
+			},
+			{
+				"spans": [
+					{
+						"offset": 2680,
+						"length": 1
+					}
+				],
+				"boundingRegions": [
+					{
+						"pageNumber": 1,
+						"polygon": [
+							295,
+							718,
+							301,
+							718,
+							301,
+							729,
+							295,
+							729
+						]
+					}
+				],
+				"role": "pageNumber",
+				"content": "3"
+			}
+		],
+		"styles": [],
+		"contentFormat": "text",
+		"sections": [
+			{
+				"spans": [
+					{
+						"offset": 0,
+						"length": 2679
+					}
+				],
+				"elements": [
+					"/paragraphs/0",
+					"/sections/1"
+				]
+			},
+			{
+				"spans": [
+					{
+						"offset": 79,
+						"length": 2600
+					}
+				],
+				"elements": [
+					"/paragraphs/1",
+					"/sections/2"
+				]
+			},
+			{
+				"spans": [
+					{
+						"offset": 134,
+						"length": 2545
+					}
+				],
+				"elements": [
+					"/paragraphs/2",
+					"/paragraphs/3",
+					"/paragraphs/4",
+					"/paragraphs/5",
+					"/paragraphs/6",
+					"/paragraphs/7",
+					"/paragraphs/8",
+					"/paragraphs/9",
+					"/paragraphs/10",
+					"/paragraphs/11",
+					"/tables/0",
+					"/paragraphs/55"
+				]
+			}
+		]
+	}
+}

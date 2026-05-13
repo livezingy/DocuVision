@@ -7,9 +7,9 @@ Scope: Tracker item 1 (KIE field extraction quality)
 
 Use the following baseline sample set (3 layouts):
 
-1. test_data/templates/invoice/invoice_sample_01.pdf
-2. test_data/templates/invoice/receipt-invoice-like.png
-3. test_data/templates/invoice/sample-invoice.png
+1. test_data/testfiles/templates/invoice/invoice_sample_01.pdf
+2. test_data/testfiles/templates/invoice/receipt-invoice-like.png
+3. test_data/testfiles/templates/invoice/sample-invoice.png
 
 ## Chosen Acceptance Rule
 

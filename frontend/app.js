@@ -39,6 +39,25 @@ let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
 let lastRenderedAnalysisResult = null;
 let lastFetchedBlocks = null;
+
+/** Clear inline sizing from adjustDocumentSize so the next task is not clipped by the previous layout. */
+function resetDocumentPageLayoutStyles() {
+    const documentPage = document.getElementById('documentPage');
+    if (!documentPage) return;
+    documentPage.style.width = '';
+    documentPage.style.height = '';
+    documentPage.style.maxWidth = '';
+    documentPage.style.maxHeight = '';
+    documentPage.style.overflow = '';
+    const previewContent = documentPage.querySelector('.document-preview-content');
+    if (previewContent) {
+        previewContent.style.width = '';
+        previewContent.style.height = '';
+        previewContent.style.maxWidth = '';
+        previewContent.style.maxHeight = '';
+        previewContent.style.overflow = '';
+    }
+}
 let enableOverlaySha256Validation = false;
 let forcePureLayoutBboxOverlay = false;
 const overlayLayerVisibility = {
@@ -740,6 +759,7 @@ async function switchToQueueItem(queueItem) {
         documentPage.dataset.currentFileName = fileName;
         // Clear result if switching to a different file
         delete documentPage.dataset.currentResult;
+        resetDocumentPageLayoutStyles();
     }
 
     // Display file
@@ -750,23 +770,20 @@ async function switchToQueueItem(queueItem) {
             documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><div class="spinner" style="margin: 0 auto 16px; width: 32px; height: 32px; border: 3px solid rgba(99, 102, 241, 0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;"></div><p style="margin-top: 16px; font-size: 0.875rem;">Uploading PDF for preview...</p></div>';
         }
 
-        uploadFileForPreview(file, queueItem).then((newTaskId) => {
+        uploadFileForPreview(file, queueItem).then(async (newTaskId) => {
             currentTaskId = newTaskId;
-            updatePreviewView('original');
+            await updatePreviewView('original');
         }).catch((error) => {
             console.error('Failed to upload file for preview:', error);
             if (documentPage) {
                 documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><p style="margin-bottom: 8px; color: #f43f5e;">⚠️ Preview unavailable</p><p style="font-size: 0.875rem; color: #94a3b8;">PDF uploaded but preview failed.</p></div>';
             }
         });
+    } else if (queueItem.result) {
+        // Completed item: render once (avoids racing updatePreviewView vs renderDocumentWithAnnotations on PDF page-image).
+        await updateResultsDisplay(queueItem.result);
     } else {
-        // Image file or PDF with existing taskId, display directly
-        updatePreviewView('original');
-
-        // If there's result data, also display it
-        if (queueItem.result) {
-            updateResultsDisplay(queueItem.result);
-        }
+        await updatePreviewView('original');
     }
 }
 
@@ -872,7 +889,7 @@ async function updatePreviewView(viewType) {
             if (resultJson) {
                 try {
                     const result = JSON.parse(resultJson);
-                    updateDocumentPreview(result);
+                    await updateDocumentPreview(result);
                     // Add visual highlights for analyzed regions if available
                     setTimeout(() => {
                         const regions = documentPage.querySelectorAll('.analyzed-region');
@@ -1200,7 +1217,7 @@ async function startProcessing() {
 
     // Update current queue item and display the file
     if (currentQueueItem !== firstPending) {
-        switchToQueueItem(firstPending);
+        await switchToQueueItem(firstPending);
     }
 
     const icon = firstPending.querySelector('.queue-item-icon');
@@ -1561,7 +1578,7 @@ async function fetchTaskResult(taskId, item) {
         const result = await response.json();
         console.log('Task completed successfully:', taskId);
         showNotification('Document processing completed successfully!', 'success');
-        completeProcessing(item, result);
+        await completeProcessing(item, result);
     } catch (error) {
         console.error('Error fetching task result:', error);
         showNotification('Document processing completed, but result fetch failed', 'warning');
@@ -1617,7 +1634,7 @@ function simulateProcessing(item, progressBar, status) {
         if (progress >= 100) {
             progress = 100;
             clearInterval(interval);
-            completeProcessing(item);
+            void completeProcessing(item);
         }
 
         status.textContent = `Processing · ${Math.floor(progress)}%`;
@@ -1628,7 +1645,7 @@ function simulateProcessing(item, progressBar, status) {
 /**
  * Complete processing
  */
-function completeProcessing(item, result = null) {
+async function completeProcessing(item, result = null) {
     // 防止重复调用
     if (item.classList.contains('completed')) {
         console.log('Already completed, skipping duplicate call');
@@ -1654,7 +1671,7 @@ function completeProcessing(item, result = null) {
     if (result) {
         item.result = result;
         // Update UI with results
-        updateResultsDisplay(result);
+        await updateResultsDisplay(result);
 
         // Generate completion summary
         const layout = result.layout || {};
@@ -1770,7 +1787,7 @@ function promoteNextQueued() {
 /**
  * Update results display with actual data
  */
-function updateResultsDisplay(result) {
+async function updateResultsDisplay(result) {
     if (!result) return;
 
     lastRenderedAnalysisResult = result;
@@ -1780,7 +1797,7 @@ function updateResultsDisplay(result) {
     clearCanvasLayoutOverlay();
 
     // Update document preview
-    updateDocumentPreview(result);
+    await updateDocumentPreview(result);
 
     // Update Content views
     updateContentText(result);
@@ -1852,7 +1869,7 @@ function formatAzureRoleLabel(type) {
 /**
  * Update document preview
  */
-function updateDocumentPreview(result) {
+async function updateDocumentPreview(result) {
     const documentPage = document.getElementById('documentPage');
     if (!documentPage) return;
 
@@ -1878,7 +1895,7 @@ function updateDocumentPreview(result) {
     // Always prioritize showing source image when available.
     // Annotation data may come from layout, OCR, or table-only paths.
     if (currentOriginalFileUrl) {
-        renderDocumentWithAnnotations(result);
+        await renderDocumentWithAnnotations(result);
     } else {
         // Fallback to text preview only when source image is unavailable.
         renderTextPreview(result);

@@ -275,6 +275,23 @@ formula_service = FormulaService(device="gpu" if use_gpu else "cpu")
 chart_service = ChartService(device="gpu" if use_gpu else "cpu")
 seal_service = SealService(device="gpu" if use_gpu else "cpu")
 kie_service = QwenDocumentKIEService()
+
+
+@app.on_event("startup")
+async def _kie_optional_warmup_background() -> None:
+    """When DOCUVISION_KIE_WARMUP is truthy, load KIE model after startup without blocking readiness."""
+    raw = os.environ.get("DOCUVISION_KIE_WARMUP", "")
+    if str(raw).strip().lower() not in {"1", "true", "yes", "y", "on"}:
+        return
+
+    async def _run() -> None:
+        try:
+            await kie_service.warmup_model()
+            logger.info("DOCUVISION_KIE_WARMUP: KIE model load finished")
+        except Exception as exc:
+            logger.warning("DOCUVISION_KIE_WARMUP: warmup failed (non-fatal): {}", exc)
+
+    asyncio.create_task(_run())
 export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
 unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服

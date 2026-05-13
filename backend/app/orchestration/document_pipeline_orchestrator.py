@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
@@ -476,7 +477,6 @@ async def kie_step(ctx: PipelineContext) -> None:
 
     orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
     orchestrator.ensure_not_cancelled(ctx)
-    await orchestrator.update_progress(ctx, 79, "Running KIE extraction...")
 
     document_type = str(options.get("document_type", "auto") or "auto").strip().lower()
     supported_doc_types = {"invoice", "id_card", "receipt", "passport", "bank_card", "card_group"}
@@ -489,13 +489,22 @@ async def kie_step(ctx: PipelineContext) -> None:
             "error_code": "unsupported_document_type",
             "error_message": f"document_type '{document_type}' is not supported for KIE",
         }
+        logger.warning(
+            "KIE step skipped | task_id={} | document_type={} | stage=skipped_doc_type | error_code=unsupported_document_type",
+            ctx.get("task_id", ""),
+            document_type,
+        )
         await orchestrator.update_progress(ctx, 80, f"KIE skipped | unsupported document_type={document_type}")
         return
 
     services = getattr(orchestrator, "services", {}) if hasattr(orchestrator, "services") else {}
     kie_service = services.get("kie_service") if isinstance(services, dict) else None
     if kie_service is None:
-        logger.warning("KIE step enabled but kie_service is not available; skipping")
+        logger.warning(
+            "KIE step skipped | task_id={} | document_type={} | stage=service_unavailable | error_code=service_unavailable | detail=kie_service_missing",
+            ctx.get("task_id", ""),
+            document_type,
+        )
         ctx["result"]["kie_fields"] = {}
         ctx["result"]["kie_meta"] = {
             "attempted": True,
@@ -525,7 +534,21 @@ async def kie_step(ctx: PipelineContext) -> None:
         "tables_count": len(tables),
     }
 
+    _tid = str(ctx.get("task_id", "") or "")
+    _pp = preprocessed_image_path if isinstance(preprocessed_image_path, str) else ""
+    _pp_ok = bool(_pp and os.path.isfile(_pp))
+    logger.info(
+        "KIE step start | task_id={} | document_type={} | preprocessed_image_ok={} | tables_count={}",
+        _tid,
+        document_type,
+        _pp_ok,
+        len(tables) if isinstance(tables, list) else 0,
+    )
+
+    await orchestrator.update_progress(ctx, 79, "KIE: preparing model and inputs...")
+    t_kie0 = time.perf_counter()
     try:
+        await orchestrator.update_progress(ctx, 79, "KIE: inference running...")
         # Try calling the extended signature first (backwards-compatible).
         kie_result = await orchestrator.call_maybe_async(
             kie_service.extract_fields,
@@ -545,7 +568,12 @@ async def kie_step(ctx: PipelineContext) -> None:
                 document_type,
             )
         except Exception as exc:
-            logger.warning(f"KIE extraction failed: {exc}")
+            logger.warning(
+                "KIE extraction failed | task_id={} | document_type={} | stage=runtime_error | error_code=runtime_error | error={}",
+                ctx.get("task_id", ""),
+                document_type,
+                exc,
+            )
             ctx["result"]["kie_fields"] = {}
             ctx["result"]["kie_meta"] = {
                 "attempted": True,
@@ -557,7 +585,12 @@ async def kie_step(ctx: PipelineContext) -> None:
             await orchestrator.update_progress(ctx, 80, "KIE extraction failed")
             return
     except Exception as exc:
-        logger.warning(f"KIE extraction failed: {exc}")
+        logger.warning(
+            "KIE extraction failed | task_id={} | document_type={} | stage=runtime_error | error_code=runtime_error | error={}",
+            ctx.get("task_id", ""),
+            document_type,
+            exc,
+        )
         ctx["result"]["kie_fields"] = {}
         ctx["result"]["kie_meta"] = {
             "attempted": True,
@@ -587,6 +620,9 @@ async def kie_step(ctx: PipelineContext) -> None:
         if isinstance(kie_result.get("metadata"), dict):
             metadata = kie_result.get("metadata") or {}
 
+    kie_infer_ms = int(metadata.get("infer_ms", 0) or 0)
+    kie_wall_ms = int((time.perf_counter() - t_kie0) * 1000)
+
     ctx["result"]["kie_fields"] = fields
     ctx["result"]["kie_meta"] = {
         "attempted": True,
@@ -598,12 +634,27 @@ async def kie_step(ctx: PipelineContext) -> None:
         "items_count": items_count,
         "items_source": str(metadata.get("items_source", "n/a")),
         "kie_model_load_ms": int(metadata.get("kie_model_load_ms", 0) or 0),
+        "kie_infer_ms": kie_infer_ms,
+        "kie_wall_ms": kie_wall_ms,
         "ocr_text_length": int(
             (kie_result.get("debug_input", {}) or {}).get("ocr_text_length", 0)
             if isinstance(kie_result, dict) else 0
         ),
         "engine": str(metadata.get("engine", "") or "qwen2.5-vl"),
     }
+    logger.info(
+        "KIE step completed | task_id={} | document_type={} | fields_count={} | items_count={} | "
+        "confidence_avg={} | engine={} | kie_model_load_ms={} | kie_infer_ms={} | kie_wall_ms={}",
+        str(ctx.get("task_id", "") or ""),
+        document_type,
+        len(fields),
+        items_count,
+        confidence_avg,
+        ctx["result"]["kie_meta"]["engine"],
+        ctx["result"]["kie_meta"]["kie_model_load_ms"],
+        kie_infer_ms,
+        kie_wall_ms,
+    )
     await orchestrator.update_progress(ctx, 80, f"KIE extraction completed | fields={len(fields)} | items={items_count}")
 
 

@@ -23,14 +23,17 @@ DocuVision/
 ├── docs/
 │   └── architecture/   # 架构文档，启动时阅读
 ├── test_data/
-│   └── Azure/      # Azure 处理结果，作为参考基准
+│   ├── acceptance/   # 验收矩阵与说明文档
+│   ├── testfiles/    # 分类样例（pdf / images / templates 等）
+│   ├── Azure/        # Azure 参考 JSON（纳入 Git）
+│   └── TestResult/   # 临时输出（不纳入 Git，见 test_data/.gitignore）
 └── CLAUDE.md
 ```
 
 ## 启动时必读
 
 1. `docs/architecture/` 目录下的所有文档
-2. `test_data/Azure/` 目录下的 Azure 处理结果（JSON文件）
+2. `test_data/Azure/` 目录下的 Azure 处理结果（JSON，与 `test_data/testfiles/` 固定样例、`test_data/acceptance/` 验收说明一并阅读）
 
 ## 思维原则
 

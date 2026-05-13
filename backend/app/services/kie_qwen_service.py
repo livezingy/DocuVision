@@ -188,3 +188,9 @@ class QwenDocumentKIEService:
             },
             "debug_input": debug_input,
         }
+
+    async def warmup_model(self) -> None:
+        """Optional startup: load processor+model into memory (heavy). Uses infer lock."""
+        loop = asyncio.get_event_loop()
+        async with self._infer_lock:
+            await loop.run_in_executor(None, self._init_manager)

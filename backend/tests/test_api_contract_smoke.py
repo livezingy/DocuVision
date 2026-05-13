@@ -8,7 +8,7 @@ Purpose:
 Usage:
     cd /workspace/DocuVision/backend
     python tests/test_api_contract_smoke.py
-    python tests/test_api_contract_smoke.py --file /workspace/DocuVision/test_data/images/scanned/scanned_page_02.jpg
+    python tests/test_api_contract_smoke.py --file /workspace/DocuVision/test_data/testfiles/images/scanned/scanned_page_02.jpg
 
 Notes:
 - This script runs in-process with httpx.ASGITransport (no external server required).

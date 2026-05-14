@@ -185,7 +185,7 @@ class TestUserScenarios:
         print(f"   页面数: {result.get('document_info', {}).get('pages', 0)}")
         print(f"   表格数: {len(result.get('tables', []))}")
 
-    @pytest.mark.skip(reason="Template API 已冻结为 HTTP 410；发票字段见 KIE 与 test_data/acceptance")
+    @pytest.mark.skip(reason="Template REST 已移除；发票字段见 KIE 与 test_data/acceptance")
     def test_scenario_3_invoice_extraction(self):
         """用户场景 3: 发票信息提取（已由 KIE 路径替代，本用例冻结跳过）"""
         pass
@@ -353,7 +353,7 @@ class TestEndToEndWorkflow:
         1. 健康检查
         2. 查看可用引擎
         3. OCR 提取文本
-        4. 模板列表（冻结时为 410）
+        4. 模板 REST 已移除（应 404）
         """
         print(f"\n{INFO} 端到端工作流: 文档处理全流程")
 
@@ -388,18 +388,10 @@ class TestEndToEndWorkflow:
         else:
             print(f"{SKIP} 步骤 3: 跳过 OCR（测试文件不存在）")
 
-        # 步骤 4: 模板列表
+        # 步骤 4: 旧模板 REST 不应再存在（OpenAPI 已移除）
         response = requests.get(f"{API_BASE_URL}/templates", timeout=5)
-        # Service-only profile deprecates template APIs with 410 Gone.
-        if response.status_code == 410:
-            print(f"{SKIP} 步骤 4: 模板接口已在 service-only 配置中弃用 (HTTP 410)")
-            print(f"{PASS} 端到端工作流测试完成")
-            return
-
-        assert response.status_code == 200, "Templates API failed"
-        templates_data = response.json()
-        print(f"{PASS} 步骤 4: 模板列表查询成功")
-        print(f"   可用模板数: {len(templates_data.get('templates', []))}")
+        assert response.status_code == 404, f"Expected 404 for removed /templates, got {response.status_code}"
+        print(f"{PASS} 步骤 4: 模板 REST 已移除 (HTTP 404)")
 
         print(f"{PASS} 端到端工作流测试完成")
 

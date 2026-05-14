@@ -64,49 +64,6 @@ class TestEnginesAPI:
         print(f"   Table engines: {data['table']['available']}")
 
 
-class TestTemplateAPI:
-    """模板 API 测试"""
-
-    @staticmethod
-    def _assert_service_only_deprecated(response, path: str):
-        """Service-only profile should return HTTP 410 for deprecated template routes."""
-        assert response.status_code == 410, f"Expected 410 for {path}, got {response.status_code}"
-        try:
-            detail = str(response.json().get("detail", ""))
-            assert "deprecated" in detail.lower() or "no longer available" in detail.lower()
-        except Exception:
-            pass
-
-    def test_list_templates(self):
-        """测试模板列表"""
-        response = requests.get(f"{API_BASE_URL}/templates", timeout=5)
-        self._assert_service_only_deprecated(response, "/api/v1/templates")
-        print(f"{PASS} Templates list route is deprecated as expected (410)")
-
-    def test_get_template(self):
-        """测试获取模板详情"""
-        response = requests.get(f"{API_BASE_URL}/templates/invoice", timeout=5)
-        self._assert_service_only_deprecated(response, "/api/v1/templates/{template_id}")
-        print(f"{PASS} Template detail route is deprecated as expected (410)")
-
-    def test_template_match(self):
-        """测试模板匹配"""
-        test_text = """
-        Invoice Number: INV-2024-001
-        Invoice Date: 2024-01-15
-        Total: $1,234.56
-        """
-
-        response = requests.post(
-            f"{API_BASE_URL}/templates/match",
-            data={"text": test_text},
-            timeout=10
-        )
-
-        self._assert_service_only_deprecated(response, "/api/v1/templates/match")
-        print(f"{PASS} Template match route is deprecated as expected (410)")
-
-
 class TestBatchAPI:
     """批量处理 API 测试"""
 

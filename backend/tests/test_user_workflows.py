@@ -5,7 +5,7 @@
 测试场景:
 1. 快速 OCR - 用户只需要提取文本
 2. 文档分析 - 用户需要完整分析
-3. 发票处理 - 用户处理发票文档
+3. 发票处理 - 用户通过 analyze + document_type=invoice 走 KIE 抽取
 4. 批量处理 - 用户处理多个文档
 5. 结果导出 - 用户导出处理结果
 """
@@ -171,64 +171,82 @@ class TestDocumentAnalysisWorkflow(UserWorkflowBase):
 
 
 class TestInvoiceProcessingWorkflow(UserWorkflowBase):
-    """工作流 3: 发票处理（模板 API 已冻结为 410，改由 KIE 与验收表覆盖）"""
+    """工作流 3: 发票 — POST /api/v1/analyze，document_type=invoice，启用 KIE。"""
 
-    @pytest.mark.skip(reason="Template /templates/* 已冻结为 HTTP 410；见 test_data/acceptance 与 KIE 用例")
-    def test_user_processes_invoice(self):
-        """用户处理发票文档"""
-        print(f"\n{INFO} 工作流: 发票信息提取")
-        
+    def test_user_processes_invoice_with_kie_analyze(self):
+        """用户上传发票 PDF，走完整 analyze 管线并期望 KIE 产出字段。"""
+        print(f"\n{INFO} 工作流: 发票 KIE 分析（/api/v1/analyze）")
+
         test_file = TEST_DATA_DIR / "templates" / "invoice" / "invoice_sample_01.pdf"
         if not test_file.exists():
             pytest.skip(f"Test file not found: {test_file}")
-        
-        # 步骤 1: 用户上传发票进行 OCR
+
+        data = {
+            "document_type": "invoice",
+            "enable_layout": "true",
+            "enable_table": "true",
+            "enable_ocr": "false",
+            "enable_formula": "false",
+            "enable_chart": "false",
+            "enable_seal": "false",
+            "enable_kie": "true",
+        }
+
         with open(test_file, "rb") as f:
             files = {"file": (test_file.name, f, "application/pdf")}
-            response = requests.post(f"{API_BASE_URL}/ocr", files=files, timeout=60)
-        
-        if response.status_code != 200:
-            error_detail = response.text if hasattr(response, 'text') else "Unknown error"
-            print(f"{FAIL} OCR 失败: {response.status_code}, 错误: {error_detail}")
-            pytest.fail(f"OCR should work, got {response.status_code}: {error_detail}")
-        
-        assert response.status_code == 200, f"OCR should work, got {response.status_code}"
-        ocr_result = response.json()
-        text = ocr_result.get("text", "")
-        
-        if len(text) == 0:
-            pytest.skip("No text extracted")
-        
-        print(f"{INFO} OCR 提取了 {len(text)} 个字符")
-        
-        # 步骤 2: 用户使用模板提取字段
-        response = requests.post(
-            f"{API_BASE_URL}/templates/match",
-            data={"text": text},
-            timeout=10
+            response = requests.post(
+                f"{API_BASE_URL}/analyze",
+                files=files,
+                data=data,
+                timeout=60,
+            )
+
+        assert response.status_code == 200, (
+            f"analyze should return 200, got {response.status_code}: "
+            f"{getattr(response, 'text', '')[:500]}"
         )
-        
-        assert response.status_code == 200, "Template matching should work"
-        match_result = response.json()
-        
-        # 验证: 用户期望找到发票模板
-        matches = match_result.get("matches", [])
-        if len(matches) > 0:
-            best_match = matches[0]
-            print(f"{PASS} 找到发票模板: {best_match.get('template_id')}")
-            
-            if "fields" in best_match:
-                fields = best_match["fields"]
-                print(f"   提取字段: {len(fields)}")
-                # 显示关键字段
-                key_fields = ["invoice_number", "invoice_date", "total_amount", "vendor", "customer"]
-                for key in key_fields:
-                    if key in fields:
-                        print(f"     {key}: {fields[key]}")
-        else:
-            print(f"{WARN} 未找到匹配模板（可能需要调整模板或文本）")
-        
-        return match_result
+        task_id = response.json()["task_id"]
+        print(f"{INFO} 任务已创建: {task_id}")
+
+        task_status = self.wait_for_task(task_id, max_wait=600, interval=5)
+        assert task_status is not None, "Task should finish (completed or failed)"
+        assert task_status["status"] == "completed", (
+            f"Task should complete successfully, got status={task_status.get('status')!r} "
+            f"message={task_status.get('message', '')!r}"
+        )
+
+        response = requests.get(f"{API_BASE_URL}/tasks/{task_id}/result", timeout=30)
+        assert response.status_code == 200, "Should get task result"
+        result = response.json()
+
+        quality = result.get("quality") if isinstance(result.get("quality"), dict) else {}
+        kie_fields = result.get("kie_fields") if isinstance(result.get("kie_fields"), dict) else {}
+        view = result.get("view") if isinstance(result.get("view"), dict) else {}
+        view_fields = view.get("fields") if isinstance(view.get("fields"), dict) else {}
+
+        if not kie_fields and view_fields:
+            kie_fields = view_fields
+
+        kie_attempted = bool(quality.get("kie_attempted"))
+        kie_stage = str(quality.get("kie_stage", "") or "")
+        kie_err = str(quality.get("kie_error_code", "") or "")
+        n_fields = int(quality.get("kie_fields_count", 0) or 0) or len(kie_fields)
+
+        if not kie_attempted:
+            pytest.skip("KIE step was not attempted (backend may not expose KIE in this profile)")
+
+        if n_fields == 0:
+            if "skip" in kie_stage.lower() or kie_err == "service_unavailable":
+                pytest.skip(f"KIE unavailable in this environment: stage={kie_stage!r} err={kie_err!r}")
+            pytest.fail(
+                f"Expected non-empty KIE fields for invoice; stage={kie_stage!r} err={kie_err!r} "
+                f"quality={quality!r}"
+            )
+
+        print(f"{PASS} 发票 KIE 分析完成: kie_fields_count={n_fields}, stage={kie_stage!r}")
+        sample_keys = [k for k in list(kie_fields.keys())[:5]]
+        if sample_keys:
+            print(f"   示例字段键: {', '.join(sample_keys)}")
 
 
 class TestBatchProcessingWorkflow(UserWorkflowBase):

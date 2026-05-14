@@ -4,8 +4,3 @@ types:
   id_card: id_card
   passport: passport
   bank_card: bank_card
-
-card_group:
-  - id_card
-  - passport
-  - bank_card

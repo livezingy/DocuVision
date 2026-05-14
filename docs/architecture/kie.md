@@ -4,7 +4,7 @@
 
 ## 1. 目标与范围
 
-- **目标**：对 `invoice` / `receipt` / `id_card` / `passport` / `bank_card` / `card_group` 等类型，在通用版面与表格流程之后，输出 **结构化字段（当前为 Qwen2.5-VL 按 YAML schema 解析得到的 JSON 字典）**，供 API 与前端 **Content > Fields** 与最终任务 JSON 展示。
+- **目标**：对 `invoice` / `receipt` / `id_card` / `passport` / `bank_card` 等类型，在通用版面与表格流程之后，输出 **结构化字段（当前为 Qwen2.5-VL 按 YAML schema 解析得到的 JSON 字典）**，供 API 与前端 **Content > Fields** 与最终任务 JSON 展示。
 - **不在本文**：字段级 bbox 与画布联动（可后续增量）；通用 OCR、表格单元格解析、公式/印章（见总纲）。
 - **依赖与显存**：主流程 KIE 使用 **Hugging Face `transformers` + Qwen2.5-VL**，与 Paddle GPU 栈可共存于同一机，但 **峰值显存叠加**，部署时需预留或分时。
 
@@ -48,9 +48,8 @@ flowchart LR
 ## 4. Schema 与 `document_type` 路由
 
 - VL 的 schema 与 prompt 模板按类型定义于：`backend/app/services/kie/kie_configs/`（`_registry.yaml` 登记类型）。
-- `card_group`：由 `KieManager` 内二次调用先做卡证三分类（`id_card` / `passport` / `bank_card`），再按识别类型抽取。
 
-`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`、`card_group`。`auto` 仍跳过 KIE（`skipped_doc_type`）。
+`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`。`auto` 仍跳过 KIE（`skipped_doc_type`）。
 
 ## 5. 对外契约（稳定）
 

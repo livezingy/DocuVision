@@ -51,26 +51,6 @@ class KieManager:
         prompt = config["prompt_template"].replace("{{ schema_json }}", schema_json)
         return prompt
 
-    def _classify_card(self, image_path):
-        """使用 Qwen2.5-VL 对卡证进行分类：id_card / passport / bank_card"""
-        prompt = ("Please classify this card into one of: id_card, passport, bank_card. "
-                  "Output only the type name, no other text.")
-        messages = [
-            {"role": "user", "content": [
-                {"type": "image", "image": image_path},
-                {"type": "text", "text": prompt}
-            ]}
-        ]
-        result = self._qwen_generate(messages, max_new_tokens=20)
-        result = result.strip().lower()
-        # 容错映射
-        if "passport" in result:
-            return "passport"
-        elif "bank" in result or "card" in result:
-            return "bank_card"
-        else:
-            return "id_card"   # 默认身份证
-
     def _qwen_generate(self, messages, max_new_tokens=2048):
         """封装 Qwen2.5-VL 的推理，返回生成的文本"""
         text = self.processor.apply_chat_template(
@@ -124,17 +104,11 @@ class KieManager:
     def extract(self, image_path, option_type, lang=None):
         """
         根据选项类型进行提取。
-        option_type:
-            - 具体类型如 "invoice", "receipt", "id_card", "passport", "bank_card"
-            - 特殊字符串 "card_group" 表示前端勾选了卡证组，需要自动分类
+        option_type: 如 "invoice", "receipt", "id_card", "passport", "bank_card"
         lang: 预留参数，当前未使用（所有 prompt 为中文）
-        返回: dict，包含 "type" 字段（实际识别的类型）和 "fields" 字段（提取结果）
+        返回: dict，包含 "type" 字段与 "fields" 字段（提取结果）
         """
-        # 决定实际处理类型
-        if option_type == "card_group":
-            actual_type = self._classify_card(image_path)
-        else:
-            actual_type = option_type
+        actual_type = option_type
 
         # 生成 prompt 并提取
         prompt = self.get_prompt(actual_type)

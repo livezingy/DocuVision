@@ -86,7 +86,7 @@ def test_extract_fields_missing_image_returns_empty(monkeypatch) -> None:
 
 @pytest.mark.parametrize(
     "doc_type",
-    ["invoice", "receipt", "id_card", "passport", "bank_card", "card_group"],
+    ["invoice", "receipt", "id_card", "passport", "bank_card"],
 )
 def test_extract_fields_routes_document_type(monkeypatch, tmp_path: Path, doc_type: str) -> None:
     fake = _FakeKieManager()

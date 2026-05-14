@@ -510,24 +510,6 @@ class TaskStatus(BaseModel):
     result: Optional[Dict[str, Any]] = None
 
 
-class TemplateFieldModel(BaseModel):
-    name: str
-    label: str
-    field_type: str = "text"
-    required: bool = False
-    patterns: List[str] = []
-    description: str = ""
-
-
-class CreateTemplateModel(BaseModel):
-    template_id: str
-    name: str
-    description: str = ""
-    category: str = "custom"
-    fields: List[TemplateFieldModel]
-    keywords: List[str] = []
-
-
 class BatchCreateModel(BaseModel):
     name: str
     options: Dict[str, Any] = {}
@@ -1670,62 +1652,6 @@ async def delete_task(task_id: str):
     task_cancellation_flags.pop(task_id, None)
 
     return {"message": "Task deleted", "task_id": task_id}
-
-
-def _raise_deprecated_route(path: str) -> None:
-    raise HTTPException(
-        status_code=410,
-        detail=(
-            f"Route '{path}' has been deprecated and is no longer available in the service-only profile. "
-            "Supported core routes are OCR/Layout/Table and Batch processing."
-        ),
-    )
-
-
-# ============================================
-# API Routes - Templates (P2) — frozen (410)
-# ============================================
-
-@app.get("/api/v1/templates", deprecated=True)
-async def list_templates(category: Optional[str] = None):
-    """Deprecated: template routes are no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/templates")
-
-
-@app.get("/api/v1/templates/{template_id}", deprecated=True)
-async def get_template(template_id: str):
-    """Deprecated: template routes are no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/templates/{template_id}")
-
-
-@app.post("/api/v1/templates", deprecated=True)
-async def create_template(template_data: CreateTemplateModel):
-    """Deprecated: template routes are no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/templates")
-
-
-@app.delete("/api/v1/templates/{template_id}", deprecated=True)
-async def delete_template(template_id: str):
-    """Deprecated: template routes are no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/templates/{template_id}")
-
-
-@app.post("/api/v1/templates/{template_id}/extract", deprecated=True)
-async def extract_with_template(template_id: str, text: str = Form(...)):
-    """Deprecated: template routes are no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/templates/{template_id}/extract")
-
-
-@app.post("/api/v1/templates/auto-extract", deprecated=True)
-async def auto_extract_template(text: str = Form(...)):
-    """Deprecated: template routes are no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/templates/auto-extract")
-
-
-@app.post("/api/v1/templates/match", deprecated=True)
-async def match_templates(text: str = Form(...)):
-    """Deprecated: template routes are no longer available in service-only profile."""
-    _raise_deprecated_route("/api/v1/templates/match")
 
 
 # ============================================

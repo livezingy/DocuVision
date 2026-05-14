@@ -139,17 +139,7 @@ const API_BASE_URL = 'http://localhost:8000/api/v1';
 - 批处理界面: Batch Processing 标签
 - 批处理 API: `/api/v1/batch`
 
-### 6. 模板系统 (`initTemplateSelector()`)
-
-**功能**:
-- 选择文档模板（发票、收据等）
-- 使用模板特定的字段提取
-
-**相关代码**:
-- 模板选择器: `#templateSelector`
-- 模板 API: `/api/v1/templates`
-
-### 7. Canvas 布局显示 (新增)
+### 6. Canvas 布局显示 (新增)
 
 **功能**:
 - 在文档上绘制布局元素

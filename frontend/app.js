@@ -257,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initActionButtons();
     initAnalysisOptionsDialog();
     initEngineSelectors();
-    initTemplateSelector();
     initAnalysisView();
     initExportButtons();
     initBatchProcessing();
@@ -1021,26 +1020,6 @@ async function updatePreviewView(viewType) {
 }
 
 /**
- * Initialize template selector
- */
-function initTemplateSelector() {
-    const options = document.querySelectorAll('.option-item');
-
-    // Find "Template Matching" option
-    options.forEach(option => {
-        const label = option.querySelector('.option-label');
-        if (label && label.textContent === 'Template Matching') {
-            const checkbox = option.querySelector('input[type="checkbox"]');
-            const templateSelector = document.getElementById('templateSelector');
-
-            checkbox.addEventListener('change', () => {
-                templateSelector.style.display = checkbox.checked ? 'block' : 'none';
-            });
-        }
-    });
-}
-
-/**
  * Initialize engine selectors
  */
 function initEngineSelectors() {
@@ -1109,8 +1088,6 @@ function initAnalysisOptionsDialog() {
     const saveBtn = document.getElementById('saveOptionsBtn');
     const resetBtn = document.getElementById('resetOptionsBtn');
     const modalTabs = document.querySelectorAll('.modal-tab');
-    const processingRadios = document.querySelectorAll('input[name="processingMode"]');
-    const templateSelector = document.getElementById('dialogTemplateSelector');
 
     // Tab switching
     modalTabs.forEach(tab => {
@@ -1191,8 +1168,6 @@ function resetAnalysisOptions() {
     document.getElementById('optEnableSeal').checked = false;
     document.getElementById('dialogOcrEngineSelect').value = 'paddleocr';
     document.getElementById('dialogLayoutEngineSelect').value = 'ppstructure';
-    document.getElementById('dialogTemplateSelect').value = '';
-    document.getElementById('dialogTemplateSelector').style.display = 'none';
     const layoutSubOptions = document.getElementById('layoutSubOptions');
     if (layoutSubOptions) {
         layoutSubOptions.classList.remove('hidden');
@@ -1223,7 +1198,7 @@ function getProcessingOptions() {
         // Auto-enable KIE when user selects invoice/receipt/id_card processing mode
         enable_kie: (function() {
             const dt = isLayout ? 'auto' : selectedMode;
-            const kieTypes = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card', 'card_group']);
+            const kieTypes = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card']);
             return kieTypes.has(String(dt).toLowerCase());
         })(),
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
@@ -3507,141 +3482,6 @@ async function getBatchResults(batchId) {
         return null;
     } catch (error) {
         showNotification(`Failed to get results: ${error.message}`, 'error');
-        return null;
-    }
-}
-
-// ============================================
-// P2 Features: Template Management
-// ============================================
-
-/**
- * Get available templates
- */
-async function getTemplates(category = null) {
-    try {
-        let url = `${API_BASE_URL}/templates`;
-        if (category) {
-            url += `?category=${category}`;
-        }
-
-        const response = await fetch(url);
-        if (response.ok) {
-            return await response.json();
-        }
-        return null;
-    } catch (error) {
-        console.error('Failed to get templates:', error);
-        return null;
-    }
-}
-
-/**
- * Get template details
- */
-async function getTemplateDetails(templateId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/templates/${templateId}`);
-        if (response.ok) {
-            return await response.json();
-        }
-        return null;
-    } catch (error) {
-        console.error('Failed to get template:', error);
-        return null;
-    }
-}
-
-/**
- * Create custom template
- */
-async function createTemplate(templateData) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/templates`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(templateData)
-        });
-
-        if (response.ok) {
-            const template = await response.json();
-            showNotification(`Template "${template.name}" created`, 'success');
-            return template;
-        }
-        return null;
-    } catch (error) {
-        showNotification(`Failed to create template: ${error.message}`, 'error');
-        return null;
-    }
-}
-
-/**
- * Extract fields using template
- */
-async function extractWithTemplate(templateId, text) {
-    try {
-        const formData = new FormData();
-        formData.append('text', text);
-
-        const response = await fetch(`${API_BASE_URL}/templates/${templateId}/extract`, {
-            method: 'POST',
-            body: formData
-        });
-
-        if (response.ok) {
-            return await response.json();
-        }
-        return null;
-    } catch (error) {
-        console.error('Template extraction failed:', error);
-        return null;
-    }
-}
-
-/**
- * Auto-detect template and extract
- */
-async function autoExtractTemplate(text) {
-    try {
-        const formData = new FormData();
-        formData.append('text', text);
-
-        const response = await fetch(`${API_BASE_URL}/templates/auto-extract`, {
-            method: 'POST',
-            body: formData
-        });
-
-        if (response.ok) {
-            return await response.json();
-        }
-        return null;
-    } catch (error) {
-        console.error('Auto extraction failed:', error);
-        return null;
-    }
-}
-
-/**
- * Match templates against text
- */
-async function matchTemplates(text) {
-    try {
-        const formData = new FormData();
-        formData.append('text', text);
-
-        const response = await fetch(`${API_BASE_URL}/templates/match`, {
-            method: 'POST',
-            body: formData
-        });
-
-        if (response.ok) {
-            return await response.json();
-        }
-        return null;
-    } catch (error) {
-        console.error('Template matching failed:', error);
         return null;
     }
 }

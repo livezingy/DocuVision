@@ -192,18 +192,18 @@ async def run_contract_checks(test_file: Path | None, res: Results) -> None:
         # Debug endpoint returns 404 for both missing job AND when DEBUG_MODE=false
         res.add("GET missing job debug (should 404)", r.status_code == 404, f"status={r.status_code}")
 
-        print(_info("\nStage C: Template API frozen (410) contract"))
+        print(_info("\nStage C: Template REST removed (404) contract"))
 
         r = await client.get("/api/v1/templates")
-        ok = r.status_code == 410
+        ok = r.status_code == 404
         res.add("GET /api/v1/templates", ok, f"status={r.status_code}")
 
         missing_template = f"tpl-{uuid.uuid4().hex[:10]}"
         r = await client.get(f"/api/v1/templates/{missing_template}")
-        res.add("GET missing template", r.status_code == 410, f"status={r.status_code}")
+        res.add("GET /api/v1/templates/{{id}}", r.status_code == 404, f"status={r.status_code}")
 
         r = await client.post("/api/v1/templates/match", data={"text": "Invoice No. 1001 Total 123.45"})
-        ok = r.status_code == 410
+        ok = r.status_code == 404
         res.add("POST /api/v1/templates/match", ok, f"status={r.status_code}")
 
         if not test_file:

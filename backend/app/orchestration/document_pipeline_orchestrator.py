@@ -479,7 +479,7 @@ async def kie_step(ctx: PipelineContext) -> None:
     orchestrator.ensure_not_cancelled(ctx)
 
     document_type = str(options.get("document_type", "auto") or "auto").strip().lower()
-    supported_doc_types = {"invoice", "id_card", "receipt", "passport", "bank_card", "card_group"}
+    supported_doc_types = {"invoice", "id_card", "receipt", "passport", "bank_card"}
     if document_type not in supported_doc_types:
         ctx["result"]["kie_fields"] = {}
         ctx["result"]["kie_meta"] = {

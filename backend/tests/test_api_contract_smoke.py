@@ -192,7 +192,7 @@ async def run_contract_checks(test_file: Path | None, res: Results) -> None:
         # Debug endpoint returns 404 for both missing job AND when DEBUG_MODE=false
         res.add("GET missing job debug (should 404)", r.status_code == 404, f"status={r.status_code}")
 
-        print(_info("\nStage C: Template REST removed (404) contract"))
+        print(_info("\nStage C: Removed template REST paths return 404"))
 
         r = await client.get("/api/v1/templates")
         ok = r.status_code == 404

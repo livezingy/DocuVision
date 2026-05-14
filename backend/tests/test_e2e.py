@@ -185,11 +185,6 @@ class TestUserScenarios:
         print(f"   页面数: {result.get('document_info', {}).get('pages', 0)}")
         print(f"   表格数: {len(result.get('tables', []))}")
 
-    @pytest.mark.skip(reason="Template REST 已移除；发票字段见 KIE 与 test_data/acceptance")
-    def test_scenario_3_invoice_extraction(self):
-        """用户场景 3: 发票信息提取（已由 KIE 路径替代，本用例冻结跳过）"""
-        pass
-
     def test_scenario_4_batch_processing(self):
         """
         用户场景 4: 批量处理多个文档

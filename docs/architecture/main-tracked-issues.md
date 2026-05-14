@@ -7,7 +7,8 @@
 
 - **KIE 效果**：整页图像 + VL 在复杂版式上的局限；可选第二引擎（`PP-ChatOCRv4-doc`、`uie-x-base` 等）见 [kie.md](./kie.md)。
 - **`kie_confidence_source`**：成功路径取自 `kie_meta.engine`（默认 `qwen2.5-vl`）；多引擎并存时应改为配置驱动。
-- **文档**：根目录 [DATA_FLOW_DIAGRAM.md](../DATA_FLOW_DIAGRAM.md) 为历史示意图，非当前实现权威来源。
+
+**文档阅读顺序（避免与过期备忘冲突）**：仓库实现 → [智能文档处理系统设计方案.md](./智能文档处理系统设计方案.md) → [kie.md](./kie.md)。根目录曾有的 `DATA_FLOW_DIAGRAM.md` 历史示意图已不在仓库中，勿再引用。
 
 ## 测试入口
 

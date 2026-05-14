@@ -11,7 +11,7 @@ An intelligent document processing system built on [PaddleX](https://github.com/
 - **FastAPI backend** (`backend/`) exposing REST APIs for document analysis, batch jobs, export, and health checks. Interactive docs: `/docs` when the server is running.
 - **Core pipeline** orchestrated around **PP-StructureV3**: layout and region typing, text from `block["content"]` (normalized, no secondary whole-page OCR loop), tables (layout-first strategy with configurable full-page fallback), figures/charts.
 - **Coordinate model**: preprocessing keeps **`use_doc_unwarping` disabled** (hard-coded in the engine) so word spacing stays reliable; polygons are mapped back to **original image** space for the `view` layer (`coordinate_space: "original"`).
-- **Optional capabilities**: formula recognition (`enable_formula`), seal recognition (`enable_seal`), document-level **KIE** for invoice / ID card / receipt via **PaddleNLP UIE** (`uie-m-base`) behind `enable_kie`, routed by `document_type`.
+- **Optional capabilities**: formula recognition (`enable_formula`), seal recognition (`enable_seal`), document-level **KIE** for invoice / receipt / ID card / passport / bank card via **Qwen2.5-VL** (`enable_kie`, routed by `document_type`; see `docs/architecture/kie.md`).
 - **Structured output**: layered **Envelope** (raw / fused / view / quality) with provenance, processing-status fallbacks, and quality metrics aligned with the architecture spec.
 - **Debug mode**: service-level `DEBUG_MODE` can persist per-job artifacts under `backend/debug/{job_id}/` and expose `GET /api/v1/jobs/{job_id}/debug` when enabled.
 - **Frontend** (`frontend/`): dependency-free static SPA (HTML/CSS/JS) talking to the API; see `frontend/README_FRONTEND.md` for UI details.
@@ -27,7 +27,7 @@ Authoritative design and contracts live under **`docs/architecture/`**, especial
 | Document | Purpose |
 |----------|---------|
 | `智能文档处理系统设计方案.md` | System goals, engine choices, envelope layers, API/front-end conventions, phased roadmap |
-| `kie.md` | Document-level KIE (UIE), `view.fields` / `quality.kie_*`, tests, optional second engines |
+| `kie.md` | Document-level KIE（**Qwen2.5-VL**），`view.fields` / `quality.kie_*`，测试与可选第二引擎说明 |
 | `main-tracked-issues.md` | Lightweight backlog notes |
 | `KIE_TEST_RUN_TRACKER.md` | Cloud KIE validation batches |
 

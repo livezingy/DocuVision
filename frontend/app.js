@@ -31,6 +31,79 @@ function resolveApiBaseUrl() {
 const API_BASE_URL = resolveApiBaseUrl();
 const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, '');
 
+/** Last successful GET /health JSON (dependencies, kie, api_version). */
+let lastHealthPayload = null;
+let kieHealthRefreshTimer = null;
+
+function truncateFooterEngineLine(line) {
+    if (!line) return '';
+    return line.length > 72 ? `${line.slice(0, 69)}...` : line;
+}
+
+/**
+ * Keep #activeEngine aligned with last /health dependencies and the OCR engine dropdown.
+ */
+function refreshActiveEngineFooterLine() {
+    const activeEl = document.getElementById('activeEngine');
+    if (!activeEl) return;
+    const deps = (lastHealthPayload && lastHealthPayload.dependencies) || {};
+    const px = String(deps.paddlex || '').trim() || 'unknown';
+    const po = String(deps.paddleocr || '').trim() || 'unknown';
+    const ocrSelect = document.getElementById('dialogOcrEngineSelect');
+
+    if (!ocrSelect) {
+        activeEl.textContent = truncateFooterEngineLine(`PaddleOCR ${po} · PaddleX ${px}`);
+        return;
+    }
+
+    const engineNames = {
+        paddleocr: 'PaddleOCR',
+        tesseract: 'Tesseract 5.x',
+        easyocr: 'EasyOCR'
+    };
+    const val = ocrSelect.value || 'paddleocr';
+    const base = engineNames[val] || val;
+    const line =
+        val === 'paddleocr'
+            ? `PaddleOCR ${po} · PaddleX ${px}`
+            : `${base} · PaddleX ${px}`;
+    activeEl.textContent = truncateFooterEngineLine(line);
+}
+
+/**
+ * Apply /health payload to footer (Paddle stack version, KIE readiness, API version).
+ */
+function applyHealthToFooter(health) {
+    if (!health || typeof health !== 'object') return;
+    lastHealthPayload = health;
+    refreshActiveEngineFooterLine();
+    const kieEl = document.getElementById('kieEngineStatus');
+    if (kieEl) {
+        if (health.kie && typeof health.kie === 'object') {
+            kieEl.textContent = health.kie.model_loaded ? ' · KIE ready' : ' · KIE cold';
+            kieEl.title = health.kie.model_id ? `KIE: ${health.kie.model_id}` : '';
+        } else {
+            kieEl.textContent = '';
+            kieEl.title = '';
+        }
+    }
+    const verEl = document.getElementById('apiVersionFooter');
+    if (verEl && health.api_version) {
+        verEl.textContent = `API v${health.api_version}`;
+    }
+    if (health.kie && health.kie.model_loaded === false && !kieHealthRefreshTimer) {
+        kieHealthRefreshTimer = window.setTimeout(() => {
+            kieHealthRefreshTimer = null;
+            fetch(`${API_ROOT_URL}/health`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((h) => {
+                    if (h) applyHealthToFooter(h);
+                })
+                .catch(() => {});
+        }, 12000);
+    }
+}
+
 // Status bar throttling and filtering with queue mechanism
 let statusUpdateQueue = [];
 let isProcessingQueue = false;
@@ -179,9 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initUploadZone();
     initTabs();
+    initHelpButton();
     initResultTabs();
     initActionButtons();
     initAnalysisOptionsDialog();
+    initEngineSelectors();
     initTemplateSelector();
     initAnalysisView();
     initExportButtons();
@@ -214,6 +289,9 @@ async function initializeAPIConnection() {
             });
             return;
         }
+
+        const healthJson = await healthResponse.json();
+        applyHealthToFooter(healthJson);
 
         // Get server info
         const infoResponse = await fetch(API_ROOT_URL, {
@@ -558,12 +636,33 @@ function initTabs() {
     const navTabs = document.querySelectorAll('.nav-tab');
     navTabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            navTabs.forEach(t => t.classList.remove('active'));
+            if (tab.disabled) return;
+            navTabs.forEach(t => {
+                if (!t.disabled) t.classList.remove('active');
+            });
             tab.classList.add('active');
 
             const tabName = tab.dataset.tab;
             showNotification(`Switched to ${tab.textContent.trim()} view`, 'info');
         });
+    });
+}
+
+/**
+ * Help opens API docs or configured architecture doc URL.
+ */
+function initHelpButton() {
+    const btn = document.getElementById('helpBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+        let url = '';
+        if (window.DOCUVISION_CONFIG && typeof window.DOCUVISION_CONFIG.HELP_DOC_URL === 'string') {
+            url = window.DOCUVISION_CONFIG.HELP_DOC_URL.trim();
+        }
+        if (!url) {
+            url = `${API_ROOT_URL}/docs`;
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
     });
 }
 
@@ -945,19 +1044,19 @@ function initTemplateSelector() {
  * Initialize engine selectors
  */
 function initEngineSelectors() {
-    const ocrSelect = document.getElementById('ocrEngineSelect');
-    const layoutSelect = document.getElementById('layoutEngineSelect');
-    const activeEngineDisplay = document.getElementById('activeEngine');
+    const ocrSelect = document.getElementById('dialogOcrEngineSelect');
+    const layoutSelect = document.getElementById('dialogLayoutEngineSelect');
 
     if (ocrSelect) {
         ocrSelect.addEventListener('change', () => {
+            refreshActiveEngineFooterLine();
             const engineNames = {
-                'paddleocr': 'PaddleOCR v2.7',
-                'tesseract': 'Tesseract 5.x',
-                'easyocr': 'EasyOCR'
+                paddleocr: 'PaddleOCR',
+                tesseract: 'Tesseract 5.x',
+                easyocr: 'EasyOCR'
             };
-            activeEngineDisplay.textContent = engineNames[ocrSelect.value] || ocrSelect.value;
-            showNotification(`OCR engine changed to ${engineNames[ocrSelect.value]}`, 'info');
+            const base = engineNames[ocrSelect.value] || ocrSelect.value;
+            showNotification(`OCR engine changed to ${base}`, 'info');
         });
     }
 
@@ -1189,6 +1288,14 @@ async function startProcessing() {
     clearResultsDisplay(true);
 
     const options = getProcessingOptions();
+    if (
+        options.enable_kie &&
+        lastHealthPayload &&
+        lastHealthPayload.kie &&
+        !lastHealthPayload.kie.model_loaded
+    ) {
+        showNotification('首次 KIE 将加载 Qwen 模型，可能需数十秒，请耐心等待进度。', 'info');
+    }
 
     // Process first pending file
     const firstPending = queueItems[0];

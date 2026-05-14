@@ -201,6 +201,40 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
+.nav-tab:disabled,
+.nav-tab.nav-tab--disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.nav-tab:disabled:hover,
+.nav-tab.nav-tab--disabled:hover {
+    color: var(--text-secondary);
+    background: transparent;
+}
+
+.icon-btn:disabled,
+.icon-btn.icon-btn--disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.icon-btn.icon-btn--disabled:hover {
+    background: transparent;
+}
+
+.status-stack {
+    flex-wrap: wrap;
+    max-width: min(560px, 52vw);
+    row-gap: 2px;
+}
+
+.status-kie {
+    color: var(--text-tertiary);
+    font-size: 0.68rem;
+    white-space: nowrap;
+}
+
 .nav-right {
     display: flex;
     align-items: center;

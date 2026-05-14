@@ -176,7 +176,16 @@ def _dependency_preflight_check() -> Dict[str, str]:
 
 _DEP_VERSIONS = _dependency_preflight_check()
 
+API_VERSION = "1.1.0"
 
+
+def _short_public_model_id(model_id: str) -> str:
+    """Last path segment or trimmed id for health payloads (no full host paths)."""
+    s = (model_id or "").strip()
+    if not s:
+        return ""
+    base = os.path.basename(s.rstrip("/\\"))
+    return base if base else s[:96]
 
 
 # 继续导入其他模块
@@ -203,7 +212,7 @@ from app.core.debug_utils import save_debug_overlay_image
 app = FastAPI(
     title="DocuVision API",
     description="Intelligent Document Processing System - Open Source Alternative to Azure Document Intelligence",
-    version="1.1.0",
+    version=API_VERSION,
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -532,7 +541,7 @@ class BatchCreateModel(BaseModel):
 async def root():
     return {
         "name": "DocuVision API",
-        "version": "1.1.0",
+        "version": API_VERSION,
         "status": "running",
         "features": ["OCR/Layout/Table/Export", "Batch Processing"],
         "docs": "/docs"
@@ -541,9 +550,20 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    deps_extra = {
+        "torch": _get_dist_version(["torch"]),
+        "transformers": _get_dist_version(["transformers"]),
+    }
     return {
         "status": "healthy",
+        "api_version": API_VERSION,
         "timestamp": datetime.now().isoformat(),
+        "dependencies": dict(_DEP_VERSIONS),
+        "dependencies_extra": deps_extra,
+        "kie": {
+            "model_loaded": kie_service.is_model_loaded(),
+            "model_id": _short_public_model_id(settings.KIE_QWEN_MODEL_ID),
+        },
         "services": {
             "ocr": {
                 "ready": ocr_service.is_ready(),

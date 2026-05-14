@@ -71,6 +71,10 @@ class QwenDocumentKIEService:
         self._manager: Any = None
         self._init_wall_ms: int = 0
 
+    def is_model_loaded(self) -> bool:
+        """True after HF processor+model have been constructed (warmup or first extract)."""
+        return self._manager is not None
+
     def _init_manager(self) -> None:
         if self._manager is not None:
             return

@@ -177,7 +177,7 @@ class TestInvoiceProcessingWorkflow(UserWorkflowBase):
         """用户上传发票 PDF，走完整 analyze 管线并期望 KIE 产出字段。"""
         print(f"\n{INFO} 工作流: 发票 KIE 分析（/api/v1/analyze）")
 
-        test_file = TEST_DATA_DIR / "templates" / "invoice" / "invoice_sample_01.pdf"
+        test_file = TEST_DATA_DIR / "testfiles" / "invoices" / "invoice_sample_01.pdf"
         if not test_file.exists():
             pytest.skip(f"Test file not found: {test_file}")
 

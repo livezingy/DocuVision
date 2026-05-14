@@ -67,7 +67,7 @@ test_data/
 
 ### 3. 模板测试文档
 
-#### 发票 (`testfiles/templates/invoice/`)
+#### 发票 (`testfiles/invoices/`)
 - **必需字段**：
   - 发票号码 (Invoice Number)
   - 发票日期 (Invoice Date)

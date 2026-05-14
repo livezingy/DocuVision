@@ -35,15 +35,15 @@ Copy this block for each cloud run batch.
 
 - base_url: cloudstudio public endpoint (:8000)
 - sample_set:
-  - test_data/testfiles/templates/invoice/invoice_sample_01.pdf
-  - test_data/testfiles/templates/invoice/sample-invoice.png
-  - test_data/testfiles/templates/invoice/receipt-invoice-like.png
+  - test_data/testfiles/invoices/invoice_sample_01.pdf
+  - test_data/testfiles/invoices/sample-invoice.png
+  - test_data/testfiles/invoices/receipt-invoice-like.png
 
 | sample_path | final_status | kie_stage | kie_fields_count | accepted | hit_miss | note |
 |---|---|---|---:|---|---|---|
-| test_data/testfiles/templates/invoice/invoice_sample_01.pdf | completed/succeeded | completed | 0 | true | miss | contract pass |
-| test_data/testfiles/templates/invoice/sample-invoice.png | completed/succeeded | completed | 0 | true | miss | contract pass |
-| test_data/testfiles/templates/invoice/receipt-invoice-like.png | completed/succeeded | completed | 0 | true | miss | contract pass |
+| test_data/testfiles/invoices/invoice_sample_01.pdf | completed/succeeded | completed | 0 | true | miss | contract pass |
+| test_data/testfiles/invoices/sample-invoice.png | completed/succeeded | completed | 0 | true | miss | contract pass |
+| test_data/testfiles/invoices/receipt-invoice-like.png | completed/succeeded | completed | 0 | true | miss | contract pass |
 
 - summary: total=3, accepted=3, hit=0, miss=3, error=0
 

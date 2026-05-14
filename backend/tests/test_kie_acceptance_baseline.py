@@ -21,9 +21,9 @@ _BACKEND_DIR = _SCRIPT_DIR.parent
 _PROJECT_ROOT = _BACKEND_DIR.parent
 
 _SAMPLE_MATRIX = [
-    _PROJECT_ROOT / "test_data" / "testfiles" / "templates" / "invoice" / "invoice_sample_01.pdf",
-    _PROJECT_ROOT / "test_data" / "testfiles" / "templates" / "invoice" / "receipt-invoice-like.png",
-    _PROJECT_ROOT / "test_data" / "testfiles" / "templates" / "invoice" / "sample-invoice.png",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "invoices" / "invoice_sample_01.pdf",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "invoices" / "receipt-invoice-like.png",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "invoices" / "sample-invoice.png",
 ]
 
 

@@ -38,7 +38,7 @@
 
 ### 模板测试文档
 
-#### 发票 (`test_data/testfiles/templates/invoice/`)
+#### 发票 (`test_data/testfiles/invoices/`)
 - [ ] `invoice_sample_01.pdf` - PDF格式发票
 - [ ] `invoice_sample_02.jpg` - JPG格式发票
 - [ ] `invoice_sample_03.png` - PNG格式发票
@@ -150,7 +150,7 @@
 1. **文件存在性**
    ```bash
    # 检查文件是否存在
-   ls test_data/testfiles/templates/invoice/
+   ls test_data/testfiles/invoices/
    ls test_data/testfiles/templates/receipt/
    ls test_data/testfiles/templates/id_document/
    ```

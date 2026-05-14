@@ -163,7 +163,18 @@ docker/
 docs/*
 !docs/architecture/
 !docs/architecture/智能文档处理系统设计方案.md
+!docs/architecture/media/
+!docs/architecture/media/**
 docs/R&D/**
+
+# Intentionally not versioned / removed from repo (maintainer-local or retired paths)
+.claude/
+/CLAUDE.md
+/CONTRIBUTING.md
+/STARTUP_GUIDE.md
+/REMAINING_ISSUES_TRACKER.md
+/docs/DATA_FLOW_DIAGRAM.md
+/docs/AZURE_CONTRACT_AND_PADDLE_OUTPUT_DISCOVERY.md
 # Tests: ignore __pycache__ and result artefacts but commit source files
 tests/**/__pycache__/
 backend/tests/__pycache__/

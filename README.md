@@ -1,48 +1,62 @@
 # DocuVision
 
-An intelligent document processing system built on [PaddleX](https://github.com/PaddlePaddle/PaddleX) / PP-StructureV3, positioned as an open, self-hostable alternative to **Azure Document Intelligence**–style layout, OCR, tables, and optional enrichment (formulas, seals, key information extraction).
+DocuVision is an intelligent document processing stack built on [PaddleX](https://github.com/PaddlePaddle/PaddleX) and PP-StructureV3. It targets a **self-hosted**, **Azure Document Intelligence–style** workflow: layout and OCR, tables and figures, optional formulas and seals, and optional document-level **KIE** (key information extraction) when enabled.
 
 ---
 
-## Current status
+## UI overview
 
-### What works today
+The web UI is a static single-page app under `frontend/` (no Node build). Layout matches `frontend/index.html` and `frontend/README_FRONTEND.md`.
 
-- **FastAPI backend** (`backend/`) exposing REST APIs for document analysis, batch jobs, export, and health checks. Interactive docs: `/docs` when the server is running.
-- **Core pipeline** orchestrated around **PP-StructureV3**: layout and region typing, text from `block["content"]` (normalized, no secondary whole-page OCR loop), tables (layout-first strategy with configurable full-page fallback), figures/charts.
-- **Coordinate model**: preprocessing keeps **`use_doc_unwarping` disabled** (hard-coded in the engine) so word spacing stays reliable; polygons are mapped back to **original image** space for the `view` layer (`coordinate_space: "original"`).
-- **Optional capabilities**: formula recognition (`enable_formula`), seal recognition (`enable_seal`), document-level **KIE** for invoice / receipt / ID card / passport / bank card via **Qwen2.5-VL** (`enable_kie`, routed by `document_type`; see `docs/architecture/kie.md`).
-- **Structured output**: layered **Envelope** (raw / fused / view / quality) with provenance, processing-status fallbacks, and quality metrics aligned with the architecture spec.
-- **Debug mode**: service-level `DEBUG_MODE` can persist per-job artifacts under `backend/debug/{job_id}/` and expose `GET /api/v1/jobs/{job_id}/debug` when enabled.
-- **Frontend** (`frontend/`): dependency-free static SPA (HTML/CSS/JS) talking to the API; see `frontend/README_FRONTEND.md` for UI details.
+- **Top navigation**: primary **Document Processing** tab; **Batch Processing** is a disabled placeholder. **Settings** is disabled; **Help** opens API / help documentation (configurable URL, default `/docs`).
+- **Left panel**: **Upload Document** (drag-and-drop or file picker for PDF, PNG, JPG, TIFF) and **Processing Queue** listing jobs in flight.
+- **Center panel**: **document preview** with pagination, **Run Analysis**, and **Analysis Options** (modal) for pipeline toggles.
+- **Right panel**: **Processing Results** with main tabs **Content** and **Result**. Content exposes sub-tabs (e.g. Text, Tables, Figures, and optional Fields / Formulas / Seals when the backend returns them). **Result** shows JSON with copy/download. **Export Results** offers structured export actions.
+- **Footer (status bar)**: connection / readiness, **stack version** and **KIE ready/cold** driven by `GET /health`, plus **API version** from the same payload.
 
-### Reference data
+### Screenshot
 
-- **`test_data/`**（根下仅 `acceptance/`、`testfiles/`、`Azure/`、`TestResult/`）：`Azure/` 为 Azure Layout / DI 风格参考 JSON；`testfiles/` 为固定样例；`acceptance/` 为验收矩阵与说明；`TestResult/` 仅本地/流水线临时输出（不提交）。
+![DocuVision UI](docs/architecture/media/docuvision-ui.png)
 
-### Documentation (source of truth)
+Replace the placeholder image with a real capture; see `docs/architecture/media/README.md`.
 
-Authoritative design and contracts live under **`docs/architecture/`**, especially:
+---
 
-| Document | Purpose |
-|----------|---------|
-| `智能文档处理系统设计方案.md` | System goals, engine choices, envelope layers, API/front-end conventions, phased roadmap |
-| `kie.md` | Document-level KIE（**Qwen2.5-VL**），`view.fields` / `quality.kie_*`，测试与可选第二引擎说明 |
-| `main-tracked-issues.md` | Lightweight backlog notes |
-| `KIE_TEST_RUN_TRACKER.md` | Cloud KIE validation batches |
+## Live demo
+
+<!-- Maintainer: replace with a hosted demo URL when available. -->
+
+[Live demo](https://example.com) — link is a placeholder until a public deployment is published.
+
+---
+
+## Architecture and capabilities (summary)
+
+- **Backend**: FastAPI app under `backend/`, orchestrating PaddleX PP-StructureV3 and optional cloud **KIE** via **Qwen2.5-VL** (see `docs/architecture/kie.md`).
+- **APIs**: legacy task-style endpoints under `POST /api/v1/...` (e.g. analyze, jobs, export) coexist with Phase-1 style `documents:analyze` and job polling; authoritative shapes and evolution are described in `docs/architecture/` (start with `智能文档处理系统设计方案.md`).
+- **Response model**: layered **Envelope** (`raw` / `fused` / `view` / `quality`) with provenance and quality hints aligned to the architecture spec.
+- **Health**: `GET /health` reports dependency versions, API revision, and KIE warmup state for the footer and operations.
+
+For KIE field layout, `view.fields`, and `quality.kie_*`, use **`docs/architecture/kie.md`**. For phased roadmap and API conventions, use the main architecture document in the same folder.
+
+---
+
+## Reference data
+
+Under **`test_data/`** (tracked): **`Azure/`** holds reference JSON in an Azure Layout / DI–like shape; **`testfiles/`** holds fixed samples; **`acceptance/`** holds acceptance matrices and notes. **`TestResult/`** is for local or CI scratch output only (ignored by Git).
 
 ---
 
 ## Tech stack (typical)
 
-| Layer | Notes |
-|-------|--------|
-| Runtime | Python **3.10+**（`backend/requirements.txt` 注释说明与托管镜像的版本关系） |
-| Deep learning | **PaddlePaddle GPU 3.3.x**, **PaddleOCR 3.3.x**, **PaddleX 3.3.x** (see `CLAUDE.md` and `backend/requirements.txt` 头部说明) |
-| API | **FastAPI**, **Uvicorn** |
-| UI | Static SPA, no Node build step |
+| Layer        | Notes |
+| ------------ | ----- |
+| Runtime      | Python **3.10+** (see `backend/requirements.txt` for image / CUDA notes) |
+| Deep learning | **PaddlePaddle GPU 3.3.x**, **PaddleOCR 3.3.x**, **PaddleX 3.3.x** |
+| API          | **FastAPI**, **Uvicorn** |
+| UI           | Static SPA, no Node build step |
 
-Dependency pins are in **`backend/requirements.txt`**（仓库内唯一维护的依赖文件）。Paddle / Qwen 等与 CUDA 相关的栈常由 GPU 镜像预装或需单独安装，见该文件顶部注释；避免与托管环境冲突的重复安装。
+Pins live in **`backend/requirements.txt`** (single source for Python deps in this repo).
 
 ---
 
@@ -52,62 +66,61 @@ Dependency pins are in **`backend/requirements.txt`**（仓库内唯一维护的
 DocuVision/
 ├── backend/           # FastAPI app, orchestrator, PaddleX services, tests
 ├── frontend/          # Static SPA + README_FRONTEND.md
-├── docs/architecture/ # Design specs and trackers (Chinese + technical detail)
-├── test_data/         # 仅 acceptance、testfiles、Azure（纳入 Git）；TestResult 本地输出不提交
-└── CLAUDE.md          # Maintainer conventions for this repo
+├── docs/architecture/ # Design specs and trackers
+└── test_data/         # acceptance, testfiles, Azure refs; TestResult excluded
 ```
 
 ---
 
 ## Getting started (outline)
 
-1. **Environment**: GPU recommended for production-like latency; CPU may work for smoke tests depending on models loaded.
-2. **Python dependencies**: `cd backend && pip install -r requirements.txt`，并按 `requirements.txt` 顶部说明处理 Paddle / torch 等与镜像预装的关系。
-3. **Configuration**: Use `backend/.env` (you can start from `backend/.env.cloud` where provided). Do not commit secrets.
+1. **Environment**: GPU recommended for production-like latency; CPU may suffice for smoke tests depending on models.
+2. **Python dependencies**: `cd backend && pip install -r requirements.txt` — follow the header comments for Paddle / torch vs. preinstalled images.
+3. **Configuration**: use `backend/.env` (you may copy from `backend/.env.cloud` where provided). Do not commit secrets.
 4. **Run the API** (from `backend/`):
 
    ```bash
    python run.py
    ```
 
-   Default API base used by the frontend is often `http://localhost:8000/api/v1`—adjust in `frontend/app.js` if needed.
-5. **Open the UI**: Serve or open `frontend/index.html` (or rely on static mounting if your deployment bundles frontend with the backend).
+   The frontend defaults to `http://localhost:8000/api/v1`; adjust `frontend/app.js` if needed.
+5. **Open the UI**: open or serve `frontend/index.html`.
 
-For field-level API behavior, response shapes, and debug semantics, rely on **`docs/architecture/智能文档处理系统设计方案.md`** and the running OpenAPI schema.
+For response shapes and debug semantics, use **`docs/architecture/智能文档处理系统设计方案.md`** and the live OpenAPI schema at `/docs`.
 
 ---
 
 ## Testing
 
-Examples called out in architecture notes:
+Examples referenced in architecture notes:
 
 ```bash
 pytest backend/tests/test_kie_service.py backend/tests/test_kie_return_raw_contract.py backend/tests/test_orchestrator_order.py
 ```
 
-Additional tests live under `backend/tests/` (e.g. table strategy, formula grading). Acceptance by document type: `test_data/acceptance/doc_types.md`.
+More tests live under `backend/tests/`. Document-type acceptance: `test_data/acceptance/doc_types.md`.
 
 ---
 
 ## Roadmap (high level)
 
-Aligned with **Phase 3** in the architecture document—**document-level KIE uses Qwen2.5-VL**; remaining themes include:
+Aligned with **Phase 3+** in the architecture document (document-level KIE on **Qwen2.5-VL** today). Further themes:
 
 | Theme | Direction |
-|-------|-----------|
+| ----- | --------- |
 | **Second KIE engine (optional)** | Evaluate models such as **PP-ChatOCRv4-doc** or **`uie-x-base`** while keeping **`view.fields` / `quality.kie_*`** stable or versioned |
-| **kie_confidence_source** | Today derived from `kie_meta.engine` after successful KIE; should stay configuration-driven when multiple engines exist |
+| **kie_confidence_source** | Keep configuration-driven when multiple engines exist |
 | **Long-document Q&A** | PaddleOCR-VL–style scenarios |
-| **Translation** | PP-DocTranslation for multilingual output |
+| **Translation** | e.g. PP-DocTranslation for multilingual output |
 | **Retrieval** | Vector indexing over processed content |
 
-See **`docs/architecture/智能文档处理系统设计方案.md`** §10 for the full phased checklist and **`docs/architecture/kie.md`** for KIE-specific details.
+See **`docs/architecture/智能文档处理系统设计方案.md`** §10 for the full phased checklist and **`docs/architecture/kie.md`** for KIE specifics.
 
 ---
 
 ## Contributing
 
-- Follow existing code layout and the contracts in `docs/architecture/`.
+- Follow the contracts in `docs/architecture/` and existing module layout.
 - Prefer small, focused changes with tests where behavior is specified.
 - Keep secrets and tokens out of the repository and logs.
 

@@ -22,7 +22,7 @@ The web UI is a static single-page app under `frontend/` (no Node build). Layout
 
 ![DocuVision process receipt](docs/architecture/media/DocVision_receipt.gif)
 
-![DocuVision process invoice](docs/architecture/media/DocVision_invoice.gif)
+![DocuVision process invoice](docs/architecture/media/DocVision_Invoice.gif)
 ---
 
 ## Repository layout

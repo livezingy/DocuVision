@@ -1,3 +1,4 @@
 # Architecture media
 
-Replace `docuvision-ui.png` in this folder with a real screenshot of the DocuVision UI for use in the root `README.md`. The committed file is a tiny placeholder only.
+- `docuvision-ui.png` — hero screenshot for the root README.
+- `DocVision_table.gif`, `DocVision_receipt.gif`, `DocVision_Invoice.gif` — recorded UI walkthroughs for the README **Examples** section.

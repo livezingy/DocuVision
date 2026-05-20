@@ -57,7 +57,7 @@ def test_extract_fields_returns_kie_step_compatible_dict(monkeypatch, tmp_path: 
         assert fields["invoice_number"] == "INV-001"
         assert len(fields["items"]) == 1
         assert res["items_count"] == 1
-        assert res["confidence_avg"] == 0.0
+        assert res["confidence_avg"] > 0.0
         assert res["metadata"]["engine"] == "qwen2.5-vl"
         assert res["metadata"]["resolved_document_type"] == "invoice"
         assert res["metadata"]["items_source"] == "n/a"

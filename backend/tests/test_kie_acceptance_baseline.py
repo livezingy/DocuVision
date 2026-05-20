@@ -15,52 +15,56 @@ from pathlib import Path
 
 import pytest
 
+from app.services.kie.kie_field_metrics import (
+    evaluate_kie_contract,
+    evaluate_kie_production_hit,
+)
+
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _BACKEND_DIR = _SCRIPT_DIR.parent
 _PROJECT_ROOT = _BACKEND_DIR.parent
 
-_SAMPLE_MATRIX = [
+_INVOICE_MATRIX = [
     _PROJECT_ROOT / "test_data" / "testfiles" / "invoices" / "invoice_sample_01.pdf",
     _PROJECT_ROOT / "test_data" / "testfiles" / "invoices" / "receipt-invoice-like.png",
     _PROJECT_ROOT / "test_data" / "testfiles" / "invoices" / "sample-invoice.png",
 ]
 
-
-def _evaluate_kie_acceptance(kie_stage: str, kie_fields_count: int) -> tuple[bool, str]:
-    """Evaluate KIE acceptance based on the current baseline rule.
-
-    Rule KIE-ACCEPT-001:
-    - stage must be "completed"
-    - fields_count can be zero or greater
-    """
-    if kie_stage != "completed":
-        return False, f"stage_not_completed:{kie_stage}"
-
-    if kie_fields_count < 0:
-        return False, f"invalid_negative_count:{kie_fields_count}"
-
-    if kie_fields_count == 0:
-        return True, "completed_with_zero_fields_allowed"
-
-    return True, "completed_with_field_hits"
+_CARD_MATRIX = [
+    (_PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "id_card_sample_01.jpg", "id_card"),
+    (_PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "passport_sample_01.png", "passport"),
+    (_PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "bank_card_sample_01.png", "bank_card"),
+]
 
 
 def test_kie_invoice_sample_matrix_has_minimum_samples() -> None:
-    existing = [p for p in _SAMPLE_MATRIX if p.exists()]
+    existing = [p for p in _INVOICE_MATRIX if p.exists()]
     assert len(existing) >= 3, f"Need >=3 invoice samples, found {len(existing)}"
 
 
+def test_kie_card_sample_matrix_files_exist() -> None:
+    for path, _ in _CARD_MATRIX:
+        assert path.exists(), f"Missing card sample: {path}"
+
+
 def test_kie_acceptance_rule_allows_zero_fields_when_completed() -> None:
-    accepted, reason = _evaluate_kie_acceptance("completed", 0)
+    accepted, reason = evaluate_kie_contract("completed", 0)
     assert accepted is True
     assert reason == "completed_with_zero_fields_allowed"
 
 
 def test_kie_acceptance_rule_rejects_non_completed_stage() -> None:
-    accepted, reason = _evaluate_kie_acceptance("runtime_error", 0)
+    accepted, reason = evaluate_kie_contract("runtime_error", 0)
     assert accepted is False
     assert reason.startswith("stage_not_completed")
+
+
+def test_kie_production_hit_requires_key_fields() -> None:
+    ok, reason, keys = evaluate_kie_production_hit("invoice", {"total": "100.00"})
+    assert ok is True
+    assert reason == "production_hit"
+    assert keys == ["total"]
 
 
 @pytest.mark.skipif(
@@ -68,10 +72,7 @@ def test_kie_acceptance_rule_rejects_non_completed_stage() -> None:
     reason="Set DOCUVISION_RUN_KIE_ACCEPTANCE=1 to enable heavy KIE smoke validation",
 )
 def test_kie_invoice_documents_analyze_smoke_contract() -> None:
-    """Optional cloud smoke: run KIE through /api/v1/documents:analyze.
-
-    This is intentionally opt-in because it can be heavy and model-dependent.
-    """
+    """Optional cloud smoke: run KIE through /api/v1/documents:analyze."""
 
     try:
         import httpx
@@ -90,7 +91,7 @@ def test_kie_invoice_documents_analyze_smoke_contract() -> None:
         transport = httpx.ASGITransport(app=app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test", timeout=120) as client:
-            for sample in _SAMPLE_MATRIX:
+            for sample in _INVOICE_MATRIX:
                 if not sample.exists():
                     pytest.skip(f"Missing sample: {sample}")
 
@@ -133,7 +134,7 @@ def test_kie_invoice_documents_analyze_smoke_contract() -> None:
                 kie_stage = str(quality.get("kie_stage", ""))
                 kie_fields_count = int(quality.get("kie_fields_count", 0) or 0)
 
-                accepted, reason = _evaluate_kie_acceptance(kie_stage, kie_fields_count)
+                accepted, reason = evaluate_kie_contract(kie_stage, kie_fields_count)
                 assert accepted, (
                     f"acceptance failed for {sample.name}: stage={kie_stage}, "
                     f"fields={kie_fields_count}, reason={reason}"

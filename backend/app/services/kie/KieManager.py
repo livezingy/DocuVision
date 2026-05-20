@@ -79,27 +79,50 @@ class KieManager:
         return generated_text
 
     def _parse_json(self, text):
-        """从模型输出中提取 JSON 对象"""
-        # 尝试直接解析
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            pass
-        # 提取 ```json ... ``` 代码块
-        match = re.search(r'```json\s*([\s\S]*?)\s*```', text)
-        if match:
-            try:
-                return json.loads(match.group(1))
-            except json.JSONDecodeError:
-                pass
-        # 尝试提取 {} 包裹的部分
-        match = re.search(r'\{[\s\S]*\}', text)
-        if match:
-            try:
-                return json.loads(match.group(0))
-            except json.JSONDecodeError:
-                pass
+        """从模型输出中提取 JSON 对象（容忍 Markdown 围栏与常见格式噪声）。"""
+        if not text or not str(text).strip():
+            return None
+
+        candidates: list[str] = []
+
+        def _push(s: str) -> None:
+            s = (s or "").strip()
+            if s and s not in candidates:
+                candidates.append(s)
+
+        raw = str(text).strip().lstrip("\ufeff")
+        _push(raw)
+
+        for pattern in (
+            r"```json\s*([\s\S]*?)\s*```",
+            r"```\s*([\s\S]*?)\s*```",
+        ):
+            for match in re.finditer(pattern, raw, flags=re.IGNORECASE):
+                _push(match.group(1))
+
+        brace = re.search(r"\{[\s\S]*\}", raw)
+        if brace:
+            _push(brace.group(0))
+
+        for candidate in candidates:
+            for attempt in (candidate, self._sanitize_json_text(candidate)):
+                if not attempt:
+                    continue
+                try:
+                    parsed = json.loads(attempt)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except json.JSONDecodeError:
+                    continue
         return None
+
+    @staticmethod
+    def _sanitize_json_text(text: str) -> str:
+        """去掉尾随逗号等常见模型输出噪声。"""
+        t = text.strip()
+        t = re.sub(r",\s*}", "}", t)
+        t = re.sub(r",\s*]", "]", t)
+        return t
 
     def extract(self, image_path, option_type, lang=None):
         """

@@ -10,6 +10,10 @@ import time
 from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
+from app.services.kie.kie_field_metrics import (
+    compute_fill_confidence,
+    count_meaningful_kie_fields,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -178,10 +182,11 @@ class QwenDocumentKIEService:
         resolved_type = str(raw.get("type") or document_type)
         fields = raw.get("fields") if isinstance(raw.get("fields"), dict) else {}
         items_count = _items_count_from_fields(fields)
+        confidence_avg = compute_fill_confidence(fields, resolved_type)
 
         return {
             "fields": fields,
-            "confidence_avg": 0.0,
+            "confidence_avg": confidence_avg,
             "items_count": items_count,
             "metadata": {
                 "engine": "qwen2.5-vl",

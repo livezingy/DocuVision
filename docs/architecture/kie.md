@@ -1,6 +1,6 @@
 # 文档级 KIE（关键信息抽取）
 
-> 本文档描述 **当前实现** 与 **对外契约**；系统总纲见 [智能文档处理系统设计方案.md](./智能文档处理系统设计方案.md) §7.8、§9。云端验收记录见 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)。
+> 本文档描述 **当前实现** 与 **对外契约**；系统总纲见 [智能文档处理系统设计方案.md](./智能文档处理系统设计方案.md) §7.8、§9。云端验收记录见 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)。**GPU 环境验证顺序**见 [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)。
 
 ## 1. 目标与范围
 
@@ -64,6 +64,12 @@ flowchart LR
 
 见总纲 §7.8 表格。实现位置：`document_pipeline_orchestrator.py` 中 `phase1_envelope_step` 对 `kie_meta` 的映射。
 
+增量（v1.10）：
+
+- `kie_fields_count`：有意义字段数（排除仅 `raw_output`、空值不计），见 `kie_field_metrics.count_meaningful_kie_fields`。
+- `kie_production_hit` / `kie_production_reason` / `kie_production_keys`：**KIE-ACCEPT-002** 生产验收，见 [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md)。
+- `kie_confidence_avg`：关键字段填充率启发值（`compute_fill_confidence`），非模型原生置信度。
+
 ### 5.3 任务结果中的 `kie_meta` / `kie_fields` / `kie_input`
 
 - `kie_meta`：`attempted`、`succeeded`、`stage`、`error_code`、`error_message`、成功时的 `confidence_avg`、`items_count`、`items_source`、`kie_model_load_ms`、**`kie_infer_ms`**（服务内纯推理毫秒）、**`kie_wall_ms`**（编排器包裹 `extract_fields` 的墙钟毫秒）、`ocr_text_length`（Qwen 路径下 `ocr_text_length` 可能为 0）。
@@ -86,7 +92,7 @@ flowchart LR
 
 ```bash
 cd backend
-pytest tests/test_kie_service.py tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+pytest tests/test_kie_field_metrics.py tests/test_kie_service.py tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
 ```
 
 **期望**：上述文件内用例全部 **passed**。说明：`test_kie_service.py` 不加载真实 Qwen 权重；若 `import app` 链仍依赖 Paddle 等，须在已安装 backend 的云端环境执行。

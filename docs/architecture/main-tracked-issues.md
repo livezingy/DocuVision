@@ -5,8 +5,8 @@
 
 ## 仍值得跟进的主题（非阻塞）
 
-- **KIE 效果**：整页图像 + VL 在复杂版式上的局限；可选第二引擎（`PP-ChatOCRv4-doc`、`uie-x-base` 等）见 [kie.md](./kie.md)。
-- **`kie_confidence_source`**：成功路径取自 `kie_meta.engine`（默认 `qwen2.5-vl`）；多引擎并存时应改为配置驱动。
+- **KIE 效果**：整页图像 + VL 在复杂版式上的局限；主攻 Qwen prompt/schema 与云测 hit 率，见 [kie.md](./kie.md)、[KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)。
+- **`kie_confidence_source`**：成功路径取自 `kie_meta.engine`（默认 `qwen2.5-vl`）。
 
 **文档阅读顺序（避免与过期备忘冲突）**：仓库实现 → [智能文档处理系统设计方案.md](./智能文档处理系统设计方案.md) → [kie.md](./kie.md)。
 

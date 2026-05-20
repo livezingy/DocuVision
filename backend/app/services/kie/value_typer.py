@@ -1,6 +1,6 @@
 """字段值类型化转换器。
 
-将 UIE 抽出的纯文本按 Azure 字段语义转为 valueDate / valueNumber /
+将字段文本按 Azure 字段语义转为 valueDate / valueNumber /
 valueCurrency / valueAddress 等结构化值。失败统一返回 None，绝不编造。
 """
 

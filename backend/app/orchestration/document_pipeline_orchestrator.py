@@ -13,6 +13,11 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from loguru import logger
 
+from app.services.kie.kie_field_metrics import (
+    count_meaningful_kie_fields,
+    evaluate_kie_production_hit,
+)
+
 
 PipelineContext = Dict[str, Any]
 
@@ -852,11 +857,22 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
         )
 
         kie_meta = ctx["result"].get("kie_meta", {}) if isinstance(ctx["result"].get("kie_meta"), dict) else {}
-        kie_fields_count = len(view.get("fields", {})) if isinstance(view.get("fields", {}), dict) else 0
+        view_fields = view.get("fields", {}) if isinstance(view.get("fields", {}), dict) else {}
+        kie_fields_count = count_meaningful_kie_fields(view_fields)
+        doc_type_for_kie = str(
+            kie_meta.get("resolved_document_type")
+            or ctx.get("options", {}).get("document_type", "")
+            or ""
+        ).strip().lower()
+        prod_hit, prod_reason, prod_keys = evaluate_kie_production_hit(doc_type_for_kie, view_fields)
         quality["kie_attempted"] = bool(kie_meta.get("attempted", False))
         quality["kie_stage"] = str(kie_meta.get("stage", ""))
         quality["kie_error_code"] = str(kie_meta.get("error_code", ""))
         quality["kie_fields_count"] = kie_fields_count
+        quality["kie_production_hit"] = prod_hit
+        quality["kie_production_reason"] = prod_reason
+        if prod_keys:
+            quality["kie_production_keys"] = prod_keys
         try:
             quality["kie_items_count"] = int(kie_meta.get("items_count", 0) or 0)
         except (TypeError, ValueError):

@@ -444,6 +444,9 @@ class QualityLayer(BaseModel):
     kie_stage: str = ""
     kie_error_code: str = ""
     kie_fields_count: int = 0
+    kie_production_hit: bool = False
+    kie_production_reason: str = ""
+    kie_production_keys: List[str] = []
     kie_items_count: int = 0
     kie_confidence_avg: float = 0.0
     kie_confidence_source: str = ""

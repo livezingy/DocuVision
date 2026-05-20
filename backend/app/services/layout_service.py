@@ -689,7 +689,7 @@ class PPStructureEngine(BaseLayoutEngine):
                     "type_name": self.LAYOUT_TYPES.get(element_type, element_type),
                     "bbox": bbox_dict,
                     "polygon_preprocessed": polygon_prep,
-                    "confidence": _block_score,
+                    "confidence": float(_block_score) if _block_score is not None else 0.0,
                 }
 
                 if isinstance(content, str) and content.strip():

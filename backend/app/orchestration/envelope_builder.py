@@ -24,6 +24,16 @@ except Exception:  # pragma: no cover - optional in lightweight local test env
 import numpy as np
 
 
+def _as_confidence(value: Any, default: float = 0.0) -> float:
+    """Coerce layout block confidence; None/missing/invalid → default."""
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 class EnvelopeBuilder:
     """Builds Envelope responses from orchestrator context."""
 
@@ -181,10 +191,10 @@ class EnvelopeBuilder:
                     "polygon_preprocessed": polygon_prep,
                     "processing_status": "succeeded",
                     "source": "pp_structure_v3",
-                    "confidence": float(elem.get("confidence", 0.0)),
+                    "confidence": _as_confidence(elem.get("confidence")),
                     "payload": {
                         "text": original_text,
-                        "confidence": float(elem.get("confidence", 0.0)),
+                        "confidence": _as_confidence(elem.get("confidence")),
                     },
                     "provenance": {},
                 }

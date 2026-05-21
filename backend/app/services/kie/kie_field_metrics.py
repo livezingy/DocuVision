@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List, Tuple
 
 # 生产 hit：至少一个关键键非空（且整体不是仅 raw_output）
@@ -12,6 +13,10 @@ _PRODUCTION_KEY_HINTS: Dict[str, List[str]] = {
     "passport": ["passport_number", "name"],
     "bank_card": ["bank_card_number", "bank_name"],
 }
+
+# id_card 专项精度（KIE-ACCEPT-003）：在 002 之上要求号码字段可用
+_ID_CARD_ID_NUMBER_RE = re.compile(r"^[0-9]{17}[0-9Xx]$")
+_ID_CARD_PRECISION_KEYS: List[str] = ["name", "id_number"]
 
 
 def _is_non_empty(value: Any) -> bool:
@@ -87,3 +92,40 @@ def evaluate_kie_production_hit(
     if matched:
         return True, "production_hit", matched
     return False, "no_required_keys_filled", []
+
+
+def is_valid_id_card_number(value: Any) -> bool:
+    """18 位公民身份号码格式（不校验校验位算法）。"""
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    return bool(_ID_CARD_ID_NUMBER_RE.match(text))
+
+
+def evaluate_kie_id_card_precision(
+    document_type: str,
+    fields: Dict[str, Any],
+) -> Tuple[bool, str, List[str]]:
+    """Rule KIE-ACCEPT-003：id_card 字段精度（name + 合法 id_number 均非空）。"""
+    doc = (document_type or "").strip().lower()
+    if doc != "id_card":
+        return True, "not_id_card", []
+    if not isinstance(fields, dict) or not fields or is_raw_output_only(fields):
+        return False, "empty_or_raw_output_only", []
+
+    matched: List[str] = []
+    name = fields.get("name")
+    if _is_non_empty(name):
+        matched.append("name")
+
+    id_number = fields.get("id_number")
+    if is_valid_id_card_number(id_number):
+        matched.append("id_number")
+
+    if "name" in matched and "id_number" in matched:
+        return True, "id_card_precision_hit", matched
+    if "name" in matched and "id_number" not in matched:
+        return False, "id_number_missing_or_invalid", matched
+    if "id_number" in matched:
+        return False, "name_missing", matched
+    return False, "name_and_id_number_missing", []

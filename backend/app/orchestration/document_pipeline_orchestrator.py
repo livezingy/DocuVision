@@ -15,6 +15,7 @@ from loguru import logger
 
 from app.services.kie.kie_field_metrics import (
     count_meaningful_kie_fields,
+    evaluate_kie_id_card_precision,
     evaluate_kie_production_hit,
 )
 
@@ -869,6 +870,9 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
             or ""
         ).strip().lower()
         prod_hit, prod_reason, prod_keys = evaluate_kie_production_hit(doc_type_for_kie, view_fields)
+        id_card_prec_hit, id_card_prec_reason, id_card_prec_keys = evaluate_kie_id_card_precision(
+            doc_type_for_kie, view_fields
+        )
         quality["kie_attempted"] = bool(kie_meta.get("attempted", False))
         quality["kie_stage"] = str(kie_meta.get("stage", ""))
         quality["kie_error_code"] = str(kie_meta.get("error_code", ""))
@@ -878,6 +882,10 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
         quality["kie_production_reason"] = prod_reason
         if prod_keys:
             quality["kie_production_keys"] = prod_keys
+        quality["kie_id_card_precision_hit"] = id_card_prec_hit
+        quality["kie_id_card_precision_reason"] = id_card_prec_reason
+        if id_card_prec_keys:
+            quality["kie_id_card_precision_keys"] = id_card_prec_keys
         try:
             quality["kie_items_count"] = int(kie_meta.get("items_count", 0) or 0)
         except (TypeError, ValueError):

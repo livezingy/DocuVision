@@ -230,6 +230,8 @@ test_data/**/*.tif
 
 # User-requested: never track these folders
 scripts/
+!test_data/scripts/
+!test_data/scripts/**
 Azure/AzureDocs/
 
 # test_data: track Azure reference JSON + testfiles binaries (override global *.json / test_data binary rules above)

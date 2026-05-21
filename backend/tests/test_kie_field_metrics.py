@@ -3,8 +3,10 @@
 from app.services.kie.kie_field_metrics import (
     count_meaningful_kie_fields,
     evaluate_kie_contract,
+    evaluate_kie_id_card_precision,
     evaluate_kie_production_hit,
     is_raw_output_only,
+    is_valid_id_card_number,
 )
 from app.services.kie.KieManager import KieManager
 
@@ -46,3 +48,33 @@ def test_parse_json_tolerates_markdown_fence() -> None:
     assert '"a": 1' in sanitized
     mgr = KieManager.__new__(KieManager)
     assert mgr._parse_json(text) == {"invoice_number": "X1"}
+
+
+def test_id_card_number_format() -> None:
+    assert is_valid_id_card_number("110101199001011234") is True
+    assert is_valid_id_card_number("32010219880515231X") is True
+    assert is_valid_id_card_number("123") is False
+    assert is_valid_id_card_number("") is False
+
+
+def test_id_card_precision_requires_name_and_valid_id_number() -> None:
+    ok, reason, keys = evaluate_kie_id_card_precision(
+        "id_card",
+        {"name": "张伟", "id_number": "110101199001011234"},
+    )
+    assert ok is True
+    assert reason == "id_card_precision_hit"
+    assert set(keys) == {"name", "id_number"}
+
+
+def test_id_card_precision_miss_when_only_name() -> None:
+    ok, reason, keys = evaluate_kie_id_card_precision("id_card", {"name": "张伟"})
+    assert ok is False
+    assert reason == "id_number_missing_or_invalid"
+    assert keys == ["name"]
+
+
+def test_id_card_precision_not_applicable_for_invoice() -> None:
+    ok, reason, _ = evaluate_kie_id_card_precision("invoice", {"invoice_number": "A1"})
+    assert ok is True
+    assert reason == "not_id_card"

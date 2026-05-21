@@ -12,6 +12,7 @@ Phase C/D/E 原始 JSON 可放在 `test_data/TestResult/PhaseCDE/`（`.gitignore
 |---------|------|------|
 | **KIE-ACCEPT-001** | 流水线契约 | `kie_stage == completed` 且 `kie_fields_count >= 0` |
 | **KIE-ACCEPT-002** | 生产质量 | `kie_production_hit == true` |
+| **KIE-ACCEPT-003** | id_card 字段精度 | `kie_id_card_precision_hit == true`（`name` + 18 位 `id_number`） |
 
 `kie_fields_count` 为有意义字段计数（排除仅 `raw_output`、空值不计）。
 
@@ -23,19 +24,22 @@ Phase C/D/E 原始 JSON 可放在 `test_data/TestResult/PhaseCDE/`（`.gitignore
 - branch: `main`
 - fix: PDF 发票 KIE 不再将 `.pdf` 当作 `preprocessed_image_path`；无栅格预处理图时用 PyMuPDF 栅格第 1 页（`kie_qwen_service._resolve_kie_image_path`）
 
-| sample_path | document_type | kie_stage | kie_fields_count | kie_production_hit | contract | prod |
-|---|---|---|---:|---|---|---|
-| testfiles/invoices/invoice_sample_01.pdf | invoice | completed | >0 | true | pass | hit |
-| testfiles/invoices/receipt-invoice-like.png | invoice | completed | 11 | true | pass | hit |
-| testfiles/invoices/sample-invoice.png | invoice | completed | 14 | true | pass | hit |
-| testfiles/images/kie/id_card_sample_01.jpg | id_card | completed | 5 | true | pass | hit |
-| testfiles/images/kie/passport_sample_01.png | passport | completed | 11 | true | pass | hit |
-| testfiles/images/kie/bank_card_sample_01.png | bank_card | completed | 5 | true | pass | hit |
-| testfiles/receipts/receipt-with-tips.png | receipt | completed | 10 | true | pass | hit |
+| sample_path | document_type | kie_stage | kie_fields_count | kie_production_hit | contract | prod | id_card_003 |
+|---|---|---|---:|---|---|---|---|
+| testfiles/invoices/invoice_sample_01.pdf | invoice | completed | >0 | true | pass | hit | n/a |
+| testfiles/invoices/receipt-invoice-like.png | invoice | completed | 11 | true | pass | hit | n/a |
+| testfiles/invoices/sample-invoice.png | invoice | completed | 14 | true | pass | hit | n/a |
+| testfiles/images/kie/id_card_sample_01.jpg | id_card | completed | 5 | true | pass | hit | ref |
+| testfiles/images/kie/id_card_sample_02.jpg | id_card | — | — | — | — | — | **待 Cloud D** |
+| testfiles/images/kie/id_card_sample_03.jpg | id_card | — | — | — | — | — | **待 Cloud D** |
+| testfiles/images/kie/id_card_sample_04.jpg | id_card | — | — | — | — | — | **待 Cloud D** |
+| testfiles/images/kie/passport_sample_01.png | passport | completed | 11 | true | pass | hit | n/a |
+| testfiles/images/kie/bank_card_sample_01.png | bank_card | completed | 5 | true | pass | hit | n/a |
+| testfiles/receipts/receipt-with-tips.png | receipt | completed | 10 | true | pass | hit | n/a |
 
-- **summary**: total=**7**, contract_ok=**7**, production_hit=**7**, error=**0**
+- **summary (legacy 7)**: contract_ok=**7**, production_hit=**7**, error=**0**
 - **阶段 C**：3/3 契约 + 3/3 生产
-- **阶段 D**：3/3
+- **阶段 D（增量）**：身份证 **4 样例** + 护照 + 银行卡；02～04 待 Cloud 回归 **003**
 - **阶段 E**：1/1
 
 > 修复前 `invoice_sample_01.pdf` 曾 `runtime_error`（PIL 无法打开 PDF），见下方历史批次。

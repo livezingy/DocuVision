@@ -37,6 +37,13 @@ _CARD_MATRIX = [
     (_PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "bank_card_sample_01.png", "bank_card"),
 ]
 
+_ID_CARD_MATRIX = [
+    _PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "id_card_sample_01.jpg",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "id_card_sample_02.jpg",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "id_card_sample_03.jpg",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "id_card_sample_04.jpg",
+]
+
 
 def test_kie_invoice_sample_matrix_has_minimum_samples() -> None:
     existing = [p for p in _INVOICE_MATRIX if p.exists()]
@@ -46,6 +53,11 @@ def test_kie_invoice_sample_matrix_has_minimum_samples() -> None:
 def test_kie_card_sample_matrix_files_exist() -> None:
     for path, _ in _CARD_MATRIX:
         assert path.exists(), f"Missing card sample: {path}"
+
+
+def test_kie_id_card_sample_matrix_has_four_samples() -> None:
+    existing = [p for p in _ID_CARD_MATRIX if p.exists()]
+    assert len(existing) >= 4, f"Need >=4 id_card samples, found {len(existing)}"
 
 
 def test_kie_acceptance_rule_allows_zero_fields_when_completed() -> None:

@@ -11,7 +11,11 @@ _BACKEND = Path(__file__).resolve().parents[2]
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 
-from app.services.kie.kie_field_metrics import evaluate_kie_contract, evaluate_kie_production_hit
+from app.services.kie.kie_field_metrics import (
+    evaluate_kie_contract,
+    evaluate_kie_id_card_precision,
+    evaluate_kie_production_hit,
+)
 
 
 def _load(path: Path) -> dict:
@@ -46,6 +50,7 @@ def summarize_file(path: Path, document_type: str = "invoice") -> None:
     )
     contract_ok, _ = evaluate_kie_contract(stage, count)
     prod_hit, prod_reason, prod_keys = evaluate_kie_production_hit(doc, fields)
+    id_prec_hit, id_prec_reason, id_prec_keys = evaluate_kie_id_card_precision(doc, fields)
     print(f"\n=== {path.name} ===")
     print(f"  document_type: {doc}")
     print(f"  kie_stage: {stage}")
@@ -56,6 +61,10 @@ def summarize_file(path: Path, document_type: str = "invoice") -> None:
     print(f"  kie_error_message: {str(quality.get('kie_error_message', ''))[:200]}")
     print(f"  KIE-ACCEPT-001: {'pass' if contract_ok else 'fail'}")
     print(f"  KIE-ACCEPT-002: {'hit' if prod_hit else 'miss'} ({prod_reason}) keys={prod_keys}")
+    if doc.strip().lower() == "id_card":
+        q_prec = quality.get("kie_id_card_precision_hit")
+        print(f"  kie_id_card_precision_hit (quality): {q_prec}")
+        print(f"  KIE-ACCEPT-003: {'hit' if id_prec_hit else 'miss'} ({id_prec_reason}) keys={id_prec_keys}")
 
 
 def main(argv: list[str]) -> None:

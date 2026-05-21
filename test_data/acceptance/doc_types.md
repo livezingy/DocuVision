@@ -9,7 +9,7 @@
 | 通用 PDF / 扫描 | `auto` 或 `layout` | false | `test_data/testfiles/pdf/text_based/sample_report.pdf`；`test_data/testfiles/images/scanned/scanned_page_02.jpg` | `POST /api/v1/analyze` 后轮询 `GET /api/v1/tasks/{id}/result`：`layout` 或 `view.pages`、`tables` 为列表；可选 `GET .../export/json` | 导出 JSON 结构可读；版面与表格与目测一致 |
 | 发票 | `invoice` | true | `test_data/testfiles/invoices/invoice_sample_01.pdf`；`test_data/testfiles/invoices/sample-invoice.png` | 阶段 C / `pytest tests/test_kie_service.py -k pdf` | `kie_production_hit`；PDF 须 `completed`（非 `cannot identify image file ...pdf`） |
 | 收据 | `receipt` | true | `test_data/testfiles/receipts/receipt-with-tips.png` | 同上 opt-in / 阶段 E | 小费字段；production hit |
-| 身份证 / 护照 / 银行卡 | `id_card` / `passport` / `bank_card` | true | `test_data/testfiles/images/kie/id_card_sample_01.jpg`；`passport_sample_01.png`；`bank_card_sample_01.png` | Cloud 阶段 D；`document_type` 与 `kie_configs/_registry.yaml` 一致 | 卡证字段与 `kie_production_keys` |
+| 身份证 / 护照 / 银行卡 | `id_card` / `passport` / `bank_card` | true | `id_card_sample_01~04.jpg`；`passport_sample_01.png`；`bank_card_sample_01.png`（路径前缀 `test_data/testfiles/images/kie/`） | Cloud 阶段 D；`document_type` 与 `kie_configs/_registry.yaml` 一致 | 卡证字段、`kie_production_keys`；身份证另查 **KIE-ACCEPT-003**（`kie_id_card_precision_*`） |
 | Phase1 Job | `auto`（`documents:analyze` 默认） | 可选 | 与通用列相同 | `POST /api/v1/documents:analyze` → `GET /api/v1/jobs/{id}/result`：`JobEnvelope.view` / `fused` / `quality` | 与 Legacy task 结果对照 |
 
 **说明**

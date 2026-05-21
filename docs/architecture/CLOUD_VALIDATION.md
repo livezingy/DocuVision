@@ -70,15 +70,21 @@ cd backend
 DOCUVISION_RUN_KIE_ACCEPTANCE=1 pytest tests/test_kie_acceptance_baseline.py -q
 ```
 
-### 阶段 D — 卡证 KIE 三样例
+### 阶段 D — 卡证 KIE
 
-| 样例 | document_type |
-|------|----------------|
-| `test_data/testfiles/images/kie/id_card_sample_01.jpg` | `id_card` |
-| `test_data/testfiles/images/kie/passport_sample_01.png` | `passport` |
-| `test_data/testfiles/images/kie/bank_card_sample_01.png` | `bank_card` |
+| 样例 | document_type | 001/002 | 003（id_card 专项） |
+|------|----------------|---------|---------------------|
+| `test_data/testfiles/images/kie/id_card_sample_01.jpg` | `id_card` | 必过 | 推荐 |
+| `test_data/testfiles/images/kie/id_card_sample_02.jpg` | `id_card` | 必过 | **必过** |
+| `test_data/testfiles/images/kie/id_card_sample_03.jpg` | `id_card` | 必过 | **必过** |
+| `test_data/testfiles/images/kie/id_card_sample_04.jpg` | `id_card` | 必过 | **必过** |
+| `test_data/testfiles/images/kie/passport_sample_01.png` | `passport` | 必过 | — |
+| `test_data/testfiles/images/kie/bank_card_sample_01.png` | `bank_card` | 必过 | — |
 
-**目标**：3/3 001 + 002。
+**目标**：
+
+- 护照 / 银行卡：各 1/1 满足 001 + 002
+- 身份证：**4/4** 满足 001 + 002；**02～04 必过 003**（`kie_id_card_precision_hit`）；01 为历史样例，003 作参考
 
 ### 阶段 E — 收据（可选）
 

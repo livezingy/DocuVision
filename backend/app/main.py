@@ -448,6 +448,9 @@ class QualityLayer(BaseModel):
     kie_production_hit: bool = False
     kie_production_reason: str = ""
     kie_production_keys: List[str] = []
+    kie_id_card_precision_hit: bool = False
+    kie_id_card_precision_reason: str = ""
+    kie_id_card_precision_keys: List[str] = []
     kie_items_count: int = 0
     kie_confidence_avg: float = 0.0
     kie_confidence_source: str = ""

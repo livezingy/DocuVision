@@ -1,14 +1,4 @@
-# Services module
-from .ocr_service import OCRService
-from .layout_service import LayoutService
-from .table_service import TableService
-from .export_service import ExportService
-from .batch_service import BatchService
+# Services package — avoid eager imports here (ocr/layout/table pull in Paddle).
+# Import concrete modules directly, e.g. `from app.services.ocr_service import OCRService`.
 
-__all__ = [
-    'OCRService',
-    'LayoutService',
-    'TableService',
-    'ExportService',
-    'BatchService'
-]
+__all__: list[str] = []

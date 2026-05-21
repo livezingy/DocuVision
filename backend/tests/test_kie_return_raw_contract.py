@@ -49,9 +49,14 @@ def test_kie_step_calls_service_and_sets_fields() -> None:
             assert document_type == "invoice"
             return {"document_type": document_type, "fields": {"invoice_no": {"value": "INV-001"}}}
 
+    async def call_maybe_async(func, *args, **kwargs):
+        if asyncio.iscoroutinefunction(func):
+            return await func(*args, **kwargs)
+        return func(*args, **kwargs)
+
     orch = _FakeOrchestrator()
     orch.services = {"kie_service": _MockKieService()}
-    orch.call_maybe_async = lambda func, *args, **kwargs: func(*args, **kwargs)
+    orch.call_maybe_async = call_maybe_async
 
     ctx = {
         "options": {"enable_kie": True, "document_type": "invoice"},

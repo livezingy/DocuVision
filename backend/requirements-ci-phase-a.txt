@@ -1,4 +1,4 @@
-# Phase A CI — lightweight deps for KIE contract tests (no Paddle / no live API).
+# Phase A CI — lightweight deps for KIE contract tests (no Paddle / no live API / no HF weights).
 # Mirrors pins from requirements.txt where listed; used by .github/workflows/kie-phase-a.yml
 # Full cloud GPU validation remains manual per docs/architecture/CLOUD_VALIDATION.md
 
@@ -12,6 +12,3 @@ Pillow==10.2.0
 PyMuPDF==1.23.8
 numpy>=1.24.0,<2.0
 loguru==0.7.2
-torch>=2.2.0,<2.7.0
-transformers>=4.45.0
-opencv-python-headless>=4.8.0

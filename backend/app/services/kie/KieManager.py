@@ -4,7 +4,6 @@ import yaml
 import re
 from pathlib import Path
 from PIL import Image
-from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 
 _DEFAULT_KIE_CONFIG_DIR = Path(__file__).resolve().parent / "kie_configs"
 

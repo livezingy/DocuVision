@@ -35,7 +35,7 @@ pytest tests/test_kie_field_metrics.py tests/test_kie_service.py \
 
 **通过标准**：全部 `passed`（含 `test_pdf_preprocessed_path_same_as_pdf_still_rasterizes`）。
 
-**GitHub Actions（自动）**：push/PR 至 `main` 且 `backend/**` 有变更时，workflow [`.github/workflows/kie-phase-a.yml`](../../.github/workflows/kie-phase-a.yml) 在 CPU runner 上执行与本节相同命令；依赖见 [`backend/requirements-ci-phase-a.txt`](../../backend/requirements-ci-phase-a.txt)（无 Paddle、不下载 Qwen 权重）。
+**GitHub Actions（自动）**：push/PR 至 `main` 且 `backend/**` 有变更时，workflow [`.github/workflows/kie-phase-a.yml`](../../.github/workflows/kie-phase-a.yml) 在 CPU runner 上执行与本节相同命令；依赖见 [`backend/requirements-ci-phase-a.txt`](../../backend/requirements-ci-phase-a.txt)（无 Paddle、无 torch/transformers、不下载 Qwen 权重）。
 
 ### 阶段 B — 服务就绪
 

@@ -52,9 +52,11 @@ DocuVision/
 5. **Open the UI**: open or serve `frontend/index.html`.
 6. **Cloud / KIE regression** (optional): see [docs/architecture/CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) and [docs/architecture/kie.md](docs/architecture/kie.md).
 
+7. **Release notes**: [CHANGELOG.md](CHANGELOG.md) · [Known limitations (1.0)](docs/release/KNOWN_LIMITATIONS.md)
+
 ---
 
 
 ## License
 
-No `LICENSE` file is present in the repository root yet; clarify terms before redistribution.
+This project is licensed under the [MIT License](LICENSE).

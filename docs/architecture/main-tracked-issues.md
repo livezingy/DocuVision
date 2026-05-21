@@ -5,7 +5,7 @@
 
 ## 仍值得跟进的主题（非阻塞）
 
-- **KIE 增量质量**：多页 PDF、复杂版式；身份证 **4 样例 + KIE-ACCEPT-003**（`id_card_sample_02~04` 待 Cloud D）；见 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)。
+- **KIE 增量质量**：多页 PDF、复杂版式；Release 1.0 卡证 D 已测（2026-05-21）；见 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md) 与 [KNOWN_LIMITATIONS.md](../release/KNOWN_LIMITATIONS.md)。
 - **Batch Processing UI**：仍为 placeholder，与后端 batch API 未完整打通。
 - **字段 bbox / 画布联动**：见 [kie.md](./kie.md) §1「不在本文」。
 

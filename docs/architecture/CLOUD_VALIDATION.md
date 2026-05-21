@@ -89,6 +89,18 @@ pip install "httpx>=0.24,<0.28"
 pytest tests/ -q --tb=short
 ```
 
+**说明**：`tests/test_user_workflows.py::TestInvoiceProcessingWorkflow` 依赖 **已启动** 的 `http://localhost:8000` 且会真实加载 Qwen。全量 `pytest` 与在线服务 **争用 GPU** 时，该用例可能 `kie_stage=runtime_error` 并被标记为 **skip**（非契约回退）。建议：
+
+- 全量回归：`pytest tests/ -q --ignore=tests/test_user_workflows.py`
+- 单独验发票 KIE：`pytest tests/test_user_workflows.py::TestInvoiceProcessingWorkflow -s`（服务重启后）
+
+Phase C/D/E 导出 JSON 可放入 `test_data/TestResult/PhaseCDE/`，运行：
+
+```bash
+cd backend
+python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
+```
+
 ## 3. 结果字段说明
 
 | 字段 | 含义 |

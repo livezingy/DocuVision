@@ -125,3 +125,31 @@ def test_pdf_raster_fallback_uses_temp_png(monkeypatch, tmp_path: Path) -> None:
         assert os.path.isfile(fake.last_image) is False
 
     asyncio.run(run_test())
+
+
+def test_pdf_preprocessed_path_same_as_pdf_still_rasterizes(monkeypatch, tmp_path: Path) -> None:
+    """Regression: orchestrator used to pass file_path as preprocessed_image_path for PDFs."""
+    fake = _FakeKieManager()
+    monkeypatch.setattr(QwenDocumentKIEService, "_init_manager", _patch_init_manager(fake))
+
+    import fitz
+
+    pdf_path = tmp_path / "invoice_sample_01.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "INV-001")
+    doc.save(str(pdf_path))
+    doc.close()
+
+    async def run_test():
+        svc = QwenDocumentKIEService()
+        res = await svc.extract_fields(
+            str(pdf_path),
+            "invoice",
+            preprocessed_image_path=str(pdf_path),
+        )
+        assert res["fields"]["invoice_number"] == "INV-001"
+        assert fake.last_image.endswith(".png")
+        assert fake.last_image != str(pdf_path)
+
+    asyncio.run(run_test())

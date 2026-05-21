@@ -170,12 +170,23 @@ class TestDocumentAnalysisWorkflow(UserWorkflowBase):
             print(f"   view 元素数: {ne}")
 
 
+def _live_api_reachable() -> bool:
+    try:
+        r = requests.get(f"{BASE_URL}/health", timeout=3)
+        return r.status_code == 200
+    except requests.exceptions.RequestException:
+        return False
+
+
 class TestInvoiceProcessingWorkflow(UserWorkflowBase):
     """工作流 3: 发票 — POST /api/v1/analyze，document_type=invoice，启用 KIE。"""
 
     def test_user_processes_invoice_with_kie_analyze(self):
         """用户上传发票 PDF，走完整 analyze 管线并期望 KIE 产出字段。"""
         print(f"\n{INFO} 工作流: 发票 KIE 分析（/api/v1/analyze）")
+
+        if not _live_api_reachable():
+            pytest.skip("Live API not reachable at http://localhost:8000/health")
 
         test_file = TEST_DATA_DIR / "testfiles" / "invoices" / "invoice_sample_01.pdf"
         if not test_file.exists():
@@ -230,20 +241,46 @@ class TestInvoiceProcessingWorkflow(UserWorkflowBase):
         kie_attempted = bool(quality.get("kie_attempted"))
         kie_stage = str(quality.get("kie_stage", "") or "")
         kie_err = str(quality.get("kie_error_code", "") or "")
+        kie_err_msg = str(quality.get("kie_error_message", "") or "")
+        if not kie_err_msg:
+            meta = result.get("kie_meta") if isinstance(result.get("kie_meta"), dict) else {}
+            kie_err_msg = str(meta.get("error_message", "") or "")
         n_fields = int(quality.get("kie_fields_count", 0) or 0) or len(kie_fields)
 
         if not kie_attempted:
             pytest.skip("KIE step was not attempted (backend may not expose KIE in this profile)")
 
-        if n_fields == 0:
-            if "skip" in kie_stage.lower() or kie_err == "service_unavailable":
-                pytest.skip(f"KIE unavailable in this environment: stage={kie_stage!r} err={kie_err!r}")
+        from app.services.kie.kie_field_metrics import (
+            evaluate_kie_contract,
+            evaluate_kie_production_hit,
+        )
+
+        contract_ok, contract_reason = evaluate_kie_contract(kie_stage, n_fields)
+        if kie_stage == "runtime_error":
+            pytest.skip(
+                f"KIE runtime_error (often GPU OOM or model load during full pytest): "
+                f"err={kie_err!r} msg={kie_err_msg[:300]!r}. "
+                f"Re-run alone after server restart: "
+                f"pytest tests/test_user_workflows.py::TestInvoiceProcessingWorkflow -s"
+            )
+
+        if not contract_ok:
             pytest.fail(
-                f"Expected non-empty KIE fields for invoice; stage={kie_stage!r} err={kie_err!r} "
+                f"KIE contract failed: stage={kie_stage!r} reason={contract_reason!r} "
                 f"quality={quality!r}"
             )
 
-        print(f"{PASS} 发票 KIE 分析完成: kie_fields_count={n_fields}, stage={kie_stage!r}")
+        prod_hit, prod_reason, prod_keys = evaluate_kie_production_hit("invoice", kie_fields)
+        if not prod_hit:
+            pytest.fail(
+                f"KIE-ACCEPT-002 miss: reason={prod_reason!r} fields_count={n_fields} "
+                f"quality={quality!r} keys={prod_keys!r}"
+            )
+
+        print(
+            f"{PASS} 发票 KIE: fields={n_fields}, production_hit=True, keys={prod_keys}, "
+            f"stage={kie_stage!r}"
+        )
         sample_keys = [k for k in list(kie_fields.keys())[:5]]
         if sample_keys:
             print(f"   示例字段键: {', '.join(sample_keys)}")

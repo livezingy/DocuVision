@@ -17,6 +17,14 @@ from app.services.kie.kie_field_metrics import (
 
 logger = logging.getLogger(__name__)
 
+_RASTER_IMAGE_EXTS = frozenset({".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".gif"})
+
+
+def _is_raster_image_path(path: Optional[str]) -> bool:
+    if not path:
+        return False
+    return os.path.splitext(path)[1].lower() in _RASTER_IMAGE_EXTS
+
 
 def _resolve_kie_image_path(
     file_path: str,
@@ -25,10 +33,15 @@ def _resolve_kie_image_path(
     """
     Return (path_to_image_for_vl, temp_path_to_delete_or_none).
 
-    Prefer layout preprocessor output; for PDF without it, rasterize page 1 to a temp PNG.
+    Prefer layout preprocessor output (raster only); for PDF without it, rasterize page 1 to a temp PNG.
     """
     if preprocessed_image_path and os.path.isfile(preprocessed_image_path):
-        return preprocessed_image_path, None
+        if _is_raster_image_path(preprocessed_image_path):
+            return preprocessed_image_path, None
+        logger.info(
+            "KIE Qwen: skip non-raster preprocessed path (%s); will rasterize or use file_path",
+            preprocessed_image_path,
+        )
 
     ext = os.path.splitext(file_path or "")[1].lower()
     if ext == ".pdf":

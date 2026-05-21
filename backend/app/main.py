@@ -443,6 +443,7 @@ class QualityLayer(BaseModel):
     kie_attempted: bool = False
     kie_stage: str = ""
     kie_error_code: str = ""
+    kie_error_message: str = ""
     kie_fields_count: int = 0
     kie_production_hit: bool = False
     kie_production_reason: str = ""

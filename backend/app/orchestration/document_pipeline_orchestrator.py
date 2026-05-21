@@ -525,8 +525,12 @@ async def kie_step(ctx: PipelineContext) -> None:
     _task = ctx.get("task")
     if not isinstance(_task, dict):
         _task = {}
-    preprocessed_image_path = _task.get("preprocessed_image_path") or ctx.get("file_path")
     layout = ctx["result"].get("layout", {}) if isinstance(ctx["result"].get("layout"), dict) else {}
+    preprocessed_image_path = _task.get("preprocessed_image_path")
+    if not preprocessed_image_path and isinstance(layout, dict):
+        prep_from_layout = layout.get("preprocessed_image_path")
+        if isinstance(prep_from_layout, str) and prep_from_layout.strip():
+            preprocessed_image_path = prep_from_layout.strip()
     table_meta = ctx["result"].get("table_extraction_meta", {}) if isinstance(ctx["result"].get("table_extraction_meta"), dict) else {}
     tables = ctx["result"].get("tables", []) if isinstance(ctx["result"].get("tables"), list) else []
 
@@ -868,6 +872,7 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
         quality["kie_attempted"] = bool(kie_meta.get("attempted", False))
         quality["kie_stage"] = str(kie_meta.get("stage", ""))
         quality["kie_error_code"] = str(kie_meta.get("error_code", ""))
+        quality["kie_error_message"] = str(kie_meta.get("error_message", "") or "")
         quality["kie_fields_count"] = kie_fields_count
         quality["kie_production_hit"] = prod_hit
         quality["kie_production_reason"] = prod_reason

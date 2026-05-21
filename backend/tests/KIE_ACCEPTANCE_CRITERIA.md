@@ -73,3 +73,12 @@ DOCUVISION_RUN_KIE_ACCEPTANCE=1 pytest -q tests/test_kie_acceptance_baseline.py 
 ```
 
 Full cloud procedure: [docs/architecture/CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)
+
+## Baseline status (2026-05-20)
+
+Cloud Studio 固定 **7 样例**（C+D+E）在 commit **`e7dc4ab`** 及之后应满足：
+
+- **KIE-ACCEPT-001**：7/7 `kie_stage == completed`
+- **KIE-ACCEPT-002**：7/7 `kie_production_hit == true`
+
+含 **`invoice_sample_01.pdf`**（PDF 须栅格化，见 `test_kie_service.test_pdf_preprocessed_path_same_as_pdf_still_rasterizes`）。记录见 [KIE_TEST_RUN_TRACKER.md](../../docs/architecture/KIE_TEST_RUN_TRACKER.md)。

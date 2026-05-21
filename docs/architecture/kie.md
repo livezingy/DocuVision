@@ -41,9 +41,12 @@ flowchart LR
   img --> km --> fields --> view
 ```
 
-- **输入图像**：优先 `preprocessed_image_path`（与版面坐标对齐）；若无且上传为 **PDF**，服务内用 PyMuPDF 将 **第 1 页** 栅格化为临时 PNG 再推理，结束后删除临时文件。
+- **输入图像**：
+  - 优先 **栅格图** 形式的 `preprocessed_image_path`（layout 预处理输出，扩展名 `.png`/`.jpg` 等）。
+  - 编排器 **不会** 再用原始 `file_path` 回填 `preprocessed_image_path`（避免 PDF 被 PIL 直接打开）。
+  - 若无有效栅格预处理图且上传为 **PDF**，`kie_qwen_service._resolve_kie_image_path` 用 PyMuPDF 将 **第 1 页** 栅格化为临时 PNG，推理结束后删除。
 - **文本类 layout/tables**：传入 `extract_fields` 仅用于 `debug_input` 溯源；**VL 推理不依赖**版面全文拼接。
-- **输出**：`extract_fields` 返回 `fields`（纯 JSON 兼容 dict，可能含 `raw_output` 键表示模型未产出合法 JSON）、`confidence_avg`（当前恒为 0.0）、`items_count`、`metadata`（含 `engine: qwen2.5-vl`、`resolved_document_type`、`kie_model_load_ms` 等）、`debug_input`。
+- **输出**：`extract_fields` 返回 `fields`（纯 JSON 兼容 dict，可能含 `raw_output` 键表示模型未产出合法 JSON）、`confidence_avg`（关键字段填充率启发值）、`items_count`、`metadata`（含 `engine: qwen2.5-vl` 等）、`debug_input`。
 
 ## 4. Schema 与 `document_type` 路由
 
@@ -69,6 +72,7 @@ flowchart LR
 - `kie_fields_count`：有意义字段数（排除仅 `raw_output`、空值不计），见 `kie_field_metrics.count_meaningful_kie_fields`。
 - `kie_production_hit` / `kie_production_reason` / `kie_production_keys`：**KIE-ACCEPT-002** 生产验收，见 [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md)。
 - `kie_confidence_avg`：关键字段填充率启发值（`compute_fill_confidence`），非模型原生置信度。
+- `kie_error_message`：失败路径摘要（与 `kie_meta.error_message` 一致）。
 
 ### 5.3 任务结果中的 `kie_meta` / `kie_fields` / `kie_input`
 
@@ -80,6 +84,7 @@ flowchart LR
 
 - **整页图像 + VL**：长文档多页仅消费首页栅格（与当前 PDF 策略一致）；多页票据需产品层扩展。
 - **解析鲁棒性**：模型若输出非严格 JSON，字段区会退化为 `raw_output` 文本块。
+- **字段精度**：基线样本已通过 Cloud 验收；身份证等场景可能仅命中部分关键键（如 `name` 无 `id_number`），需按样例继续调 prompt/schema。
 
 ## 7. 参考与测试
 

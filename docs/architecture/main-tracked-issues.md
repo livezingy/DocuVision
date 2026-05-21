@@ -5,17 +5,25 @@
 
 ## 仍值得跟进的主题（非阻塞）
 
-- **KIE 效果**：整页图像 + VL 在复杂版式上的局限；主攻 Qwen prompt/schema 与云测 hit 率，见 [kie.md](./kie.md)、[KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)。
-- **`kie_confidence_source`**：成功路径取自 `kie_meta.engine`（默认 `qwen2.5-vl`）。
+- **KIE 增量质量**：多页 PDF、`id_card.id_number` 等字段精度、复杂版式；基线 7 样例已通过 Cloud 验收（见 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)）。
+- **Batch Processing UI**：仍为 placeholder，与后端 batch API 未完整打通。
+- **字段 bbox / 画布联动**：见 [kie.md](./kie.md) §1「不在本文」。
 
-**文档阅读顺序（避免与过期备忘冲突）**：仓库实现 → [智能文档处理系统设计方案.md](./智能文档处理系统设计方案.md) → [kie.md](./kie.md)。
+**文档阅读顺序**：仓库实现 → [智能文档处理系统设计方案.md](./智能文档处理系统设计方案.md) → [kie.md](./kie.md) → [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)（回归时）。
 
 ## 测试入口
 
-- `pytest backend/tests/test_kie_service.py backend/tests/test_kie_return_raw_contract.py backend/tests/test_orchestrator_order.py`
+```bash
+cd backend
+pytest tests/test_kie_field_metrics.py tests/test_kie_service.py \
+  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+```
+
 - 验收矩阵：[test_data/acceptance/doc_types.md](../../test_data/acceptance/doc_types.md)
-- 云测矩阵：[KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)
+- 云测步骤：[CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)（阶段 A 另见 GitHub Actions `kie-phase-a.yml`）
+- 批次记录：[KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)
 
 ## 历史
 
 - 旧版本文曾描述「KIE 为 placeholder」或「仅 PaddleNLP UIE」——均已过期；当前以 Qwen 主线为准（2026-05 同步）。
+- 2026-05-20：`e7dc4ab` 修复 PDF 发票 KIE；Cloud 7/7 KIE-ACCEPT-001/002 基线建立。

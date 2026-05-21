@@ -1,6 +1,8 @@
 # Cloud Studio GPU 验证顺序与验收标准
 
 > 本地无 Paddle 完整环境时，以 **腾讯 Cloud Studio GPU** 为端到端真环境。勿提交密钥；使用 `backend/.env.cloud` 复制为 `.env`。
+>
+> **文档定位**：发版前、修改 KIE/编排/模型配置后的**回归手册**；与 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)（批次记录）配套，**测试完成后仍保留**。
 
 ## 1. 环境准备（一次性）
 
@@ -9,6 +11,7 @@ cd backend
 pip install -r requirements.txt
 # GPU：按 requirements.txt 头注释安装与 CUDA 匹配的 torch / Paddle
 cp .env.cloud .env   # 按需改模型路径，勿提交 .env
+git pull origin main  # 含 e7dc4ab+ PDF KIE 栅格化修复
 ```
 
 建议环境变量：
@@ -30,7 +33,9 @@ pytest tests/test_kie_field_metrics.py tests/test_kie_service.py \
   tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
 ```
 
-**通过标准**：全部 `passed`。
+**通过标准**：全部 `passed`（含 `test_pdf_preprocessed_path_same_as_pdf_still_rasterizes`）。
+
+**GitHub Actions（自动）**：push/PR 至 `main` 且 `backend/**` 有变更时，workflow [`.github/workflows/kie-phase-a.yml`](../../.github/workflows/kie-phase-a.yml) 在 CPU runner 上执行与本节相同命令；依赖见 [`backend/requirements-ci-phase-a.txt`](../../backend/requirements-ci-phase-a.txt)（无 Paddle、不下载 Qwen 权重）。
 
 ### 阶段 B — 服务就绪
 
@@ -41,26 +46,24 @@ python run.py
 curl -s http://127.0.0.1:8000/health | head
 ```
 
-**通过标准**：HTTP 200；health 中 KIE 相关状态符合预期（如 `kie_ready` / 模型路径配置无报错）。首次 analyze 前等待 warmup 日志完成（若已开启）。
+**通过标准**：HTTP 200；layout/table `ready: true`。`kie.model_loaded` 在 warmup 或首次 KIE 前可为 `false`。
 
 ### 阶段 C — 发票 KIE 三样例（生产指标）
 
-对下列文件各提交 1 次 Job（`enable_kie=true`，`document_type=invoice`）：
+对下列文件各提交 1 次 Job（UI：**Invoice** 模式，或 `enable_kie=true` + `document_type=invoice`）：
 
-1. `test_data/testfiles/invoices/invoice_sample_01.pdf`
+1. `test_data/testfiles/invoices/invoice_sample_01.pdf`（**须**走 PDF 第 1 页栅格化，勿再出现 `cannot identify image file ...pdf`）
 2. `test_data/testfiles/invoices/receipt-invoice-like.png`
 3. `test_data/testfiles/invoices/sample-invoice.png`
 
-**记录**到 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)：`kie_stage`、`kie_fields_count`、`kie_production_hit`、`kie_production_reason`、`note`。
-
 | 规则 ID | 用途 | 通过标准 |
 |---------|------|----------|
-| **KIE-ACCEPT-001** | 流水线契约 | `kie_stage == completed`；`kie_fields_count >= 0` |
-| **KIE-ACCEPT-002** | 生产质量 | `quality.kie_production_hit == true`；`kie_production_reason == production_hit` |
+| **KIE-ACCEPT-001** | 流水线契约 | `kie_stage == completed` |
+| **KIE-ACCEPT-002** | 生产质量 | `kie_production_hit == true` |
 
-**阶段 C 目标**：三样例至少 **2/3** 满足 KIE-ACCEPT-002（可持续调高）。
+**阶段 C 目标**：**3/3** 满足 001 与 002（当前基线已达成，见 tracker）。
 
-可选自动化（重、需 GPU + 模型）：
+可选自动化：
 
 ```bash
 cd backend
@@ -75,26 +78,27 @@ DOCUVISION_RUN_KIE_ACCEPTANCE=1 pytest tests/test_kie_acceptance_baseline.py -q
 | `test_data/testfiles/images/kie/passport_sample_01.png` | `passport` |
 | `test_data/testfiles/images/kie/bank_card_sample_01.png` | `bank_card` |
 
-**通过标准**：KIE-ACCEPT-001 必过；KIE-ACCEPT-002 按类型关键字段（见 [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md)）记录 hit/miss。
+**目标**：3/3 001 + 002。
 
 ### 阶段 E — 收据（可选）
 
-`test_data/testfiles/receipts/receipt-with-tips.png`，`document_type=receipt`，同上记录 production 指标。
+`test_data/testfiles/receipts/receipt-with-tips.png`，`document_type=receipt`。
 
 ### 阶段 F — 全量回归（时间允许）
 
 ```bash
 cd backend
 pip install "httpx>=0.24,<0.28"
-pytest tests/ -q --tb=short
+pytest tests/ -q --tb=short --ignore=tests/test_user_workflows.py
 ```
 
-**说明**：`tests/test_user_workflows.py::TestInvoiceProcessingWorkflow` 依赖 **已启动** 的 `http://localhost:8000` 且会真实加载 Qwen。全量 `pytest` 与在线服务 **争用 GPU** 时，该用例可能 `kie_stage=runtime_error` 并被标记为 **skip**（非契约回退）。建议：
+`test_user_workflows.py` 依赖**已启动**的 `:8000` 且与全量 pytest **争 GPU**；单独验证：
 
-- 全量回归：`pytest tests/ -q --ignore=tests/test_user_workflows.py`
-- 单独验发票 KIE：`pytest tests/test_user_workflows.py::TestInvoiceProcessingWorkflow -s`（服务重启后）
+```bash
+pytest tests/test_user_workflows.py::TestInvoiceProcessingWorkflow -s
+```
 
-Phase C/D/E 导出 JSON 可放入 `test_data/TestResult/PhaseCDE/`，运行：
+结果批次写入 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)。导出 JSON 汇总：
 
 ```bash
 cd backend
@@ -110,9 +114,11 @@ python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
 | `kie_production_reason` | 如 `production_hit`、`raw_output_only`、`no_required_keys_filled` |
 | `kie_production_keys` | 命中的关键字段名列表 |
 | `kie_confidence_avg` | 关键字段填充率启发值（0～1） |
+| `kie_error_message` | 失败时异常摘要（如历史 PDF 路径 bug） |
+| `kie_meta.error_message` | 与上同源，在完整 Envelope/任务结果中 |
 
 ## 4. 相关文档
 
-- [kie.md](./kie.md) — KIE 契约与依赖
+- [kie.md](./kie.md) — KIE 契约、PDF 输入策略
 - [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md) — 云测批次记录
 - [test_data/acceptance/doc_types.md](../../test_data/acceptance/doc_types.md) — 样例矩阵

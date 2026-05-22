@@ -39,3 +39,5 @@ alwaysApply: true
 - 003-git.mdc：Git提交规范
 - 004-project.mdc：项目全局规范
 - 005-document.mdc：文档规范
+- 006-model-routing.mdc：模型路由策略
+- 007-code-language.mdc：代码/UI 英文与 UTF-8 编码规范

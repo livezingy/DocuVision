@@ -1,0 +1,60 @@
+---
+description: Code and UI use English ASCII; docs may use Chinese; UTF-8 encoding for CI
+alwaysApply: true
+---
+# Code Language & Encoding
+
+## Language split
+
+| Area | Language | Examples |
+|------|----------|----------|
+| **Documentation** | Chinese OK | `docs/`, architecture/design `.md`, README, CHANGELOG |
+| **Source code** | **English only (ASCII preferred)** | `.py`, `.js`, `.ts`, `.html`, `.css`, shell in repo |
+| **Assistant replies** | Chinese | User-facing chat (see 001-general) |
+
+### English-only in code (required)
+
+- Comments and `#` lines
+- Docstrings
+- Logger / print messages
+- Exception messages and API error strings
+- UI copy: labels, buttons, placeholders, tooltips (`apps/lite/frontend/`, `frontend/`)
+
+Do **not** add Chinese to new or edited code files, even if older files still contain legacy non-ASCII text.
+
+## UTF-8 & CI safety
+
+Failures on GitHub Actions were caused by **corrupted UTF-8 in Chinese text** (last byte of a multibyte character replaced with `?`), not by using Chinese in principle.
+
+To prevent recurrence:
+
+- Save text sources as **UTF-8 without BOM**
+- Prefer **ASCII-only** in comments, docstrings, and log strings
+- Avoid editing large Chinese docstrings inside `.py` on Windows without verifying bytes before push
+- After encoding fixes, scan `packages/` and `apps/` Python trees for invalid UTF-8 before commit
+
+Non-ASCII in code is allowed only when **required by runtime data** (e.g. a user-visible string that must be localized later)—not for comments or docs inside code.
+
+## Examples
+
+```python
+# GOOD
+"""Register built-in extractors on first use."""
+
+# BAD — project policy + encoding risk on cross-platform CI
+"""延迟注册提取器"""
+```
+
+```python
+# GOOD
+self.logger.info("PaddleOCR preload skipped; already started")
+
+# BAD
+self.logger.info("PaddleOCR模型预加载已启动")
+```
+
+## Related rules
+
+- `002-python.mdc` — Python style (docstrings in English)
+- `005-document.mdc` — Markdown/docs (Chinese allowed)
+- `004-project.mdc` — project workflow

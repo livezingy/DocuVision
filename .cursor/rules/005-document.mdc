@@ -1,9 +1,15 @@
 ---
-description:
-globs: *.md
+description: Markdown and design documentation (Chinese allowed)
+globs: docs/**/*.md,**/*.md
 alwaysApply: false
 ---
 # 文档规范
+
+## 语言
+
+- **`docs/` 及架构/设计类 Markdown**：可使用**中文**（与 `007-code-language.mdc` 区分：文档不受「代码英文」约束）
+- 代码仓库内的 **README / CHANGELOG**：中英文均可，保持与现有文件风格一致
+- 文档中引用的代码示例、命令、路径、标识符仍使用**英文**
 
 ## README.md 规范
 - 保持文档结构清晰，使用适当的Markdown标记

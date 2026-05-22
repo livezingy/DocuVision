@@ -4,7 +4,7 @@ import re
 from collections import Counter
 from scipy.spatial import distance
 
-# 在导入cv2之前设置环境变量，避免在无头环境中加载OpenGL�?
+# 在导入cv2之前设置环境变量，避免在无头环境中加载OpenGL庀
 # 这对于Streamlit Cloud等无头服务器环境非常重要
 import os
 os.environ['OPENCV_IO_ENABLE_OPENEXR'] = '0'
@@ -14,13 +14,13 @@ os.environ['DISPLAY'] = ''
 
 try:
     import cv2
-    # 如果cv2成功导入，尝试设置后端（如果支持�?
+    # 如果cv2成功导入，尝试设置后端（如果支持！
     try:
         cv2.setNumThreads(1)  # 在某些环境中可以减少线程相关问题
     except:
         pass
 except ImportError as e:
-    # 如果cv2导入失败，记录警告但不阻止程序运�?
+    # 如果cv2导入失败，记录警告但不阻止程序运行
     # 因为当前代码中cv2可能未被实际使用
     import warnings
     warnings.warn(f"Failed to import cv2: {e}. Some features may be unavailable.")
@@ -50,7 +50,7 @@ class TableEvaluator:
         
         # Base weights for evaluation dimensions
         # when calculating the total score, the weights are adjusted according 
-        # to the domain, adjusted = base_weights �?domain_factor, 
+        # to the domain, adjusted = base_weights ⊀domain_factor, 
         # the adjusted weights are normalized: self.weights = adjusted / adjusted.sum()
         self.base_weights = {
             "structural": 0.35,    # Table structure integrity
@@ -100,7 +100,7 @@ class TableEvaluator:
         except Exception:
             shape = (0, 0)
         
-        # 安全获取columns和rows，避免pandas Index的布尔判断问�?
+        # 安全获取columns和rows，避免pandas Index的布尔判断问颀
         columns = getattr(table, 'columns', None)
         if columns is None or (hasattr(columns, 'empty') and columns.empty):
             columns = []
@@ -177,11 +177,11 @@ class TableEvaluator:
 
         # Ensure DataFrame is present
         try:
-            # 如果传入的就是DataFrame，直接使�?
+            # 如果传入的就是DataFrame，直接使生
             if isinstance(table, pd.DataFrame):
                 df = table
             else:
-                # 否则尝试从对象中获取df属�?
+                # 否则尝试从对象中获取df属怀
                 df = getattr(table, 'df', None)
                 if df is None:
                     df = pd.DataFrame()
@@ -220,19 +220,19 @@ class TableEvaluator:
             "content": self._content_score(df, features),
             "functional": self._functional_score(df, features)
         }
-        # 调试信息已移�?
+        # 调试信息已移陀
         # Compute weighted total score
         total_score = sum(scores[dim] * self.weights[dim] for dim in self.weights)
         return round(total_score, 4), scores, domain
 
     def _structural_score(self, df, features):
         """
-        结构评分：覆盖度 × 网格一致�?× 合并合理�?× 基础属性完备度 × 单元格对齐度（新增）
-        - 覆盖度：实际单元与期望网格的匹配程度，结�?df 的非空占�?
-        - 网格一致性：shape/rows/columns/单元�?bbox 的一致�?
-        - 合并合理性：仅对 Camelot lattice 使用边框缺失推断合并程度（越合理得分越高�?
+        结构评分：覆盖度 × 网格一致怀× 合并合理怀× 基础属性完备度 × 单元格对齐度（新增）
+        - 覆盖度：实际单元与期望网格的匹配程度，结后df 的非空占毀
+        - 网格一致性：shape/rows/columns/单元栀bbox 的一致怀
+        - 合并合理性：仅对 Camelot lattice 使用边框缺失推断合并程度（越合理得分越高！
         - 基础属性完备度：bbox/rows/columns 是否存在
-        - 单元格对齐度（新增）：检查单元格是否对齐到网格线，提高评分精�?
+        - 单元格对齐度（新增）：检查单元格是否对齐到网格线，提高评分精庀
         """
         rows, cols = features.get('shape', (0, 0))
         expected_cells = max(1, rows * cols)
@@ -246,8 +246,8 @@ class TableEvaluator:
             non_null_ratio = 0.7  # 缺省中等
         coverage_score = 0.6 * cell_coverage + 0.4 * non_null_ratio
 
-        # 2) 网格一致性（行高/列宽单调�?+ bbox 合法性）
-        # rows/columns 为坐标序列：应严格单�?
+        # 2) 网格一致性（行高/列宽单调怀+ bbox 合法性）
+        # rows/columns 为坐标序列：应严格单谀
         def _monotonic_ratio(seq):
             try:
                 seq = list(seq) if seq is not None else []
@@ -263,7 +263,7 @@ class TableEvaluator:
         mono_cols = _monotonic_ratio(columns)
         mono_rows = _monotonic_ratio(rows_pos)
 
-        # bbox 合法性（坐标有序且面�?0 的比例）
+        # bbox 合法性（坐标有序且面秀0 的比例）
         valid_bbox_ratio = 1.0
         if cells_list:
             valid = 0
@@ -284,7 +284,7 @@ class TableEvaluator:
             valid_bbox_ratio = (valid / total) if total > 0 else 1.0
         grid_consistency = 0.4 * mono_cols + 0.4 * mono_rows + 0.2 * valid_bbox_ratio
 
-        # 3) 合并合理性（�?lattice�?
+        # 3) 合并合理性（从lattice！
         if self.source == "camelot" and (self.flavor or '').lower() == "lattice":
             merge_score = self._detect_merge_cells(features)
         else:
@@ -306,9 +306,9 @@ class TableEvaluator:
             max(0.05, grid_consistency),
             max(0.05, merge_score),
             max(0.05, base_score),
-            max(0.05, alignment_score),  # 新增对齐�?
+            max(0.05, alignment_score),  # 新增对齐庀
         ]) ** 0.5  # 减弱过度惩罚
-        # 调试信息已移�?
+        # 调试信息已移陀
         return float(max(0.0, min(1.0, final)))
     
     def _calculate_cell_alignment(self, cells_list, columns, rows_pos):
@@ -316,12 +316,12 @@ class TableEvaluator:
         计算单元格对齐度
         
         Args:
-            cells_list: 单元格列�?
-            columns: 列坐标列�?
-            rows_pos: 行坐标列�?
+            cells_list: 单元格列行
+            columns: 列坐标列行
+            rows_pos: 行坐标列行
             
         Returns:
-            float: 对齐度分�?(0-1)
+            float: 对齐度分敀(0-1)
         """
         if not cells_list or not columns or not rows_pos:
             return 0.8  # 默认中等分数
@@ -331,7 +331,7 @@ class TableEvaluator:
             rows_np = np.array(rows_pos, dtype=float)
             
             alignment_errors = []
-            tolerance_factor = 0.05  # 允许5%的误�?
+            tolerance_factor = 0.05  # 允许5%的误巀
             
             for c in cells_list:
                 bbox = c.get('bbox') if isinstance(c, dict) else None
@@ -340,11 +340,11 @@ class TableEvaluator:
                 
                 x0, y0, x1, y1 = bbox
                 
-                # 计算单元格边界与最近网格线的距�?
+                # 计算单元格边界与最近网格线的距禀
                 if len(columns_np) > 0:
-                    # 左边界应该接近某条列�?
+                    # 左边界应该接近某条列纀
                     dist_left = np.min(np.abs(columns_np - x0))
-                    # 右边界应该接近某条列�?
+                    # 右边界应该接近某条列纀
                     dist_right = np.min(np.abs(columns_np - x1))
                     # 归一化到平均列宽
                     avg_col_width = np.mean(np.diff(columns_np)) if len(columns_np) > 1 else 1.0
@@ -353,9 +353,9 @@ class TableEvaluator:
                         alignment_errors.append(col_error)
                 
                 if len(rows_np) > 0:
-                    # 上边界应该接近某条行�?
+                    # 上边界应该接近某条行纀
                     dist_top = np.min(np.abs(rows_np - y0))
-                    # 下边界应该接近某条行�?
+                    # 下边界应该接近某条行纀
                     dist_bottom = np.min(np.abs(rows_np - y1))
                     # 归一化到平均行高
                     avg_row_height = np.mean(np.diff(rows_np)) if len(rows_np) > 1 else 1.0
@@ -368,12 +368,12 @@ class TableEvaluator:
             
             # 计算平均对齐误差
             avg_error = np.mean(alignment_errors)
-            # 误差越小，分数越�?
+            # 误差越小，分数越髀
             alignment_score = 1.0 / (1.0 + avg_error * 2.0)
             return float(max(0.0, min(1.0, alignment_score)))
         
         except Exception:
-            return 0.8  # 出错时返回默认�?
+            return 0.8  # 出错时返回默认倀
 
     def _detect_merge_cells(self, features):
         """
@@ -388,7 +388,7 @@ class TableEvaluator:
         cells = features.get('cells') or []
         if not cells:
             return 0.85
-        # 缺边比例：缺水平边或缺垂直边，视为合并迹�?
+        # 缺边比例：缺水平边或缺垂直边，视为合并迹豀
         missing_h = 0
         missing_v = 0
         total = 0
@@ -403,9 +403,9 @@ class TableEvaluator:
                 missing_v += 1
         if total == 0:
             return 0.85
-        # 合并“合理性”分数：缺边比例不过高最好（�?U 型）
+        # 合并“合理性”分数：缺边比例不过高最好（呀U 型）
         miss_ratio = ((missing_h + missing_v) / (2 * total))
-        # �?0.15~0.35 范围附近得分较高，过低或过高都降�?
+        # 在0.15~0.35 范围附近得分较高，过低或过高都降作
         center = 0.25
         width = 0.2
         score = np.exp(-((miss_ratio - center) ** 2) / (2 * (width ** 2)))
@@ -414,11 +414,11 @@ class TableEvaluator:
 
     def _layout_score(self, df, features):
         """
-        布局评分：行高稳定�?× 列宽稳定�?× 对齐一致�?
-        - 使用稳健的变异系数（IQR/median）代替纯标准差，降低异常值影�?
-        - 结合 cells �?bbox 与行列坐标的偏差评估对齐程度
+        布局评分：行高稳定怀× 列宽稳定怀× 对齐一致怀
+        - 使用稳健的变异系数（IQR/median）代替纯标准差，降低异常值影哀
+        - 结合 cells 的bbox 与行列坐标的偏差评估对齐程度
         """
-        # 行高稳定�?
+        # 行高稳定怀
         def _robust_cv(values):
             try:
                 vals = np.array(values, dtype=float)
@@ -439,13 +439,13 @@ class TableEvaluator:
                 if isinstance(r, (int, float)):
                     return float(r)
                 if isinstance(r, (tuple, list)):
-                    # 常见�?(x, y) �?(y0, y1)；优先取第二�?
+                    # 常见一(x, y) 成(y0, y1)；优先取第二顀
                     if len(r) >= 2 and isinstance(r[1], (int, float)):
                         return float(r[1])
                     if len(r) >= 1 and isinstance(r[0], (int, float)):
                         return float(r[0])
                     return None
-                # 对象：尝�?y / top / y0/y1
+                # 对象：尝说y / top / y0/y1
                 for attr in ('y', 'top', 'y0', 'y1'):
                     v = getattr(r, attr, None)
                     if isinstance(v, (int, float)):
@@ -464,7 +464,7 @@ class TableEvaluator:
                 if isinstance(c, (int, float)):
                     return float(c)
                 if isinstance(c, (tuple, list)):
-                    # 常见�?(x, y) �?(x0, x1)；优先取第一�?
+                    # 常见一(x, y) 成(x0, x1)；优先取第一顀
                     if len(c) >= 1 and isinstance(c[0], (int, float)):
                         return float(c[0])
                     if len(c) >= 2 and isinstance(c[1], (int, float)):
@@ -489,7 +489,7 @@ class TableEvaluator:
         cv_h = _robust_cv(row_heights)
         height_score = 1 / (1 + min(2.0, cv_h))
 
-        # 列宽稳定�?
+        # 列宽稳定怀
         col_positions_raw = features.get('columns') or []
         col_positions = [p for p in (_extract_col_pos(c) for c in col_positions_raw) if isinstance(p, float)]
         col_positions = sorted(col_positions)
@@ -497,7 +497,7 @@ class TableEvaluator:
         cv_w = _robust_cv(col_widths)
         width_score = 1 / (1 + min(2.0, cv_w))
 
-        # 对齐一致性（cell bbox 左右与列线、上下与行线的平均偏�?间距�?
+        # 对齐一致性（cell bbox 左右与列线、上下与行线的平均偏巀间距！
         align_score = 1.0
         cells = features.get('cells') or []
         if cells and col_positions and row_positions:
@@ -509,7 +509,7 @@ class TableEvaluator:
                 if bbox is None:
                     continue
                 x0, y0, x1, y1 = bbox
-                # 与最近列�?行线的距�?
+                # 与最近列纀行线的距禀
                 dx = min(abs(col_positions_np - x0).min(), abs(col_positions_np - x1).min()) if len(col_positions_np) else 0
                 dy = min(abs(row_positions_np - y0).min(), abs(row_positions_np - y1).min()) if len(row_positions_np) else 0
                 # 归一化到平均间距
@@ -524,16 +524,16 @@ class TableEvaluator:
         sub = [height_score, width_score]
         base = float(np.dot(sub, self.sub_weights["layout"]))
         final = (base * 0.7 + align_score * 0.3)
-        # 调试信息已移�?
+        # 调试信息已移陀
         return float(max(0.0, min(1.0, final)))
 
     def _content_score(self, df, features):
         """
-        内容评分：类型一致�?× 逻辑一致�?× 标题/头部合理�?× 数据完整性（新增�?
-        - 类型一致性：每列主导类型占比（数�?日期/文本），辅以熵正�?
-        - 逻辑一致性：沿用现有逻辑校验并加入数值非�?单元格数量匹�?
+        内容评分：类型一致怀× 逻辑一致怀× 标题/头部合理怀× 数据完整性（新增！
+        - 类型一致性：每列主导类型占比（数子日期/文本），辅以熵正分
+        - 逻辑一致性：沿用现有逻辑校验并加入数值非贀单元格数量匹酀
         - 头部合理性：首行是否更像表头（文本比例高、去重率高）
-        - 数据完整性（新增）：检查数据是否完整，避免大量缺失�?
+        - 数据完整性（新增）：检查数据是否完整，避免大量缺失倀
         """
         if df is None or df.empty:
             type_score = 0.6
@@ -541,7 +541,7 @@ class TableEvaluator:
             header_score = 0.6
             completeness_score = 0.6
         else:
-            # 类型一致�?
+            # 类型一致怀
             type_scores = []
             for col in df.columns:
                 col_data = df[col].dropna()
@@ -559,31 +559,31 @@ class TableEvaluator:
                 total = sum(type_counts.values())
                 if total > 0:
                     dominant = max(type_counts.values()) / total
-                    # 熵（越小越集中，越好�?
+                    # 熵（越小越集中，越好！
                     probs = np.array([v/total for v in type_counts.values()], dtype=float)
                     entropy = -np.sum(probs * np.log2(np.clip(probs, 1e-9, 1)))
                     
                     # 修复RuntimeWarning：处理无效的数学运算
                     type_count_len = len(type_counts)
                     if type_count_len <= 1:
-                        # 如果只有一种类型或没有类型，熵�?，归一化熵也为0
+                        # 如果只有一种类型或没有类型，熵一，归一化熵也为0
                         norm_entropy = 0.0
                     else:
-                        # 计算归一化熵，避免除�?或log2(0)
+                        # 计算归一化熵，避免除从或log2(0)
                         log2_count = np.log2(type_count_len)
                         if np.isfinite(log2_count) and log2_count > 0:
                             norm_entropy = entropy / log2_count
                         else:
                             norm_entropy = 0.0
                     
-                    # 确保norm_entropy是有效数�?
+                    # 确保norm_entropy是有效数倀
                     if not np.isfinite(norm_entropy):
                         norm_entropy = 0.0
                     
                     type_scores.append(0.8*dominant + 0.2*(1-norm_entropy))
             type_score = float(np.mean(type_scores)) if type_scores else 0.7
 
-            # 逻辑一致性（沿用+增强�?
+            # 逻辑一致性（沿用+增强！
             logic_score = self._check_logic(df, features)
 
             # 头部合理性：第一行文本率与去重率
@@ -596,7 +596,7 @@ class TableEvaluator:
             except Exception:
                 header_score = 0.6
             
-            # 数据完整性（新增）：检查非空值比�?
+            # 数据完整性（新增）：检查非空值比侀
             try:
                 total_cells = df.size
                 non_null_cells = df.notna().sum().sum()
@@ -606,9 +606,9 @@ class TableEvaluator:
 
         sub = [type_score, logic_score]
         base = float(np.dot(sub, self.sub_weights["content"]))
-        # 加入数据完整性评�?
+        # 加入数据完整性评分
         final = (base * 0.7 + header_score * 0.15 + completeness_score * 0.15)
-        # 调试信息已移�?
+        # 调试信息已移陀
         return float(max(0.0, min(1.0, final)))
 
     def _check_logic(self, df, features):
@@ -642,17 +642,17 @@ class TableEvaluator:
 
     def _functional_score(self, df, features):
         """
-        可用性评分：可抽取�?× 空白控制 × 可读�?
-        - 可抽取性：综合 accuracy �?df 可解析性（数值解析率、列可用率）
+        可用性评分：可抽取怀× 空白控制 × 可读怀
+        - 可抽取性：综合 accuracy 一df 可解析性（数值解析率、列可用率）
         - 空白控制：平均空白率越低越好，分布越均匀越好
         - 可读性：平均单元文本长度适中、单元填充率合理
         """
-        # 可抽取�?
+        # 可抽取怀
         base_extract = self._calculate_extract_score(features)
         parse_bonus = 0.7
         if df is not None and not df.empty:
             try:
-                # 列可用率：非空比�?> 60% 的列占比
+                # 列可用率：非空比侀> 60% 的列占比
                 usable_cols = 0
                 for col in df.columns:
                     non_null = df[col].notnull().mean()
@@ -683,7 +683,7 @@ class TableEvaluator:
         whitespace_even = 1 / (1 + whitespace_info.get('unevenness', 0.0))
         whitespace_score = (1 - min(1.0, whitespace_level)) * 0.7 + whitespace_even * 0.3
 
-        # 可读性（文本密度适中�?
+        # 可读性（文本密度适中！
         readability = 0.8
         cells = features.get('cells') or []
         if cells:
@@ -794,18 +794,18 @@ class TableEvaluator:
 
 
     def enhance_camelot_features(self, camelot_table):
-        """增强 Camelot 表格对象的可评估特征，但保持其原始类型不变�?
+        """增强 Camelot 表格对象的可评估特征，但保持其原始类型不变、
 
-        - 填充缺失�?bbox/columns/rows（从 Camelot 的属性推导）
-        - �?parsing_report 中提�?accuracy/whitespace 到直达属�?
-        - 规范 cells：确保存�?text 属性（至少为空字符串）
+        - 填充缺失的bbox/columns/rows（从 Camelot 的属性推导）
+        - 从parsing_report 中提又accuracy/whitespace 到直达属怀
+        - 规范 cells：确保存在text 属性（至少为空字符串）
         """
         table = camelot_table
 
         # 1) 基本几何信息
         try:
             if getattr(table, 'bbox', None) is None:
-                # 优先使用公开属性；退回到受保护属�?
+                # 优先使用公开属性；退回到受保护属怀
                 bbox_candidate = getattr(table, 'bbox', None)
                 if bbox_candidate is None:
                     bbox_candidate = getattr(table, '_bbox', None)
@@ -817,7 +817,7 @@ class TableEvaluator:
         except Exception:
             pass
 
-        # 2) 行列坐标（Camelot 提供 rows/cols 列表）。为与评估器兼容，补�?columns/rows 属�?
+        # 2) 行列坐标（Camelot 提供 rows/cols 列表）。为与评估器兼容，补公columns/rows 属怀
         try:
             cols = getattr(table, 'cols', None)
             if (not hasattr(table, 'columns')) or (getattr(table, 'columns', None) in (None, [])):
@@ -840,7 +840,7 @@ class TableEvaluator:
         except Exception:
             pass
 
-        # 3) 评分报告映射到直达属�?
+        # 3) 评分报告映射到直达属怀
         try:
             report = getattr(table, 'parsing_report', None)
             if isinstance(report, dict):
@@ -857,19 +857,19 @@ class TableEvaluator:
         except Exception:
             pass
 
-        # 4) cells 归一化：保证可访�?text 属性�?
+        # 4) cells 归一化：保证可访闀text 属性、
         try:
             cells = getattr(table, 'cells', None)
             if cells:
                 is_2d = isinstance(cells, (list, tuple)) and len(cells) > 0 and isinstance(cells[0], (list, tuple))
                 iterable = (c for row in cells for c in row) if is_2d else iter(cells)
                 for c in iterable:
-                    # Camelot 的单元格通常是对象；确保�?text 属�?
+                    # Camelot 的单元格通常是对象；确保有text 属怀
                     try:
                         if not hasattr(c, 'text') or getattr(c, 'text') is None:
                             setattr(c, 'text', '')
                     except Exception:
-                        # 如果�?dict（不常见�?Camelot），也做兼容
+                        # 如果是dict（不常见了Camelot），也做兼容
                         if isinstance(c, dict) and 'text' not in c:
                             c['text'] = ''
         except Exception:
@@ -1001,8 +1001,8 @@ class PDFPlumberTableWrapper:
     def compute_pdfplumber_accuracy(self, table_cells):
         """
         Compute structural accuracy score similar to Camelot's accuracy metric
-        每个文本对象的误�?error 的计算（将文�?bbox 超出单元格左右上下边界的偏移量，
-        按文本宽高归一化，得到0~+∞的比例误差；完全贴合时�?�?
+        每个文本对象的误巀error 的计算（将文有bbox 超出单元格左右上下边界的偏移量，
+        按文本宽高归一化，得到0~+∞的比例误差；完全贴合时一！
         
         Args:
             table_cells: List of cell dictionaries
@@ -1064,7 +1064,7 @@ class PDFPlumberTableWrapper:
     
 
     def _derive_columns_from_cells(self, cells):
-        """从cells数据推导列位�?""
+        """从cells数据推导列位罀"""
         if not cells:
             return []
         

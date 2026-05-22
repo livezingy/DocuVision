@@ -101,9 +101,9 @@ class TableModels:
                 """规范化路径，移除相对路径符号"""
                 if not path:
                     return path
-                # 规范化路径（移除 .\ �?..\ 等）
+                # 规范化路径（移除 .\ 和..\ 等）
                 normalized = os.path.normpath(path)
-                # 如果是相对路径，转换为绝对路�?
+                # 如果是相对路径，转换为绝对路得
                 if not os.path.isabs(normalized):
                     base_dir = get_app_dir()
                     normalized = os.path.join(base_dir, normalized)
@@ -111,22 +111,22 @@ class TableModels:
                 return os.path.normpath(normalized)
 
             def _is_valid_local_path(path: str) -> bool:
-                """检查路径是否是有效的本地路径（不是 HuggingFace repo ID�?""
+                """检查路径是否是有效的本地路径（不是 HuggingFace repo ID！"""
                 if not path:
                     return False
-                # 检查是否是绝对路径或相对路�?
+                # 检查是否是绝对路径或相对路得
                 # HuggingFace repo ID 格式：不包含路径分隔符或只包含斜杠（用于组织/仓库名）
-                # 本地路径通常包含反斜杠（Windows）或正斜杠（Unix），且不以字母开�?
+                # 本地路径通常包含反斜杠（Windows）或正斜杠（Unix），且不以字母开多
                 if os.path.isabs(path) or os.path.sep in path or '/' in path:
                     return True
-                # 如果路径看起来像 repo ID（如 "microsoft/table-transformer-detection"�?
+                # 如果路径看起来像 repo ID（如 "microsoft/table-transformer-detection"！
                 # 但包含路径分隔符，可能是相对路径
                 if '\\' in path or path.startswith('./') or path.startswith('../'):
                     return True
                 return False
 
             def _load_model_and_processor(path_or_id: str, kind: str):
-                # 规范化路�?
+                # 规范化路得
                 normalized_path = _normalize_path(path_or_id) if _is_valid_local_path(path_or_id) else path_or_id
                 
                 # #region agent log
@@ -150,7 +150,7 @@ class TableModels:
                 
                 # 优先尝试本地文件
                 try:
-                    # 使用规范化后的路�?
+                    # 使用规范化后的路得
                     model = TableTransformerForObjectDetection.from_pretrained(
                         normalized_path,
                         local_files_only=True
@@ -163,7 +163,7 @@ class TableModels:
                     return model, processor
                 except Exception as e_local:
                     self.logger.warning(f"[TableModels] Local {kind} not found at {normalized_path}, fallback to Hugging Face Hub. Reason: {e_local}")
-                    # 回落�?Hugging Face Hub
+                    # 回落分Hugging Face Hub
                     model_id = _resolve_model_id(path_or_id, kind)
                     
                     # #region agent log

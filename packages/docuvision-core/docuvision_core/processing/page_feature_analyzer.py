@@ -1,12 +1,12 @@
 # core/processing/page_feature_analyzer.py
 """
-页面特征分析�?
+页面特征分析噀
 
-职责�?
+职责！
 - 提取PDF页面的基础特征（字符、文本行、单词、线条）
-- 计算统计指标（平均宽度、高度、间距等�?
+- 计算统计指标（平均宽度、高度、间距等！
 - 线条合并和规范化
-- Rects到Lines的转�?
+- Rects到Lines的转捀
 
 不负责：
 - 表格类型判断
@@ -23,16 +23,16 @@ from docuvision_core.utils.logger import AppLogger
 
 class PageFeatureAnalyzer:
     """
-    页面特征(lines, curves, rects, chars, text_lines)分析�?
+    页面特征(lines, curves, rects, chars, text_lines)分析噀
     """
     
     def __init__(self, page, enable_logging=True):
         """
-        初始化页面特征分析器并自动执行所有分�?
+        初始化页面特征分析器并自动执行所有分枀
         
         Args:
             page: pdfplumber.Page对象
-            enable_logging: 是否输出详细的页面元素调试信息（默认True�?
+            enable_logging: 是否输出详细的页面元素调试信息（默认True！
         """
         self.page = page
         self.logger = AppLogger.get_logger()
@@ -43,7 +43,7 @@ class PageFeatureAnalyzer:
         self.rects = page.rects if hasattr(page, 'rects') else []
         self.chars = page.chars if hasattr(page, 'chars') else []
         
-        # 获取text_lines：按优先级尝试多种方式，并记录来�?
+        # 获取text_lines：按优先级尝试多种方式，并记录来満
         self.text_lines, self.text_lines_source = self._get_text_lines(page)
         
         
@@ -71,21 +71,21 @@ class PageFeatureAnalyzer:
             page: pdfplumber.Page对象
             
         Returns:
-            tuple: (text_lines列表, 来源字符�?
+            tuple: (text_lines列表, 来源字符一
         """
-        # 方式1: 尝试直接使用page.text_lines属�?
+        # 方式1: 尝试直接使用page.text_lines属怀
         if hasattr(page, 'text_lines'):
             text_lines = page.text_lines
             if text_lines and len(text_lines) > 0:
                 self.logger.debug("Using page.text_lines attribute")
-                return text_lines, "page.text_lines属�?
+                return text_lines, "page.text_lines属怀
         
         # 方式2: 尝试调用extract_text_lines()方法
         if hasattr(page, 'extract_text_lines'):
             try:
-                # 计算合适的容差参数（基于chars特征�?
-                x_tolerance = 3.0  # 默认�?
-                y_tolerance = 5.0  # 默认�?
+                # 计算合适的容差参数（基于chars特征！
+                x_tolerance = 3.0  # 默认倀
+                y_tolerance = 5.0  # 默认倀
                 
                 if self.chars and len(self.chars) > 0:
                     # 分析chars以计算合适的容差
@@ -100,9 +100,9 @@ class PageFeatureAnalyzer:
                         mode_height = self._get_mode_with_fallback(char_heights)
                         y_tolerance = max(1.0, min(mode_height * 0.2, 8.0))
                 
-                # 尝试调用extract_text_lines，支持参数则传入，不支持则无参调�?
+                # 尝试调用extract_text_lines，支持参数则传入，不支持则无参调生
                 try:
-                    # 尝试带参数调用（某些版本支持�?
+                    # 尝试带参数调用（某些版本支持！
                     text_lines = page.extract_text_lines(
                         x_tolerance=x_tolerance,
                         y_tolerance=y_tolerance
@@ -133,7 +133,7 @@ class PageFeatureAnalyzer:
         
         # 如果所有方式都失败，返回空列表
         self.logger.debug("No text_lines available, returning empty list")
-        return [], "无可用来�?空列�?"
+        return [], "无可用来満空列行"
     
     
     def _build_text_lines_from_chars(self, y_tolerance=None):
@@ -141,22 +141,22 @@ class PageFeatureAnalyzer:
         从chars构建text_lines
         
         Args:
-            y_tolerance: y坐标容差（点），如果为None则自动计�?
+            y_tolerance: y坐标容差（点），如果为None则自动计简
             
         Returns:
-            list: text_lines列表，每个元素包含top, bottom, x0, x1, chars等字�?
+            list: text_lines列表，每个元素包含top, bottom, x0, x1, chars等字殀
         """
         if not self.chars or len(self.chars) == 0:
             return []
         
-        # 计算y_tolerance（如果未提供�?
+        # 计算y_tolerance（如果未提供！
         if y_tolerance is None:
             char_heights = [c.get('height', 0) for c in self.chars if 'height' in c]
             if char_heights:
                 mode_height = self._get_mode_with_fallback(char_heights)
                 y_tolerance = max(1.0, min(mode_height * 0.2, 8.0))
             else:
-                y_tolerance = 2.0  # 默认�?
+                y_tolerance = 2.0  # 默认倀
         
         # 按y坐标分组字符
         char_groups = {}
@@ -164,7 +164,7 @@ class PageFeatureAnalyzer:
             # 使用top作为行的y坐标
             y = char.get('top', char.get('y0', 0))
             
-            # 找到最接近的y坐标�?
+            # 找到最接近的y坐标经
             matched_y = None
             for group_y in char_groups.keys():
                 if abs(y - group_y) <= y_tolerance:
@@ -206,14 +206,14 @@ class PageFeatureAnalyzer:
     @staticmethod
     def _get_mode_with_fallback(values, min_count=3):
         """
-        计算众数，如果数据不足则回退到最小�?
+        计算众数，如果数据不足则回退到最小倀
         
         Args:
-            values: 数值列�?
+            values: 数值列行
             min_count: 最小数据量要求
             
         Returns:
-            float: 众数（如果数据足够），否则返回最小�?
+            float: 众数（如果数据足够），否则返回最小倀
         """
         if not values:
             return 0
@@ -224,10 +224,10 @@ class PageFeatureAnalyzer:
         counter = Counter(values)
         most_common = counter.most_common(1)
         
-        if most_common and most_common[0][1] >= 2:  # 至少出现2�?
+        if most_common and most_common[0][1] >= 2:  # 至少出现2欀
             return most_common[0][0]
         else:
-            # 如果所有值都不同，回退到最小�?
+            # 如果所有值都不同，回退到最小倀
             return min(values)   
     
     
@@ -236,16 +236,16 @@ class PageFeatureAnalyzer:
         """
         将Rects转换为Lines
         
-        根据水平线或垂线的长度与合并阈值的关系决定生成线段的条数�?
+        根据水平线或垂线的长度与合并阈值的关系决定生成线段的条数、
         
         Rect属性说明（基于pdfplumber）：
-        - 必有属性：x0, y0, x1, y1（或 top, bottom, left, right�?
+        - 必有属性：x0, y0, x1, y1（或 top, bottom, left, right！
         - 可选属性：width, height, stroke, fill, linewidth
-        - PDF坐标系：原点在左下角，y轴向上为�?
+        - PDF坐标系：原点在左下角，y轴向上为此
         - pdfplumber坐标系：原点在左上角，y轴向下为正（已转换）
         
         Args:
-            char_height_mode: 字符高度众数（来�?char_analysis，用于合并阈值）
+            char_height_mode: 字符高度众数（来自char_analysis，用于合并阈值）
             rects: 待转换的 rects 列表
             
         Returns:
@@ -258,18 +258,18 @@ class PageFeatureAnalyzer:
         invalid_count = 0
         for rect in rects:
             try:
-                # 提取坐标 - 完善的属性获取策�?
+                # 提取坐标 - 完善的属性获取策畀
                 # pdfplumber的rect通常是字典类型，支持多种访问方式
-                # 优先尝试字典访问（x0/y0/x1/y1），如果不存在则尝试其他键名（left/right/top/bottom�?
-                # 如果rect是对象，尝试属性访�?
+                # 优先尝试字典访问（x0/y0/x1/y1），如果不存在则尝试其他键名（left/right/top/bottom！
+                # 如果rect是对象，尝试属性访闀
                 if isinstance(rect, dict):
-                    # 字典类型：优先使�?x0/y0/x1/y1，否则使�?left/right/top/bottom
+                    # 字典类型：优先使生x0/y0/x1/y1，否则使生left/right/top/bottom
                     x0 = rect.get('x0') or rect.get('left')
                     x1 = rect.get('x1') or rect.get('right')
                     y0 = rect.get('y0') or rect.get('top')
                     y1 = rect.get('y1') or rect.get('bottom')
                 else:
-                    # 对象类型：尝试属性访�?
+                    # 对象类型：尝试属性访闀
                     x0 = getattr(rect, 'x0', None) or getattr(rect, 'left', None)
                     x1 = getattr(rect, 'x1', None) or getattr(rect, 'right', None)
                     y0 = getattr(rect, 'y0', None) or getattr(rect, 'top', None)
@@ -284,7 +284,7 @@ class PageFeatureAnalyzer:
                     )
                     continue
                 
-                # 计算或获取宽�?
+                # 计算或获取宽髀
                 if isinstance(rect, dict):
                     width = rect.get('width') or abs(x1 - x0) if x0 is not None and x1 is not None else 0
                     height = rect.get('height') or abs(y1 - y0) if y0 is not None and y1 is not None else 0
@@ -312,7 +312,7 @@ class PageFeatureAnalyzer:
                 h_length = abs(x1 - x0)
                 v_length = abs(y1 - y0)
                 if h_length > v_length:
-                    # 水平线更�?
+                    # 水平线更镀
                     if v_length > merge_threshold:
                         # 生成两条水平线，两条垂线
                         h_lines.append({'x0': x0, 'y0': y0, 'x1': x1, 'y1': y0, 'linewidth': linewidth})
@@ -323,7 +323,7 @@ class PageFeatureAnalyzer:
                         # 仅生成一条水平线
                         h_lines.append({'x0': x0, 'y0': y0, 'x1': x1, 'y1': y0, 'linewidth': linewidth})
                 else:
-                    # 垂线更长或相�?
+                    # 垂线更长或相筀
                     if h_length > merge_threshold:
                         # 生成两条水平线，两条垂线
                         h_lines.append({'x0': x0, 'y0': y0, 'x1': x1, 'y1': y0, 'linewidth': linewidth})
@@ -331,7 +331,7 @@ class PageFeatureAnalyzer:
                         v_lines.append({'x0': x0, 'y0': y0, 'x1': x0, 'y1': y1, 'linewidth': linewidth})
                         v_lines.append({'x0': x1, 'y0': y0, 'x1': x1, 'y1': y1, 'linewidth': linewidth})
                     elif v_length > merge_threshold:
-                        # 仅生成一条垂�?
+                        # 仅生成一条垂纀
                         v_lines.append({'x0': x0, 'y0': y0, 'x1': x0, 'y1': y1, 'linewidth': linewidth})
                     
             except (KeyError, TypeError, ValueError) as e:
@@ -343,7 +343,7 @@ class PageFeatureAnalyzer:
         if total_converted == 0:
             if invalid_count > 0:
                 self.logger.warning(
-                    f"[Rects->Lines] 无有效线条生成，跳过�?{invalid_count} 个无效rects"
+                    f"[Rects->Lines] 无有效线条生成，跳过了{invalid_count} 个无效rects"
                 )
                 return ([], [])    
             else:
@@ -357,13 +357,13 @@ class PageFeatureAnalyzer:
         """
         分析线条特征，包括方向、长度、间距和分布
         
-        处理流程�?
+        处理流程！
         1. 先对 page.lines 调用 _determine_line_orientation_by_linewidth 进行分类
-        2. �?page.rects 调用 _convert_rects_to_lines
+        2. 对page.rects 调用 _convert_rects_to_lines
         3. 分别进行长度过滤
-        4. 最后统一计算 min/max/mode �?
+        4. 最后统一计算 min/max/mode 倀
         """
-        # 初始化结�?
+        # 初始化结枀
         horizontal_lines = []
         vertical_lines = []       
         horizontal_lengths = []
@@ -423,7 +423,7 @@ class PageFeatureAnalyzer:
                         all_line_widths.append(v_line['linewidth'])
                     vertical_lines.append(v_line)
         
-        # 2.3 最后对得到的所有水平线和垂直线进行计算，分别得�?min/max/mode �?
+        # 2.3 最后对得到的所有水平线和垂直线进行计算，分别得分min/max/mode 倀
         self.line_analysis = {
             'horizontal_lines': horizontal_lines,
             'vertical_lines': vertical_lines,
@@ -446,23 +446,23 @@ class PageFeatureAnalyzer:
     
     def _determine_line_orientation_by_linewidth(self, x0, y0, x1, y1, line_width):
         """
-        使用linewidth属性确定线条方�?
+        使用linewidth属性确定线条方后
         
         Args:
             x0, y0, x1, y1: 线条坐标
-            line_width: 线宽属�?
+            line_width: 线宽属怀
             
         Returns:
-            'horizontal', 'vertical', �?None
+            'horizontal', 'vertical', 成None
         """
         dx = abs(x1 - x0)
         dy = abs(y1 - y0)
         
-        # 如果没有linewidth信息，使用默认�?
+        # 如果没有linewidth信息，使用默认倀
         if line_width == 0:
             line_width = self.char_analysis['mode_height'] * 0.3 if self.char_analysis['mode_height'] > 0 else self.char_analysis['min_height'] * 0.3
         
-        # 使用linewidth作为方向判断的阈�?
+        # 使用linewidth作为方向判断的阈倀
         tolerance = max(line_width * 2, 3)
         
         if dy <= tolerance and dx > tolerance:
@@ -476,10 +476,10 @@ class PageFeatureAnalyzer:
         """
         分析字符特征
         
-        计算字符宽度和高度的最小最大值以及众�?
+        计算字符宽度和高度的最小最大值以及众敀
         
         Returns:
-            None: 结果存储�?self.char_analysis �?
+            None: 结果存储在self.char_analysis 一
         """
         if not self.chars:
             self.char_analysis = {
@@ -509,7 +509,7 @@ class PageFeatureAnalyzer:
         }
     
     def _analyze_text_lines(self):
-        """分析文本行特�?""
+        """分析文本行特得"""
         if not self.text_lines:
             self.text_line_analysis = {
                 'total_lines': 0,
@@ -530,7 +530,7 @@ class PageFeatureAnalyzer:
                 line_height = text_line['bottom'] - text_line['top']
                 line_heights.append(line_height)
         
-        # 计算行间�?
+        # 计算行间跀
         sorted_lines = sorted(self.text_lines, key=lambda x: x.get('top', 0))
         for i in range(len(sorted_lines) - 1):
             current_bottom = sorted_lines[i].get('bottom', 0)
@@ -555,7 +555,7 @@ class PageFeatureAnalyzer:
      
     def _log_page_elements(self):
         """
-        输出页面元素的详细调试信�?
+        输出页面元素的详细调试信恀
         
         包括：lines、rects、curves的数量和特征
         """
@@ -570,11 +570,11 @@ class PageFeatureAnalyzer:
         
         if original_lines:
             lengths = []
-            for line in original_lines[:5]:  # 只显示前5�?
+            for line in original_lines[:5]:  # 只显示前5来
                 length = math.sqrt((line['x1'] - line['x0'])**2 + (line['y1'] - line['y0'])**2)
                 lengths.append(length)
                 self.logger.info(
-                    f"   Line: ({line['x0']:.1f},{line['y0']:.1f}) �?({line['x1']:.1f},{line['y1']:.1f}), "
+                    f"   Line: ({line['x0']:.1f},{line['y0']:.1f}) ↀ({line['x1']:.1f},{line['y1']:.1f}), "
                     f"length={length:.1f}pt, linewidth={line.get('linewidth', 0):.2f}"
                 )
             
@@ -617,7 +617,7 @@ class PageFeatureAnalyzer:
             if min_char_height <= 0:
                 min_char_height = 5.0
             
-            for rect in rects[:5]:  # 只显示前5�?
+            for rect in rects[:5]:  # 只显示前5一
                 width = rect.get('width', 0)
                 height = rect.get('height', 0)
                 is_stroked = rect.get('stroke', False)
@@ -638,7 +638,7 @@ class PageFeatureAnalyzer:
             if len(rects) > 5:
                 self.logger.info(f"   ... {len(rects) - 5} more rectangles")
             
-            # 统计所有rects的特�?
+            # 统计所有rects的特得
             all_widths = [r.get('width', 0) for r in rects]
             all_heights = [r.get('height', 0) for r in rects]
             all_stroked = sum(1 for r in rects if r.get('stroke', False))
@@ -657,7 +657,7 @@ class PageFeatureAnalyzer:
         self.logger.info(f"   Count: {len(curves)}")
         
         if curves:
-            for curve in curves[:5]:  # 只显示前5�?
+            for curve in curves[:5]:  # 只显示前5来
                 points = curve.get('pts', [])
                 if len(points) >= 2:
                     x0, y0 = points[0]
@@ -666,7 +666,7 @@ class PageFeatureAnalyzer:
                     x0, y0, x1, y1 = 0, 0, 0, 0
                 
                 self.logger.info(
-                    f"   Curve: ({x0:.1f},{y0:.1f}) �?({x1:.1f},{y1:.1f}), "
+                    f"   Curve: ({x0:.1f},{y0:.1f}) ↀ({x1:.1f},{y1:.1f}), "
                     f"control_points={len(points)}, stroke={curve.get('stroke', False)}"
                 )
             
@@ -729,7 +729,7 @@ class PageFeatureAnalyzer:
         self.logger.info("="*70)
         
         
-    # === 公开接口：提供访问分析结果的属�?===
+    # === 公开接口：提供访问分析结果的属怀===
     
     @property
     def char_analysis(self) -> dict:
@@ -751,7 +751,7 @@ class PageFeatureAnalyzer:
     
     @property
     def text_line_analysis(self) -> dict:
-        """文本行分析结�?""
+        """文本行分析结枀"""
         return self._text_line_analysis if hasattr(self, '_text_line_analysis') else {}
     
     @text_line_analysis.setter

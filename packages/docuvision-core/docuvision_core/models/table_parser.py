@@ -12,7 +12,7 @@ from docuvision_core.utils.logger import AppLogger
 import numpy as np
 import os
 
-# 在导入cv2之前设置环境变量，避免在无头环境中加载OpenGL�?
+# 在导入cv2之前设置环境变量，避免在无头环境中加载OpenGL庀
 # 这对于Streamlit Cloud等无头服务器环境非常重要
 os.environ.setdefault('OPENCV_IO_ENABLE_OPENEXR', '0')
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
@@ -20,13 +20,13 @@ os.environ.setdefault('DISPLAY', '')
 
 try:
     import cv2
-    # 如果cv2成功导入，尝试设置后端（如果支持�?
+    # 如果cv2成功导入，尝试设置后端（如果支持！
     try:
         cv2.setNumThreads(1)  # 在某些环境中可以减少线程相关问题
     except:
         pass
 except ImportError as e:
-    # 如果cv2导入失败，记录警告但不阻止程序运�?
+    # 如果cv2导入失败，记录警告但不阻止程序运行
     import warnings
     warnings.warn(f"Failed to import cv2: {e}. Some features may be unavailable.")
     cv2 = None
@@ -73,7 +73,7 @@ class TableParser:
         Returns a dict with 'success', 'error', and 'tables' keys.
         """
         try:
-            # 检查models是否正确初始�?
+            # 检查models是否正确初始匀
             if not self.models:
                 self.logger.error("TableParser.models is None, cannot detect tables")
                 return {'success': False, 'error': 'TableParser models not initialized', 'tables': []}
@@ -85,7 +85,7 @@ class TableParser:
             self.logger.info("TableParser.models is initialized")
             boxes, scores, labels = self.models.detect_tables(image)
             self.logger.info(f"Detected {len(boxes) if boxes is not None else 0} tables in image")
-            # 使用 numpy-safe 的判空方�?
+            # 使用 numpy-safe 的判空方开
             boxes_is_empty = (
                 boxes is None or
                 (hasattr(boxes, 'size') and getattr(boxes, 'size') == 0) or
@@ -94,7 +94,7 @@ class TableParser:
             if boxes_is_empty:
                 self.logger.info("No tables detected in image")
                 return {'success': True, 'error': None, 'tables': []}
-            # 规范化为 numpy 数组，确保后续索引安�?
+            # 规范化为 numpy 数组，确保后续索引安公
             try:
                 boxes_arr = np.asarray(boxes)
             except Exception:
@@ -127,7 +127,7 @@ class TableParser:
                         self.logger.warning(f"Debug log write failed at bbox processing: {e}")
                     # #endregion
                     
-                    # �?bbox 转为一维数�?列表
+                    # 将bbox 转为一维数经列表
                     bbox_arr = np.asarray(bbox).reshape(-1)
                     
                     # #region agent log
@@ -171,7 +171,7 @@ class TableParser:
                     # 获取图像尺寸用于验证
                     img_width, img_height = image.size
                     
-                    # 验证bbox的合理�?
+                    # 验证bbox的合理怀
                     violations = {
                         "x1_ge_x2": x1 >= x2,
                         "y1_ge_y2": y1 >= y2,
@@ -216,13 +216,13 @@ class TableParser:
                         except Exception:
                             detection_confidence = 1.0
                         
-                        # 获取结构识别置信�?
+                        # 获取结构识别置信庀
                         structure_confidence = table_info.get('structure_confidence', 0.8)
                         
-                        # 计算加权评分�?.6 * detection + 0.4 * structure
+                        # 计算加权评分！.6 * detection + 0.4 * structure
                         weighted_score = 0.6 * detection_confidence + 0.4 * structure_confidence
                         
-                        # 添加置信度信�?
+                        # 添加置信度信恀
                         table_info['detection_confidence'] = detection_confidence
                         table_info['structure_confidence'] = structure_confidence
                         table_info['score'] = weighted_score
@@ -268,10 +268,10 @@ class TableParser:
             table_image: 裁剪后的表格图像
             bbox: 表格在原图中的边界框
             params: 处理参数
-            original_image: 原始完整图像（用于可视化�?
+            original_image: 原始完整图像（用于可视化！
         """
         try:
-            # 检查models是否正确初始�?
+            # 检查models是否正确初始匀
             if not self.models:
                 self.logger.error("TableParser.models is None, cannot parse table")
                 return None
@@ -288,7 +288,7 @@ class TableParser:
             expand_rowcol = self.structure_expand_rowcol
             self.logger.debug(f"TableParser.parse_table params: border_width={border_width}, preprocess={preprocess}, expand_rowcol={expand_rowcol}")
             
-            # 使用 recognize_structure 主流程处�?
+            # 使用 recognize_structure 主流程处琀
             try:
                 self.logger.info("Using recognize_structure main processing method")
                 tables = await pipeline.start_process_with_whole_ocr(
@@ -306,7 +306,7 @@ class TableParser:
                 self.logger.error(f"Main pipeline processing failed: {str(e)}")
                 return None
 
-            # 安全判空，避免对 numpy.ndarray 的布尔判断歧�?
+            # 安全判空，避免对 numpy.ndarray 的布尔判断歧么
             tables_is_empty = (
                 tables is None or
                 (hasattr(tables, 'size') and getattr(tables, 'size') == 0) or
@@ -322,7 +322,7 @@ class TableParser:
                     'data': table.to_dict('records'),
                     'columns': table.columns.tolist(),
                     'confidence': 1.0,
-                    'structure_confidence': 0.8,  # 默认结构置信�?
+                    'structure_confidence': 0.8,  # 默认结构置信庀
                     'bbox': bbox
                 }
             elif isinstance(table, dict) and 'data' in table and 'columns' in table:
@@ -495,7 +495,7 @@ class TableExtractionPipeline():
                         # Crop the spanning cell area
                         x1, y1, x2, y2 = spanning_bbox
                         
-                        # 更宽松的边界检查，允许一些边界情�?
+                        # 更宽松的边界检查，允许一些边界情军
                         if x1 >= x2 or y1 >= y2:
                             text = ""
                             AppLogger.get_logger().warning(f"Invalid spanning cell bbox: {spanning_bbox}")
@@ -506,7 +506,7 @@ class TableExtractionPipeline():
                             x2 = min(table_image.width, int(x2))
                             y2 = min(table_image.height, int(y2))
                             
-                            # 检查裁剪后的尺�?
+                            # 检查裁剪后的尺对
                             if x2 <= x1 or y2 <= y1:
                                 text = ""
                                 AppLogger.get_logger().warning(f"Spanning cell bbox results in invalid crop: ({x1},{y1},{x2},{y2})")
@@ -550,7 +550,7 @@ class TableExtractionPipeline():
                         cell_bbox = cell_data['cell']
                         x1, y1, x2, y2 = cell_bbox
                         
-                        # 更宽松的边界检�?
+                        # 更宽松的边界检柀
                         if x1 >= x2 or y1 >= y2:
                             text = ""
                             AppLogger.get_logger().warning(f"Invalid cell bbox at [{row_idx+1},{col_idx+1}]: {cell_bbox}")
@@ -561,7 +561,7 @@ class TableExtractionPipeline():
                             x2 = min(table_image.width, int(x2))
                             y2 = min(table_image.height, int(y2))
                             
-                            # 检查裁剪后的尺�?
+                            # 检查裁剪后的尺对
                             if x2 <= x1 or y2 <= y1:
                                 text = ""
                                 AppLogger.get_logger().warning(f"Cell bbox at [{row_idx+1},{col_idx+1}] results in invalid crop: ({x1},{y1},{x2},{y2})")
@@ -639,7 +639,7 @@ class TableExtractionPipeline():
             cell_text_map = {}
             covered_cells = set()  # Track cells covered by spanning cells
             
-            # 创建OCR结果副本并添加分配标�?
+            # 创建OCR结果副本并添加分配标讀
             available_ocr_results = []
             for i, ocr_result in enumerate(ocr_results):
                 ocr_copy = ocr_result.copy()
@@ -657,23 +657,23 @@ class TableExtractionPipeline():
                     
                     AppLogger.get_logger().debug(f"Processing spanning cell bbox: {spanning_bbox}")
                     
-                    # 使用增强的匹配策略（只使用未分配的OCR结果�?
+                    # 使用增强的匹配策略（只使用未分配的OCR结果！
                     matched_texts, covered_cell_indices = self.enhanced_spanning_cell_text_matching(
                         spanning_bbox, available_ocr_results, cell_coordinates
                     )
                     
                     if matched_texts and covered_cell_indices:
-                        # 使用优化的文本聚合策�?
+                        # 使用优化的文本聚合策畀
                         # 1. 按行聚类
                         text_rows = self.cluster_texts_by_rows(matched_texts)
                         
                         # 2. 聚合多行文本
                         combined_text = self.aggregate_multiline_texts(text_rows)
                         
-                        # 3. 计算平均置信�?
+                        # 3. 计算平均置信庀
                         avg_confidence = sum(t['confidence'] for t in matched_texts) / len(matched_texts)
                         
-                        # 4. 分配给左上角单元�?
+                        # 4. 分配给左上角单元栀
                         top_left_cell = covered_cell_indices[0]
                         cell_text_map[top_left_cell] = {
                             'text': combined_text,
@@ -682,7 +682,7 @@ class TableExtractionPipeline():
                             'is_spanning': True
                         }
                         
-                        # 5. 标记其他被覆盖的单元�?
+                        # 5. 标记其他被覆盖的单元栀
                         for cell_idx in covered_cell_indices[1:]:
                             cell_text_map[cell_idx] = {
                                 'text': '__MERGED__',
@@ -714,15 +714,15 @@ class TableExtractionPipeline():
                 for col_idx, cell_data in enumerate(row_data['cells']):
                     cell_key = (row_idx, col_idx)
                     if cell_key not in covered_cells:
-                        # 调试信息已移�?
+                        # 调试信息已移陀
                         pass
             
             # 2.2 将OCR文本按行聚类
             text_rows = self.cluster_ocr_texts_by_rows(available_ocr_results)
-            # 文本行聚类处�?
+            # 文本行聚类处琀
             pass
             
-            # 2.3 使用优化的匹配算�?
+            # 2.3 使用优化的匹配算法
             remaining_cell_text_map = self.optimized_cell_text_matching(
                 sorted_cells, text_rows, available_ocr_results
             )
@@ -743,11 +743,11 @@ class TableExtractionPipeline():
         按位置排序单元格：先按行(y坐标)，再按列(x坐标)
         
         Args:
-            cell_coordinates: 单元格坐标数�?
+            cell_coordinates: 单元格坐标数捀
             covered_cells: 已被spanning cell覆盖的单元格集合
             
         Returns:
-            排序后的单元格列�?
+            排序后的单元格列行
         """
         sorted_cells = []
         for row_idx, row_data in enumerate(cell_coordinates):
@@ -767,11 +767,11 @@ class TableExtractionPipeline():
 
     def cluster_ocr_texts_by_rows(self, available_ocr_results, row_threshold=20):
         """
-        将OCR文本按行聚类，减少搜索范�?
+        将OCR文本按行聚类，减少搜索范国
         
         Args:
             available_ocr_results: 可用的OCR结果列表
-            row_threshold: 行聚类阈值（像素�?
+            row_threshold: 行聚类阈值（像素！
             
         Returns:
             按行分组的OCR文本字典
@@ -782,7 +782,7 @@ class TableExtractionPipeline():
         # 按y坐标排序
         sorted_ocr = sorted(available_ocr_results, key=lambda ocr: ocr['bbox'][1])
         
-        # 行聚�?
+        # 行聚籀
         text_rows = {}
         current_row = 0
         current_y_center = None
@@ -791,7 +791,7 @@ class TableExtractionPipeline():
             y_center = (ocr['bbox'][1] + ocr['bbox'][3]) / 2
             
             if current_y_center is None or abs(y_center - current_y_center) <= row_threshold:
-                # 属于当前�?
+                # 属于当前行
                 if current_row not in text_rows:
                     text_rows[current_row] = []
                 text_rows[current_row].append(ocr)
@@ -809,12 +809,12 @@ class TableExtractionPipeline():
         优化的单元格文本匹配算法
         
         Args:
-            sorted_cells: 按位置排序的单元格列�?
+            sorted_cells: 按位置排序的单元格列行
             text_rows: 按行分组的OCR文本
             available_ocr_results: 所有可用的OCR结果
             
         Returns:
-            单元格文本映射字�?
+            单元格文本映射字公
         """
         cell_text_map = {}
         
@@ -823,10 +823,10 @@ class TableExtractionPipeline():
             cell_key = cell['position']
             row_idx = cell['row_idx']
             
-            # 1. 首先在当前行及其相邻行的文本中搜�?
+            # 1. 首先在当前行及其相邻行的文本中搜紀
             candidate_texts = []
             
-            # 搜索当前�?
+            # 搜索当前行
             if row_idx in text_rows:
                 candidate_texts.extend(text_rows[row_idx])
             
@@ -836,9 +836,9 @@ class TableExtractionPipeline():
                 if adjacent_row in text_rows:
                     candidate_texts.extend(text_rows[adjacent_row])
 
-            # 调试信息已移�?
+            # 调试信息已移陀
             
-            # 2. 如果当前行及相邻行没有找到匹配，再搜索所有文�?
+            # 2. 如果当前行及相邻行没有找到匹配，再搜索所有文有
             if not candidate_texts:
                 candidate_texts = available_ocr_results
             
@@ -865,7 +865,7 @@ class TableExtractionPipeline():
                         cell_texts.append(ocr_result['text'])
                         cell_confidences.append(ocr_result['confidence'])
                         ocr_result['assigned'] = True
-                # 调试信息已移�?
+                # 调试信息已移陀
             # 4. 处理匹配结果
             if cell_texts:
                 combined_text = ' '.join(cell_texts)
@@ -888,11 +888,11 @@ class TableExtractionPipeline():
 
     def is_bbox_contained(self, inner_bbox, outer_bbox):
         """
-        检查inner_bbox是否完全包含在outer_bbox�?
+        检查inner_bbox是否完全包含在outer_bbox军
         
         Args:
-            inner_bbox: 内部边界�?[x1, y1, x2, y2]
-            outer_bbox: 外部边界�?[x1, y1, x2, y2]
+            inner_bbox: 内部边界桀[x1, y1, x2, y2]
+            outer_bbox: 外部边界桀[x1, y1, x2, y2]
             
         Returns:
             bool: 如果inner_bbox完全在outer_bbox内则返回True
@@ -1018,12 +1018,12 @@ class TableExtractionPipeline():
         计算合并单元格覆盖的基础单元格的并集区域
         
         Args:
-            spanning_bbox: 合并单元格的边界�?[x1, y1, x2, y2]
-            cell_coordinates: 基础单元格坐标列�?
+            spanning_bbox: 合并单元格的边界桀[x1, y1, x2, y2]
+            cell_coordinates: 基础单元格坐标列行
             
         Returns:
             union_bbox: 并集区域的边界框 [x1, y1, x2, y2]
-            covered_cells: 被覆盖的基础单元格索引列�?[(row_idx, col_idx), ...]
+            covered_cells: 被覆盖的基础单元格索引列行[(row_idx, col_idx), ...]
         """
         try:
             covered_cells = self.calculate_spanning_cell_coverage(spanning_bbox, cell_coordinates)
@@ -1031,7 +1031,7 @@ class TableExtractionPipeline():
             if not covered_cells:
                 return spanning_bbox, covered_cells
             
-            # 计算所有被覆盖单元格的并集边界�?
+            # 计算所有被覆盖单元格的并集边界桀
             min_x = float('inf')
             min_y = float('inf')
             max_x = float('-inf')
@@ -1057,11 +1057,11 @@ class TableExtractionPipeline():
         为边界框添加容差扩展
         
         Args:
-            bbox: 原始边界�?[x1, y1, x2, y2]
-            tolerance_pixels: 容差像素�?
+            bbox: 原始边界桀[x1, y1, x2, y2]
+            tolerance_pixels: 容差像素敀
             
         Returns:
-            expanded_bbox: 扩展后的边界�?
+            expanded_bbox: 扩展后的边界桀
         """
         try:
             x1, y1, x2, y2 = bbox
@@ -1077,47 +1077,47 @@ class TableExtractionPipeline():
 
     def cluster_texts_by_rows(self, matched_texts, row_threshold=10):
         """
-        将文本按行聚�?
+        将文本按行聚籀
         
         Args:
-            matched_texts: 匹配的文本列�?
-            row_threshold: 行聚类阈值（像素�?
+            matched_texts: 匹配的文本列行
+            row_threshold: 行聚类阈值（像素！
             
         Returns:
-            text_rows: 按行分组的文本列�?[[row1_texts], [row2_texts], ...]
+            text_rows: 按行分组的文本列行[[row1_texts], [row2_texts], ...]
         """
         try:
             if not matched_texts:
                 return []
             
-            # 计算每个文本的y中心�?
+            # 计算每个文本的y中心炀
             text_with_centers = []
             for text in matched_texts:
                 bbox = text['bbox']
                 center_y = (bbox[1] + bbox[3]) / 2
                 text_with_centers.append((center_y, text))
             
-            # 按y中心点排�?
+            # 按y中心点排庀
             text_with_centers.sort(key=lambda x: x[0])
             
-            # 行聚�?
+            # 行聚籀
             text_rows = []
             current_row = []
             current_row_y = None
             
             for center_y, text in text_with_centers:
                 if current_row_y is None or abs(center_y - current_row_y) <= row_threshold:
-                    # 属于当前�?
+                    # 属于当前行
                     current_row.append(text)
                     current_row_y = center_y
                 else:
-                    # 开始新�?
+                    # 开始新行
                     if current_row:
                         text_rows.append(current_row)
                     current_row = [text]
                     current_row_y = center_y
             
-            # 添加最后一�?
+            # 添加最后一行
             if current_row:
                 text_rows.append(current_row)
             
@@ -1135,10 +1135,10 @@ class TableExtractionPipeline():
             row_texts: 单行文本列表
             
         Returns:
-            sorted_texts: 按x坐标排序的文本列�?
+            sorted_texts: 按x坐标排序的文本列行
         """
         try:
-            # 按x坐标（左边界）排�?
+            # 按x坐标（左边界）排庀
             return sorted(row_texts, key=lambda text: text['bbox'][0])
         except Exception as e:
             AppLogger.get_logger().error(f"Text sorting within row failed: {str(e)}")
@@ -1150,10 +1150,10 @@ class TableExtractionPipeline():
         
         Args:
             sorted_texts: 已排序的文本列表
-            merge_threshold: 合并阈值（像素�?
+            merge_threshold: 合并阈值（像素！
             
         Returns:
-            merged_text: 合并后的文本字符�?
+            merged_text: 合并后的文本字符一
         """
         try:
             if not sorted_texts:
@@ -1170,17 +1170,17 @@ class TableExtractionPipeline():
                 next_text = sorted_texts[i]['text']
                 next_bbox = sorted_texts[i]['bbox']
                 
-                # 计算两个文本之间的距�?
+                # 计算两个文本之间的距禀
                 gap = next_bbox[0] - current_bbox[2]  # 右边界到左边界的距离
                 
                 if gap <= merge_threshold:
-                    # 距离很近，直接合�?
+                    # 距离很近，直接合年
                     current_text += next_text
-                    # 更新当前边界�?
+                    # 更新当前边界桀
                     current_bbox = [current_bbox[0], min(current_bbox[1], next_bbox[1]),
                                   next_bbox[2], max(current_bbox[3], next_bbox[3])]
                 else:
-                    # 距离较远，添加空�?
+                    # 距离较远，添加空栀
                     current_text += " " + next_text
                     current_bbox = [current_bbox[0], min(current_bbox[1], next_bbox[1]),
                                   next_bbox[2], max(current_bbox[3], next_bbox[3])]
@@ -1196,7 +1196,7 @@ class TableExtractionPipeline():
         聚合多行文本
         
         Args:
-            text_rows: 按行分组的文本列�?
+            text_rows: 按行分组的文本列行
             
         Returns:
             final_text: 最终聚合的文本
@@ -1206,10 +1206,10 @@ class TableExtractionPipeline():
                 return ""
             
             if len(text_rows) == 1:
-                # 单行，直接返�?
+                # 单行，直接返国
                 return self.smart_merge_texts_in_row(text_rows[0])
             
-            # 多行，按行聚�?
+            # 多行，按行聚后
             row_texts = []
             for row in text_rows:
                 # 对每行内部排序并合并
@@ -1232,11 +1232,11 @@ class TableExtractionPipeline():
         Args:
             spanning_bbox: 合并单元格边界框
             ocr_results: OCR结果列表
-            cell_coordinates: 基础单元格坐�?
+            cell_coordinates: 基础单元格坐栀
             
         Returns:
-            matched_texts: 匹配的文本列�?
-            covered_cells: 被覆盖的单元格索�?
+            matched_texts: 匹配的文本列行
+            covered_cells: 被覆盖的单元格索开
         """
         try:
             # 1. 计算并集区域
@@ -1247,7 +1247,7 @@ class TableExtractionPipeline():
             # 2. 添加容差扩展
             expanded_bbox = self.expand_bbox_with_tolerance(union_bbox, tolerance_pixels=3)
             
-            # 3. 多标准匹配（只处理未分配的OCR结果�?
+            # 3. 多标准匹配（只处理未分配的OCR结果！
             matched_texts = []
             for ocr_result in ocr_results:
                 # 跳过已分配的OCR结果
@@ -1256,13 +1256,13 @@ class TableExtractionPipeline():
                     
                 ocr_bbox = ocr_result['bbox']
                 
-                # 标准1：完全包含在扩展区域�?
+                # 标准1：完全包含在扩展区域军
                 is_fully_inside = (ocr_bbox[0] >= expanded_bbox[0] and 
                                   ocr_bbox[1] >= expanded_bbox[1] and 
                                   ocr_bbox[2] <= expanded_bbox[2] and 
                                   ocr_bbox[3] <= expanded_bbox[3])
                 
-                # 标准2：与扩展区域有显著重�?
+                # 标准2：与扩展区域有显著重又
                 iou_with_expanded = self.calculate_iou(ocr_bbox, expanded_bbox)
                 
                 # 标准3：中心点在扩展区域内
@@ -1316,14 +1316,14 @@ class TableExtractionPipeline():
         pred_bboxes = outputs['pred_boxes'].detach().cpu()[0]
         pred_bboxes = [elem.tolist() for elem in rescale_bboxes(pred_bboxes, img_size)]
 
-        # 调试信息已移�?
+        # 调试信息已移陀
 
         objects = []
         for label, score, bbox in zip(pred_labels, pred_scores, pred_bboxes):
             try:
                 class_label = id2label[int(label)]
             except KeyError:
-                # 调试信息已移�?
+                # 调试信息已移陀
                 continue
             if not class_label == 'no object':
                 objects.append({'label': class_label, 'score': float(score),
@@ -1377,7 +1377,7 @@ class TableExtractionPipeline():
             # 使用改进的recognize_structure方法获取真实模型输出
             model, outputs, image_size = models.recognize_structure(input_Image)
             
-            # 使用与table_parser_direct.py相同的坐标处理方�?
+            # 使用与table_parser_direct.py相同的坐标处理方法
             table_data = self.outputs_to_objects(outputs, image_size, model.config.id2label)
             
             if not table_data:
@@ -1525,7 +1525,7 @@ class TableExtractionPipeline():
             # 调整坐标到原始图像坐标系
             x1, y1, x2, y2 = table_bbox
             
-            # 创建可视化数据，直接使用检测到的坐标（已经是正确的�?
+            # 创建可视化数据，直接使用检测到的坐标（已经是正确的！
             visualization_data = {
                 'table_rows': self._adjust_bboxes_to_original([obj for obj in table_data if obj['label'] == 'table row'], x1, y1),
                 'table_cols': self._adjust_bboxes_to_original([obj for obj in table_data if obj['label'] == 'table column'], x1, y1),
@@ -1540,7 +1540,7 @@ class TableExtractionPipeline():
             output_dir = "tests/results"
             os.makedirs(output_dir, exist_ok=True)
             
-            # 生成综合可视�?
+            # 生成综合可视匀
             AppLogger.get_logger().info("Generating direct detection visualizations on original image...")
             saved_files = visualizer.create_comprehensive_visualization(
                 original_image, 
@@ -1662,7 +1662,7 @@ class TableExtractionPipeline():
                     split_headers = self._split_large_column_header(obj, table_image)
                     if split_headers:
                         processed_objects['column_headers'].extend(split_headers)
-                        # 调试信息已移�?
+                        # 调试信息已移陀
                     else:
                         processed_objects['column_headers'].append(obj)
                 elif label == 'table projected row header':
@@ -1707,9 +1707,9 @@ class TableExtractionPipeline():
         """
         拆分大的column header为多个独立的column headers
         
-        判断条件�?
+        判断条件！
         1. header的宽度明显大于正常单元格宽度
-        2. 通过OCR检测到多个独立的文本区�?
+        2. 通过OCR检测到多个独立的文本区埀
         3. 文本区域之间有明显的间隙
         """
         bbox = header_obj['bbox']
@@ -1717,45 +1717,45 @@ class TableExtractionPipeline():
         width = x2 - x1
         height = y2 - y1
         
-        # 条件1：检查宽度是否异常大（超过正常单元格宽度�?倍）
-        # 假设正常单元格宽度约�?0-80px
-        if width < 120:  # 如果宽度小于120px，可能不需要拆�?
+        # 条件1：检查宽度是否异常大（超过正常单元格宽度的倍）
+        # 假设正常单元格宽度约一0-80px
+        if width < 120:  # 如果宽度小于120px，可能不需要拆分
             return None
         
-        # 调试信息已移�?
+        # 调试信息已移陀
         
-        # 条件2：对该区域进行OCR，检测文本分�?
+        # 条件2：对该区域进行OCR，检测文本分帀
         try:
             # 裁剪header区域
             header_crop = table_image.crop((x1, y1, x2, y2))
             
-            # 使用EasyOCR检测文�?
+            # 使用EasyOCR检测文有
             import easyocr
             from docuvision_core.utils.easyocr_config import get_easyocr_reader
             reader = get_easyocr_reader(['en'])
             img_array = np.array(header_crop)
             ocr_results = reader.readtext(img_array)
             
-            # 调试信息已移�?
+            # 调试信息已移陀
             
             if len(ocr_results) < 2:
-                # 调试信息已移�?
+                # 调试信息已移陀
                 return None
             
-            # 条件3：分析文本区域分布，判断是否需要拆�?
+            # 条件3：分析文本区域分布，判断是否需要拆分
             text_regions = []
             for item in ocr_results:
                 bbox_points = item[0]
                 text = item[1]
                 confidence = item[2]
                 
-                # 转换bbox到绝对坐�?
+                # 转换bbox到绝对坐栀
                 x_coords = [point[0] for point in bbox_points]
                 y_coords = [point[1] for point in bbox_points]
                 rel_x1, rel_x2 = min(x_coords), max(x_coords)
                 rel_y1, rel_y2 = min(y_coords), max(y_coords)
                 
-                # 转换为绝对坐�?
+                # 转换为绝对坐栀
                 abs_x1 = x1 + rel_x1
                 abs_y1 = y1 + rel_y1
                 abs_x2 = x1 + rel_x2
@@ -1779,17 +1779,17 @@ class TableExtractionPipeline():
                 gaps.append(gap)
             
             avg_gap = sum(gaps) / len(gaps) if gaps else 0
-            # 调试信息已移�?
+            # 调试信息已移陀
             
-            # 如果平均间隙大于10px，认为需要拆�?
+            # 如果平均间隙大于10px，认为需要拆分
             if avg_gap < 10:
-                # 调试信息已移�?
+                # 调试信息已移陀
                 return None
             
             # 执行拆分：为每个文本区域创建独立的column header
             split_headers = []
             for i, region in enumerate(text_regions):
-                # 扩展bbox以包含适当的边�?
+                # 扩展bbox以包含适当的边跀
                 margin = 5
                 expanded_bbox = [
                     max(x1, region['bbox'][0] - margin),
@@ -1801,15 +1801,15 @@ class TableExtractionPipeline():
                 split_header = {
                     'label': 'table column header',
                     'bbox': expanded_bbox,
-                    'score': header_obj['score'] * region['confidence']  # 调整置信�?
+                    'score': header_obj['score'] * region['confidence']  # 调整置信庀
                 }
                 split_headers.append(split_header)
-                # 调试信息已移�?
+                # 调试信息已移陀
             
             return split_headers
             
         except Exception as e:
-            # 调试信息已移�?
+            # 调试信息已移陀
             return None
     
     
@@ -1923,16 +1923,16 @@ class TableExtractionPipeline():
                     cell_bbox = cell_data['cell']
                     x1, y1, x2, y2 = cell_bbox
                     
-                    # 边界检�?
+                    # 边界检柀
                     if x1 >= x2 or y1 >= y2 or x1 < 0 or y1 < 0:
                         all_cell_texts.append(("", 0.0))
                         AppLogger.get_logger().debug(f"Invalid cell bbox at row {row_idx}, col {col_idx}: {cell_bbox}")
                         continue
                     
-                    # 裁剪单元格图�?
+                    # 裁剪单元格图僀
                     cell_img = table_image.crop((x1, y1, x2, y2))
                     
-                    # 图像预处理（如果启用�?
+                    # 图像预处理（如果启用！
                     if preprocess:
                         cell_img = self.enhance_cell_image(cell_img)
                     
@@ -1976,20 +1976,20 @@ class TableExtractionPipeline():
                     # 裁剪图像
                     cell_image = cropped_table.crop(bbox)
                     
-                    # 检查裁剪后的图像是否有�?
+                    # 检查裁剪后的图像是否有敀
                     if cell_image.size[0] <= 0 or cell_image.size[1] <= 0:
                         AppLogger.get_logger().warning(f"Invalid cropped image size: {cell_image.size}")
                         row_text.append("")
                         continue
                     
-                    # 转换�?numpy 数组
+                    # 转换一numpy 数组
                     cell_array = np.array(cell_image)
                     if cell_array.size == 0:
                         AppLogger.get_logger().warning("Empty cell array")
                         row_text.append("")
                         continue
                     
-                    # 确保图像格式正确（RGB -> BGR for OpenCV�?
+                    # 确保图像格式正确（RGB -> BGR for OpenCV！
                     if len(cell_array.shape) == 3 and cell_array.shape[2] == 3:
                         # 确保图像尺寸合理
                         if cell_array.shape[0] < 10 or cell_array.shape[1] < 10:
@@ -2034,7 +2034,7 @@ class TableExtractionPipeline():
             data[idx] = row_text
             AppLogger.get_logger().info(f"Row {idx} OCR: {row_text}")
 
-        # 调试信息已移�?
+        # 调试信息已移陀
         for row, row_data in data.copy().items():
             if len(row_data) != max_num_columns:
                 row_data = row_data + ["" for _ in range(max_num_columns - len(row_data))]
@@ -2045,18 +2045,18 @@ class TableExtractionPipeline():
 
 
     def _ocr_cell_improved(self, cell_img, models):
-        """改进的OCR方法，使用更宽松的配�?""
+        """改进的OCR方法，使用更宽松的配罀"""
         try:
             import pytesseract
             
             # 尝试多种PSM模式
-            psm_modes = [6, 8, 13]  # 6: 统一文本�? 8: 单词, 13: 原始�?
+            psm_modes = [6, 8, 13]  # 6: 统一文本址 8: 单词, 13: 原始行
             best_text = ""
             best_confidence = 0.0
             
             for psm in psm_modes:
                 try:
-                    # 使用不同的配�?
+                    # 使用不同的配罀
                     config = f'--psm {psm} -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,;:!?()[]{{}}/\\|-_=+*&%$#@~`"\''
                     
                     ocr_data = pytesseract.image_to_data(
@@ -2071,7 +2071,7 @@ class TableExtractionPipeline():
                     confidences = []
                     for i, word in enumerate(ocr_data['text']):
                         conf = ocr_data['conf'][i]
-                        if word.strip() and conf > 0:  # 降低置信度阈�?
+                        if word.strip() and conf > 0:  # 降低置信度阈倀
                             words.append(word.strip())
                             confidences.append(conf)
                     
@@ -2088,12 +2088,12 @@ class TableExtractionPipeline():
                     AppLogger.get_logger().debug(f"PSM {psm} failed: {str(e)}")
                     continue
             
-            # 如果所有PSM都失败，尝试简单模�?
+            # 如果所有PSM都失败，尝试简单模开
             if not best_text:
                 try:
                     text = pytesseract.image_to_string(cell_img, lang='eng', config='--psm 6')
                     best_text = text.strip()
-                    best_confidence = 0.5  # 默认置信�?
+                    best_confidence = 0.5  # 默认置信庀
                 except:
                     pass
             
@@ -2114,7 +2114,7 @@ class TableExtractionPipeline():
                 df[col] = df[col].str.replace("'", '', regex=True)
                 df[col] = df[col].str.replace('"', '', regex=True)
                 df[col] = df[col].str.replace(r'\\]', '', regex=True)
-                df[col] = df[col].str.replace(r'\\\[', '', regex=True)  # 修复正则表达式：转义方括�?
+                df[col] = df[col].str.replace(r'\\\[', '', regex=True)  # 修复正则表达式：转义方括又
                 df[col] = df[col].str.replace('{', '', regex=True)
                 df[col] = df[col].str.replace('}', '', regex=True)
                 
@@ -2144,15 +2144,15 @@ class TableExtractionPipeline():
         headers = cells_pytess_result[:max_cols]
         cells_list = cells_pytess_result[max_cols:]
         
-        # 处理OCR结果中的tuple格式�?text, confidence)
+        # 处理OCR结果中的tuple格式！text, confidence)
         def extract_text_from_ocr_result(ocr_result):
-            """从OCR结果中提取文本内�?""
+            """从OCR结果中提取文本内定"""
             if isinstance(ocr_result, tuple) and len(ocr_result) == 2:
-                # 如果是tuple格式 (text, confidence)，提取文本部�?
+                # 如果是tuple格式 (text, confidence)，提取文本部分
                 text, confidence = ocr_result
                 return str(text) if text is not None else ""
             elif isinstance(ocr_result, str):
-                # 如果已经是字符串，直接返�?
+                # 如果已经是字符串，直接返国
                 return ocr_result
             else:
                 # 其他情况转换为字符串
@@ -2168,10 +2168,10 @@ class TableExtractionPipeline():
                 cleaned_text = f'Column_{len(processed_headers) + 1}'
             processed_headers.append(cleaned_text)
         
-        # 使用uniquify处理重复的列�?
+        # 使用uniquify处理重复的列后
         new_headers = TableParserUtils.uniquify(processed_headers, (f' {x!s}' for x in string.ascii_lowercase))
         
-        # 处理cells：提取文本内�?
+        # 处理cells：提取文本内定
         processed_cells = []
         for cell in cells_list:
             text = extract_text_from_ocr_result(cell)
@@ -2188,11 +2188,11 @@ class TableExtractionPipeline():
         
         # 创建DataFrame - 使用更安全的方法
         try:
-            # 确保列数不超过实际数�?
+            # 确保列数不超过实际数捀
             actual_cols = min(max_cols, len(new_headers))
             actual_rows = max_rows
             
-            # 如果数据不足，调整行�?
+            # 如果数据不足，调整行敀
             if len(processed_cells) < actual_cols * actual_rows:
                 actual_rows = (len(processed_cells) + actual_cols - 1) // actual_cols  # 向上取整
             
@@ -2225,7 +2225,7 @@ class TableExtractionPipeline():
         
         df = self.clean_dataframe(df)
         
-        # 如果提供了特殊标签信息，创建增强的返回格�?
+        # 如果提供了特殊标签信息，创建增强的返回格开
         if special_labels:
             return {
                 'data': df.to_dict('records'),
@@ -2251,14 +2251,14 @@ class TableExtractionPipeline():
     
 
     def box_cxcywh_to_xyxy(self, x):
-        """将边界框�?(center_x, center_y, width, height) 格式转换�?(x1, y1, x2, y2) 格式"""
+        """将边界框从(center_x, center_y, width, height) 格式转换一(x1, y1, x2, y2) 格式"""
         x_c, y_c, w, h = x.unbind(-1)
         b = [(x_c - 0.5 * w), (y_c - 0.5 * h), (x_c + 0.5 * w), (y_c + 0.5 * h)]
         return torch.stack(b, dim=1)
 
 
     def rescale_bboxes(self, out_bbox, size):
-        """将边界框缩放到原始图像尺�?""
+        """将边界框缩放到原始图像尺对"""
         img_w, img_h = size
         b = self.box_cxcywh_to_xyxy(out_bbox)
         AppLogger.get_logger().debug(f"Before scaling - bbox shape: {b.shape}, img_size: {size}")
@@ -2269,7 +2269,7 @@ class TableExtractionPipeline():
 
 
     def outputs_to_objects(self, outputs, img_size, id2label):
-        """将模型输出转换为对象列表，参�?TestTransformer.py 的实�?""
+        """将模型输出转换为对象列表，参者TestTransformer.py 的实玀"""
         # Add "no object" to id2label if not present
         if len(id2label) not in id2label:
             id2label[len(id2label)] = "no object"
@@ -2328,7 +2328,7 @@ class TableParserUtils:
             except KeyError:
                 continue
             else:
-                # 处理tuple类型的情�?
+                # 处理tuple类型的情军
                 if isinstance(seq[idx], tuple):
                     seq[idx] = seq[idx] + (suffix,)
                 else:

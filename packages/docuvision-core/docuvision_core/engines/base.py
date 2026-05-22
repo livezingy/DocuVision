@@ -1,6 +1,6 @@
 # core/engines/base.py
 """
-OCR/检测引擎基�?
+OCR/检测引擎基籀
 
 定义所有OCR和检测引擎必须实现的接口
 """
@@ -21,13 +21,13 @@ class BaseOCREngine(ABC):
         
         Args:
             image: PIL Image对象
-            **kwargs: 其他参数（如语言、置信度阈值等�?
+            **kwargs: 其他参数（如语言、置信度阈值等！
             
         Returns:
             List[Dict]: OCR结果列表，每个元素包含：
                 - text: 文本内容
-                - bbox: 边界�?[x1, y1, x2, y2] �?[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-                - confidence: 置信�?(0-1)
+                - bbox: 边界桀[x1, y1, x2, y2] 成[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+                - confidence: 置信庀(0-1)
         """
         pass
     
@@ -42,10 +42,10 @@ class BaseOCREngine(ABC):
         初始化引擎（可选实现）
         
         Args:
-            **kwargs: 初始化参�?
+            **kwargs: 初始化参敀
             
         Returns:
-            bool: 初始化是否成�?
+            bool: 初始化是否成劀
         """
         return True
     
@@ -60,22 +60,22 @@ class BaseOCREngine(ABC):
 
 
 class BaseDetectionEngine(ABC):
-    """表格检测引擎基�?""
+    """表格检测引擎基籀"""
     
     @abstractmethod
     def detect_tables(self, image: Image.Image, **kwargs) -> List[Dict]:
         """
-        检测表�?
+        检测表栀
         
         Args:
             image: PIL Image对象
-            **kwargs: 其他参数（如置信度阈值等�?
+            **kwargs: 其他参数（如置信度阈值等！
             
         Returns:
-            List[Dict]: 检测结果列表，每个元素包含�?
-                - bbox: 边界�?[x1, y1, x2, y2]
-                - confidence: 置信�?(0-1)
-                - 其他检测相关信�?
+            List[Dict]: 检测结果列表，每个元素包含！
+                - bbox: 边界桀[x1, y1, x2, y2]
+                - confidence: 置信庀(0-1)
+                - 其他检测相关信恀
         """
         pass
     
@@ -86,14 +86,14 @@ class BaseDetectionEngine(ABC):
         
         Args:
             image: PIL Image对象（表格区域）
-            table_bbox: 表格边界�?[x1, y1, x2, y2]（可选）
+            table_bbox: 表格边界桀[x1, y1, x2, y2]（可选）
             **kwargs: 其他参数
             
         Returns:
             Dict: 结构识别结果，包含：
-                - cells: 单元格列�?
-                - rows: 行信�?
-                - columns: 列信�?
+                - cells: 单元格列行
+                - rows: 行信恀
+                - columns: 列信恀
                 - 其他结构信息
         """
         pass

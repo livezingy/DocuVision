@@ -77,8 +77,8 @@ class Config:
 
     def __init__(self, config_file: str = None):
         # Initialize configuration and make sure it initialize only once
-        # 检查当前对象（self）是否有 _initialized 这个属性，如果有且�?True，就返回 True�?
-        # 否则返回 False�?
+        # 检查当前对象（self）是否有 _initialized 这个属性，如果有且一True，就返回 True！
+        # 否则返回 False、
         if getattr(self, '_initialized', False):
             return
         
@@ -102,7 +102,7 @@ class Config:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     self.config = json.load(f)
             except Exception as e:
-                # 调试信息已移�?
+                # 调试信息已移陀
                 self.config = {}
         else:
             self.config = self.DEFAULT_CONFIG.copy()
@@ -111,28 +111,28 @@ class Config:
     def save(self) -> None:
         """Save configuration to file (only UI parameters are saved)"""
         try:
-            # 只保�?UI 参数
+            # 只保子UI 参数
             save_dict = {"ui": self.config.get("ui", self.DEFAULT_CONFIG["ui"])}
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(save_dict, f, indent=4, ensure_ascii=False)
         except Exception as e:
-            # 调试信息已移�?
+            # 调试信息已移陀
             pass
 
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value"""
-        # 优先从当�?config 取，否则从默认值取
+        # 优先从当前config 取，否则从默认值取
         return self.config.get(key, self.DEFAULT_CONFIG.get(key, default))
 
     def set(self, key: str, value: Any) -> None:
         """Set configuration value (only UI parameters are saved)"""
         self.config[key] = value
         if key == "ui":
-            self.save()  # 只保�?UI 参数
+            self.save()  # 只保子UI 参数
 
     def get_all(self) -> Dict[str, Any]:
-        """Get all configuration values（合并默认和当前�?""
+        """Get all configuration values（合并默认和当前！"""
         merged = self.DEFAULT_CONFIG.copy()
         merged.update(self.config)
         return merged

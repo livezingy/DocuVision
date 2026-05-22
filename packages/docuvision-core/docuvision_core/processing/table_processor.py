@@ -1,11 +1,11 @@
 # core/processing/table_processor.py
 """
-架构�?
+架构！
 - 使用新的模块化设计：
   * page_feature_analyzer.py - 特征分析
   * table_type_classifier.py - 类型判断
   * table_params_calculator.py - 参数计算
-- PageFeatureAnalyzer作为适配器保持向后兼�?
+- PageFeatureAnalyzer作为适配器保持向后兼定
 - TableProcessor负责流程编排
 
 """
@@ -18,26 +18,26 @@ import numpy as np
 import pandas as pd
 import pdfplumber
 # 延迟导入camelot，避免在Streamlit Cloud等环境中导入时因系统依赖问题导致应用启动失败
-# camelot只在extract_camelot_*方法中使用时才导�?
+# camelot只在extract_camelot_*方法中使用时才导公
 
 from docuvision_core.utils.logger import AppLogger
 # 延迟导入TableModels，避免在Streamlit中触发torch相关的asyncio事件循环问题
-# TableModels只在需要Transformer功能时才导入，Streamlit中通常不需�?
+# TableModels只在需要Transformer功能时才导入，Streamlit中通常不需要
 # 延迟导入：在函数内部按需导入
 from docuvision_core.processing.table_evaluator import TableEvaluator, PDFPlumberTableWrapper
 
-# 导入新的模块化组�?
+# 导入新的模块化组从
 from docuvision_core.processing.page_feature_analyzer import PageFeatureAnalyzer as FeatureAnalyzer
 from docuvision_core.processing.table_type_classifier import TableTypeClassifier
 from docuvision_core.processing.table_params_calculator import TableParamsCalculator
 
-# 导入提取器工�?
+# 导入提取器工去
 from docuvision_core.extractors.factory import ExtractorFactory
 
 
 class PageFeatureAnalyzer:
     """
-    页面特征分析�?- 适配器类（向后兼容）
+    页面特征分析噀- 适配器类（向后兼容）
     
     这个类作为适配器，内部使用新的模块化组件：
     - FeatureAnalyzer: 特征提取
@@ -49,21 +49,21 @@ class PageFeatureAnalyzer:
     
     def __init__(self, page, enable_logging=True):
         """
-        初始化适配�?
+        初始化适配噀
         
         Args:
             page: pdfplumber.Page对象
-            enable_logging: 是否输出详细的页面元素调试信息（默认True�?
+            enable_logging: 是否输出详细的页面元素调试信息（默认True！
         """
         self.page = page
         self.logger = AppLogger.get_logger()
         
-        # 初始化新的模块化组件（传递enable_logging参数�?
+        # 初始化新的模块化组件（传递enable_logging参数！
         self._feature_analyzer = FeatureAnalyzer(page, enable_logging=enable_logging)
         self._classifier = TableTypeClassifier(self._feature_analyzer, page)
         self._calculator = TableParamsCalculator(self._feature_analyzer)
     
-    # ===== 代理属性访�?=====
+    # ===== 代理属性访闀=====
     
     @property
     def char_analysis(self) -> dict:
@@ -92,7 +92,7 @@ class PageFeatureAnalyzer:
         代理到TableTypeClassifier的predict_table_type
         
         Returns:
-            'bordered' �?'unbordered'
+            'bordered' 成'unbordered'
         """
         return self._classifier.predict_table_type()
     
@@ -101,7 +101,7 @@ class PageFeatureAnalyzer:
         代理到TableParamsCalculator的get_pdfplumber_params
         
         Args:
-            table_type: 'bordered' �?'unbordered'
+            table_type: 'bordered' 成'unbordered'
             
         Returns:
             pdfplumber参数字典
@@ -113,7 +113,7 @@ class PageFeatureAnalyzer:
         代理到TableParamsCalculator的get_camelot_lattice_params
         
         Args:
-            image_shape: 图像尺寸，可�?
+            image_shape: 图像尺寸，可退
             
         Returns:
             Camelot lattice参数字典
@@ -132,13 +132,13 @@ class PageFeatureAnalyzer:
 
 class TableProcessor:
     """
-    表格处理器（流程编排�?
+    表格处理器（流程编排！
     
-    职责�?
+    职责！
     - 编排整体处理流程
     - 调用特征分析器、分类器、参数计算器
-    - 执行实际的表格提取（pdfplumber/Camelot�?
-    - 结果评分和筛�?
+    - 执行实际的表格提取（pdfplumber/Camelot！
+    - 结果评分和筛退
     """
     
     def __init__(self, params: Optional[Dict] = None):
@@ -149,7 +149,7 @@ class TableProcessor:
 
     def process_pdf_page(self, pdf_path, page):
         """
-        处理PDF页面（主入口�?
+        处理PDF页面（主入口！
         
         Args:
             pdf_path: PDF文件路径
@@ -172,7 +172,7 @@ class TableProcessor:
         # #endregion
         
         try:
-            # 参数有效性检�?
+            # 参数有效性检柀
             if not page:
                 self.logger.error("Page object is None")
                 return []
@@ -181,14 +181,14 @@ class TableProcessor:
                 self.logger.error(f"Invalid pdf_path: {pdf_path}")
                 return []
 
-            # 初始化页面特征分析器（适配器，禁用详细日志避免重复输出�?
+            # 初始化页面特征分析器（适配器，禁用详细日志避免重复输出！
             try:
                 feature_analyzer = PageFeatureAnalyzer(page, enable_logging=False)
             except Exception as e:
                 self.logger.error(f"Failed to initialize PageFeatureAnalyzer: {e}")
                 return []
             
-            # 获取处理方法和参�?
+            # 获取处理方法和参敀
             method = self.params.get("table_method", "mixed").lower()
             if method not in ['camelot', 'pdfplumber', 'mixed']:
                 self.logger.error(f"Invalid table_method: {method}. Must be one of: camelot, pdfplumber, mixed")
@@ -218,7 +218,7 @@ class TableProcessor:
             )
             # #endregion
             
-            # 获取预测的表格类�?
+            # 获取预测的表格类垀
             try:
                 predicted_table_type = feature_analyzer.predict_table_type()
                 
@@ -260,15 +260,15 @@ class TableProcessor:
                     self.logger.error(f"Failed to set flavor: {e}")
                     return []
             else:
-                # 检查用户手动设置的flavor是否与预测类型匹�?
+                # 检查用户手动设置的flavor是否与预测类型匹酀
                 is_mismatch = False
                 if method == "pdfplumber":
-                    # pdfplumber: "lines"对应"bordered"�?text"对应"unbordered"
+                    # pdfplumber: "lines"对应"bordered"！text"对应"unbordered"
                     if (flavor == "lines" and predicted_table_type != "bordered") or \
                        (flavor == "text" and predicted_table_type != "unbordered"):
                         is_mismatch = True
                 elif method == "camelot":
-                    # camelot: "lattice"对应"bordered"�?stream"对应"unbordered"
+                    # camelot: "lattice"对应"bordered"！stream"对应"unbordered"
                     if (flavor == "lattice" and predicted_table_type != "bordered") or \
                        (flavor == "stream" and predicted_table_type != "unbordered"):
                         is_mismatch = True
@@ -297,7 +297,7 @@ class TableProcessor:
                         suggested_flavor = "auto"
                     
                     self.logger.warning(
-                        f"[TableProcessor] ⚠️ Flavor设置与预测类型不匹配�?
+                        f"[TableProcessor] ⚠️ Flavor设置与预测类型不匹配！
                         f" 预测类型: {predicted_table_type}, 设置的Flavor: {flavor}, "
                         f"建议Flavor: {suggested_flavor} (页面 {page_num})"
                     )
@@ -406,7 +406,7 @@ class TableProcessor:
             self.logger.error(f"Failed to create extractors: {e}")
             return []
         
-        # 第一轮：pdfplumber检�?
+        # 第一轮：pdfplumber检浀
         pdfplumber_params_lines = {
             'flavor': 'lines',
             'param_mode': self.params.get('pdfplumber_param_mode', 'auto'),
@@ -424,11 +424,11 @@ class TableProcessor:
         pdfplumber_text = pdfplumber_extractor.extract_tables(page, feature_analyzer, pdfplumber_params_text)
         all_pdfplumber = pdfplumber_lines + pdfplumber_text
         
-        # 获取高分区域用于camelot精细�?
+        # 获取高分区域用于camelot精细匀
         high_score_bboxes = [r["bbox"] for r in all_pdfplumber if r["score"] > 0.7 and r["bbox"] is not None]
         page_num = getattr(page, "page_number", 1)
         
-        # 第二轮：camelot精细�?
+        # 第二轮：camelot精细匀
         camelot_results = []
         if high_score_bboxes:
             table_type = feature_analyzer.predict_table_type()
@@ -444,7 +444,7 @@ class TableProcessor:
             }
             camelot_results = camelot_extractor.extract_tables(page, feature_analyzer, camelot_params)
         
-        # 合并和去�?
+        # 合并和去里
         all_results = all_pdfplumber + camelot_results
         unique_tables = {}
         for item in all_results:
@@ -537,7 +537,7 @@ class TableProcessor:
     def extract_camelot_lattice(self, pdf_path, page_num, page, feature_analyzer=None, table_areas=None) -> list:
         """使用Camelot lattice模式提取表格"""
         # 延迟导入camelot，避免在模块导入时因系统依赖问题导致应用启动失败
-        # 在导入camelot之前设置环境变量，避免在无头环境中加载OpenGL�?
+        # 在导入camelot之前设置环境变量，避免在无头环境中加载OpenGL庀
         import os
         os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
         os.environ.setdefault('DISPLAY', '')
@@ -550,7 +550,7 @@ class TableProcessor:
             self.logger.error(f"Failed to import camelot: {e}. Camelot may not be available in this environment.")
             return []
         except Exception as e:
-            # libGL.so.1错误通常是警告性的，camelot在headless模式下仍可使�?
+            # libGL.so.1错误通常是警告性的，camelot在headless模式下仍可使生
             error_str = str(e).lower()
             if 'libgl' in error_str or 'opengl' in error_str or 'libgl.so' in error_str:
                 self.logger.warning(f"Camelot import warning (libGL/OpenGL): {e}. Attempting to continue...")
@@ -622,7 +622,7 @@ class TableProcessor:
     def extract_camelot_stream(self, pdf_path, page_num, page, feature_analyzer=None, table_areas=None) -> list:
         """使用Camelot stream模式提取表格"""
         # 延迟导入camelot，避免在模块导入时因系统依赖问题导致应用启动失败
-        # 在导入camelot之前设置环境变量，避免在无头环境中加载OpenGL�?
+        # 在导入camelot之前设置环境变量，避免在无头环境中加载OpenGL庀
         import os
         os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
         os.environ.setdefault('DISPLAY', '')
@@ -635,7 +635,7 @@ class TableProcessor:
             self.logger.error(f"Failed to import camelot: {e}. Camelot may not be available in this environment.")
             return []
         except Exception as e:
-            # libGL.so.1错误通常是警告性的，camelot在headless模式下仍可使�?
+            # libGL.so.1错误通常是警告性的，camelot在headless模式下仍可使生
             error_str = str(e).lower()
             if 'libgl' in error_str or 'opengl' in error_str or 'libgl.so' in error_str:
                 self.logger.warning(f"Camelot import warning (libGL/OpenGL): {e}. Attempting to continue...")

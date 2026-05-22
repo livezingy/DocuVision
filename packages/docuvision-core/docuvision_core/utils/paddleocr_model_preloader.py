@@ -1,8 +1,8 @@
 # core/utils/paddleocr_model_preloader.py
 """
-PaddleOCR模型预加载工�?
+PaddleOCR模型预加载工公
 
-在应用启动时预下载PaddleOCR模型，避免在用户使用时下载导致超�?
+在应用启动时预下载PaddleOCR模型，避免在用户使用时下载导致超日
 """
 
 import os
@@ -39,7 +39,7 @@ class PaddleOCRModelPreloader:
             bool: 是否成功启动预加载（不表示加载完成）
         """
         if self._preload_started:
-            self.logger.info("PaddleOCR模型预加载已启动，跳过重复启�?)
+            self.logger.info("PaddleOCR模型预加载已启动，跳过重复启劀)
             return True
         
         with self._lock:
@@ -49,17 +49,17 @@ class PaddleOCRModelPreloader:
             self._preload_started = True
             
             if background:
-                # 在后台线程中预加�?
+                # 在后台线程中预加轀
                 thread = threading.Thread(
                     target=self._preload_models_worker,
                     daemon=True,
                     name="PaddleOCRModelPreloader"
                 )
                 thread.start()
-                self.logger.info("PaddleOCR模型预加载已在后台启�?)
+                self.logger.info("PaddleOCR模型预加载已在后台启劀)
                 return True
             else:
-                # 同步预加�?
+                # 同步预加轀
                 return self._preload_models_worker()
     
     def _preload_models_worker(self) -> bool:
@@ -72,7 +72,7 @@ class PaddleOCRModelPreloader:
                 from paddleocr import PPStructureV3
                 ppstructure_v3_available = True
             except ImportError:
-                self.logger.info("PPStructureV3不可用，跳过预加�?)
+                self.logger.info("PPStructureV3不可用，跳过预加轀)
                 self._preload_completed = True
                 return True
             
@@ -80,21 +80,21 @@ class PaddleOCRModelPreloader:
                 self._preload_completed = True
                 return True
             
-            # 使用最小化配置预加载模�?
-            # 只启用表格识别，禁用其他功能以减少模型下�?
+            # 使用最小化配置预加载模垀
+            # 只启用表格识别，禁用其他功能以减少模型下轀
             try:
-                self.logger.info("正在初始化PPStructureV3（最小化配置）以预下载模�?..")
+                self.logger.info("正在初始化PPStructureV3（最小化配置）以预下载模垀..")
                 structure_engine = PPStructureV3(
                     use_doc_orientation_classify=False,  # 禁用文档方向分类
                     use_doc_unwarping=False,  # 禁用文档矫正
-                    use_textline_orientation=False,  # 禁用文本行方�?
+                    use_textline_orientation=False,  # 禁用文本行方后
                     use_seal_recognition=False,  # 禁用印章识别
                     use_formula_recognition=False,  # 禁用公式识别
                     use_chart_recognition=False,  # 禁用图表识别
-                    use_region_detection=False,  # 禁用区域检�?
-                    use_table_recognition=True  # 只启用表格识�?
+                    use_region_detection=False,  # 禁用区域检浀
+                    use_table_recognition=True  # 只启用表格识分
                 )
-                self.logger.info("�?PaddleOCR模型预加载完�?)
+                self.logger.info("✀PaddleOCR模型预加载完成)
                 self._preload_completed = True
                 return True
                 
@@ -106,7 +106,7 @@ class PaddleOCRModelPreloader:
                     self._preload_completed = True
                     return False
                 else:
-                    self.logger.error(f"PaddleOCR模型预加载失�? {e}")
+                    self.logger.error(f"PaddleOCR模型预加载失贀 {e}")
                     self._preload_error = e
                     self._preload_completed = True
                     return False
@@ -133,32 +133,32 @@ class PaddleOCRModelPreloader:
             bool: 模型文件是否存在
         """
         try:
-            # PaddleX模型通常保存�?~/.paddlex/official_models/ 目录�?
-            # 在Streamlit Cloud中，路径�?/home/appuser/.paddlex/official_models/
+            # PaddleX模型通常保存在~/.paddlex/official_models/ 目录一
+            # 在Streamlit Cloud中，路径是/home/appuser/.paddlex/official_models/
             home_dir = os.path.expanduser("~")
             paddlex_models_dir = os.path.join(home_dir, ".paddlex", "official_models")
             
             if not os.path.exists(paddlex_models_dir):
-                self.logger.info(f"PaddleOCR模型目录不存�? {paddlex_models_dir}")
+                self.logger.info(f"PaddleOCR模型目录不存在 {paddlex_models_dir}")
                 return False
             
-            # 检查一些关键模型目录是否存�?
-            # 表格相关的核心模型（最小化配置需要的模型�?
+            # 检查一些关键模型目录是否存在
+            # 表格相关的核心模型（最小化配置需要的模型！
             table_models = [
                 "PP-LCNet_x1_0_table_cls",  # 表格分类
                 "SLANeXt_wired",  # 有线表格结构识别
                 "SLANet_plus",  # 无线表格结构识别
-                "RT-DETR-L_wired_table_cell_det",  # 有线表格单元格检�?
-                "RT-DETR-L_wireless_table_cell_det",  # 无线表格单元格检�?
+                "RT-DETR-L_wired_table_cell_det",  # 有线表格单元格检浀
+                "RT-DETR-L_wireless_table_cell_det",  # 无线表格单元格检浀
             ]
             
-            # OCR相关的核心模�?
+            # OCR相关的核心模垀
             ocr_models = [
-                "PP-OCRv5_server_det",  # 文本检�?
+                "PP-OCRv5_server_det",  # 文本检浀
                 "PP-OCRv5_server_rec",  # 文本识别
             ]
             
-            # 布局相关的核心模�?
+            # 布局相关的核心模垀
             layout_models = [
                 "PP-DocBlockLayout",  # 文档块布局
                 "PP-DocLayout_plus-L",  # 文档布局增强
@@ -166,12 +166,12 @@ class PaddleOCRModelPreloader:
             
             all_models = table_models + ocr_models + layout_models
             
-            # 检查至少有一些模型存�?
+            # 检查至少有一些模型存在
             existing_models = []
             for model_name in all_models:
                 model_dir = os.path.join(paddlex_models_dir, model_name)
                 if os.path.exists(model_dir):
-                    # 进一步检查模型目录中是否有文�?
+                    # 进一步检查模型目录中是否有文从
                     if os.path.isdir(model_dir) and os.listdir(model_dir):
                         existing_models.append(model_name)
             
@@ -183,7 +183,7 @@ class PaddleOCRModelPreloader:
             has_ocr_models = any(m in existing_models for m in required_ocr_models)
             
             if has_table_models and has_ocr_models and len(existing_models) >= 5:
-                self.logger.info(f"�?检测到已存在的PaddleOCR模型: {len(existing_models)}个核心模�?)
+                self.logger.info(f"✀检测到已存在的PaddleOCR模型: {len(existing_models)}个核心模垀)
                 return True
             else:
                 self.logger.info(f"⚠️ 检测到部分PaddleOCR模型: {len(existing_models)}个，需要预加载")
@@ -197,13 +197,13 @@ class PaddleOCRModelPreloader:
 
 def preload_paddleocr_models(background: bool = True) -> bool:
     """
-    预加载PaddleOCR模型的便捷函�?
+    预加载PaddleOCR模型的便捷函敀
     
     Args:
         background: 是否在后台线程中加载
         
     Returns:
-        bool: 是否成功启动预加�?
+        bool: 是否成功启动预加轀
     """
     preloader = PaddleOCRModelPreloader()
     return preloader.preload_models(background=background)

@@ -34,7 +34,7 @@ class EasyOCREngine(BaseOCREngine):
         self._initialized = False
     
     def _get_config(self):
-        """懒加载配�?""
+        """懒加载配罀"""
         if self._config is None:
             self._config = get_easyocr_config()
         return self._config
@@ -46,15 +46,15 @@ class EasyOCREngine(BaseOCREngine):
     
     def initialize(self, **kwargs) -> bool:
         """
-        初始化引�?
+        初始化引擀
         
         Args:
-            **kwargs: 初始化参�?
+            **kwargs: 初始化参敀
                 - languages: 语言列表
                 - gpu: 是否使用GPU
                 
         Returns:
-            bool: 初始化是否成�?
+            bool: 初始化是否成劀
         """
         if self._initialized and self._reader is not None:
             return True
@@ -63,7 +63,7 @@ class EasyOCREngine(BaseOCREngine):
             languages = kwargs.get('languages', self.languages)
             gpu = kwargs.get('gpu', self.gpu)
             
-            # 确保配置已加�?
+            # 确保配置已加轀
             self._get_config()
             
             self._reader = get_easyocr_reader(languages, gpu)
@@ -82,13 +82,13 @@ class EasyOCREngine(BaseOCREngine):
             image: PIL Image对象
             **kwargs: 其他参数
                 - languages: 语言列表（可选，覆盖初始化时的设置）
-                - min_confidence: 最小置信度阈值（默认0.0�?
+                - min_confidence: 最小置信度阈值（默认0.0！
                 
         Returns:
             List[Dict]: OCR结果列表，每个元素包含：
                 - text: 文本内容
-                - bbox: 边界�?[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-                - confidence: 置信�?(0-1)
+                - bbox: 边界桀[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+                - confidence: 置信庀(0-1)
         """
         if not self._initialized:
             if not self.initialize():
@@ -149,7 +149,7 @@ class EasyOCREngine(BaseOCREngine):
     
     def is_available(self) -> bool:
         """
-        检查引擎是否可�?
+        检查引擎是否可生
         
         Returns:
             bool: 引擎是否可用
@@ -162,11 +162,11 @@ class EasyOCREngine(BaseOCREngine):
     
     def recognize_text_in_region(self, image: Image.Image, bbox: List, **kwargs) -> List[Dict]:
         """
-        识别指定区域的文�?
+        识别指定区域的文有
         
         Args:
             image: PIL Image对象
-            bbox: 区域边界�?[x1, y1, x2, y2]
+            bbox: 区域边界桀[x1, y1, x2, y2]
             **kwargs: 其他参数
             
         Returns:

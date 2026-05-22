@@ -1,6 +1,6 @@
 # core/extractors/pdfplumber_extractor.py
 """
-PDFPlumber表格提取�?
+PDFPlumber表格提取噀
 
 封装PDFPlumber的lines和text模式表格提取功能
 """
@@ -13,11 +13,11 @@ from docuvision_core.utils.logger import AppLogger
 
 
 class PDFPlumberExtractor(BaseExtractor):
-    """PDFPlumber表格提取�?""
+    """PDFPlumber表格提取噀"""
     
     def __init__(self, **kwargs):
         """
-        初始化PDFPlumber提取�?
+        初始化PDFPlumber提取噀
         
         Args:
             **kwargs: 其他参数（预留）
@@ -26,7 +26,7 @@ class PDFPlumberExtractor(BaseExtractor):
     
     @property
     def name(self) -> str:
-        """提取器名�?""
+        """提取器名秀"""
         return "pdfplumber"
     
     @property
@@ -40,7 +40,7 @@ class PDFPlumberExtractor(BaseExtractor):
         
         Args:
             feature_analyzer: PageFeatureAnalyzer实例
-            table_type: 'bordered' �?'unbordered'
+            table_type: 'bordered' 成'unbordered'
             **kwargs: 其他参数（预留）
                 
         Returns:
@@ -59,10 +59,10 @@ class PDFPlumberExtractor(BaseExtractor):
             page: pdfplumber.Page对象
             feature_analyzer: PageFeatureAnalyzer实例
             params: 参数字典，包含：
-                - flavor: 'lines' �?'text'（可选，自动选择�?
+                - flavor: 'lines' 成'text'（可选，自动选择！
                 - param_mode: 'default', 'auto', 'custom'
                 - custom_params: 自定义参数（当param_mode='custom'时）
-                - score_threshold: 评分阈�?
+                - score_threshold: 评分阈倀
                 
         Returns:
             List[Dict]: 表格结果列表

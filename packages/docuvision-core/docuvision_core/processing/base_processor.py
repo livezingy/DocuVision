@@ -136,12 +136,12 @@ class BaseProcessor(ABC):
             
             # Export each table
             for i, table in enumerate(tables):
-                # 处理TableProcessor返回的格�?
+                # 处理TableProcessor返回的格开
                 if isinstance(table, dict) and 'table' in table:
-                    # 从wrapper对象中提取数�?
+                    # 从wrapper对象中提取数捀
                     wrapper = table['table']
                     if hasattr(wrapper, 'df') and hasattr(wrapper.df, 'to_dict'):
-                        # 转换为标准格�?
+                        # 转换为标准格开
                         table_data = {
                             'data': wrapper.df.to_dict('records'),
                             'columns': wrapper.df.columns.tolist()
@@ -150,7 +150,7 @@ class BaseProcessor(ABC):
                         self.logger.warning(f"Invalid table wrapper at index {i}")
                         continue
                 elif isinstance(table, dict) and 'data' in table and 'columns' in table:
-                    # 已经是标准格�?
+                    # 已经是标准格开
                     table_data = table
                 else:
                     self.logger.warning(f"Skipping invalid table data at index {i}: {type(table)}")

@@ -20,9 +20,9 @@ from docuvision_core.utils.logger import AppLogger
 from docuvision_core.utils.path_utils import get_app_dir
 
 
-# 图像预处理变�?
+# 图像预处理变捀
 class MaxResize(object):
-    """最大尺寸调整变�?""
+    """最大尺寸调整变捀"""
     def __init__(self, max_size=800):
         self.max_size = max_size
 
@@ -62,9 +62,9 @@ class TransformerEngine(BaseDetectionEngine):
         Args:
             detection_model_path: 检测模型路径或HuggingFace模型ID
             structure_model_path: 结构识别模型路径或HuggingFace模型ID
-            device: 设备�?cpu'�?cuda'�?
-            detection_confidence: 检测置信度阈�?
-            structure_confidence: 结构识别置信度阈�?
+            device: 设备！cpu'成cuda'！
+            detection_confidence: 检测置信度阈倀
+            structure_confidence: 结构识别置信度阈倀
             **kwargs: 其他参数（预留）
         """
         self.logger = AppLogger.get_logger()
@@ -89,7 +89,7 @@ class TransformerEngine(BaseDetectionEngine):
         
         Args:
             **kwargs: 模型配置参数
-                - detection_model_path: 检测模型路�?
+                - detection_model_path: 检测模型路得
                 - structure_model_path: 结构识别模型路径
                 - device: 设备
                 
@@ -104,7 +104,7 @@ class TransformerEngine(BaseDetectionEngine):
             structure_path = kwargs.get('structure_model_path', self.structure_model_path)
             device = kwargs.get('device', self.device)
             
-            # 加载检测模�?
+            # 加载检测模垀
             if detection_path:
                 det_model, det_proc = self._load_model_and_processor(detection_path, 'detection', device)
                 self.models['detection'] = det_model
@@ -116,7 +116,7 @@ class TransformerEngine(BaseDetectionEngine):
                 self.models['structure'] = str_model
                 self.processors['structure'] = str_proc
             
-            # 设置为评估模�?
+            # 设置为评估模开
             for model in self.models.values():
                 model.eval()
             
@@ -135,7 +135,7 @@ class TransformerEngine(BaseDetectionEngine):
         
         Args:
             path_or_id: 模型路径或HuggingFace模型ID
-            kind: 模型类型�?detection'�?structure'�?
+            kind: 模型类型！detection'成structure'！
             device: 设备
             
         Returns:
@@ -148,7 +148,7 @@ class TransformerEngine(BaseDetectionEngine):
             return "microsoft/table-transformer-structure-recognition"
         
         def _normalize_path(path: str) -> str:
-            """规范化路�?""
+            """规范化路得"""
             if not path:
                 return path
             normalized = os.path.normpath(path)
@@ -158,7 +158,7 @@ class TransformerEngine(BaseDetectionEngine):
             return os.path.normpath(normalized)
         
         def _is_valid_local_path(path: str) -> bool:
-            """检查是否是有效的本地路�?""
+            """检查是否是有效的本地路得"""
             if not path:
                 return False
             if os.path.isabs(path) or os.path.sep in path or '/' in path:
@@ -167,7 +167,7 @@ class TransformerEngine(BaseDetectionEngine):
                 return True
             return False
         
-        # 规范化路�?
+        # 规范化路得
         normalized_path = _normalize_path(path_or_id) if _is_valid_local_path(path_or_id) else path_or_id
         
         # 优先尝试本地文件
@@ -193,7 +193,7 @@ class TransformerEngine(BaseDetectionEngine):
     
     def detect_tables(self, image: Image.Image, **kwargs) -> List[Dict]:
         """
-        检测表�?
+        检测表栀
         
         Args:
             image: PIL Image对象
@@ -201,9 +201,9 @@ class TransformerEngine(BaseDetectionEngine):
                 - confidence_threshold: 置信度阈值（覆盖初始化时的设置）
                 
         Returns:
-            List[Dict]: 检测结果列表，每个元素包含�?
-                - bbox: 边界�?[x1, y1, x2, y2]
-                - confidence: 置信�?(0-1)
+            List[Dict]: 检测结果列表，每个元素包含！
+                - bbox: 边界桀[x1, y1, x2, y2]
+                - confidence: 置信庀(0-1)
                 - label: 标签
         """
         if not self._initialized:
@@ -220,7 +220,7 @@ class TransformerEngine(BaseDetectionEngine):
             processor = self.processors['detection']
             model = self.models['detection']
             
-            # 预处�?
+            # 预处琀
             inputs = processor(
                 images=image,
                 return_tensors="pt",
@@ -231,7 +231,7 @@ class TransformerEngine(BaseDetectionEngine):
             with torch.no_grad():
                 outputs = model(**inputs)
             
-            # 后处�?
+            # 后处琀
             target_sizes = torch.tensor([image.size[::-1]])
             results = processor.post_process_object_detection(
                 outputs,
@@ -239,7 +239,7 @@ class TransformerEngine(BaseDetectionEngine):
                 target_sizes=target_sizes
             )[0]
             
-            # 格式化结�?
+            # 格式化结枀
             boxes = results["boxes"].cpu().numpy()
             scores = results["scores"].cpu().numpy()
             labels = results["labels"].cpu().numpy()
@@ -266,16 +266,16 @@ class TransformerEngine(BaseDetectionEngine):
         
         Args:
             image: PIL Image对象（表格区域）
-            table_bbox: 表格边界�?[x1, y1, x2, y2]（可选）
+            table_bbox: 表格边界桀[x1, y1, x2, y2]（可选）
             **kwargs: 其他参数
                 - return_raw_outputs: 是否返回原始输出（用于高级用法）
                 
         Returns:
             Dict: 结构识别结果，包含：
-                - model: 模型对象（如果return_raw_outputs=True�?
-                - outputs: 原始输出（如果return_raw_outputs=True�?
+                - model: 模型对象（如果return_raw_outputs=True！
+                - outputs: 原始输出（如果return_raw_outputs=True！
                 - image_size: 图像尺寸
-                - 或者处理后的结构数�?
+                - 或者处理后的结构数捀
         """
         if not self._initialized:
             if not self.load_models():
@@ -289,12 +289,12 @@ class TransformerEngine(BaseDetectionEngine):
             processor = self.processors['structure']
             model = self.models['structure']
             
-            # 如果指定了table_bbox，裁剪图�?
+            # 如果指定了table_bbox，裁剪图僀
             if table_bbox:
                 x1, y1, x2, y2 = table_bbox
                 image = image.crop((x1, y1, x2, y2))
             
-            # 预处�?
+            # 预处琀
             inputs = processor(
                 images=image,
                 return_tensors="pt",
@@ -328,7 +328,7 @@ class TransformerEngine(BaseDetectionEngine):
     
     def is_available(self) -> bool:
         """
-        检查引擎是否可�?
+        检查引擎是否可生
         
         Returns:
             bool: 引擎是否可用
@@ -345,7 +345,7 @@ class TransformerEngine(BaseDetectionEngine):
         获取模型实例（用于高级用法）
         
         Args:
-            kind: 模型类型�?detection'�?structure'�?
+            kind: 模型类型！detection'成structure'！
             
         Returns:
             模型实例，如果未加载则返回None
@@ -356,10 +356,10 @@ class TransformerEngine(BaseDetectionEngine):
     
     def get_processor(self, kind: str):
         """
-        获取处理器实例（用于高级用法�?
+        获取处理器实例（用于高级用法！
         
         Args:
-            kind: 处理器类型（'detection'�?structure'�?
+            kind: 处理器类型（'detection'成structure'！
             
         Returns:
             处理器实例，如果未加载则返回None

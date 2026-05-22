@@ -2,7 +2,7 @@
 """
 PaddleOCR引擎
 
-封装PaddleOCR的OCR和PP-Structure表格检测功�?
+封装PaddleOCR的OCR和PP-Structure表格检测功能
 支持文本识别、表格检测和结构识别
 """
 
@@ -13,8 +13,8 @@ from PIL import Image
 from docuvision_core.engines.base import BaseOCREngine, BaseDetectionEngine
 from docuvision_core.utils.logger import AppLogger
 
-# 设置环境变量以跳过模型源检查，加快初始化速度（特别是Streamlit Cloud环境�?
-# 这可以避免在初始化时检查模型托管服务器的连接�?
+# 设置环境变量以跳过模型源检查，加快初始化速度（特别是Streamlit Cloud环境！
+# 这可以避免在初始化时检查模型托管服务器的连接怀
 if 'DISABLE_MODEL_SOURCE_CHECK' not in os.environ:
     os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 
@@ -23,7 +23,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
     """
     PaddleOCR引擎
     
-    同时提供OCR和表格检测功�?
+    同时提供OCR和表格检测功能
     """
     
     def __init__(self, 
@@ -37,11 +37,11 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
         初始化PaddleOCR引擎
         
         Args:
-            use_angle_cls: 是否使用角度分类�?
-            lang: 语言�?ch'（中文）�?en'（英文）
+            use_angle_cls: 是否使用角度分类噀
+            lang: 语言！ch'（中文）成en'（英文）
             use_gpu: 是否使用GPU
-            enable_mkldnn: 是否启用MKLDNN加速（CPU优化�?
-            table_model_dir: 表格模型目录（PP-Structure�?
+            enable_mkldnn: 是否启用MKLDNN加速（CPU优化！
+            table_model_dir: 表格模型目录（PP-Structure！
             **kwargs: 其他参数（预留）
         """
         self.logger = AppLogger.get_logger()
@@ -67,13 +67,13 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
         初始化OCR引擎
         
         Args:
-            **kwargs: 初始化参�?
-                - use_angle_cls: 是否使用角度分类�?
+            **kwargs: 初始化参敀
+                - use_angle_cls: 是否使用角度分类噀
                 - lang: 语言
                 - use_gpu: 是否使用GPU
                 
         Returns:
-            bool: 初始化是否成�?
+            bool: 初始化是否成劀
         """
         if self._ocr_initialized and self._ocr is not None:
             return True
@@ -106,7 +106,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
     
     def load_models(self, **kwargs) -> bool:
         """
-        加载表格检测和结构识别模型（PP-Structure�?
+        加载表格检测和结构识别模型（PP-Structure！
         
         支持 PaddleOCR 3.x (PPStructureV3) 和旧版本 (PPStructure)
         
@@ -120,7 +120,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
         if self._structure_initialized and self._structure_engine is not None:
             return True
         
-        # 首先检查是否可以使�?PPStructureV3 (PaddleOCR 3.x)
+        # 首先检查是否可以使生PPStructureV3 (PaddleOCR 3.x)
         ppstructure_v3_available = False
         try:
             from paddleocr import PPStructureV3
@@ -141,7 +141,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                 except:
                     pass
                 
-                # 首先检�?PPStructureV3 的可用参�?
+                # 首先检柀PPStructureV3 的可用参敀
                 import inspect
                 try:
                     sig = inspect.signature(PPStructureV3.__init__)
@@ -150,29 +150,29 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                     param_names = list(sig.parameters.keys())
                     self.logger.info(f"PPStructureV3 available parameters: {param_names}")
                     
-                    # 明确检查是否包�?show_log（不应该有）
+                    # 明确检查是否包后show_log（不应该有）
                     if 'show_log' in param_names:
                         self.logger.warning("PPStructureV3.__init__ contains 'show_log' parameter - this should not be used")
                 except Exception as sig_error:
                     self.logger.debug(f"Could not inspect PPStructureV3 signature: {sig_error}")
                 
-                # PPStructureV3 的参数可能因版本而异，优先使用最小化配置以减少模型下�?
-                # 禁用不必要的功能以加快初始化速度并减少内存占用（特别是Streamlit Cloud环境�?
+                # PPStructureV3 的参数可能因版本而异，优先使用最小化配置以减少模型下轀
+                # 禁用不必要的功能以加快初始化速度并减少内存占用（特别是Streamlit Cloud环境！
                 init_success = False
                 last_error = None
                 
-                # 尝试1: 最小化配置 - 只启用表格检测和识别，禁用所有其他功�?
-                # 这样可以避免下载不必要的模型（文档方向、文档矫正、公式识别、图表识别等�?
+                # 尝试1: 最小化配置 - 只启用表格检测和识别，禁用所有其他功能
+                # 这样可以避免下载不必要的模型（文档方向、文档矫正、公式识别、图表识别等！
                 try:
                     self._structure_engine = PPStructureV3(
                         use_doc_orientation_classify=False,  # 禁用文档方向分类
                         use_doc_unwarping=False,  # 禁用文档矫正
-                        use_textline_orientation=False,  # 禁用文本行方�?
+                        use_textline_orientation=False,  # 禁用文本行方后
                         use_seal_recognition=False,  # 禁用印章识别
                         use_formula_recognition=False,  # 禁用公式识别（减少模型下载）
                         use_chart_recognition=False,  # 禁用图表识别
-                        use_region_detection=False,  # 禁用区域检�?
-                        use_table_recognition=True  # 只启用表格识别（这是我们需要的主要功能�?
+                        use_region_detection=False,  # 禁用区域检浀
+                        use_table_recognition=True  # 只启用表格识别（这是我们需要的主要功能！
                     )
                     self.logger.info("PaddleOCR PP-StructureV3 engine initialized (minimal config - table recognition only)")
                     init_success = True
@@ -189,7 +189,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                     last_error = e
                     self.logger.debug(f"PPStructureV3(minimal config) failed with dependency error: {e}")
                 
-                # 尝试2: 简化配�?- 只禁用文档方向和矫正
+                # 尝试2: 简化配罀- 只禁用文档方向和矫正
                 if not init_success:
                     try:
                         self._structure_engine = PPStructureV3(
@@ -278,7 +278,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                 if "DependencyError" in str(type(e)) or "paddlex" in str(e).lower():
                     self.logger.error("Falling back to legacy PPStructure due to dependency issues...")
                     return self._load_legacy_ppstructure(kwargs)
-                # �?3.x 版本中，PPStructure 不存在，所以不需要回退
+                # 在3.x 版本中，PPStructure 不存在，所以不需要回退
                 return False
         else:
             # 尝试旧版本的 PPStructure
@@ -329,15 +329,15 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
         Args:
             image: PIL Image对象
             **kwargs: 其他参数
-                - det: 是否进行文本检测（默认True�?
-                - rec: 是否进行文本识别（默认True�?
-                - cls: 是否进行角度分类（默认True�?
+                - det: 是否进行文本检测（默认True！
+                - rec: 是否进行文本识别（默认True！
+                - cls: 是否进行角度分类（默认True！
                 
         Returns:
             List[Dict]: OCR结果列表，每个元素包含：
                 - text: 文本内容
-                - bbox: 边界�?[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-                - confidence: 置信�?(0-1)
+                - bbox: 边界桀[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+                - confidence: 置信庀(0-1)
         """
         if not self._ocr_initialized:
             if not self.initialize():
@@ -364,7 +364,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                 for line in ocr_results[0]:
                     if line:
                         bbox_points = line[0]  # 四个角点坐标
-                        text_info = line[1]    # (文本, 置信�?
+                        text_info = line[1]    # (文本, 置信庀
                         
                         if text_info:
                             text = text_info[0]
@@ -391,17 +391,17 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
     
     def detect_tables(self, image: Image.Image, **kwargs) -> List[Dict]:
         """
-        检测表�?
+        检测表栀
         
         Args:
             image: PIL Image对象
             **kwargs: 其他参数（保留用于未来扩展）
                 
         Returns:
-            List[Dict]: 检测结果列表，每个元素包含�?
-                - bbox: 边界�?[x1, y1, x2, y2]
-                - confidence: 置信�?(0-1)
-                - type: 类型（如'table'�?
+            List[Dict]: 检测结果列表，每个元素包含！
+                - bbox: 边界桀[x1, y1, x2, y2]
+                - confidence: 置信庀(0-1)
+                - type: 类型（如'table'！
         """
         if not self._structure_initialized:
             if not self.load_models():
@@ -417,17 +417,17 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
             
             # 根据版本使用不同的API
             if self._is_ppstructure_v3:
-                # PPStructureV3 使用 predict() 方法，可以直接接�?PIL Image �?numpy array
+                # PPStructureV3 使用 predict() 方法，可以直接接又PIL Image 成numpy array
                 # 优先使用 PIL Image，如果失败则尝试 numpy array
                 try:
                     # 直接使用 PIL Image
                     results = self._structure_engine.predict(image)
                 except (TypeError, AttributeError):
-                    # 如果 PIL Image 不支持，转换�?numpy array
-                    # PPStructureV3 期望 BGR 格式�?numpy array
+                    # 如果 PIL Image 不支持，转换一numpy array
+                    # PPStructureV3 期望 BGR 格式的numpy array
                     import cv2
                     img_array = np.array(image)
-                    # PIL Image �?RGB，需要转换为 BGR
+                    # PIL Image 是RGB，需要转换为 BGR
                     if len(img_array.shape) == 3 and img_array.shape[2] == 3:
                         img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
                     results = self._structure_engine.predict(img_array)
@@ -435,8 +435,8 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                 # 转换 PPStructureV3 结果格式
                 detection_results = []
                 for result in results:
-                    # PPStructureV3 返回的结果对象，需要提取表格信�?
-                    # 结果可能包含多个元素，需要查找表格类�?
+                    # PPStructureV3 返回的结果对象，需要提取表格信恀
+                    # 结果可能包含多个元素，需要查找表格类垀
                     result_type = None
                     if hasattr(result, 'type'):
                         result_type = result.type
@@ -476,8 +476,8 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                 
                 return detection_results
             else:
-                # 旧版�?PPStructure 使用 __call__ 方法
-                # 注意：PPStructure的__call__方法不接受layout参数，直接传入图像数组即�?
+                # 旧版有PPStructure 使用 __call__ 方法
+                # 注意：PPStructure的__call__方法不接受layout参数，直接传入图像数组即又
                 structure_results = self._structure_engine(img_array)
                 
                 # 转换结果格式
@@ -495,7 +495,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                                 x2, y2 = max(x_coords), max(y_coords)
                                 bbox_rect = [x1, y1, x2, y2]
                             else:
-                                # 已经是矩形格�?
+                                # 已经是矩形格开
                                 bbox_rect = bbox[:4]
                             
                             detection_results.append({
@@ -519,16 +519,16 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
         
         Args:
             image: PIL Image对象（表格区域）
-            table_bbox: 表格边界�?[x1, y1, x2, y2]（可选）
+            table_bbox: 表格边界桀[x1, y1, x2, y2]（可选）
             **kwargs: 其他参数
-                - return_raw: 是否返回原始输出（默认False�?
+                - return_raw: 是否返回原始输出（默认False！
                 
         Returns:
             Dict: 结构识别结果，包含：
-                - cells: 单元格列�?
-                - rows: 行信�?
-                - columns: 列信�?
-                - html: HTML格式的表格（如果可用�?
+                - cells: 单元格列行
+                - rows: 行信恀
+                - columns: 列信恀
+                - html: HTML格式的表格（如果可用！
                 - 其他结构信息
         """
         if not self._structure_initialized:
@@ -540,23 +540,23 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
             return {}
         
         try:
-            # 如果指定了table_bbox，裁剪图�?
+            # 如果指定了table_bbox，裁剪图僀
             if table_bbox:
                 x1, y1, x2, y2 = table_bbox
                 image = image.crop((x1, y1, x2, y2))
             
             # 根据版本使用不同的API
             if self._is_ppstructure_v3:
-                # PPStructureV3 使用 predict() 方法，可以直接接�?PIL Image �?numpy array
+                # PPStructureV3 使用 predict() 方法，可以直接接又PIL Image 成numpy array
                 try:
                     # 直接使用 PIL Image
                     results = self._structure_engine.predict(image)
                 except (TypeError, AttributeError):
-                    # 如果 PIL Image 不支持，转换�?numpy array
-                    # PPStructureV3 期望 BGR 格式�?numpy array
+                    # 如果 PIL Image 不支持，转换一numpy array
+                    # PPStructureV3 期望 BGR 格式的numpy array
                     import cv2
                     img_array = np.array(image)
-                    # PIL Image �?RGB，需要转换为 BGR
+                    # PIL Image 是RGB，需要转换为 BGR
                     if len(img_array.shape) == 3 and img_array.shape[2] == 3:
                         img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
                     results = self._structure_engine.predict(img_array)
@@ -579,7 +579,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                     return {}
                 
                 # 转换 PPStructureV3 结果格式
-                # PPStructureV3 的结果对象可能有不同的属�?
+                # PPStructureV3 的结果对象可能有不同的属怀
                 html_content = ''
                 if hasattr(table_result, 'html'):
                     html_content = table_result.html
@@ -591,7 +591,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                 if hasattr(table_result, 'markdown'):
                     markdown_content = table_result.markdown
                 elif hasattr(table_result, 'save_to_markdown'):
-                    # 如果支持 save_to_markdown，尝试获取内�?
+                    # 如果支持 save_to_markdown，尝试获取内定
                     import tempfile
                     import os
                     tmp_path = None
@@ -604,7 +604,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                     except Exception as e:
                         self.logger.debug(f"Failed to extract markdown from PPStructureV3 result: {e}")
                     finally:
-                        # 确保临时文件总是被清�?
+                        # 确保临时文件总是被清琀
                         if tmp_path and os.path.exists(tmp_path):
                             try:
                                 os.unlink(tmp_path)
@@ -618,7 +618,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                     cells = table_result.get('cells', [])
                 
                 result = {
-                    'html': html_content or markdown_content,  # 使用 HTML �?markdown
+                    'html': html_content or markdown_content,  # 使用 HTML 成markdown
                     'cells': cells,
                     'raw': table_result if kwargs.get('return_raw', False) else None
                 }
@@ -626,7 +626,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                 if markdown_content:
                     result['markdown'] = markdown_content
             else:
-                # 旧版�?PPStructure 使用 __call__ 方法
+                # 旧版有PPStructure 使用 __call__ 方法
                 # 转换PIL Image为numpy array
                 img_array = np.array(image)
                 
@@ -651,12 +651,12 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
                     'raw': table_result if kwargs.get('return_raw', False) else None
                 }
             
-            # 尝试从HTML或cells中提取行列信�?
+            # 尝试从HTML或cells中提取行列信恀
             if result.get('html'):
                 # 可以进一步解析HTML获取行列信息
                 result['has_structure'] = True
             elif result.get('cells'):
-                # 从cells中提取行列信�?
+                # 从cells中提取行列信恀
                 rows = set()
                 cols = set()
                 for cell in result['cells']:
@@ -678,11 +678,11 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
     
     def recognize_text_in_region(self, image: Image.Image, bbox: List, **kwargs) -> List[Dict]:
         """
-        识别指定区域的文�?
+        识别指定区域的文有
         
         Args:
             image: PIL Image对象
-            bbox: 区域边界�?[x1, y1, x2, y2]
+            bbox: 区域边界桀[x1, y1, x2, y2]
             **kwargs: 其他参数
             
         Returns:
@@ -718,7 +718,7 @@ class PaddleOCREngine(BaseOCREngine, BaseDetectionEngine):
     
     def is_available(self) -> bool:
         """
-        检查引擎是否可�?
+        检查引擎是否可生
         
         Returns:
             bool: 引擎是否可用

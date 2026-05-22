@@ -1,8 +1,8 @@
 # core/engines/factory.py
 """
-引擎工厂�?
+引擎工厂籀
 
-用于创建和管理OCR和检测引擎实�?
+用于创建和管理OCR和检测引擎实侀
 """
 
 from typing import Dict, List, Type, Optional
@@ -11,7 +11,7 @@ from docuvision_core.utils.logger import AppLogger
 
 
 class EngineFactory:
-    """引擎工厂�?""
+    """引擎工厂籀"""
     
     _ocr_engines: Dict[str, Type[BaseOCREngine]] = {}
     _detection_engines: Dict[str, Type[BaseDetectionEngine]] = {}
@@ -23,8 +23,8 @@ class EngineFactory:
         注册OCR引擎
         
         Args:
-            name: 引擎名称（如'easyocr', 'tesseract'�?
-            engine_class: 引擎类（必须继承BaseOCREngine�?
+            name: 引擎名称（如'easyocr', 'tesseract'！
+            engine_class: 引擎类（必须继承BaseOCREngine！
         """
         if not issubclass(engine_class, BaseOCREngine):
             raise TypeError(f"OCR engine class must inherit from BaseOCREngine")
@@ -36,11 +36,11 @@ class EngineFactory:
     @classmethod
     def register_detection(cls, name: str, engine_class: Type[BaseDetectionEngine]):
         """
-        注册检测引�?
+        注册检测引擀
         
         Args:
-            name: 引擎名称（如'transformer'�?
-            engine_class: 引擎类（必须继承BaseDetectionEngine�?
+            name: 引擎名称（如'transformer'！
+            engine_class: 引擎类（必须继承BaseDetectionEngine！
         """
         if not issubclass(engine_class, BaseDetectionEngine):
             raise TypeError(f"Detection engine class must inherit from BaseDetectionEngine")
@@ -62,7 +62,7 @@ class EngineFactory:
             BaseOCREngine: OCR引擎实例
             
         Raises:
-            ValueError: 如果引擎未注�?
+            ValueError: 如果引擎未注军
         """
         name_lower = name.lower()
         if name_lower not in cls._ocr_engines:
@@ -78,17 +78,17 @@ class EngineFactory:
     @classmethod
     def create_detection(cls, name: str, **kwargs) -> BaseDetectionEngine:
         """
-        创建检测引擎实�?
+        创建检测引擎实侀
         
         Args:
             name: 引擎名称
             **kwargs: 传递给引擎构造函数的参数
             
         Returns:
-            BaseDetectionEngine: 检测引擎实�?
+            BaseDetectionEngine: 检测引擎实侀
             
         Raises:
-            ValueError: 如果引擎未注�?
+            ValueError: 如果引擎未注军
         """
         name_lower = name.lower()
         if name_lower not in cls._detection_engines:
@@ -114,23 +114,23 @@ class EngineFactory:
     @classmethod
     def list_available_detection(cls) -> List[str]:
         """
-        列出可用的检测引�?
+        列出可用的检测引擀
         
         Returns:
-            List[str]: 检测引擎名称列�?
+            List[str]: 检测引擎名称列行
         """
         return list(cls._detection_engines.keys())
     
     @classmethod
     def is_ocr_registered(cls, name: str) -> bool:
         """
-        检查OCR引擎是否已注�?
+        检查OCR引擎是否已注军
         
         Args:
             name: 引擎名称
             
         Returns:
-            bool: 是否已注�?
+            bool: 是否已注军
         """
         return name.lower() in cls._ocr_engines
     
@@ -143,6 +143,6 @@ class EngineFactory:
             name: 引擎名称
             
         Returns:
-            bool: 是否已注�?
+            bool: 是否已注军
         """
         return name.lower() in cls._detection_engines

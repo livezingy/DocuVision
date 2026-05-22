@@ -1,6 +1,6 @@
 # core/extractors/__init__.py
 """
-表格提取器模�?
+表格提取器模块
 
 提供统一的表格提取接口，支持多种提取方法（Camelot、PDFPlumber等）
 """
@@ -16,7 +16,7 @@ def _lazy_register():
         from docuvision_core.extractors.pdfplumber_extractor import PDFPlumberExtractor
         from docuvision_core.extractors.factory import ExtractorFactory
         
-        # 注册提取�?
+        # 注册提取器
         ExtractorFactory.register('camelot', CamelotExtractor)
         ExtractorFactory.register('pdfplumber', PDFPlumberExtractor)
         
@@ -26,11 +26,11 @@ def _lazy_register():
 from docuvision_core.extractors.base import BaseExtractor
 from docuvision_core.extractors.factory import ExtractorFactory
 
-# 导入提取器类（用�?__all__ 导出�?
+# 导入提取器类（用于 __all__ 导出）
 from docuvision_core.extractors.camelot_extractor import CamelotExtractor
 from docuvision_core.extractors.pdfplumber_extractor import PDFPlumberExtractor
 
-# 延迟注册提取�?
+# 延迟注册提取器
 _lazy_register()
 
 __all__ = ['BaseExtractor', 'ExtractorFactory', 'CamelotExtractor', 'PDFPlumberExtractor']

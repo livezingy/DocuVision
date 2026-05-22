@@ -27,16 +27,16 @@ class PageProcessor(BaseProcessor):
         """
         super().__init__()
         self.logger = AppLogger.get_logger()
-        # 不再需�?self.config
+        # 不再需要self.config
         self.params = params or {}
 
     def _is_scanned_pdf(self, pdfplumber_object, page_num: int) -> bool:
-        """检测PDF页面是否为扫描文�?
+        """检测PDF页面是否为扫描文桀
         
-        改进版：使用多维度综合判�?
+        改进版：使用多维度综合判方
         1. 文本密度（动态阈值）
         2. 矢量对象数量
-        3. 最大图像占�?
+        3. 最大图像占毀
         
         Args:
             pdfplumber_object: pdfplumber PDF对象
@@ -49,16 +49,16 @@ class PageProcessor(BaseProcessor):
             page = pdfplumber_object.pages[page_num - 1]
             page_area = page.width * page.height
             
-            # ========== 检�?：文本密度（动态阈值） ==========
+            # ========== 检柀：文本密度（动态阈值） ==========
             text = page.extract_text()
             text_length = len(text.strip()) if text else 0
             
             # 动态阈值：基于页面面积计算
-            # A4页面(595x842)标准文本密度�?.002-0.006字符/平方�?
+            # A4页面(595x842)标准文本密度纀.002-0.006字符/平方炀
             min_text_threshold = max(30, page_area * 0.0005)
             
             if text_length < min_text_threshold:
-                # ========== 检�?：矢量对象数�?==========
+                # ========== 检柀：矢量对象数里==========
                 # 扫描PDF通常没有矢量对象
                 lines = page.lines if hasattr(page, 'lines') else []
                 rects = page.rects if hasattr(page, 'rects') else []
@@ -74,11 +74,11 @@ class PageProcessor(BaseProcessor):
                     )
                     return True
             
-            # ========== 检�?：最大图像占�?==========
+            # ========== 检柀：最大图像占毀==========
             images = page.images if hasattr(page, 'images') else []
             
             if images:
-                # 使用max()找到面积最大的图像，O(n)复杂�?
+                # 使用max()找到面积最大的图像，O(n)复杂庀
                 largest_image = max(
                     images, 
                     key=lambda img: abs(img.get('x1', 0) - img.get('x0', 0)) * 
@@ -93,10 +93,10 @@ class PageProcessor(BaseProcessor):
                 
                 largest_ratio = largest_area / page_area if page_area > 0 else 0
                 
-                # 如果最大图像占比超�?0%，判定为扫描PDF
+                # 如果最大图像占比超过0%，判定为扫描PDF
                 if largest_ratio > 0.7:
                     self.logger.info(
-                        f"Page {page_num}: 扫描PDF (最大图像占�?{largest_ratio:.1%}, "
+                        f"Page {page_num}: 扫描PDF (最大图像占毀{largest_ratio:.1%}, "
                         f"面积 {largest_area:.0f}/{page_area:.0f})"
                     )
                     return True
@@ -119,7 +119,7 @@ class PageProcessor(BaseProcessor):
         """
         table_parser = params.get('table_parser')
         
-        # 如果没有提供table_parser，尝试创�?
+        # 如果没有提供table_parser，尝试创廀
         if not table_parser:
             try:
                 from docuvision_core.models.table_parser import TableParser
@@ -159,7 +159,7 @@ class PageProcessor(BaseProcessor):
         """
         try:
             # 将PDF页面转换为图像，提高分辨率以获得更好的OCR效果
-            image = page.to_image(resolution=300)  # 提高�?00 DPI
+            image = page.to_image(resolution=300)  # 提高分00 DPI
             pil_image = Image.frombytes('RGB', image.original.size, image.original.tobytes())
             
             self.logger.info(f"[PageProcessor] Converted PDF page to image for Transformer processing (resolution: 300 DPI, size: {pil_image.size})")
@@ -195,7 +195,7 @@ class PageProcessor(BaseProcessor):
             elif method == 'pdfplumber':
                 flavor = 'lines' if table_type == 'bordered' else 'text'
             else:
-                flavor = 'auto'  # 保持原�?
+                flavor = 'auto'  # 保持原倀
             
             self.logger.info(f"[PageProcessor] Auto mode: detected {table_type} table, selected {flavor} method")
             
@@ -224,12 +224,12 @@ class PageProcessor(BaseProcessor):
             
             if method == 'camelot':
                 page_num = getattr(page, 'page_number', 1)
-                # 使用新的提取器接�?
+                # 使用新的提取器接又
                 from docuvision_core.processing.table_processor import PageFeatureAnalyzer
                 analyzer = PageFeatureAnalyzer(page, enable_logging=False)
                 results = table_processor._process_camelot(pdf_path, page, analyzer, flavor, params.get('table_score_threshold', 0.5))
             elif method == 'pdfplumber':
-                # 使用新的提取器接�?
+                # 使用新的提取器接又
                 from docuvision_core.processing.table_processor import PageFeatureAnalyzer
                 analyzer = PageFeatureAnalyzer(page, enable_logging=False)
                 results = table_processor._process_pdfplumber(page, analyzer, flavor, params.get('table_score_threshold', 0.5))
@@ -365,7 +365,7 @@ class PageProcessor(BaseProcessor):
                                 # 转换为图像并使用Transformer
                                 page_result = await self._process_page_as_scanned(page, page_params)
                             else:
-                                # 4. 使用用户选择的方�?
+                                # 4. 使用用户选择的方法
                                 method = params.get('table_method', 'camelot')
                                 flavor = params.get('table_flavor', 'auto')
                                 

@@ -1,6 +1,6 @@
 # core/extractors/camelot_extractor.py
 """
-Camelot表格提取�?
+Camelot表格提取噀
 
 封装Camelot的lattice和stream模式表格提取功能
 """
@@ -15,18 +15,18 @@ from docuvision_core.utils.logger import AppLogger
 
 
 class CamelotExtractor(BaseExtractor):
-    """Camelot表格提取�?""
+    """Camelot表格提取噀"""
     
     def __init__(self, **kwargs):
         """
-        初始化Camelot提取�?
+        初始化Camelot提取噀
         
         Args:
             **kwargs: 其他参数（预留）
         """
         self.logger = AppLogger.get_logger()
         # 延迟导入camelot，避免在模块导入时因系统依赖问题导致应用启动失败
-        # 不在初始化时立即导入，而是在首次使用时导入（懒加载�?
+        # 不在初始化时立即导入，而是在首次使用时导入（懒加载！
         self._camelot = None
         self._camelot_import_attempted = False
     
@@ -36,9 +36,9 @@ class CamelotExtractor(BaseExtractor):
             return True
         
         if self._camelot_import_attempted:
-            return False  # 已经尝试过但失败�?
+            return False  # 已经尝试过但失败了
         
-        # 在导入camelot之前设置环境变量，避免在无头环境中加载OpenGL�?
+        # 在导入camelot之前设置环境变量，避免在无头环境中加载OpenGL庀
         os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
         os.environ.setdefault('DISPLAY', '')
         os.environ.setdefault('OPENCV_IO_ENABLE_OPENEXR', '0')
@@ -56,13 +56,13 @@ class CamelotExtractor(BaseExtractor):
             self._camelot = None
             return False
         except Exception as e:
-            # 捕获libGL.so.1等OpenGL相关错误，但这些错误通常不影响camelot的基本功�?
+            # 捕获libGL.so.1等OpenGL相关错误，但这些错误通常不影响camelot的基本功能
             error_str = str(e).lower()
             if 'libgl' in error_str or 'opengl' in error_str:
-                # libGL错误通常是警告性的，camelot在headless模式下仍可使�?
+                # libGL错误通常是警告性的，camelot在headless模式下仍可使生
                 self.logger.warning(f"Camelot import warning (libGL/OpenGL): {e}. Camelot may still work in headless mode.")
                 try:
-                    # 尝试再次导入，有时第二次会成�?
+                    # 尝试再次导入，有时第二次会成劀
                     import camelot
                     self._camelot = camelot
                     return True
@@ -79,7 +79,7 @@ class CamelotExtractor(BaseExtractor):
     
     @property
     def name(self) -> str:
-        """提取器名�?""
+        """提取器名秀"""
         return "camelot"
     
     @property
@@ -93,10 +93,10 @@ class CamelotExtractor(BaseExtractor):
         
         Args:
             feature_analyzer: PageFeatureAnalyzer实例
-            table_type: 'bordered' �?'unbordered'
+            table_type: 'bordered' 成'unbordered'
             **kwargs: 其他参数
                 - image_shape: 图像尺寸 (height, width)，用于lattice模式
-                - flavor: 指定flavor�?lattice'�?stream'），如果不指定则根据table_type自动选择
+                - flavor: 指定flavor！lattice'成stream'），如果不指定则根据table_type自动选择
                 
         Returns:
             Dict: 参数字典
@@ -136,12 +136,12 @@ class CamelotExtractor(BaseExtractor):
             page: pdfplumber.Page对象
             feature_analyzer: PageFeatureAnalyzer实例
             params: 参数字典，包含：
-                - pdf_path: PDF文件路径（必需�?
-                - page_num: 页码（必需�?
-                - flavor: 'lattice' �?'stream'（可选，自动选择�?
+                - pdf_path: PDF文件路径（必需！
+                - page_num: 页码（必需！
+                - flavor: 'lattice' 成'stream'（可选，自动选择！
                 - param_mode: 'default', 'auto', 'custom'
                 - custom_params: 自定义参数（当param_mode='custom'时）
-                - score_threshold: 评分阈�?
+                - score_threshold: 评分阈倀
                 - table_areas: 表格区域列表（可选）
                 
         Returns:

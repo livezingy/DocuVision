@@ -1,14 +1,14 @@
 # core/processing/table_params_calculator.py
 """
-表格参数计算�?
+表格参数计算噀
 
-职责�?
+职责！
 - 基于PageFeatureAnalyzer的分析结果计算自适应参数
-- 支持pdfplumber和Camelot（lattice + stream�?
-- 参数验证和边界检�?
+- 支持pdfplumber和Camelot（lattice + stream！
+- 参数验证和边界检柀
 
-依赖�?
-- PageFeatureAnalyzer (通过构造函数注�?
+依赖！
+- PageFeatureAnalyzer (通过构造函数注公
 """
 
 from typing import Dict, Optional, Tuple
@@ -20,7 +20,7 @@ import math
 
 class TableParamsCalculator:
     """
-    表格参数计算�?
+    表格参数计算噀
     
     基于页面特征分析结果计算pdfplumber和Camelot的自适应参数
     """
@@ -30,7 +30,7 @@ class TableParamsCalculator:
         初始化参数计算器
         
         Args:
-            feature_analyzer: PageFeatureAnalyzer实例（已完成分析�?
+            feature_analyzer: PageFeatureAnalyzer实例（已完成分析！
         """
         self.analyzer = feature_analyzer
         self.page = feature_analyzer.page
@@ -44,7 +44,7 @@ class TableParamsCalculator:
         改进版：动态选择strategy，自适应系数计算
         
         Args:
-            table_type: 'bordered' �?'unbordered'
+            table_type: 'bordered' 成'unbordered'
             
         Returns:
             dict: pdfplumber参数字典
@@ -163,7 +163,7 @@ class TableParamsCalculator:
             'text_y_tolerance': 5
         }
         
-        # 自适应snap_tolerance：根据字符尺寸动态调整上�?
+        # 自适应snap_tolerance：根据字符尺寸动态调整上陀
         # #region agent log
         try:
             char_analysis = self.analyzer.char_analysis
@@ -300,10 +300,10 @@ class TableParamsCalculator:
                 f"(max_min_size={max_min_size:.2f})"
             )
         
-        # 自适应min_words_vertical：根据文本行数动态调整最小�?
+        # 自适应min_words_vertical：根据文本行数动态调整最小倀
         if self.analyzer.text_line_analysis['total_lines'] > 0:
             total_lines = self.analyzer.text_line_analysis['total_lines']
-            # 对于小表格（少于10行），使用更宽松的要�?
+            # 对于小表格（少于10行），使用更宽松的要汀
             if total_lines < 10:
                 min_words = max(1, min(int(total_lines * 0.2), 5))
             else:
@@ -315,11 +315,11 @@ class TableParamsCalculator:
                 f"(total_lines={total_lines}, dynamic_range=True)"
             )
         
-        # 自适应text_x_tolerance：根据字符尺寸动态调整上�?
+        # 自适应text_x_tolerance：根据字符尺寸动态调整上陀
         # 优先使用mode_width，如果不可用再回退到min_width
         if self.analyzer.char_analysis.get('mode_width', 0) > 0:
             base_tolerance = self.analyzer.char_analysis['mode_width'] * 1.5
-            # 对于大字体，允许更大的容差（上限为字符宽度的3倍，但至少为10�?
+            # 对于大字体，允许更大的容差（上限为字符宽度的3倍，但至少为10！
             max_tolerance = max(10, self.analyzer.char_analysis['mode_width'] * 3)
             params['text_x_tolerance'] = max(1, min(base_tolerance, max_tolerance))
             
@@ -330,7 +330,7 @@ class TableParamsCalculator:
             )
         elif self.analyzer.char_analysis.get('min_width', 0) > 0:
             base_tolerance = self.analyzer.char_analysis['min_width'] * 1.5
-            # 回退到min_width时，使用较小的上�?
+            # 回退到min_width时，使用较小的上陀
             max_tolerance = max(10, self.analyzer.char_analysis['min_width'] * 3)
             params['text_x_tolerance'] = max(1, min(base_tolerance, max_tolerance))
             
@@ -382,7 +382,7 @@ class TableParamsCalculator:
         计算Camelot lattice模式参数
         
         Args:
-            image_shape: 图像尺寸 (height, width)，可�?
+            image_shape: 图像尺寸 (height, width)，可退
             
         Returns:
             dict: Camelot lattice参数字典
@@ -399,7 +399,7 @@ class TableParamsCalculator:
         h_lengths = self.analyzer.line_analysis['horizontal_lines_length']
         v_lengths = self.analyzer.line_analysis['vertical_lines_length']
         
-        # 计算短线阈�?
+        # 计算短线阈倀
         h_short_threshold, v_short_threshold = self._calculate_adaptive_short_line_thresholds(
             h_lengths, v_lengths
         )
@@ -434,14 +434,14 @@ class TableParamsCalculator:
                     if desired_kernel_length > 0:
                         line_scale_v = image_shape[0] / desired_kernel_length
                         line_scale_h = image_shape[1] / desired_kernel_length
-                        # 取较小值（保守策略�?
+                        # 取较小值（保守策略！
                         line_scale = min(line_scale_v, line_scale_h)
                         
                         # 根据线条宽度动态调整上限：细线条需要更大的line_scale
                         if mode_line_width < 0.5:
                             max_line_scale = 100  # 细线条（<0.5pt）需要更大的scale
                         elif mode_line_width < 1.0:
-                            max_line_scale = 75   # 中等线条�?.5-1.0pt�?
+                            max_line_scale = 75   # 中等线条！.5-1.0pt！
                         else:
                             max_line_scale = 50   # 粗线条（>=1.0pt）使用较小的scale
                         
@@ -455,11 +455,11 @@ class TableParamsCalculator:
                             f"max_line_scale={max_line_scale})"
                         )
                     else:
-                        params['line_scale'] = 40  # 默认�?
+                        params['line_scale'] = 40  # 默认倀
                 else:
-                    params['line_scale'] = 40  # 默认�?
+                    params['line_scale'] = 40  # 默认倀
             else:
-                params['line_scale'] = 40  # 默认�?
+                params['line_scale'] = 40  # 默认倀
         
         # 计算line_tol = joint_tol = min(min_width, min_height) × 0.3
         if self.analyzer.char_analysis['min_width'] > 0 and self.analyzer.char_analysis['min_height'] > 0:
@@ -474,8 +474,8 @@ class TableParamsCalculator:
                 f"(min_char_size={min_char_size:.2f})"
             )
         else:
-            params['line_tol'] = 2  # 默认�?
-            params['joint_tol'] = 2  # 默认�?
+            params['line_tol'] = 2  # 默认倀
+            params['joint_tol'] = 2  # 默认倀
         
         return params
     
@@ -494,18 +494,18 @@ class TableParamsCalculator:
             'column_tol': 0
         }
         
-        # edge_tol: 最小值设置为行间距最小�?行高最大值；最大值设置为1/3页面高度
+        # edge_tol: 最小值设置为行间距最小倀行高最大值；最大值设置为1/3页面高度
         min_line_spacing = self.analyzer.text_line_analysis.get('min_line_spacing', 0)
         max_line_height = self.analyzer.text_line_analysis.get('max_line_height', 0)
         
         if min_line_spacing > 0 or max_line_height > 0:
-            # 计算最小值：行间距最小�?+ 行高最大�?
+            # 计算最小值：行间距最小倀+ 行高最大倀
             edge_tol_min = min_line_spacing + max_line_height
             
             # 计算最大值：1/3页面高度
             edge_tol_max = self.page.height / 3
             
-            # 使用当前计算公式（保持当前逻辑�?
+            # 使用当前计算公式（保持当前逻辑！
             if self.analyzer.text_line_analysis.get('mode_line_spacing', 0) > 0:
                 mode_line_spacing = self.analyzer.text_line_analysis['mode_line_spacing']
                 mode_line_height = self.analyzer.text_line_analysis.get('mode_line_height', 0)
@@ -514,10 +514,10 @@ class TableParamsCalculator:
                 else:
                     edge_tol = mode_line_spacing * 3 + max_line_height * 2
             else:
-                # 回退到最小�?
+                # 回退到最小倀
                 edge_tol = edge_tol_min
             
-            # 限制在最小值到最大值之�?
+            # 限制在最小值到最大值之闀
             params['edge_tol'] = max(edge_tol_min, min(edge_tol, edge_tol_max))
             
             self.logger.debug(
@@ -526,12 +526,12 @@ class TableParamsCalculator:
                 f"calculated={edge_tol:.2f})"
             )
         else:
-            # 默认�?
+            # 默认倀
             params['edge_tol'] = 50
         
         # row_tol: 统一使用mode_height，如果不可用再回退到min_height
         if self.analyzer.char_analysis.get('mode_height', 0) > 0:
-            # 使用字符高度的众数，且向上取�?
+            # 使用字符高度的众数，且向上取敀
             params['row_tol'] = math.ceil(self.analyzer.char_analysis['mode_height'])
             # 上限应该基于mode_height，而不是min_height（保持逻辑一致性）
             max_row_tol = self.analyzer.char_analysis['mode_height'] * 1.5
@@ -551,9 +551,9 @@ class TableParamsCalculator:
                 f"(min_char_height={self.analyzer.char_analysis['min_height']:.2f}, fallback=True)"
             )
         else:
-            params['row_tol'] = 2  # 默认�?
+            params['row_tol'] = 2  # 默认倀
         
-        # column_tol: 最小字符宽�?
+        # column_tol: 最小字符宽庀
         if self.analyzer.char_analysis['min_width'] > 0:
             params['column_tol'] = self.analyzer.char_analysis['min_width']
             params['column_tol'] = max(0, min(params['column_tol'], 5))
@@ -563,23 +563,23 @@ class TableParamsCalculator:
                 f"(min_char_width={self.analyzer.char_analysis['min_width']:.2f})"
             )
         else:
-            params['column_tol'] = 0  # 默认�?
+            params['column_tol'] = 0  # 默认倀
         
         return params
     
     
     def _calculate_adaptive_short_line_thresholds(self, h_lengths, v_lengths) -> Tuple[float, float]:
         """
-        自适应短线阈值计�?
+        自适应短线阈值计简
         
-        结合多种方法，选择最合适的阈�?
+        结合多种方法，选择最合适的阈倀
         
         Args:
-            h_lengths: 水平线长度列�?
-            v_lengths: 垂直线长度列�?
+            h_lengths: 水平线长度列行
+            v_lengths: 垂直线长度列行
             
         Returns:
-            tuple: (水平线阈�? 垂直线阈�?
+            tuple: (水平线阈倀 垂直线阈倀
         """
         if not h_lengths or not v_lengths:
             return 200, 150
@@ -626,18 +626,18 @@ class TableParamsCalculator:
             params: 待验证的参数字典
             
         Returns:
-            dict: 验证并修正后的参�?
+            dict: 验证并修正后的参敀
         """
         # 注意：这些边界值仅作为最后的保护措施
         # 实际参数范围应该根据页面元素性质动态调整（已在各自的计算逻辑中实现）
         bounds = {
-            'snap_tolerance': (0.5, 15),  # 上限已根据字符尺寸动态调整，这里作为最大保护�?
+            'snap_tolerance': (0.5, 15),  # 上限已根据字符尺寸动态调整，这里作为最大保护倀
             'join_tolerance': (1, 10),
             'edge_min_length': (1, 30),
             'intersection_tolerance': (1, 10),
-            'min_words_vertical': (1, 10),  # 最小值已根据文本行数动态调�?
+            'min_words_vertical': (1, 10),  # 最小值已根据文本行数动态调敀
             'min_words_horizontal': (1, 5),
-            'text_x_tolerance': (1, 30),  # 上限已根据字符尺寸动态调整，这里作为最大保护�?
+            'text_x_tolerance': (1, 30),  # 上限已根据字符尺寸动态调整，这里作为最大保护倀
             'text_y_tolerance': (1, 8)
         }
         
@@ -650,7 +650,7 @@ class TableParamsCalculator:
                 
                 if validated[key] != original_val:
                     self.logger.debug(
-                        f"Parameter {key} adjusted: {original_val:.2f} �?{validated[key]:.2f} "
+                        f"Parameter {key} adjusted: {original_val:.2f} ↀ{validated[key]:.2f} "
                         f"(bounds: [{min_val}, {max_val}])"
                     )
         

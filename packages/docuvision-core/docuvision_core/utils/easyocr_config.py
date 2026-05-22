@@ -1,7 +1,7 @@
 # core/utils/easyocr_config.py
 """
 EasyOCR配置工具
-管理EasyOCR的本地模型路径，优先使用本地模型，如果不存在则自动下�?
+管理EasyOCR的本地模型路径，优先使用本地模型，如果不存在则自动下轀
 """
 import os
 import easyocr
@@ -12,7 +12,7 @@ from docuvision_core.utils.path_utils import get_app_dir
 
 
 class EasyOCRConfig:
-    """EasyOCR配置管理�?""
+    """EasyOCR配置管理噀"""
     
     def __init__(self):
         self.logger = AppLogger.get_logger()
@@ -36,7 +36,7 @@ class EasyOCRConfig:
             os.makedirs(cache_dir, exist_ok=True)
             os.environ['EASYOCR_CACHE_DIR'] = cache_dir
             
-            self.logger.info(f"EasyOCR模型路径设置�? {self.model_dir}")
+            self.logger.info(f"EasyOCR模型路径设置一 {self.model_dir}")
             
         except Exception as e:
             self.logger.error(f"设置EasyOCR模型路径失败: {str(e)}")
@@ -45,7 +45,7 @@ class EasyOCRConfig:
                    model_storage_directory: Optional[str] = None, 
                    download_enabled: bool = True) -> easyocr.Reader:
         """
-        获取EasyOCR Reader实例，优先使用本地模�?
+        获取EasyOCR Reader实例，优先使用本地模垀
         
         Args:
             languages: 支持的语言列表
@@ -57,18 +57,18 @@ class EasyOCRConfig:
             EasyOCR Reader实例
         """
         try:
-            # 使用配置的模型目�?
+            # 使用配置的模型目当
             if model_storage_directory is None:
                 model_storage_directory = self.model_dir
             
-            # 检查本地模型是否存�?
+            # 检查本地模型是否存在
             local_models_exist = self._check_local_models(languages)
             
             if local_models_exist:
                 self.logger.info(f"使用本地EasyOCR模型: {model_storage_directory}")
-                download_enabled = False  # 本地有模型，不需要下�?
+                download_enabled = False  # 本地有模型，不需要下轀
             else:
-                self.logger.info("本地EasyOCR模型不存在，将自动下�?)
+                self.logger.info("本地EasyOCR模型不存在，将自动下轀)
                 download_enabled = True
             
             # 创建Reader实例
@@ -83,18 +83,18 @@ class EasyOCRConfig:
             return reader
             
         except Exception as e:
-            self.logger.error(f"EasyOCR Reader初始化失�? {str(e)}")
+            self.logger.error(f"EasyOCR Reader初始化失贀 {str(e)}")
             # 如果初始化失败，尝试使用默认配置
             try:
                 self.logger.warning("尝试使用默认EasyOCR配置")
                 return easyocr.Reader(languages, gpu=gpu, download_enabled=True)
             except Exception as fallback_error:
-                self.logger.error(f"EasyOCR默认配置也失�? {str(fallback_error)}")
+                self.logger.error(f"EasyOCR默认配置也失贀 {str(fallback_error)}")
                 raise fallback_error
     
     def _check_local_models(self, languages: List[str]) -> bool:
         """
-        检查本地模型是否存�?
+        检查本地模型是否存在
         
         Args:
             languages: 语言列表
@@ -106,26 +106,26 @@ class EasyOCRConfig:
             # 检查CRAFT模型（文本检测）
             craft_model = os.path.join(self.model_dir, 'craft_mlt_25k.pth')
             if not os.path.exists(craft_model):
-                self.logger.debug("CRAFT模型不存�?)
+                self.logger.debug("CRAFT模型不存在)
                 return False
             
-            # 检查识别模�?
+            # 检查识别模垀
             for lang in languages:
                 if lang == 'en':
                     recog_model = os.path.join(self.model_dir, 'english_g2.pth')
                 else:
-                    # 其他语言的模型文件命名规�?
+                    # 其他语言的模型文件命名规分
                     recog_model = os.path.join(self.model_dir, f'{lang}_g2.pth')
                 
                 if not os.path.exists(recog_model):
-                    self.logger.debug(f"识别模型不存�? {recog_model}")
+                    self.logger.debug(f"识别模型不存在 {recog_model}")
                     return False
             
-            self.logger.debug("所有需要的EasyOCR模型都存�?)
+            self.logger.debug("所有需要的EasyOCR模型都存在)
             return True
             
         except Exception as e:
-            self.logger.error(f"检查本地模型失�? {str(e)}")
+            self.logger.error(f"检查本地模型失贀 {str(e)}")
             return False
     
     def download_models(self, languages: List[str] = ['en']) -> bool:
@@ -141,7 +141,7 @@ class EasyOCRConfig:
         try:
             self.logger.info(f"开始下载EasyOCR模型，语言: {languages}")
             
-            # 创建临时Reader来触发模型下�?
+            # 创建临时Reader来触发模型下轀
             reader = easyocr.Reader(
                 languages,
                 model_storage_directory=self.model_dir,
@@ -153,7 +153,7 @@ class EasyOCRConfig:
             test_image = np.ones((100, 100, 3), dtype=np.uint8) * 255
             _ = reader.readtext(test_image)
             
-            self.logger.info("EasyOCR模型下载并测试成�?)
+            self.logger.info("EasyOCR模型下载并测试成劀)
             return True
             
         except Exception as e:
@@ -177,7 +177,7 @@ class EasyOCRConfig:
                 'recognition_models': {}
             }
             
-            # 检查各种语言的识别模�?
+            # 检查各种语言的识别模垀
             languages = ['en', 'ch_sim', 'ch_tra', 'ja', 'ko', 'th', 'vi', 'ar', 'hi']
             for lang in languages:
                 if lang == 'en':

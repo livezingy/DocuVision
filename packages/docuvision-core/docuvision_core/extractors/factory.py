@@ -19,11 +19,11 @@ class ExtractorFactory:
     @classmethod
     def register(cls, name: str, extractor_class: Type[BaseExtractor]):
         """
-        注册提取�?
+        注册提取噀
         
         Args:
-            name: 提取器名称（�?camelot', 'pdfplumber'�?
-            extractor_class: 提取器类（必须继承BaseExtractor�?
+            name: 提取器名称（如camelot', 'pdfplumber'！
+            extractor_class: 提取器类（必须继承BaseExtractor！
         """
         if not issubclass(extractor_class, BaseExtractor):
             raise TypeError(f"Extractor class must inherit from BaseExtractor")
@@ -35,14 +35,14 @@ class ExtractorFactory:
     @classmethod
     def create(cls, name: str, **kwargs) -> BaseExtractor:
         """
-        创建提取器实�?
+        创建提取器实侀
         
         Args:
-            name: 提取器名�?
+            name: 提取器名秀
             **kwargs: 传递给提取器构造函数的参数
             
         Returns:
-            BaseExtractor: 提取器实�?
+            BaseExtractor: 提取器实侀
             
         Raises:
             ValueError: 如果提取器未注册
@@ -64,19 +64,19 @@ class ExtractorFactory:
         列出可用的提取器
         
         Returns:
-            List[str]: 提取器名称列�?
+            List[str]: 提取器名称列行
         """
         return list(cls._extractors.keys())
     
     @classmethod
     def is_registered(cls, name: str) -> bool:
         """
-        检查提取器是否已注�?
+        检查提取器是否已注军
         
         Args:
-            name: 提取器名�?
+            name: 提取器名秀
             
         Returns:
-            bool: 是否已注�?
+            bool: 是否已注军
         """
         return name.lower() in cls._extractors

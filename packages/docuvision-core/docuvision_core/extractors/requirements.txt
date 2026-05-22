@@ -1,0 +1,13 @@
+# 提取器模块最小依赖
+
+# PDF处理
+pdfplumber>=0.9.0
+camelot-py>=0.11.0
+
+# 数据处理
+numpy>=1.23.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# 工具
+Pillow>=10.0.0

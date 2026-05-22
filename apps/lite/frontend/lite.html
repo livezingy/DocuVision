@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocuVision Lite</title>
+  <link rel="stylesheet" href="lite.css" />
+</head>
+<body>
+  <header class="top-bar">
+    <div class="brand">
+      <span class="logo">DocuVision</span>
+      <span class="subtitle">Lite — CPU Table &amp; OCR</span>
+    </div>
+    <a class="pro-link" href="https://github.com/livezingy/DocuVision" target="_blank" rel="noopener">Upgrade to Pro →</a>
+  </header>
+
+  <main class="layout">
+    <aside class="panel left">
+      <h2>1. Upload</h2>
+      <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tif,.tiff" />
+      <p class="hint">PDF (digital) or image. Max 50 MB.</p>
+
+      <h2>2. Mode</h2>
+      <label><input type="radio" name="mode" value="smart" checked /> Smart (recommended)</label>
+      <label><input type="radio" name="mode" value="advanced" /> Advanced</label>
+
+      <div id="advancedOptions" class="advanced hidden">
+        <label>Engine
+          <select id="engineSelect">
+            <option value="auto">Auto</option>
+            <option value="pdfplumber">PDFPlumber</option>
+            <option value="camelot">Camelot</option>
+            <option value="easyocr">EasyOCR</option>
+            <option value="tesseract">Tesseract</option>
+          </select>
+        </label>
+        <label>Flavor
+          <select id="flavorSelect">
+            <option value="auto">Auto</option>
+            <option value="lines">lines</option>
+            <option value="text">text</option>
+            <option value="lattice">lattice</option>
+            <option value="stream">stream</option>
+          </select>
+        </label>
+      </div>
+
+      <button id="runBtn" class="primary">Extract</button>
+      <p id="status" class="status"></p>
+    </aside>
+
+    <section class="panel right">
+      <h2>3. Results</h2>
+      <div id="meta" class="meta"></div>
+      <div id="tables" class="tables"></div>
+      <div id="exports" class="exports hidden">
+        <a id="csvLink" href="#" download>Download CSV</a>
+        <a id="xlsxLink" href="#" download>Download Excel</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="lite.js"></script>
+</body>
+</html>

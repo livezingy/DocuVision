@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docuvision-core"
+version = "0.1.0"
+description = "Shared table extraction and OCR engines for DocuVision Lite and Pro"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.23.0",
+    "pandas>=2.0.0",
+    "Pillow>=10.0.0",
+    "loguru>=0.7.0",
+]
+
+[project.optional-dependencies]
+lite = [
+    "pdfplumber>=0.9.0",
+    "camelot-py>=0.11.0",
+    "pytesseract>=0.3.10",
+    "easyocr>=1.7.0",
+    "scipy>=1.10.0",
+    "opencv-python-headless>=4.8.0",
+    "PyMuPDF>=1.23.0",
+    "openpyxl>=3.1.0",
+]
+ocr-heavy = [
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+]
+pro-table-fallback = [
+    "pdfplumber>=0.9.0",
+    "camelot-py>=0.11.0",
+]
+dev = [
+    "pytest>=7.4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["docuvision_core*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

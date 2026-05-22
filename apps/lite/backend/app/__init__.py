@@ -1,0 +1,1 @@
+"""DocuVision Lite FastAPI application."""

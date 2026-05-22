@@ -1,0 +1,56 @@
+# DocuVision Lite — CPU contract tests
+# See docs/architecture/lite-api.md and docs/release/LITE_TEST_CHECKLIST.md
+
+name: CI Lite
+
+on:
+  push:
+    branches: [main, feature/docuvision-lite]
+    paths:
+      - "apps/lite/**"
+      - "packages/docuvision-core/**"
+      - "docs/architecture/lite-api.md"
+      - ".github/workflows/ci-lite.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/lite/**"
+      - "packages/docuvision-core/**"
+      - "docs/architecture/lite-api.md"
+      - ".github/workflows/ci-lite.yml"
+
+concurrency:
+  group: ci-lite-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lite-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/lite/backend/requirements-lite.txt
+            packages/docuvision-core/pyproject.toml
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y ghostscript tesseract-ocr
+
+      - name: Install Lite backend
+        working-directory: apps/lite/backend
+        run: pip install -r requirements-lite.txt
+
+      - name: Run docuvision-core tests
+        working-directory: packages/docuvision-core
+        run: pip install -e ".[lite,dev]" && pytest tests/extractors/test_factory.py -q
+
+      - name: Run Lite API tests
+        working-directory: apps/lite/backend
+        run: pytest tests/ -q

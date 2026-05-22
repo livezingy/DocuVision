@@ -45,7 +45,7 @@ def get_job_result(job_id: str) -> LiteResult:
     return LiteResult.model_validate(job["result"])
 
 
-@router.delete("/jobs/{job_id}", status_code=204)
+@router.delete("/jobs/{job_id}", status_code=204, response_model=None)
 def delete_job(job_id: str) -> None:
     if not job_store.delete(job_id):
         raise HTTPException(

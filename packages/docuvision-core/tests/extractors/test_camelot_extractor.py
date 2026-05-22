@@ -17,15 +17,15 @@ from docuvision_core.extractors.factory import ExtractorFactory
 
 
 class TestCamelotExtractor:
-    """CamelotExtractor测试�?""
+    """CamelotExtractor测试类"""
     
     def test_name_property(self):
-        """测试name属�?""
+        """测试name属性"""
         extractor = CamelotExtractor()
         assert extractor.name == "camelot"
     
     def test_supported_flavors(self):
-        """测试supported_flavors属�?""
+        """测试supported_flavors属性"""
         extractor = CamelotExtractor()
         flavors = extractor.supported_flavors
         assert 'lattice' in flavors
@@ -37,7 +37,7 @@ class TestCamelotExtractor:
         """测试计算lattice参数"""
         extractor = CamelotExtractor()
         
-        # 模拟计算�?
+        # 模拟计算器
         mock_calculator = Mock()
         mock_calculator.get_camelot_lattice_params.return_value = {
             'flavor': 'lattice',
@@ -62,7 +62,7 @@ class TestCamelotExtractor:
         """测试计算stream参数"""
         extractor = CamelotExtractor()
         
-        # 模拟计算�?
+        # 模拟计算器
         mock_calculator = Mock()
         mock_calculator.get_camelot_stream_params.return_value = {
             'flavor': 'stream',
@@ -96,7 +96,7 @@ class TestCamelotExtractor:
     
     @patch('core.extractors.camelot_extractor.camelot')
     def test_extract_tables_missing_params(self, mock_camelot, mock_page, mock_feature_analyzer):
-        """测试缺少必需参数的情�?""
+        """测试缺少必需参数的情况"""
         extractor = CamelotExtractor()
         
         # 缺少pdf_path和page_num
@@ -118,7 +118,7 @@ class TestCamelotExtractor:
         # 模拟camelot
         mock_camelot.read_pdf.return_value = [mock_camelot_table]
         
-        # 模拟评估�?
+        # 模拟评估器
         mock_evaluator = Mock()
         mock_evaluator.enhance_camelot_features.return_value = mock_camelot_table
         mock_evaluator.evaluate.return_value = (0.85, {'accuracy': 0.9}, 'unstructured')
@@ -150,7 +150,7 @@ class TestCamelotExtractor:
     def test_extract_tables_camelot_not_available(self, mock_page, mock_feature_analyzer):
         """测试Camelot不可用的情况"""
         extractor = CamelotExtractor()
-        extractor._camelot = None  # 模拟camelot不可�?
+        extractor._camelot = None  # 模拟camelot不可用
         
         params = {
             'pdf_path': 'test.pdf',

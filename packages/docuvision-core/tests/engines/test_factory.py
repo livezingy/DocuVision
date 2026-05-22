@@ -19,7 +19,7 @@ from docuvision_core.engines.transformer_engine import TransformerEngine
 
 
 class TestEngineFactory:
-    """EngineFactory测试�?""
+    """EngineFactory测试类"""
     
     def test_list_available_ocr(self):
         """测试列出可用OCR引擎"""
@@ -27,17 +27,17 @@ class TestEngineFactory:
         assert 'easyocr' in available
     
     def test_list_available_detection(self):
-        """测试列出可用检测引�?""
+        """测试列出可用检测引擎"""
         available = EngineFactory.list_available_detection()
         assert 'transformer' in available
     
     def test_is_ocr_registered(self):
-        """测试检查OCR引擎注册状�?""
+        """测试检查OCR引擎注册状态"""
         assert EngineFactory.is_ocr_registered('easyocr') is True
         assert EngineFactory.is_ocr_registered('nonexistent') is False
     
     def test_is_detection_registered(self):
-        """测试检查检测引擎注册状�?""
+        """测试检查检测引擎注册状态"""
         assert EngineFactory.is_detection_registered('transformer') is True
         assert EngineFactory.is_detection_registered('nonexistent') is False
     
@@ -57,7 +57,7 @@ class TestEngineFactory:
             EngineFactory.create_ocr('unknown')
     
     def test_create_unknown_detection(self):
-        """测试创建未知检测引�?""
+        """测试创建未知检测引擎"""
         with pytest.raises(ValueError, match="Unknown detection engine"):
             EngineFactory.create_detection('unknown')
     
@@ -81,7 +81,7 @@ class TestEngineFactory:
         del EngineFactory._ocr_engines['custom_ocr']
     
     def test_register_custom_detection(self):
-        """测试注册自定义检测引�?""
+        """测试注册自定义检测引擎"""
         class CustomDetectionEngine(BaseDetectionEngine):
             def detect_tables(self, image, **kwargs):
                 return []

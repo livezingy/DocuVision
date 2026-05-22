@@ -19,10 +19,10 @@ from docuvision_core.engines.factory import EngineFactory
 
 
 class TestTransformerEngine:
-    """TransformerEngine测试�?""
+    """TransformerEngine测试类"""
     
     def test_name_property(self):
-        """测试name属�?""
+        """测试name属性"""
         engine = TransformerEngine()
         assert engine.name == "transformer"
     
@@ -52,20 +52,20 @@ class TestTransformerEngine:
     @patch('core.engines.transformer_engine.TableTransformerForObjectDetection')
     @patch('core.engines.transformer_engine.AutoImageProcessor')
     def test_detect_tables_success(self, mock_processor_class, mock_model_class, sample_image):
-        """测试表格检测成�?""
+        """测试表格检测成功"""
         # 模拟模型和处理器
         mock_model = Mock()
         mock_processor = Mock()
         
         # 模拟输出
         mock_outputs = Mock()
-        mock_outputs.logits = torch.randn(1, 100, 2)  # 2个类�?
+        mock_outputs.logits = torch.randn(1, 100, 2)  # 2个类别
         mock_outputs.pred_boxes = torch.randn(1, 100, 4)
         
         mock_model.return_value = mock_outputs
         mock_model.eval = Mock()
         
-        # 模拟后处理结�?
+        # 模拟后处理结果
         mock_results = {
             'boxes': torch.tensor([[100, 100, 200, 200], [300, 300, 400, 400]]),
             'scores': torch.tensor([0.95, 0.85]),
@@ -101,7 +101,7 @@ class TestTransformerEngine:
         
         # 模拟输出
         mock_outputs = Mock()
-        mock_outputs.logits = torch.randn(1, 100, 20)  # 20个类�?
+        mock_outputs.logits = torch.randn(1, 100, 20)  # 20个类别
         
         mock_model.return_value = mock_outputs
         mock_processor.return_value = {'pixel_values': torch.randn(1, 3, 1000, 1000)}
@@ -125,7 +125,7 @@ class TestTransformerEngine:
         assert 'processor' in result
     
     def test_detect_tables_not_initialized(self, sample_image):
-        """测试未初始化时检测表�?""
+        """测试未初始化时检测表格"""
         engine = TransformerEngine()
         
         with patch.object(engine, 'load_models', return_value=False):
@@ -133,7 +133,7 @@ class TestTransformerEngine:
             assert results == []
     
     def test_is_available(self):
-        """测试可用性检�?""
+        """测试可用性检查"""
         with patch('core.engines.transformer_engine.torch', create=True):
             with patch('core.engines.transformer_engine.TableTransformerForObjectDetection', create=True):
                 engine = TransformerEngine()
@@ -150,7 +150,7 @@ class TestTransformerEngine:
         assert model is mock_model
     
     def test_get_processor(self):
-        """测试获取处理器实�?""
+        """测试获取处理器实例"""
         mock_processor = Mock()
         engine = TransformerEngine()
         engine.processors['detection'] = mock_processor

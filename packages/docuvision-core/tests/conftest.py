@@ -38,7 +38,7 @@ def mock_feature_analyzer():
         'mode_height': 10.0
     }
     
-    # 模拟文本行分析结�?
+    # 模拟文本行分析结果
     analyzer.text_line_analysis = {
         'total_lines': 20,
         'min_line_height': 8.0,

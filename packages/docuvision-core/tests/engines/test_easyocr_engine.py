@@ -19,16 +19,16 @@ from docuvision_core.engines.factory import EngineFactory
 
 
 class TestEasyOCREngine:
-    """EasyOCREngine测试�?""
+    """EasyOCREngine测试类"""
     
     def test_name_property(self):
-        """测试name属�?""
+        """测试name属性"""
         engine = EasyOCREngine()
         assert engine.name == "easyocr"
     
     @patch('core.engines.easyocr_engine.get_easyocr_reader')
     def test_initialize_success(self, mock_get_reader):
-        """测试初始化成�?""
+        """测试初始化成功"""
         mock_reader = Mock()
         mock_get_reader.return_value = mock_reader
         
@@ -41,7 +41,7 @@ class TestEasyOCREngine:
     
     @patch('core.engines.easyocr_engine.get_easyocr_reader')
     def test_initialize_failure(self, mock_get_reader):
-        """测试初始化失�?""
+        """测试初始化失败"""
         mock_get_reader.side_effect = Exception("Failed to initialize")
         
         engine = EasyOCREngine()
@@ -117,7 +117,7 @@ class TestEasyOCREngine:
         assert results[0]['bbox_rect'][0] >= 100
     
     def test_is_available(self):
-        """测试可用性检�?""
+        """测试可用性检查"""
         with patch('core.engines.easyocr_engine.easyocr', create=True):
             engine = EasyOCREngine()
             assert engine.is_available() is True
@@ -125,7 +125,7 @@ class TestEasyOCREngine:
         with patch.dict('sys.modules', {'easyocr': None}):
             engine = EasyOCREngine()
             # 由于导入失败，is_available可能返回False
-            # 具体行为取决于实�?
+            # 具体行为取决于实现
     
     def test_get_reader(self):
         """测试获取reader实例"""

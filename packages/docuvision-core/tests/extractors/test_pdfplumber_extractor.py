@@ -17,15 +17,15 @@ from docuvision_core.extractors.factory import ExtractorFactory
 
 
 class TestPDFPlumberExtractor:
-    """PDFPlumberExtractor测试�?""
+    """PDFPlumberExtractor测试类"""
     
     def test_name_property(self):
-        """测试name属�?""
+        """测试name属性"""
         extractor = PDFPlumberExtractor()
         assert extractor.name == "pdfplumber"
     
     def test_supported_flavors(self):
-        """测试supported_flavors属�?""
+        """测试supported_flavors属性"""
         extractor = PDFPlumberExtractor()
         flavors = extractor.supported_flavors
         assert 'lines' in flavors
@@ -37,7 +37,7 @@ class TestPDFPlumberExtractor:
         """测试计算参数"""
         extractor = PDFPlumberExtractor()
         
-        # 模拟计算�?
+        # 模拟计算器
         mock_calculator = Mock()
         mock_calculator.get_pdfplumber_params.return_value = {
             'snap_tolerance': 2.0,
@@ -61,7 +61,7 @@ class TestPDFPlumberExtractor:
         # 模拟page.find_tables
         mock_page.find_tables.return_value = [mock_pdfplumber_table]
         
-        # 模拟评估�?
+        # 模拟评估器
         mock_evaluator = Mock()
         mock_evaluator.evaluate.return_value = (0.85, {'accuracy': 0.9}, 'unstructured')
         mock_evaluator_class.return_value = mock_evaluator
@@ -94,7 +94,7 @@ class TestPDFPlumberExtractor:
         # 模拟page.find_tables
         mock_page.find_tables.return_value = [mock_pdfplumber_table]
         
-        # 模拟评估�?
+        # 模拟评估器
         mock_evaluator = Mock()
         mock_evaluator.evaluate.return_value = (0.85, {'accuracy': 0.9}, 'unstructured')
         mock_evaluator_class.return_value = mock_evaluator

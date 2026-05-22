@@ -14,40 +14,21 @@ from docuvision_core.utils.path_utils import get_output_subpath
 
 
 class BaseProcessor(ABC):
-    """Base processor class
-    
-    Abstract base class for all processors.
-    Defines common interface and functionality.
-    """
+    """Docstring."""
     
     def __init__(self):
-        """Initialize base processor"""
+        """Docstring."""
         self.logger = AppLogger.get_logger()
         
 
             
     @abstractmethod
     def process(self, file_path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Process file
-        
-        Args:
-            file_path: Path to file
-            params: Optional processing parameters
-            
-        Returns:
-            Processing results
-        """
+        """Docstring."""
         pass
         
     def validate_params(self, params: Dict[str, Any]) -> bool:
-        """Validate processing parameters
-        
-        Args:
-            params: Parameters to validate
-            
-        Returns:
-            True if parameters are valid
-        """
+        """Docstring."""
         try:
             # Basic parameter validation
             if not isinstance(params, dict):
@@ -62,33 +43,15 @@ class BaseProcessor(ABC):
             return False
             
     def log_operation(self, operation: str, data: Optional[Dict] = None):
-        """Log operation
-        
-        Args:
-            operation: Operation name
-            data: Additional data
-        """
+        """Docstring."""
         self.logger.log_operation(operation, data)
         
     def log_error(self, error: Exception, data: Optional[Dict] = None):
-        """Log error
-        
-        Args:
-            error: Error object
-            data: Additional data
-        """
+        """Docstring."""
         self.logger.log_exception(error, data)
 
     def _handle_export(self, results: Dict, params: Dict) -> str:
-        """Handle export
-        
-        Args:
-            results: Processing results
-            params: Processing parameters
-            
-        Returns:
-            Export file path
-        """
+        """Docstring."""
         try:
             if not results or not results.get('tables'):
                 self.logger.warning("No table data to export")
@@ -123,12 +86,7 @@ class BaseProcessor(ABC):
             return ""
             
     def _export_tables_csv(self, tables: List[Dict], filepath: str):
-        """Export tables to CSV
-        
-        Args:
-            tables: List of tables
-            filepath: Export file path
-        """
+        """Docstring."""
         try:
             # Create output directory
             output_dir = os.path.dirname(filepath)
@@ -136,12 +94,12 @@ class BaseProcessor(ABC):
             
             # Export each table
             for i, table in enumerate(tables):
-                # 处理TableProcessor返回的格开
+                # Comment.
                 if isinstance(table, dict) and 'table' in table:
-                    # 从wrapper对象中提取数捀
+                    # Comment.
                     wrapper = table['table']
                     if hasattr(wrapper, 'df') and hasattr(wrapper.df, 'to_dict'):
-                        # 转换为标准格开
+                        # Comment.
                         table_data = {
                             'data': wrapper.df.to_dict('records'),
                             'columns': wrapper.df.columns.tolist()
@@ -150,7 +108,7 @@ class BaseProcessor(ABC):
                         self.logger.warning(f"Invalid table wrapper at index {i}")
                         continue
                 elif isinstance(table, dict) and 'data' in table and 'columns' in table:
-                    # 已经是标准格开
+                    # Comment.
                     table_data = table
                 else:
                     self.logger.warning(f"Skipping invalid table data at index {i}: {type(table)}")
@@ -183,12 +141,7 @@ class BaseProcessor(ABC):
             raise
             
     def _export_tables_json(self, tables: List[Dict], filepath: str):
-        """Export tables to JSON
-        
-        Args:
-            tables: List of tables
-            filepath: Export file path
-        """
+        """Docstring."""
         try:
             import json
             
@@ -234,17 +187,7 @@ class BaseProcessor(ABC):
             raise
             
     def preview_tables(self, page_num: int, page_image: Image.Image, params: dict, table_areas: List[tuple]) -> Image.Image:
-        """Preview tables
-        
-        Args:
-            page_num: Page number
-            page_image: Page image
-            params: Processing parameters
-            table_areas: List of table areas
-            
-        Returns:
-            Marked image
-        """
+        """Docstring."""
         output_dir = os.path.join(
             params['output_path'],
             f"{os.path.splitext(os.path.basename(params['current_file']))[0]}_marked_images"
@@ -256,15 +199,7 @@ class BaseProcessor(ABC):
         marked_image.save(f"{output_dir}/page_{page_num+1}_marked.png")
         
     def _draw_table_areas(self, image: Image.Image, boxes: list) -> Image.Image:
-        """Draw red rectangles (base class implementation)
-        
-        Args:
-            image: Input image
-            boxes: List of bounding boxes
-            
-        Returns:
-            Marked image
-        """
+        """Docstring."""
         from PIL import ImageDraw
         draw = ImageDraw.Draw(image)
         for box in boxes:

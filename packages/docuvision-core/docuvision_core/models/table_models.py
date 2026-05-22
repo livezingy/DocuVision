@@ -53,7 +53,7 @@ def prepare_cropped_image(cropped_image, device):
     
 
 class TableModels:
-    """Unified model manager for table detection, structure recognition, and OCR."""
+    """Docstring."""
     _instance = None
     _initialized = False
 
@@ -72,7 +72,7 @@ class TableModels:
         self.detection_confidence = model_cfg.get('detection_confidence', 0.5)
         self.structure_confidence = model_cfg.get('structure_confidence', 0.5)
         self.ocr_confidence = model_cfg.get('ocr_confidence', 0.5)
-        # 调试信息：打印模型路径和参数
+        # Comment.
         self.logger.debug(f"[TableModels] detection_model_path: {self.detection_model_path}")
         self.logger.debug(f"[TableModels] structure_model_path: {self.structure_model_path}")
         self.logger.debug(f"[TableModels] ocr_model_path: {self.ocr_model_path}")
@@ -92,41 +92,41 @@ class TableModels:
         try:
             # Helper to resolve HF model id when local path is unavailable
             def _resolve_model_id(local_path: str, kind: str) -> str:
-                # 默认映射：detection / structure
+                # Comment.
                 if kind == 'detection':
                     return "microsoft/table-transformer-detection"
                 return "microsoft/table-transformer-structure-recognition"
 
             def _normalize_path(path: str) -> str:
-                """规范化路径，移除相对路径符号"""
+                """Docstring."""
                 if not path:
                     return path
-                # 规范化路径（移除 .\ 和..\ 等）
+                # Comment.
                 normalized = os.path.normpath(path)
-                # 如果是相对路径，转换为绝对路得
+                # Comment.
                 if not os.path.isabs(normalized):
                     base_dir = get_app_dir()
                     normalized = os.path.join(base_dir, normalized)
-                # 再次规范化，确保路径格式正确
+                # Comment.
                 return os.path.normpath(normalized)
 
             def _is_valid_local_path(path: str) -> bool:
-                """检查路径是否是有效的本地路径（不是 HuggingFace repo ID！"""
+                """Docstring."""
                 if not path:
                     return False
-                # 检查是否是绝对路径或相对路得
-                # HuggingFace repo ID 格式：不包含路径分隔符或只包含斜杠（用于组织/仓库名）
-                # 本地路径通常包含反斜杠（Windows）或正斜杠（Unix），且不以字母开多
+                # Comment.
+                # Comment.
+                # Comment.
                 if os.path.isabs(path) or os.path.sep in path or '/' in path:
                     return True
-                # 如果路径看起来像 repo ID（如 "microsoft/table-transformer-detection"！
-                # 但包含路径分隔符，可能是相对路径
+                # Comment.
+                # Comment.
                 if '\\' in path or path.startswith('./') or path.startswith('../'):
                     return True
                 return False
 
             def _load_model_and_processor(path_or_id: str, kind: str):
-                # 规范化路得
+                # Comment.
                 normalized_path = _normalize_path(path_or_id) if _is_valid_local_path(path_or_id) else path_or_id
                 
                 # #region agent log
@@ -148,9 +148,9 @@ class TableModels:
                     self.logger.warning(f"Debug log write failed: {e}")
                 # #endregion
                 
-                # 优先尝试本地文件
+                # Comment.
                 try:
-                    # 使用规范化后的路得
+                    # Comment.
                     model = TableTransformerForObjectDetection.from_pretrained(
                         normalized_path,
                         local_files_only=True
@@ -163,7 +163,7 @@ class TableModels:
                     return model, processor
                 except Exception as e_local:
                     self.logger.warning(f"[TableModels] Local {kind} not found at {normalized_path}, fallback to Hugging Face Hub. Reason: {e_local}")
-                    # 回落分Hugging Face Hub
+                    # Comment.
                     model_id = _resolve_model_id(path_or_id, kind)
                     
                     # #region agent log
@@ -210,7 +210,7 @@ class TableModels:
             raise
 
     def detect_tables(self, image: Image.Image):
-        """Detect tables in image, return boxes, scores, labels."""
+        """Docstring."""
         try:
             inputs = self.processors['detection'](
                 images=image,
@@ -237,13 +237,7 @@ class TableModels:
     
 
     def recognize_structure(self, image: Image.Image):
-        """
-        Recognize table structure using direct detection method (similar to table_parser_direct.py).
-        Return tuple: (model, outputs, image_size)
-        - model: structure detection model
-        - outputs: raw model outputs (not post-processed)
-        - image_size: original image size for coordinate scaling
-        """
+        """Docstring."""
         try:
             processor = self.processors['structure']
             model = self.models['structure']
@@ -269,15 +263,12 @@ class TableModels:
     
 
     def ocr_cell(self, image: Image.Image, lang: str = 'eng') -> Tuple[str, float]:
-        """
-        OCR for a single cell image using Tesseract.
-        Returns tuple: (text, confidence_score)
-        """
+        """Docstring."""
         try:
             ocr_data = pytesseract.image_to_data(
             image, lang=lang, config='--psm 6 preserve_interword_spaces', output_type=pytesseract.Output.DICT
             )
-            # 以单词为单位聚合
+            # Comment.
             words = []
             confidences = []
             for i, word in enumerate(ocr_data['text']):

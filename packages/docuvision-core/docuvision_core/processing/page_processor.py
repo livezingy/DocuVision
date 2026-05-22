@@ -20,72 +20,53 @@ class PageProcessor(BaseProcessor):
     """
     
     def __init__(self, params: Optional[Dict[str, Any]] = None):
-        """Initialize text processor
-        
-        Args:
-            params: Processing parameters
-        """
+        """Docstring."""
         super().__init__()
         self.logger = AppLogger.get_logger()
-        # 不再需要self.config
+        # Comment.
         self.params = params or {}
 
     def _is_scanned_pdf(self, pdfplumber_object, page_num: int) -> bool:
-        """检测PDF页面是否为扫描文桀
-        
-        改进版：使用多维度综合判方
-        1. 文本密度（动态阈值）
-        2. 矢量对象数量
-        3. 最大图像占毀
-        
-        Args:
-            pdfplumber_object: pdfplumber PDF对象
-            page_num: 页面编号（从1开始）
-            
-        Returns:
-            bool: True表示扫描PDF，False表示文本PDF
-        """
+        """Docstring."""
         try:
             page = pdfplumber_object.pages[page_num - 1]
             page_area = page.width * page.height
             
-            # ========== 检柀：文本密度（动态阈值） ==========
+            # Comment.
             text = page.extract_text()
             text_length = len(text.strip()) if text else 0
             
-            # 动态阈值：基于页面面积计算
-            # A4页面(595x842)标准文本密度纀.002-0.006字符/平方炀
+            # Comment.
+            # Comment.
             min_text_threshold = max(30, page_area * 0.0005)
             
             if text_length < min_text_threshold:
-                # ========== 检柀：矢量对象数里==========
-                # 扫描PDF通常没有矢量对象
+                # Comment.
+                # Comment.
                 lines = page.lines if hasattr(page, 'lines') else []
                 rects = page.rects if hasattr(page, 'rects') else []
                 curves = page.curves if hasattr(page, 'curves') else []
                 
                 vector_count = len(lines) + len(rects) + len(curves)
                 
-                # 如果文本少且矢量对象也少，判定为扫描PDF
+                # Comment.
                 if vector_count < 10:
                     self.logger.info(
-                        f"Page {page_num}: 扫描PDF (文本:{text_length:.0f}/{min_text_threshold:.0f}, "
-                        f"矢量对象:{vector_count})"
                     )
                     return True
             
-            # ========== 检柀：最大图像占毀==========
+            # Comment.
             images = page.images if hasattr(page, 'images') else []
             
             if images:
-                # 使用max()找到面积最大的图像，O(n)复杂庀
+                # Comment.
                 largest_image = max(
                     images, 
                     key=lambda img: abs(img.get('x1', 0) - img.get('x0', 0)) * 
                                    abs(img.get('bottom', 0) - img.get('top', 0))
                 )
                 
-                # 计算最大图像的面积
+                # Comment.
                 largest_area = (
                     abs(largest_image.get('x1', 0) - largest_image.get('x0', 0)) * 
                     abs(largest_image.get('bottom', 0) - largest_image.get('top', 0))
@@ -93,11 +74,9 @@ class PageProcessor(BaseProcessor):
                 
                 largest_ratio = largest_area / page_area if page_area > 0 else 0
                 
-                # 如果最大图像占比超过0%，判定为扫描PDF
+                # Comment.
                 if largest_ratio > 0.7:
                     self.logger.info(
-                        f"Page {page_num}: 扫描PDF (最大图像占毀{largest_ratio:.1%}, "
-                        f"面积 {largest_area:.0f}/{page_area:.0f})"
                     )
                     return True
             
@@ -108,18 +87,10 @@ class PageProcessor(BaseProcessor):
             return False
 
     async def _process_with_transformer(self, image, params):
-        """使用Transformer处理图像
-        
-        Args:
-            image: PIL Image对象
-            params: 处理参数
-            
-        Returns:
-            dict: 处理结果
-        """
+        """Docstring."""
         table_parser = params.get('table_parser')
         
-        # 如果没有提供table_parser，尝试创廀
+        # Comment.
         if not table_parser:
             try:
                 from docuvision_core.models.table_parser import TableParser
@@ -148,18 +119,10 @@ class PageProcessor(BaseProcessor):
             return {'success': False, 'error': 'table_parser not available', 'tables': []}
 
     async def _process_page_as_scanned(self, page, params):
-        """将PDF页面转为图像后用Transformer处理
-        
-        Args:
-            page: pdfplumber页面对象
-            params: 处理参数
-            
-        Returns:
-            dict: 处理结果
-        """
+        """Docstring."""
         try:
-            # 将PDF页面转换为图像，提高分辨率以获得更好的OCR效果
-            image = page.to_image(resolution=300)  # 提高分00 DPI
+            # Comment.
+            image = page.to_image(resolution=300)
             pil_image = Image.frombytes('RGB', image.original.size, image.original.tobytes())
             
             self.logger.info(f"[PageProcessor] Converted PDF page to image for Transformer processing (resolution: 300 DPI, size: {pil_image.size})")
@@ -170,36 +133,27 @@ class PageProcessor(BaseProcessor):
             return {'success': False, 'error': str(e), 'tables': []}
 
     async def _process_with_auto_flavor(self, page, method, params):
-        """Auto模式：自动选择flavor
-        
-        Args:
-            page: pdfplumber页面对象
-            method: 提取方法
-            params: 处理参数
-            
-        Returns:
-            dict: 处理结果
-        """
+        """Docstring."""
         from docuvision_core.processing.table_processor import PageFeatureAnalyzer
         
         try:
-            # 创建特征分析器（禁用详细日志，避免重复输出）
+            # Comment.
             analyzer = PageFeatureAnalyzer(page)
             
-            # 预测表格类型
+            # Comment.
             table_type = analyzer.predict_table_type()
             
-            # 根据方法和类型选择flavor
+            # Comment.
             if method == 'camelot':
                 flavor = 'lattice' if table_type == 'bordered' else 'stream'
             elif method == 'pdfplumber':
                 flavor = 'lines' if table_type == 'bordered' else 'text'
             else:
-                flavor = 'auto'  # 保持原倀
+                flavor = 'auto'
             
             self.logger.info(f"[PageProcessor] Auto mode: detected {table_type} table, selected {flavor} method")
             
-            # 调用标准处理
+            # Comment.
             return await self._process_with_method(page, method, flavor, params)
             
         except Exception as e:
@@ -207,34 +161,24 @@ class PageProcessor(BaseProcessor):
             return {'success': False, 'error': str(e), 'tables': []}
 
     async def _process_with_method(self, page, method, flavor, params):
-        """使用指定方法和flavor处理页面
-        
-        Args:
-            page: pdfplumber页面对象
-            method: 提取方法
-            flavor: 提取flavor
-            params: 处理参数
-            
-        Returns:
-            dict: 处理结果
-        """
+        """Docstring."""
         try:
             table_processor = TableProcessor(params)
             pdf_path = params.get('current_filepath')
             
             if method == 'camelot':
                 page_num = getattr(page, 'page_number', 1)
-                # 使用新的提取器接又
+                # Comment.
                 from docuvision_core.processing.table_processor import PageFeatureAnalyzer
                 analyzer = PageFeatureAnalyzer(page, enable_logging=False)
                 results = table_processor._process_camelot(pdf_path, page, analyzer, flavor, params.get('table_score_threshold', 0.5))
             elif method == 'pdfplumber':
-                # 使用新的提取器接又
+                # Comment.
                 from docuvision_core.processing.table_processor import PageFeatureAnalyzer
                 analyzer = PageFeatureAnalyzer(page, enable_logging=False)
                 results = table_processor._process_pdfplumber(page, analyzer, flavor, params.get('table_score_threshold', 0.5))
             elif method == 'transformer':
-                # Transformer需要将页面转为图像
+                # Comment.
                 return await self._process_page_as_scanned(page, params)
             else:
                 self.logger.error(f"[PageProcessor] Unknown method: {method}")
@@ -247,7 +191,7 @@ class PageProcessor(BaseProcessor):
             return {'success': False, 'error': str(e), 'tables': []}
 
     async def process(self, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Process PDF or image file"""
+        """Docstring."""
         try:
             params = params.copy() if params else self.params.copy()
             file_path = params.get('current_filepath')
@@ -258,14 +202,14 @@ class PageProcessor(BaseProcessor):
 
             results = {'tables': [], 'error': "", 'pages': []}
 
-            # 1. 处理图像文件
+            # Comment.
             if ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff']:
                 self.logger.info("[PageProcessor] Detected image file, using Transformer")
                 image = Image.open(file_path)
                 if image.mode != "RGB":
                     image = image.convert("RGB")
                 
-                # 添加页面号信息（图像文件默认为第1页）
+                # Comment.
                 params['current_page_num'] = 1
                 results = await self._process_with_transformer(image, params)
                 
@@ -286,7 +230,7 @@ class PageProcessor(BaseProcessor):
                     'error': results.get('error', '') if isinstance(results, dict) else ''
                 }
 
-            # 2. 处理PDF文件
+            # Comment.
             self.logger.info("[PageProcessor] Detected PDF file, starting pdfplumber open")
             pages = params.get('pages', 'all')
             # Treat empty or whitespace pages as 'all'
@@ -307,7 +251,7 @@ class PageProcessor(BaseProcessor):
                             'error': "No pages found in PDF."
                         }
                     
-                    # 解析页面列表
+                    # Comment.
                     if pages == 'all':
                         try:
                             page_list = list(range(1, len(pdfplumber_object.pages) + 1))
@@ -348,32 +292,32 @@ class PageProcessor(BaseProcessor):
                                 'error': f'Invalid pages parameter: {pages}'
                             }
 
-                    # 处理每个页面
+                    # Comment.
                     for page_num in page_list:
                         try:
                             self.logger.info(f"[PageProcessor] Processing page {page_num}")
                             page = pdfplumber_object.pages[page_num - 1]
                             
-                            # 添加当前页面号到params
+                            # Comment.
                             page_params = params.copy()
                             page_params['current_page_num'] = page_num
                             
-                            # 3. 检测是否为扫描PDF
+                            # Comment.
                             if self._is_scanned_pdf(pdfplumber_object, page_num):
-                                # 记录警告日志
+                                # Comment.
                                 self.logger.warning(f"Detected scanned document (page {page_num}), automatically using Transformer extraction, user-specified method ignored")
-                                # 转换为图像并使用Transformer
+                                # Comment.
                                 page_result = await self._process_page_as_scanned(page, page_params)
                             else:
-                                # 4. 使用用户选择的方法
+                                # Comment.
                                 method = params.get('table_method', 'camelot')
                                 flavor = params.get('table_flavor', 'auto')
                                 
                                 if flavor == 'auto':
-                                    # 调用predict_table_type判断
+                                    # Comment.
                                     page_result = await self._process_with_auto_flavor(page, method, page_params)
                                 else:
-                                    # 直接使用指定方法和flavor
+                                    # Comment.
                                     page_result = await self._process_with_method(page, method, flavor, page_params)
                             
                             if page_result.get('success', True):
@@ -431,12 +375,7 @@ class PageProcessor(BaseProcessor):
 
 
     def _save_pdf_images(self, pdf_path: str, params: Dict[str, Any]) -> None:
-        """Save images from PDF to output/images/filename/ folder
-        
-        Args:
-            pdf_path: Path to the PDF file
-            params: Processing parameters containing output_path
-        """
+        """Docstring."""
         try:
             # Get output path and create images directory
             output_path = params.get('output_path', '')

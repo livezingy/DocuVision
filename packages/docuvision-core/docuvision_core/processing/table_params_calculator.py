@@ -1,15 +1,5 @@
 # core/processing/table_params_calculator.py
-"""
-表格参数计算噀
-
-职责！
-- 基于PageFeatureAnalyzer的分析结果计算自适应参数
-- 支持pdfplumber和Camelot（lattice + stream！
-- 参数验证和边界检柀
-
-依赖！
-- PageFeatureAnalyzer (通过构造函数注公
-"""
+"""table params calculator module."""
 
 from typing import Dict, Optional, Tuple
 import numpy as np
@@ -19,36 +9,17 @@ import math
 
 
 class TableParamsCalculator:
-    """
-    表格参数计算噀
-    
-    基于页面特征分析结果计算pdfplumber和Camelot的自适应参数
-    """
+    """Docstring."""
     
     def __init__(self, feature_analyzer):
-        """
-        初始化参数计算器
-        
-        Args:
-            feature_analyzer: PageFeatureAnalyzer实例（已完成分析！
-        """
+        """Docstring."""
         self.analyzer = feature_analyzer
         self.page = feature_analyzer.page
         self.logger = AppLogger.get_logger()
     
     
     def get_pdfplumber_params(self, table_type: str = 'bordered') -> Dict:
-        """
-        计算pdfplumber的自适应参数
-        
-        改进版：动态选择strategy，自适应系数计算
-        
-        Args:
-            table_type: 'bordered' 成'unbordered'
-            
-        Returns:
-            dict: pdfplumber参数字典
-        """
+        """Docstring."""
         # #region agent log
         try:
             write_debug_log(
@@ -58,11 +29,11 @@ class TableParamsCalculator:
                 hypothesis_id="A"
             )
         except Exception as e:
-            # 如果日志写入失败，至少记录到标准日志
+            # Comment.
             self.logger.warning(f"Debug log write failed at entry: {e}")
         # #endregion
         
-        # 获取线条信息
+        # Comment.
         h_lines = self.analyzer.line_analysis.get('horizontal_lines', [])
         v_lines = self.analyzer.line_analysis.get('vertical_lines', [])
         h_count = len(h_lines)
@@ -77,11 +48,11 @@ class TableParamsCalculator:
                 hypothesis_id="B"
             )
         except Exception as e:
-            # 如果日志写入失败，至少记录到标准日志
+            # Comment.
             self.logger.warning(f"Debug log write failed at line counts: {e}")
         # #endregion
         
-        # 动态选择strategy
+        # Comment.
         if table_type == 'bordered':
             vertical_strategy = 'lines' if v_count >= 5 else 'text'
             horizontal_strategy = 'lines' if h_count >= 10 else 'text'
@@ -102,7 +73,7 @@ class TableParamsCalculator:
                     hypothesis_id="B"
                 )
             except Exception as e:
-                # 如果日志写入失败，至少记录到标准日志
+                # Comment.
                 self.logger.warning(f"Debug log write failed at strategy selection: {e}")
             # #endregion
             
@@ -128,7 +99,7 @@ class TableParamsCalculator:
                     hypothesis_id="B"
                 )
             except Exception as e:
-                # 如果日志写入失败，至少记录到标准日志
+                # Comment.
                 self.logger.warning(f"Debug log write failed at unbordered strategy selection: {e}")
             # #endregion
             
@@ -137,7 +108,7 @@ class TableParamsCalculator:
                 f"H={horizontal_strategy}(count={h_count})"
             )
         
-        # 基础参数
+        # Comment.
         params = {
             'vertical_strategy': vertical_strategy,
             'horizontal_strategy': horizontal_strategy,
@@ -163,7 +134,7 @@ class TableParamsCalculator:
             'text_y_tolerance': 5
         }
         
-        # 自适应snap_tolerance：根据字符尺寸动态调整上陀
+        # Comment.
         # #region agent log
         try:
             char_analysis = self.analyzer.char_analysis
@@ -183,7 +154,7 @@ class TableParamsCalculator:
                     hypothesis_id="A"
                 )
             except Exception as log_e:
-                # 如果日志写入失败，记录到标准日志
+                # Comment.
                 self.logger.warning(f"Debug log write failed at char_analysis: {log_e}")
         except Exception as e:
             try:
@@ -202,14 +173,14 @@ class TableParamsCalculator:
                                self.analyzer.char_analysis['min_height'])
             raw_snap_tolerance = min_char_size * 0.3
             
-            # 根据字符尺寸动态调整上限：大字体PDF需要更大的容差
-            # 对于大字体（字符尺寸>10pt），允许更大的snap_tolerance
+            # Comment.
+            # Comment.
             if min_char_size > 10:
                 max_snap_tolerance = 15
             elif min_char_size > 5:
                 max_snap_tolerance = 10
             else:
-                max_snap_tolerance = 10  # 默认上限
+                max_snap_tolerance = 10
             
             params['snap_tolerance'] = max(0.5, min(raw_snap_tolerance, max_snap_tolerance))
             
@@ -244,7 +215,7 @@ class TableParamsCalculator:
                 f"(min_char_size={min_char_size:.2f})"
             )
         
-        # 自适应join_tolerance[1, 10]
+        # Comment.
         if self.analyzer.char_analysis['min_width'] > 0 and self.analyzer.char_analysis['min_height'] > 0:
             min_char_size = min(self.analyzer.char_analysis['min_width'], 
                                self.analyzer.char_analysis['min_height'])
@@ -256,7 +227,7 @@ class TableParamsCalculator:
                 f"(min_char_size={min_char_size:.2f})"
             )
         
-        # 自适应edge_min_length（区分表格类型）[1, 30]
+        # Comment.
         if self.analyzer.char_analysis['mode_width'] > 0 and self.analyzer.char_analysis['mode_height'] > 0:
             mode_char_size = max(self.analyzer.char_analysis['mode_width'], 
                                 self.analyzer.char_analysis['mode_height'])
@@ -278,7 +249,7 @@ class TableParamsCalculator:
                 f"(min_char_size={min_char_size:.2f})"
             )
         
-        # 自适应intersection_tolerance[1, 10]
+        # Comment.
         if self.analyzer.char_analysis['mode_width'] > 0 or self.analyzer.char_analysis['mode_height'] > 0:
             max_mode_size = max(self.analyzer.char_analysis['mode_width'], 
                                self.analyzer.char_analysis['mode_height'])
@@ -300,10 +271,10 @@ class TableParamsCalculator:
                 f"(max_min_size={max_min_size:.2f})"
             )
         
-        # 自适应min_words_vertical：根据文本行数动态调整最小倀
+        # Comment.
         if self.analyzer.text_line_analysis['total_lines'] > 0:
             total_lines = self.analyzer.text_line_analysis['total_lines']
-            # 对于小表格（少于10行），使用更宽松的要汀
+            # Comment.
             if total_lines < 10:
                 min_words = max(1, min(int(total_lines * 0.2), 5))
             else:
@@ -315,11 +286,11 @@ class TableParamsCalculator:
                 f"(total_lines={total_lines}, dynamic_range=True)"
             )
         
-        # 自适应text_x_tolerance：根据字符尺寸动态调整上陀
-        # 优先使用mode_width，如果不可用再回退到min_width
+        # Comment.
+        # Comment.
         if self.analyzer.char_analysis.get('mode_width', 0) > 0:
             base_tolerance = self.analyzer.char_analysis['mode_width'] * 1.5
-            # 对于大字体，允许更大的容差（上限为字符宽度的3倍，但至少为10！
+            # Comment.
             max_tolerance = max(10, self.analyzer.char_analysis['mode_width'] * 3)
             params['text_x_tolerance'] = max(1, min(base_tolerance, max_tolerance))
             
@@ -330,7 +301,7 @@ class TableParamsCalculator:
             )
         elif self.analyzer.char_analysis.get('min_width', 0) > 0:
             base_tolerance = self.analyzer.char_analysis['min_width'] * 1.5
-            # 回退到min_width时，使用较小的上陀
+            # Comment.
             max_tolerance = max(10, self.analyzer.char_analysis['min_width'] * 3)
             params['text_x_tolerance'] = max(1, min(base_tolerance, max_tolerance))
             
@@ -340,7 +311,7 @@ class TableParamsCalculator:
                 f"max_tolerance={max_tolerance:.2f}, fallback=True)"
             )
         
-        # 自适应text_y_tolerance[1, 8]
+        # Comment.
         if self.analyzer.text_line_analysis.get('min_line_height', 0) > 0:
             params['text_y_tolerance'] = self.analyzer.text_line_analysis['min_line_height'] * 0.2
             params['text_y_tolerance'] = max(1, min(params['text_y_tolerance'], 8))
@@ -350,7 +321,7 @@ class TableParamsCalculator:
                 f"(min_line_height={self.analyzer.text_line_analysis['min_line_height']:.2f})"
             )
         
-        # 参数验证
+        # Comment.
         params_before_validation = params.copy()
         params = self._validate_params(params)
         
@@ -368,7 +339,7 @@ class TableParamsCalculator:
                 hypothesis_id="C"
             )
         except Exception as e:
-            # 如果日志写入失败，至少记录到标准日志
+            # Comment.
             self.logger.warning(f"Debug log write failed at final params: {e}")
         # #endregion
         
@@ -378,15 +349,7 @@ class TableParamsCalculator:
     
     
     def get_camelot_lattice_params(self, image_shape: Optional[Tuple] = None) -> Dict:
-        """
-        计算Camelot lattice模式参数
-        
-        Args:
-            image_shape: 图像尺寸 (height, width)，可退
-            
-        Returns:
-            dict: Camelot lattice参数字典
-        """
+        """Docstring."""
         params = {
             'flavor': 'lattice',
             'line_scale': 40,
@@ -399,7 +362,7 @@ class TableParamsCalculator:
         h_lengths = self.analyzer.line_analysis['horizontal_lines_length']
         v_lengths = self.analyzer.line_analysis['vertical_lines_length']
         
-        # 计算短线阈倀
+        # Comment.
         h_short_threshold, v_short_threshold = self._calculate_adaptive_short_line_thresholds(
             h_lengths, v_lengths
         )
@@ -412,38 +375,38 @@ class TableParamsCalculator:
         self.logger.info(f"Dynamic thresholds - H: {h_short_threshold:.2f}, V: {v_short_threshold:.2f}")
         self.logger.info(f"Short line ratios - H: {short_h_ratio:.2f}, V: {short_v_ratio:.2f}")
         
-        # 计算line_scale（基于线条宽度众数）
+        # Comment.
         if image_shape:
             line_widths = self.analyzer.line_analysis.get('line_widths', [])
             if line_widths and len(line_widths) > 0:
-                # 计算线条宽度众数
+                # Comment.
                 from docuvision_core.processing.page_feature_analyzer import PageFeatureAnalyzer
                 mode_line_width = PageFeatureAnalyzer._get_mode_with_fallback(line_widths)
                 if mode_line_width > 0:
-                    # 计算PDF到图像的缩放比例
+                    # Comment.
                     pdf_to_image_ratio = min(image_shape[0] / self.page.height, 
                                             image_shape[1] / self.page.width)
                     
-                    # 将PDF坐标的线条宽度转换为图像坐标
+                    # Comment.
                     mode_line_width_image = mode_line_width * pdf_to_image_ratio
                     
-                    # 期望kernel长度 = 线条宽度 * 3（根据要求）
+                    # Comment.
                     desired_kernel_length = mode_line_width_image * 3
                     
-                    # 计算垂直和水平方向的line_scale
+                    # Comment.
                     if desired_kernel_length > 0:
                         line_scale_v = image_shape[0] / desired_kernel_length
                         line_scale_h = image_shape[1] / desired_kernel_length
-                        # 取较小值（保守策略！
+                        # Comment.
                         line_scale = min(line_scale_v, line_scale_h)
                         
-                        # 根据线条宽度动态调整上限：细线条需要更大的line_scale
+                        # Comment.
                         if mode_line_width < 0.5:
-                            max_line_scale = 100  # 细线条（<0.5pt）需要更大的scale
+                            max_line_scale = 100
                         elif mode_line_width < 1.0:
-                            max_line_scale = 75   # 中等线条！.5-1.0pt！
+                            max_line_scale = 75
                         else:
-                            max_line_scale = 50   # 粗线条（>=1.0pt）使用较小的scale
+                            max_line_scale = 50
                         
                         params['line_scale'] = max(15, min(int(line_scale), max_line_scale))
                         
@@ -455,13 +418,13 @@ class TableParamsCalculator:
                             f"max_line_scale={max_line_scale})"
                         )
                     else:
-                        params['line_scale'] = 40  # 默认倀
+                        params['line_scale'] = 40
                 else:
-                    params['line_scale'] = 40  # 默认倀
+                    params['line_scale'] = 40
             else:
-                params['line_scale'] = 40  # 默认倀
+                params['line_scale'] = 40
         
-        # 计算line_tol = joint_tol = min(min_width, min_height) × 0.3
+        # Comment.
         if self.analyzer.char_analysis['min_width'] > 0 and self.analyzer.char_analysis['min_height'] > 0:
             min_char_size = min(self.analyzer.char_analysis['min_width'], 
                                self.analyzer.char_analysis['min_height'])
@@ -474,19 +437,14 @@ class TableParamsCalculator:
                 f"(min_char_size={min_char_size:.2f})"
             )
         else:
-            params['line_tol'] = 2  # 默认倀
-            params['joint_tol'] = 2  # 默认倀
+            params['line_tol'] = 2
+            params['joint_tol'] = 2
         
         return params
     
     
     def get_camelot_stream_params(self) -> Dict:
-        """
-        计算Camelot stream模式参数
-        
-        Returns:
-            dict: Camelot stream参数字典
-        """
+        """Docstring."""
         params = {
             'flavor': 'stream',
             'edge_tol': 50,
@@ -494,18 +452,18 @@ class TableParamsCalculator:
             'column_tol': 0
         }
         
-        # edge_tol: 最小值设置为行间距最小倀行高最大值；最大值设置为1/3页面高度
+        # Comment.
         min_line_spacing = self.analyzer.text_line_analysis.get('min_line_spacing', 0)
         max_line_height = self.analyzer.text_line_analysis.get('max_line_height', 0)
         
         if min_line_spacing > 0 or max_line_height > 0:
-            # 计算最小值：行间距最小倀+ 行高最大倀
+            # Comment.
             edge_tol_min = min_line_spacing + max_line_height
             
-            # 计算最大值：1/3页面高度
+            # Comment.
             edge_tol_max = self.page.height / 3
             
-            # 使用当前计算公式（保持当前逻辑！
+            # Comment.
             if self.analyzer.text_line_analysis.get('mode_line_spacing', 0) > 0:
                 mode_line_spacing = self.analyzer.text_line_analysis['mode_line_spacing']
                 mode_line_height = self.analyzer.text_line_analysis.get('mode_line_height', 0)
@@ -514,10 +472,10 @@ class TableParamsCalculator:
                 else:
                     edge_tol = mode_line_spacing * 3 + max_line_height * 2
             else:
-                # 回退到最小倀
+                # Comment.
                 edge_tol = edge_tol_min
             
-            # 限制在最小值到最大值之闀
+            # Comment.
             params['edge_tol'] = max(edge_tol_min, min(edge_tol, edge_tol_max))
             
             self.logger.debug(
@@ -526,14 +484,14 @@ class TableParamsCalculator:
                 f"calculated={edge_tol:.2f})"
             )
         else:
-            # 默认倀
+            # Comment.
             params['edge_tol'] = 50
         
-        # row_tol: 统一使用mode_height，如果不可用再回退到min_height
+        # Comment.
         if self.analyzer.char_analysis.get('mode_height', 0) > 0:
-            # 使用字符高度的众数，且向上取敀
+            # Comment.
             params['row_tol'] = math.ceil(self.analyzer.char_analysis['mode_height'])
-            # 上限应该基于mode_height，而不是min_height（保持逻辑一致性）
+            # Comment.
             max_row_tol = self.analyzer.char_analysis['mode_height'] * 1.5
             params['row_tol'] = max(2, min(params['row_tol'], max_row_tol))
             
@@ -543,7 +501,7 @@ class TableParamsCalculator:
                 f"max_row_tol={max_row_tol:.2f})"
             )
         elif self.analyzer.char_analysis.get('min_height', 0) > 0:
-            # 如果mode_height不可用，回退到min_height
+            # Comment.
             params['row_tol'] = max(2, min(self.analyzer.char_analysis['min_height'], 10))
             
             self.logger.debug(
@@ -551,9 +509,9 @@ class TableParamsCalculator:
                 f"(min_char_height={self.analyzer.char_analysis['min_height']:.2f}, fallback=True)"
             )
         else:
-            params['row_tol'] = 2  # 默认倀
+            params['row_tol'] = 2
         
-        # column_tol: 最小字符宽庀
+        # Comment.
         if self.analyzer.char_analysis['min_width'] > 0:
             params['column_tol'] = self.analyzer.char_analysis['min_width']
             params['column_tol'] = max(0, min(params['column_tol'], 5))
@@ -563,38 +521,27 @@ class TableParamsCalculator:
                 f"(min_char_width={self.analyzer.char_analysis['min_width']:.2f})"
             )
         else:
-            params['column_tol'] = 0  # 默认倀
+            params['column_tol'] = 0
         
         return params
     
     
     def _calculate_adaptive_short_line_thresholds(self, h_lengths, v_lengths) -> Tuple[float, float]:
-        """
-        自适应短线阈值计简
-        
-        结合多种方法，选择最合适的阈倀
-        
-        Args:
-            h_lengths: 水平线长度列行
-            v_lengths: 垂直线长度列行
-            
-        Returns:
-            tuple: (水平线阈倀 垂直线阈倀
-        """
+        """Docstring."""
         if not h_lengths or not v_lengths:
             return 200, 150
         
-        # 方法1：分位数方法
+        # Comment.
         h_q25 = np.percentile(h_lengths, 25)
         v_q25 = np.percentile(v_lengths, 25)
         
-        # 方法2：中位数比例方法
+        # Comment.
         h_median = np.median(h_lengths)
         v_median = np.median(v_lengths)
         h_median_thresh = h_median * 0.6
         v_median_thresh = v_median * 0.6
         
-        # 方法3：标准差方法
+        # Comment.
         h_mean = np.mean(h_lengths)
         v_mean = np.mean(v_lengths)
         h_std = np.std(h_lengths)
@@ -602,14 +549,14 @@ class TableParamsCalculator:
         h_std_thresh = max(h_mean - h_std, h_mean * 0.4)
         v_std_thresh = max(v_mean - v_std, v_mean * 0.4)
         
-        # 综合选择：取三个方法的中位数
+        # Comment.
         h_candidates = [h_q25, h_median_thresh, h_std_thresh]
         v_candidates = [v_q25, v_median_thresh, v_std_thresh]
         
         h_threshold = np.median(h_candidates)
         v_threshold = np.median(v_candidates)
         
-        # 设置合理范围
+        # Comment.
         h_threshold = max(30, min(h_threshold, h_median * 0.8))
         v_threshold = max(30, min(v_threshold, v_median * 0.8))
         
@@ -617,27 +564,17 @@ class TableParamsCalculator:
     
     
     def _validate_params(self, params: dict) -> dict:
-        """
-        参数边界检查和修正
-        
-        确保所有参数在合理范围内，避免极端值导致的错误
-        
-        Args:
-            params: 待验证的参数字典
-            
-        Returns:
-            dict: 验证并修正后的参敀
-        """
-        # 注意：这些边界值仅作为最后的保护措施
-        # 实际参数范围应该根据页面元素性质动态调整（已在各自的计算逻辑中实现）
+        """Docstring."""
+        # Comment.
+        # Comment.
         bounds = {
-            'snap_tolerance': (0.5, 15),  # 上限已根据字符尺寸动态调整，这里作为最大保护倀
+            'snap_tolerance': (0.5, 15),
             'join_tolerance': (1, 10),
             'edge_min_length': (1, 30),
             'intersection_tolerance': (1, 10),
-            'min_words_vertical': (1, 10),  # 最小值已根据文本行数动态调敀
+            'min_words_vertical': (1, 10),
             'min_words_horizontal': (1, 5),
-            'text_x_tolerance': (1, 30),  # 上限已根据字符尺寸动态调整，这里作为最大保护倀
+            'text_x_tolerance': (1, 30),
             'text_y_tolerance': (1, 8)
         }
         
@@ -650,7 +587,6 @@ class TableParamsCalculator:
                 
                 if validated[key] != original_val:
                     self.logger.debug(
-                        f"Parameter {key} adjusted: {original_val:.2f} ↀ{validated[key]:.2f} "
                         f"(bounds: [{min_val}, {max_val}])"
                     )
         

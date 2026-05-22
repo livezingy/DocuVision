@@ -1,9 +1,5 @@
 # core/engines/base.py
-"""
-OCR/检测引擎基籀
-
-定义所有OCR和检测引擎必须实现的接口
-"""
+"""base module."""
 
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any, Tuple
@@ -12,115 +8,51 @@ import numpy as np
 
 
 class BaseOCREngine(ABC):
-    """OCR引擎基类"""
+    """Docstring."""
     
     @abstractmethod
     def recognize_text(self, image: Image.Image, **kwargs) -> List[Dict]:
-        """
-        识别文本
-        
-        Args:
-            image: PIL Image对象
-            **kwargs: 其他参数（如语言、置信度阈值等！
-            
-        Returns:
-            List[Dict]: OCR结果列表，每个元素包含：
-                - text: 文本内容
-                - bbox: 边界桀[x1, y1, x2, y2] 成[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-                - confidence: 置信庀(0-1)
-        """
+        """Docstring."""
         pass
     
     @property
     @abstractmethod
     def name(self) -> str:
-        """引擎名称"""
+        """Docstring."""
         pass
     
     def initialize(self, **kwargs) -> bool:
-        """
-        初始化引擎（可选实现）
-        
-        Args:
-            **kwargs: 初始化参敀
-            
-        Returns:
-            bool: 初始化是否成劀
-        """
+        """Docstring."""
         return True
     
     def is_available(self) -> bool:
-        """
-        检查引擎是否可用（可选实现）
-        
-        Returns:
-            bool: 引擎是否可用
-        """
+        """Docstring."""
         return True
 
 
 class BaseDetectionEngine(ABC):
-    """表格检测引擎基籀"""
+    """Docstring."""
     
     @abstractmethod
     def detect_tables(self, image: Image.Image, **kwargs) -> List[Dict]:
-        """
-        检测表栀
-        
-        Args:
-            image: PIL Image对象
-            **kwargs: 其他参数（如置信度阈值等！
-            
-        Returns:
-            List[Dict]: 检测结果列表，每个元素包含！
-                - bbox: 边界桀[x1, y1, x2, y2]
-                - confidence: 置信庀(0-1)
-                - 其他检测相关信恀
-        """
+        """Docstring."""
         pass
     
     @abstractmethod
     def recognize_structure(self, image: Image.Image, table_bbox: Optional[List] = None, **kwargs) -> Dict:
-        """
-        识别表格结构
-        
-        Args:
-            image: PIL Image对象（表格区域）
-            table_bbox: 表格边界桀[x1, y1, x2, y2]（可选）
-            **kwargs: 其他参数
-            
-        Returns:
-            Dict: 结构识别结果，包含：
-                - cells: 单元格列行
-                - rows: 行信恀
-                - columns: 列信恀
-                - 其他结构信息
-        """
+        """Docstring."""
         pass
     
     @property
     @abstractmethod
     def name(self) -> str:
-        """引擎名称"""
+        """Docstring."""
         pass
     
     def load_models(self, **kwargs) -> bool:
-        """
-        加载模型（可选实现）
-        
-        Args:
-            **kwargs: 模型配置参数
-            
-        Returns:
-            bool: 加载是否成功
-        """
+        """Docstring."""
         return True
     
     def is_available(self) -> bool:
-        """
-        检查引擎是否可用（可选实现）
-        
-        Returns:
-            bool: 引擎是否可用
-        """
+        """Docstring."""
         return True

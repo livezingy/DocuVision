@@ -1,17 +1,12 @@
 # core/utils/param_config.py
-"""
-Parameter Configuration Utilities
-
-Provides parameter definitions, validation, and configuration management
-for PDFPlumber and Camelot table extraction parameters.
-"""
+"""param config module."""
 
 from typing import Dict, Optional, Tuple, Literal, Any
 from enum import Enum
 
 
 class ParamMode(Enum):
-    """Parameter configuration mode"""
+    """Docstring."""
     DEFAULT = "default"
     AUTO = "auto"
     CUSTOM = "custom"
@@ -127,15 +122,7 @@ CAMELOT_STREAM_PARAM_DEFS = {
 
 
 def validate_pdfplumber_params(params: Dict[str, Any]) -> Tuple[bool, Optional[str], Dict[str, Any]]:
-    """
-    Validate PDFPlumber parameters
-    
-    Args:
-        params: Parameters to validate
-        
-    Returns:
-        Tuple of (is_valid, error_message, validated_params)
-    """
+    """Docstring."""
     validated = {}
     errors = []
     
@@ -181,15 +168,7 @@ def validate_pdfplumber_params(params: Dict[str, Any]) -> Tuple[bool, Optional[s
 
 
 def validate_camelot_lattice_params(params: Dict[str, Any]) -> Tuple[bool, Optional[str], Dict[str, Any]]:
-    """
-    Validate Camelot Lattice parameters
-    
-    Args:
-        params: Parameters to validate
-        
-    Returns:
-        Tuple of (is_valid, error_message, validated_params)
-    """
+    """Docstring."""
     validated = {}
     errors = []
     
@@ -232,15 +211,7 @@ def validate_camelot_lattice_params(params: Dict[str, Any]) -> Tuple[bool, Optio
 
 
 def validate_camelot_stream_params(params: Dict[str, Any]) -> Tuple[bool, Optional[str], Dict[str, Any]]:
-    """
-    Validate Camelot Stream parameters
-    
-    Args:
-        params: Parameters to validate
-        
-    Returns:
-        Tuple of (is_valid, error_message, validated_params)
-    """
+    """Docstring."""
     validated = {}
     errors = []
     
@@ -283,22 +254,22 @@ def validate_camelot_stream_params(params: Dict[str, Any]) -> Tuple[bool, Option
 
 
 def get_default_pdfplumber_params() -> Dict[str, Any]:
-    """Get default PDFPlumber parameters"""
+    """Docstring."""
     return {key: def_['default'] for key, def_ in PDFPLUMBER_PARAM_DEFS.items()}
 
 
 def get_default_camelot_lattice_params() -> Dict[str, Any]:
-    """Get default Camelot Lattice parameters"""
+    """Docstring."""
     params = {key: def_['default'] for key, def_ in CAMELOT_LATTICE_PARAM_DEFS.items()}
-    # 必须包含flavor参数，确保使用正确的模式
+    # Comment.
     params['flavor'] = 'lattice'
     return params
 
 
 def get_default_camelot_stream_params() -> Dict[str, Any]:
-    """Get default Camelot Stream parameters"""
+    """Docstring."""
     params = {key: def_['default'] for key, def_ in CAMELOT_STREAM_PARAM_DEFS.items()}
-    # 必须包含flavor参数，否则Camelot可能默认使用lattice模式
+    # Comment.
     params['flavor'] = 'stream'
     return params
 

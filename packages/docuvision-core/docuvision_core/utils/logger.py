@@ -9,25 +9,14 @@ from typing import Optional, Dict, Any
 from docuvision_core.utils.path_utils import get_output_paths
 
 class AppLogger:
-    """Application log manager
-    
-    Provides centralized logging functionality.
-    Supports file and console logging with rotation.
-    """
+    """Docstring."""
     
     _instance = None
     _logger = None
     
     @classmethod
     def get_logger(cls, config: Dict = None) -> 'AppLogger':
-        """Get logger instance with optional configuration
-
-        Args:
-            config: Configuration dictionary (optional)
-        
-        Returns:
-            AppLogger instance
-        """
+        """Docstring."""
         if cls._instance is None:
             cls._instance = cls(config)
         elif config is not None:
@@ -36,7 +25,7 @@ class AppLogger:
         return cls._instance
 
     def __init__(self, config: Dict = None):
-        """Initialize logger with optional configuration"""
+        """Docstring."""
         if AppLogger._instance is not None:
             raise Exception("This class is a singleton!")
         AppLogger._instance = self
@@ -44,16 +33,12 @@ class AppLogger:
         self._init_logger()
     
     def update_config(self, config: Dict):
-        """Update logger configuration
-        
-        Args:
-            config: New configuration dictionary
-        """
+        """Docstring."""
         self.config.update(config)
         self._init_logger()  # Reinitialize logger with new config
             
     def _init_logger(self):
-        """Initialize logger configuration"""
+        """Docstring."""
         # Create logger
         self._logger = logging.getLogger('PDFExtractor')
         self._logger.setLevel(logging.DEBUG)
@@ -101,103 +86,58 @@ class AppLogger:
 
         
     def debug(self, message: str, data: Optional[Dict] = None):
-        """Log debug message
-        
-        Args:
-            message: Log message
-            data: Additional data
-        """
+        """Docstring."""
         if data:
             message = f"{message} - {data}"
         self._logger.debug(message)
         
     def info(self, message: str, data: Optional[Dict] = None):
-        """Log info message
-        
-        Args:
-            message: Log message
-            data: Additional data
-        """
+        """Docstring."""
         if data:
             message = f"{message} - {data}"
         self._logger.info(message)
         
     def warning(self, message: str, data: Optional[Dict] = None):
-        """Log warning message
-        
-        Args:
-            message: Log message
-            data: Additional data
-        """
+        """Docstring."""
         if data:
             message = f"{message} - {data}"
         self._logger.warning(message)
         
     def error(self, message: str, exc_info: bool = False):
-        """Log error message
-        
-        Args:
-            message: Error message
-            exc_info: Whether to include exception info
-        """
+        """Docstring."""
         if exc_info:
             self._logger.error(message, exc_info=True)
         else:
             self._logger.error(message)
         
     def critical(self, message: str, data: Optional[Dict] = None):
-        """Log critical message
-        
-        Args:
-            message: Log message
-            data: Additional data
-        """
+        """Docstring."""
         if data:
             message = f"{message} - {data}"
         self._logger.critical(message)
         
     def log_exception(self, exception: Exception, data: Optional[Dict] = None):
-        """Log exception
-        
-        Args:
-            exception: Exception object
-            data: Additional data
-        """
+        """Docstring."""
         message = f"Exception: {str(exception)}"
         if data:
             message = f"{message} - {data}"
         self._logger.exception(message)
         
     def log_operation(self, operation: str, data: Optional[Dict] = None):
-        """Log operation
-        
-        Args:
-            operation: Operation name
-            data: Additional data
-        """
+        """Docstring."""
         message = f"Operation: {operation}"
         if data:
             message = f"{message} - {data}"
         self._logger.info(message)
         
     def log_performance(self, operation: str, duration: float, data: Optional[Dict] = None):
-        """Log performance
-        
-        Args:
-            operation: Operation name
-            duration: Duration in seconds
-            data: Additional data
-        """
+        """Docstring."""
         message = f"Performance: {operation} - {duration:.2f}s"
         if data:
             message = f"{message} - {data}"
         self._logger.info(message)
         
     def set_output_path(self, output_path: str):
-        """Set output path and reinitialize logger
-        
-        Args:
-            output_path: Path to output directory
-        """
+        """Docstring."""
         self.config['output_path'] = output_path
         self._init_logger()  # Reinitialize logger with new path

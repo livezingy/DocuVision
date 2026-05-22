@@ -27,7 +27,7 @@ class TestCamelotExtractor:
         assert 'stream' in flavors
         assert len(flavors) == 2
     
-    @patch('docuvision_core.extractors.camelot_extractor.TableParamsCalculator')
+    @patch('docuvision_core.processing.table_params_calculator.TableParamsCalculator')
     def test_calculate_lattice_params(self, mock_calculator_class, mock_feature_analyzer):
         extractor = CamelotExtractor()
         
@@ -51,7 +51,7 @@ class TestCamelotExtractor:
         assert 'line_scale' in params
         mock_calculator.get_camelot_lattice_params.assert_called_once()
     
-    @patch('docuvision_core.extractors.camelot_extractor.TableParamsCalculator')
+    @patch('docuvision_core.processing.table_params_calculator.TableParamsCalculator')
     def test_calculate_stream_params(self, mock_calculator_class, mock_feature_analyzer):
         extractor = CamelotExtractor()
         
@@ -86,27 +86,27 @@ class TestCamelotExtractor:
             
             mock_lattice.assert_called_once()
     
-    @patch('docuvision_core.extractors.camelot_extractor.camelot')
-    def test_extract_tables_missing_params(self, mock_camelot, mock_page, mock_feature_analyzer):
+    def test_extract_tables_missing_params(self, mock_page, mock_feature_analyzer):
         extractor = CamelotExtractor()
-        
-        #
+        extractor._camelot = Mock()
+        extractor._camelot_import_attempted = True
+
         params = {
             'flavor': 'lattice',
             'param_mode': 'auto'
         }
-        
+
         results = extractor.extract_tables(mock_page, mock_feature_analyzer, params)
         assert results == []
-    
-    @patch('docuvision_core.extractors.camelot_extractor.camelot')
+
     @patch('docuvision_core.extractors.camelot_extractor.TableEvaluator')
-    def test_extract_lattice_success(self, mock_evaluator_class, mock_camelot, 
+    def test_extract_lattice_success(self, mock_evaluator_class,
                                      mock_page, mock_feature_analyzer, mock_camelot_table):
         extractor = CamelotExtractor()
-        
-        #
+        mock_camelot = Mock()
         mock_camelot.read_pdf.return_value = [mock_camelot_table]
+        extractor._camelot = mock_camelot
+        extractor._camelot_import_attempted = True
         
         #
         mock_evaluator = Mock()
@@ -140,6 +140,7 @@ class TestCamelotExtractor:
     def test_extract_tables_camelot_not_available(self, mock_page, mock_feature_analyzer):
         extractor = CamelotExtractor()
         extractor._camelot = None
+        extractor._camelot_import_attempted = True
         
         params = {
             'pdf_path': 'test.pdf',

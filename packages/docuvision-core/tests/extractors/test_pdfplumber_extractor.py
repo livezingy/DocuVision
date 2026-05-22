@@ -27,7 +27,7 @@ class TestPDFPlumberExtractor:
         assert 'text' in flavors
         assert len(flavors) == 2
     
-    @patch('docuvision_core.extractors.pdfplumber_extractor.TableParamsCalculator')
+    @patch('docuvision_core.processing.table_params_calculator.TableParamsCalculator')
     def test_calculate_params(self, mock_calculator_class, mock_feature_analyzer):
         extractor = PDFPlumberExtractor()
         
@@ -47,14 +47,23 @@ class TestPDFPlumberExtractor:
         assert 'snap_tolerance' in params
         mock_calculator.get_pdfplumber_params.assert_called_once_with('bordered')
     
+    @patch('docuvision_core.extractors.pdfplumber_extractor.PDFPlumberTableWrapper')
     @patch('docuvision_core.extractors.pdfplumber_extractor.TableEvaluator')
-    def test_extract_lines_success(self, mock_evaluator_class, mock_page, mock_feature_analyzer, mock_pdfplumber_table):
+    def test_extract_lines_success(
+        self,
+        mock_evaluator_class,
+        mock_wrapper_class,
+        mock_page,
+        mock_feature_analyzer,
+        mock_pdfplumber_table,
+    ):
         extractor = PDFPlumberExtractor()
-        
-        #
+
         mock_page.find_tables.return_value = [mock_pdfplumber_table]
-        
-        #
+
+        mock_wrapper = Mock()
+        mock_wrapper_class.return_value = mock_wrapper
+
         mock_evaluator = Mock()
         mock_evaluator.evaluate.return_value = (0.85, {'accuracy': 0.9}, 'unstructured')
         mock_evaluator_class.return_value = mock_evaluator
@@ -79,14 +88,23 @@ class TestPDFPlumberExtractor:
             assert results[0]['source'] == 'pdfplumber_lines'
             assert 'score' in results[0]
     
+    @patch('docuvision_core.extractors.pdfplumber_extractor.PDFPlumberTableWrapper')
     @patch('docuvision_core.extractors.pdfplumber_extractor.TableEvaluator')
-    def test_extract_text_success(self, mock_evaluator_class, mock_page, mock_feature_analyzer, mock_pdfplumber_table):
+    def test_extract_text_success(
+        self,
+        mock_evaluator_class,
+        mock_wrapper_class,
+        mock_page,
+        mock_feature_analyzer,
+        mock_pdfplumber_table,
+    ):
         extractor = PDFPlumberExtractor()
-        
-        #
+
         mock_page.find_tables.return_value = [mock_pdfplumber_table]
-        
-        #
+
+        mock_wrapper = Mock()
+        mock_wrapper_class.return_value = mock_wrapper
+
         mock_evaluator = Mock()
         mock_evaluator.evaluate.return_value = (0.85, {'accuracy': 0.9}, 'unstructured')
         mock_evaluator_class.return_value = mock_evaluator

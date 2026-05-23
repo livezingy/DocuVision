@@ -37,6 +37,23 @@ def _resolve_ocr_engine(mode: ExtractMode, engine: str) -> str:
     raise ValueError(f"Unsupported OCR engine: {engine}")
 
 
+def _normalize_easyocr_bbox(block: Dict[str, Any]) -> List[float]:
+    """Map EasyOCR bbox_rect or corner points to LiteOcrBlock [x1, y1, x2, y2]."""
+    rect = block.get("bbox_rect")
+    if rect and len(rect) >= 4:
+        return [float(v) for v in rect[:4]]
+
+    corners = block.get("bbox") or []
+    if corners and isinstance(corners[0], (list, tuple)):
+        xs = [float(p[0]) for p in corners]
+        ys = [float(p[1]) for p in corners]
+        return [min(xs), min(ys), max(xs), max(ys)]
+
+    if corners:
+        return [float(v) for v in corners[:4]]
+    return []
+
+
 def _run_easyocr(image: Image.Image, languages: List[str], min_confidence: float) -> List[Dict[str, Any]]:
     from docuvision_core.engines.easyocr_engine import EasyOCREngine
 
@@ -46,7 +63,7 @@ def _run_easyocr(image: Image.Image, languages: List[str], min_confidence: float
     return [
         {
             "page": 1,
-            "bbox": [float(v) for v in (b.get("bbox") or [])],
+            "bbox": _normalize_easyocr_bbox(b),
             "text": str(b.get("text", "")),
             "confidence": float(b.get("confidence", 0.0) or 0.0),
             "engine": "easyocr",

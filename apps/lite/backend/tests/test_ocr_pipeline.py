@@ -29,10 +29,10 @@ def test_normalize_easyocr_bbox_empty():
     assert _normalize_easyocr_bbox({}) == []
 
 
-@patch("docuvision_core.engines.easyocr_engine.EasyOCREngine")
-def test_run_easyocr_maps_bbox_rect(mock_engine_class):
+@patch("app.services.ocr_pipeline._create_easyocr_engine")
+def test_run_easyocr_maps_bbox_rect(mock_create_engine):
     mock_engine = MagicMock()
-    mock_engine_class.return_value = mock_engine
+    mock_create_engine.return_value = mock_engine
     mock_engine.recognize_text.return_value = [
         {
             "text": "Hello",

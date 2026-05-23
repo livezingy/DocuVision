@@ -54,10 +54,14 @@ def _normalize_easyocr_bbox(block: Dict[str, Any]) -> List[float]:
     return []
 
 
-def _run_easyocr(image: Image.Image, languages: List[str], min_confidence: float) -> List[Dict[str, Any]]:
+def _create_easyocr_engine(languages: List[str], gpu: bool = False):
     from docuvision_core.engines.easyocr_engine import EasyOCREngine
 
-    ocr = EasyOCREngine(languages=languages or ["en"], gpu=False)
+    return EasyOCREngine(languages=languages, gpu=gpu)
+
+
+def _run_easyocr(image: Image.Image, languages: List[str], min_confidence: float) -> List[Dict[str, Any]]:
+    ocr = _create_easyocr_engine(languages or ["en"], gpu=False)
     ocr.initialize()
     blocks = ocr.recognize_text(image, min_confidence=min_confidence)
     return [

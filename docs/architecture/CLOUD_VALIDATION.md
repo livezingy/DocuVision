@@ -6,13 +6,22 @@
 
 ## 1. 环境准备（一次性）
 
+Pro GPU 与 Lite CPU **必须使用独立虚拟环境**（`docuvision_env` / `docuvision_lite_env`）。
+
 ```bash
 cd backend
-pip install -r requirements.txt
-# GPU：按 requirements.txt 头注释安装与 CUDA 匹配的 torch / Paddle
-cp .env.cloud .env   # 按需改模型路径，勿提交 .env
-git pull origin main  # 含 e7dc4ab+ PDF KIE 栅格化修复
+git pull origin main   # 或当前 feature 分支
+
+# 推荐：一键安装（见 backend/requirements.txt 头注释）
+python3 -m venv ~/docuvision_env
+source ~/docuvision_env/bin/activate
+./install_pro_gpu.sh
+
+# 或手动：requirements.txt → requirements-gpu-torch.txt → Paddle cu129 → requirements-gpu-nvidia.txt
+cp -n .env.cloud .env   # 按需改模型路径，勿提交 .env
 ```
+
+**勿**在 Pro 环境中安装 Lite 依赖；**勿**将 `LD_LIBRARY_PATH` 仅指向 `torch/lib`。
 
 建议环境变量：
 

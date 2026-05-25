@@ -1,0 +1,10 @@
+# Pro GPU — PyTorch for KIE (Qwen2.5-VL via modelscope/transformers).
+# Install AFTER requirements.txt and BEFORE Paddle cu129.
+#
+#   pip install -r requirements-gpu-torch.txt
+#
+# Uses PyTorch cu124 wheels. Paddle 3.3.0 GPU is cu129-only; after Paddle install,
+# run requirements-gpu-nvidia.txt to re-pin shared nvidia-* libs to 12.9.x.
+
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch>=2.2.0,<2.7.0

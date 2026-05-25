@@ -1,17 +1,32 @@
-# DocuVision backend — 唯一维护的 Python 依赖清单（合并原 requirements-colab / requirements-paddleocr-aistudio）
+# DocuVision Pro backend — base Python dependencies (CPU-safe subset).
 #
-# Python: 3.10+（Paddle 3.3 官方支持 3.8–3.11；托管镜像请以镜像文档为准）
+# Python: 3.10–3.11 recommended for Paddle 3.3.x.
 #
-# 以下深度学习栈通常需在 GPU 环境中按官方指引单独安装，避免与镜像预装 CUDA 冲突：
-#   paddlepaddle-gpu==3.3.x
-#   paddleocr==3.3.x
-#   paddlex==3.3.x
-# 示例：pip install --no-deps paddlepaddle-gpu==3.3.0 paddleocr==3.3.2 paddlex==3.3.12
-# Qwen2.5-VL KIE 需要 torch + transformers。GPU 环境请按 https://pytorch.org/get-started/locally/ 选择与本机 CUDA 匹配的 wheel
-#（示例 CUDA 12.4：pip install torch --index-url https://download.pytorch.org/whl/cu124），避免与镜像预装 CUDA 冲突。
-# 与 Paddle 同机时注意显存峰值叠加。
-# 默认模型路径见 app/core/config.py KIE_QWEN_MODEL_ID（云端 ModelScope 缓存）；可通过 DOCUVISION_KIE_QWEN_MODEL_ID 覆盖。
-# 可选：DOCUVISION_KIE_WARMUP=1 在进程启动后后台预加载 KIE 模型（见 docs/architecture/kie.md）。
+# =============================================================================
+# Pro GPU (Cloud Studio) — do NOT pip install torch from this file on GPU.
+# Use the split stack below; keep Lite in a separate venv (requirements-lite).
+#
+#   python3 -m venv ~/docuvision_env && source ~/docuvision_env/bin/activate
+#   cd backend
+#   ./install_pro_gpu.sh
+#
+# Manual equivalent:
+#   1. pip install -r requirements.txt
+#   2. pip install -r requirements-gpu-torch.txt
+#   3. pip install paddlepaddle-gpu==3.3.0 \
+#        -i https://www.paddlepaddle.org.cn/packages/stable/cu129/
+#   4. pip install paddleocr==3.3.2 "paddlex[ocr]==3.3.12"
+#   5. pip install -r requirements-gpu-nvidia.txt
+#   6. cp -n .env.cloud .env && DEBUG_MODE=false python run.py
+#
+# Notes:
+#   - paddlepaddle-gpu 3.3.0 GPU wheel is cu129-only on the official index.
+#   - torch uses cu124 wheels (requirements-gpu-torch.txt); nvidia 12.9 re-pin
+#     (requirements-gpu-nvidia.txt) avoids libnvJitLink / libcusparse conflicts.
+#   - Do NOT set LD_LIBRARY_PATH to torch/lib only.
+#   - KIE warmup: see .env.cloud (DOCUVISION_KIE_WARMUP=1).
+#   - Cloud validation: docs/architecture/CLOUD_VALIDATION.md
+# =============================================================================
 
 # ============================================
 # Web Framework & API
@@ -35,16 +50,15 @@ pypdf==3.17.4
 # Image / Array
 # ============================================
 Pillow==10.2.0
-# 与 PaddleX / 多数 Colab 约束对齐；若镜像明确使用 NumPy 2.x + Paddle 3.3，可按环境放宽上界
 numpy>=1.24.0,<2.0
 
 # ============================================
-# PaddleX / hub 兼容（CRITICAL）
+# PaddleX / hub compatibility
 # ============================================
 colorlog==6.8.0
 ruamel.yaml==0.18.6
 ujson==5.10.0
-aistudio-sdk==0.2.6
+aistudio-sdk>=0.3.5
 modelscope>=1.28.0
 langchain==0.1.0
 PyYAML==6.0.2
@@ -56,16 +70,14 @@ beautifulsoup4==4.12.3
 lxml==5.1.0
 
 # ============================================
-# Barcode / QR（需系统 libzbar；不需要可注释 pyzbar）
+# Barcode / QR (system libzbar required)
 # ============================================
 pyzbar==0.1.9
 opencv-python>=4.8.0
 
 # ============================================
-# KIE — Qwen2.5-VL（transformers + torch）
+# KIE — Qwen2.5-VL (transformers; torch in requirements-gpu-torch.txt)
 # ============================================
-# torch 未锁 CUDA 变体：CPU/默认可直装；GPU 请按文件头部说明改用 PyTorch 官方 cu 索引。
-torch>=2.2.0,<2.7.0
 transformers>=4.45.0
 
 # ============================================

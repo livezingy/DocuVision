@@ -26,7 +26,7 @@
 
 ## 2.2 Python 依赖（torch / transformers）
 
-- **清单**：见仓库根下 [`backend/requirements.txt`](../../backend/requirements.txt) 中 **KIE** 小节：`transformers` 与 **`torch`**（CPU 默认可装版本；GPU 环境请按 [PyTorch 官方说明](https://pytorch.org/get-started/locally/) 选择与 CUDA 匹配的 wheel，例如 `pip install torch --index-url https://download.pytorch.org/whl/cu124`）。
+- **清单**：见仓库根下 [`backend/requirements.txt`](../../backend/requirements.txt) 中 **KIE** 小节：`transformers` 与 **`torch` + `torchvision`**（均在 [`requirements-gpu-torch.txt`](../../backend/requirements-gpu-torch.txt)；GPU 环境用 PyTorch **cu124** 索引，勿只装 `torch`）。
 - **与 Paddle 同机**：两者可能同时占 GPU 显存，请预留或分时；KIE 首次加载模型可达数十秒，可用 `DOCUVISION_KIE_WARMUP` 在空闲时预热。
 
 ## 3. 数据流（简图）

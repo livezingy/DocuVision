@@ -5,6 +5,8 @@
 #
 # Uses PyTorch cu124 wheels. Paddle 3.3.0 GPU is cu129-only; after Paddle install,
 # run requirements-gpu-nvidia.txt to re-pin shared nvidia-* libs to 12.9.x.
+# torchvision is required by Qwen2VLVideoProcessor (KIE).
 
 --extra-index-url https://download.pytorch.org/whl/cu124
 torch>=2.2.0,<2.7.0
+torchvision>=0.17.0,<0.22.0

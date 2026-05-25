@@ -50,10 +50,12 @@ source "$ROOT/env_pro_gpu.sh"
 python - <<'PY'
 import paddle
 import torch
+import torchvision
 import paddlex
 
 print("paddle", paddle.__version__, "cuda", paddle.is_compiled_with_cuda())
 print("torch", torch.__version__, "cuda_available", torch.cuda.is_available())
+print("torchvision", torchvision.__version__)
 print("paddlex OK")
 PY
 

@@ -1,19 +1,4 @@
-# Pro GPU — re-pin NVIDIA CUDA 12.9 libraries for paddlepaddle-gpu 3.3.0 (cu129).
-# Install LAST, after requirements-gpu-torch.txt and the Paddle stack.
-#
-#   pip install -r requirements-gpu-nvidia.txt
-#
-# torch cu124 pulls nvidia-* 12.1–12.4 wheels that break Paddle cu129 (e.g. libnvJitLink 12.9).
+# Pro GPU — cuSPARSELt (required by PyTorch cu124: libcusparseLt.so.0).
+# Installed with requirements-gpu-nvidia.txt after Paddle cu129 re-pin.
 
-nvidia-nvjitlink-cu12==12.9.41
-nvidia-cublas-cu12==12.9.0.13
-nvidia-cuda-runtime-cu12==12.9.37
-nvidia-cuda-nvrtc-cu12==12.9.41
-nvidia-cuda-cupti-cu12==12.9.19
-nvidia-cusparse-cu12==12.5.9.5
-nvidia-cudnn-cu12==9.9.0.52
-nvidia-cufft-cu12==11.4.0.6
-nvidia-curand-cu12==10.3.10.19
-nvidia-cusolver-cu12==11.7.4.40
-nvidia-nccl-cu12==2.27.3
-nvidia-nvtx-cu12==12.9.19
+nvidia-cusparselt-cu12==0.6.2

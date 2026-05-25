@@ -21,7 +21,7 @@ source ~/docuvision_env/bin/activate
 cp -n .env.cloud .env   # 按需改模型路径，勿提交 .env
 ```
 
-**勿**在 Pro 环境中安装 Lite 依赖；**勿**将 `LD_LIBRARY_PATH` 仅指向 `torch/lib`。
+**勿**在 Pro 环境中安装 Lite 依赖。启动前 **`source backend/env_pro_gpu.sh`**（设置 `LD_LIBRARY_PATH`，含 `libcusparseLt` 等 pip 自带库路径）。
 
 建议环境变量：
 

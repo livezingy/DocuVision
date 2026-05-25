@@ -36,13 +36,16 @@ python -m pip install paddlepaddle-gpu==3.3.0 \
 python -m pip install paddleocr==3.3.2
 python -m pip install "paddlex[ocr]==3.3.12"
 
-echo "==> Re-pin NVIDIA CUDA 12.9 libs for Paddle cu129"
+echo "==> Re-pin NVIDIA CUDA 12.9 libs (+ cuSPARSELt for torch)"
 python -m pip install -r requirements-gpu-nvidia.txt
 
 if [[ ! -f .env ]] && [[ -f .env.cloud ]]; then
   cp .env.cloud .env
   echo "Created .env from .env.cloud"
 fi
+
+# shellcheck disable=SC1091
+source "$ROOT/env_pro_gpu.sh"
 
 python - <<'PY'
 import paddle
@@ -56,5 +59,6 @@ PY
 
 echo ""
 echo "Pro GPU deps OK. Start with:"
-echo "  unset LD_LIBRARY_PATH"
+echo "  source ~/docuvision_env/bin/activate"
+echo "  cd backend && source ./env_pro_gpu.sh"
 echo "  DEBUG_MODE=false python run.py"

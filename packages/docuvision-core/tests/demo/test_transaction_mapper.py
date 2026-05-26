@@ -22,6 +22,26 @@ def test_extract_transactions_from_table_headers():
     assert txs[0]["amount"] == "120.00"
 
 
+def test_extract_transactions_skips_header_row_when_unlabeled():
+    tables = [
+        {
+            "table_id": "t1",
+            "page": 1,
+            "headers": [],
+            "rows": [
+                ["Posting Date", "Memo", "Debit", "Type"],
+                ["03/01/2024", "WIRE IN - CLIENT PAYMENT", "12,500.00", "Revenue"],
+            ],
+        }
+    ]
+    txs = extract_transactions_from_tables(tables)
+    assert len(txs) == 1
+    assert txs[0]["date"] == "03/01/2024"
+    assert txs[0]["description"] == "WIRE IN - CLIENT PAYMENT"
+    assert txs[0]["amount"] == "12,500.00"
+    assert txs[0]["category"] == "Revenue"
+
+
 def test_extract_transactions_from_kie_items():
     fields = {
         "items": [

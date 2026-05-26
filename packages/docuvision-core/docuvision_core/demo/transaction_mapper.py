@@ -70,16 +70,30 @@ def _row_to_transaction(
     return tx
 
 
+def _row_looks_like_header(row: Sequence[Any]) -> bool:
+    """True when a row contains multiple known column header labels."""
+    hits = 0
+    for cell in row:
+        if _normalize_header(str(cell)) in _HEADER_ALIASES:
+            hits += 1
+    return hits >= 2
+
+
 def extract_transactions_from_tables(tables: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     transactions: List[Dict[str, Any]] = []
     for table in tables or []:
         headers = table.get("headers") or []
         rows = table.get("rows") or []
         header_map = _map_headers(headers)
-        if not header_map and rows:
-            # Positional fallback for headerless tables: col0=date, col1=description, col2=amount
-            header_map = {0: "date", 1: "description", 2: "amount"}
-            data_rows = rows
+        data_rows = rows
+
+        if not header_map and rows and _row_looks_like_header(rows[0]):
+            header_map = _map_headers([str(c) for c in rows[0]])
+            data_rows = rows[1:]
+        elif not header_map and rows:
+            # Positional fallback when extractors emit numeric column names (0,1,2,3)
+            header_map = {0: "date", 1: "description", 2: "amount", 3: "category"}
+            data_rows = rows[1:] if _row_looks_like_header(rows[0]) else rows
         elif headers:
             data_rows = rows
         else:

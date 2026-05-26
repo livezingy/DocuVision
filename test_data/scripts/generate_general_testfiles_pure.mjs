@@ -7,10 +7,19 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.join(__dirname, "..", "testfiles", "GeneralFiles");
+const OUT = process.env.DOCUVISION_PDF_OUT
+  ? path.resolve(process.env.DOCUVISION_PDF_OUT)
+  : path.join(__dirname, "..", "testfiles", "GeneralFiles");
+
+function sanitizeAscii(text) {
+  return String(text)
+    .replace(/\u2014/g, " - ")
+    .replace(/\u2013/g, "-")
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, "");
+}
 
 function escPdf(text) {
-  return String(text).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  return sanitizeAscii(text).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
 function buildPdf(pages) {
@@ -79,29 +88,30 @@ function buildPdf(pages) {
   return pdf;
 }
 
-function tablePage(title, subtitle, headers, rows, bordered = true) {
+function tablePage(title, subtitle, headers, rows, bordered = true, colWidths = null) {
   const items = [];
   const lines = [];
   items.push({ text: title, x: 50, y: 740, size: 14, bold: true });
   if (subtitle) items.push({ text: subtitle, x: 50, y: 720, size: 10, bold: false });
 
   const startX = 50;
-  let y = 690;
-  const colWidths = headers.length === 4 ? [80, 220, 90, 120] : [85, 200, 90, 100];
+  let y = 660;
+  const widths = colWidths || (headers.length === 4 ? [90, 250, 90, 110] : [85, 200, 90, 100]);
   const rowH = 20;
   let x = startX;
 
   headers.forEach((h, i) => {
     items.push({ text: h, x: x + 4, y: y - 14, size: 10, bold: true });
     if (bordered) {
-      lines.push({ x1: x, y1: y - rowH, x2: x + colWidths[i], y2: y - rowH });
+      lines.push({ x1: x, y1: y - rowH, x2: x + widths[i], y2: y - rowH });
       lines.push({ x1: x, y1: y, x2: x, y2: y - rowH });
     }
-    x += colWidths[i];
+    x += widths[i];
   });
   if (bordered) {
-    lines.push({ x1: startX + colWidths.reduce((a, b) => a + b, 0), y1: y, x2: startX + colWidths.reduce((a, b) => a + b, 0), y2: y - rowH });
-    lines.push({ x1: startX, y1: y, x2: startX + colWidths.reduce((a, b) => a + b, 0), y2: y });
+    const totalW = widths.reduce((a, b) => a + b, 0);
+    lines.push({ x1: startX + totalW, y1: y, x2: startX + totalW, y2: y - rowH });
+    lines.push({ x1: startX, y1: y, x2: startX + totalW, y2: y });
   }
   y -= rowH;
 
@@ -110,14 +120,15 @@ function tablePage(title, subtitle, headers, rows, bordered = true) {
     row.forEach((cell, i) => {
       items.push({ text: cell, x: x + 4, y: y - 14, size: 10, bold: false });
       if (bordered) {
-        lines.push({ x1: x, y1: y - rowH, x2: x + colWidths[i], y2: y - rowH });
+        lines.push({ x1: x, y1: y - rowH, x2: x + widths[i], y2: y - rowH });
         lines.push({ x1: x, y1: y, x2: x, y2: y - rowH });
       }
-      x += colWidths[i];
+      x += widths[i];
     });
     if (bordered) {
-      lines.push({ x1: startX + colWidths.reduce((a, b) => a + b, 0), y1: y, x2: startX + colWidths.reduce((a, b) => a + b, 0), y2: y - rowH });
-      lines.push({ x1: startX, y1: y, x2: startX + colWidths.reduce((a, b) => a + b, 0), y2: y });
+      const totalW = widths.reduce((a, b) => a + b, 0);
+      lines.push({ x1: startX + totalW, y1: y, x2: startX + totalW, y2: y - rowH });
+      lines.push({ x1: startX, y1: y, x2: startX + totalW, y2: y });
     }
     y -= rowH;
   });
@@ -145,14 +156,14 @@ function write(name, pages) {
 
 write("financial_report_01.pdf", [
   tablePage(
-    "Acme Corp — Quarterly Transaction Report",
+    "Acme Corp - Quarterly Transaction Report",
     "Report Period: Q1 2024    Currency: USD    Vendor: Acme Reporting",
     ["Date", "Description", "Amount", "Category"],
     [
-      ["2024-01-05", "Office supplies — Staples", "$245.00", "Office"],
+      ["2024-01-05", "Office supplies - Staples", "$245.00", "Office"],
       ["2024-01-12", "Cloud software subscription", "$1,299.00", "Software"],
-      ["2024-01-18", "Client travel — NYC", "$892.50", "Travel"],
-      ["2024-02-02", "Utility payment — electric", "$410.00", "Utilities"],
+      ["2024-01-18", "Client travel - NYC", "$892.50", "Travel"],
+      ["2024-02-02", "Utility payment - electric", "$410.00", "Utilities"],
       ["2024-02-14", "Product revenue deposit", "$15,200.00", "Revenue"],
     ],
     true
@@ -161,37 +172,38 @@ write("financial_report_01.pdf", [
 
 write("financial_report_02.pdf", [
   tablePage(
-    "GlobalFin Services — Account Activity Summary",
+    "GlobalFin Services - Account Activity Summary",
     "Account: OPER-7782    Statement Date: 2024-03-31",
     ["Posting Date", "Memo", "Debit", "Type"],
     [
-      ["03/01/2024", "WIRE IN — CLIENT PAYMENT", "12,500.00", "Revenue"],
-      ["03/05/2024", "ACH OUT — PAYROLL VENDOR", "8,200.00", "Payroll"],
-      ["03/09/2024", "POS — OFFICE DEPOT #442", "156.78", "Office"],
-      ["03/15/2024", "SaaS — ANALYTICS PLATFORM", "499.00", "Software"],
-      ["03/22/2024", "AIRLINE — CONFERENCE TRAVEL", "1,045.60", "Travel"],
+      ["03/01/2024", "WIRE IN - CLIENT PAYMENT", "12,500.00", "Revenue"],
+      ["03/05/2024", "ACH OUT - PAYROLL VENDOR", "8,200.00", "Payroll"],
+      ["03/09/2024", "POS - OFFICE DEPOT #442", "156.78", "Office"],
+      ["03/15/2024", "SaaS - ANALYTICS PLATFORM", "499.00", "Software"],
+      ["03/22/2024", "AIRLINE - CONFERENCE TRAVEL", "1,045.60", "Travel"],
     ],
-    true
+    true,
+    [90, 250, 90, 110]
   ),
 ]);
 
 write("bank_statement_sample.pdf", [
   tablePage(
-    "First National Bank — Business Checking Statement",
-    "Statement Period: Feb 1 – Feb 29, 2024",
+    "First National Bank - Business Checking Statement",
+    "Statement Period: Feb 1 - Feb 29, 2024",
     ["Date", "Description", "Amount", "Balance"],
     [
       ["02/01", "Opening balance", "", "25,000.00"],
-      ["02/03", "Deposit — Invoice #1042", "3,400.00", "28,400.00"],
-      ["02/07", "Withdrawal — Rent", "-2,100.00", "26,300.00"],
-      ["02/12", "Fee — wire transfer", "-25.00", "26,275.00"],
+      ["02/03", "Deposit - Invoice #1042", "3,400.00", "28,400.00"],
+      ["02/07", "Withdrawal - Rent", "-2,100.00", "26,300.00"],
+      ["02/12", "Fee - wire transfer", "-25.00", "26,275.00"],
     ],
     true
   ),
 ]);
 
 write("transaction_ledger_unbordered.pdf", [
-  textPage("Vendor B — Transaction Ledger (text-aligned columns)", null, [
+  textPage("Vendor B - Transaction Ledger (text-aligned columns)", null, [
     "Date        Description                      Amount     Category",
     "2024-04-01  Software license renewal         890.00     Software",
     "2024-04-08  Office furniture                 450.00     Office",
@@ -218,7 +230,7 @@ const readme = `# GeneralFiles — Trial / Cloud Test Samples
 | File | Purpose | Suggested track |
 |------|---------|-----------------|
 | \`financial_report_01.pdf\` | Bordered transaction table (Acme Q1) | Lite + Pro \`financial_report\` KIE |
-| \`financial_report_02.pdf\` | Alternate vendor layout (GlobalFin) | Lite + Pro KIE |
+| \`financial_report_02.pdf\` | Alternate vendor layout (GlobalFin, ASCII-safe) | Lite + Pro KIE |
 | \`bank_statement_sample.pdf\` | Bank statement with Date/Amount/Balance | Lite table → transactions mapping |
 | \`transaction_ledger_unbordered.pdf\` | Monospace columns, weak borders | Lite borderless / text routing |
 | \`financial_report_scansim.pdf\` | Sparse layout | Lite scan-profile / OCR path |

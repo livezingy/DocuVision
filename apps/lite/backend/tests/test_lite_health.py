@@ -34,6 +34,8 @@ LITE_RESULT_TOP_KEYS = {
     "exports",
     "warnings",
     "hints",
+    "transactions",
+    "mapped_transactions",
     "error",
 }
 

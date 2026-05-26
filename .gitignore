@@ -220,6 +220,7 @@ backend/uploads/
 # Probe/debug generated artifacts
 scripts/outputs/
 test_data/scripts/node_modules/
+test_data/testfiles/GeneralFiles_staging/
 
 # Cloud test screenshots / artifacts (not versioned)
 test_data/TestResult/

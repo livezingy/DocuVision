@@ -29,23 +29,36 @@
       .replace(/\s+/g, " ");
   }
 
+  function getTableRowData(table) {
+    if (Array.isArray(table.data) && table.data.length) {
+      return table.data;
+    }
+    const rows = table.rows;
+    if (Array.isArray(rows) && rows.length && Array.isArray(rows[0])) {
+      return rows;
+    }
+    return [];
+  }
+
   function extractTransactionsFromTables(tables) {
     const transactions = [];
     (tables || []).forEach((table) => {
-      const headers = table.headers || [];
-      const rows = table.rows || [];
+      const rowData = getTableRowData(table);
+      const headers = table.headers || (rowData.length ? rowData[0] : []);
+      const bodyRows = table.headers ? rowData : rowData.slice(1);
       const headerMap = {};
       headers.forEach((h, idx) => {
         const key = HEADER_ALIASES[normalizeHeader(h)];
         if (key) headerMap[idx] = key;
       });
-      if (!Object.keys(headerMap).length && rows.length) {
+      if (!Object.keys(headerMap).length && bodyRows.length) {
         headerMap[0] = "date";
         headerMap[1] = "description";
         headerMap[2] = "amount";
       }
-      rows.forEach((row, ri) => {
-        const tx = { source_table: table.table_id, page: table.page || 1, row_index: ri };
+      bodyRows.forEach((row, ri) => {
+        if (!Array.isArray(row)) return;
+        const tx = { source_table: table.table_id || table.id, page: table.page || 1, row_index: ri };
         row.forEach((cell, ci) => {
           const field = headerMap[ci];
           if (field && cell) tx[field] = String(cell).trim();

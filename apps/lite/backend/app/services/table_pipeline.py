@@ -14,6 +14,28 @@ from app.schemas.lite_result import ExtractMode, WarningCode
 from app.services.file_detector import detect_file_type
 from app.services.result_mapper import raw_results_to_lite_tables
 
+TEXT_PREVIEW_MAX_CHARS = 8000
+
+
+def _build_page_text_preview(pages: List[Any]) -> Optional[str]:
+    from docuvision_core.utils.pdf_text_utils import sanitize_pdf_text
+
+    parts: List[str] = []
+    for page in pages:
+        try:
+            text = page.extract_text() or ""
+        except Exception:
+            text = ""
+        cleaned = sanitize_pdf_text(text)
+        if cleaned:
+            parts.append(cleaned)
+    if not parts:
+        return None
+    preview = "\n\n".join(parts)
+    if len(preview) > TEXT_PREVIEW_MAX_CHARS:
+        return preview[:TEXT_PREVIEW_MAX_CHARS]
+    return preview
+
 
 def _parse_pages_spec(pages_spec: Optional[str], page_count: int) -> List[int]:
     if not pages_spec or pages_spec.strip().lower() == "all":
@@ -122,7 +144,10 @@ def extract_tables_from_pdf(
     table_type_detected = "unknown"
     warnings: List[Dict[str, Any]] = []
 
+    text_preview: Optional[str] = None
     with pdfplumber.open(str(file_path)) as pdf:
+        preview_pages = [pdf.pages[p - 1] for p in page_numbers]
+        text_preview = _build_page_text_preview(preview_pages)
         for page_num in page_numbers:
             page = pdf.pages[page_num - 1]
             try:
@@ -156,6 +181,7 @@ def extract_tables_from_pdf(
 
     return {
         "tables": all_tables,
+        "text_preview": text_preview,
         "routing": {
             "mode": mode.value if hasattr(mode, "value") else mode,
             "requested_engine": engine,

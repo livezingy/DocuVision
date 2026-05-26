@@ -774,8 +774,14 @@ class PDFPlumberTableWrapper:
         self.table = table
         self.page = page
         
+        from docuvision_core.utils.pdf_text_utils import sanitize_pdf_text
+
         # Convert to DataFrame structure (guard None)
         table_data = table.extract() or []
+        table_data = [
+            [sanitize_pdf_text(cell) for cell in row]
+            for row in table_data
+        ]
         self.df = pd.DataFrame(table_data)
         # Cache table text (2D list) for reuse when filling cell text
         try:

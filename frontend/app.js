@@ -1973,9 +1973,15 @@ async function updateDemoTransactionViews(result) {
         renderDemoTransactionTable('contentMappedList', [], 'No mapped transactions.');
         return;
     }
-    const enriched = await DocuVisionDemo.enrichResult(result);
-    renderDemoTransactionTable('contentTransactionsList', enriched.transactions, 'No transaction rows detected.');
-    renderDemoTransactionTable('contentMappedList', enriched.mapped_transactions, 'No mapped transactions.');
+    try {
+        const enriched = await DocuVisionDemo.enrichResult(result);
+        renderDemoTransactionTable('contentTransactionsList', enriched.transactions, 'No transaction rows detected.');
+        renderDemoTransactionTable('contentMappedList', enriched.mapped_transactions, 'No mapped transactions.');
+    } catch (error) {
+        console.warn('[Demo] Transaction preview failed:', error);
+        renderDemoTransactionTable('contentTransactionsList', [], 'No transaction rows detected.');
+        renderDemoTransactionTable('contentMappedList', [], 'No mapped transactions.');
+    }
 }
 
 /**

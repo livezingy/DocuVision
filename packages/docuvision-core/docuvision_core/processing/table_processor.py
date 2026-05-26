@@ -26,6 +26,52 @@ from docuvision_core.processing.table_params_calculator import TableParamsCalcul
 from docuvision_core.extractors.factory import ExtractorFactory
 
 
+def _bbox_area(bbox: Optional[tuple]) -> float:
+    if not bbox or len(bbox) < 4:
+        return 0.0
+    x0, top, x1, bottom = bbox[:4]
+    return max(0.0, float(x1) - float(x0)) * max(0.0, float(bottom) - float(top))
+
+
+def _bbox_overlap_ratio(a: tuple, b: tuple) -> float:
+    ax0, atop, ax1, abottom = a[:4]
+    bx0, btop, bx1, bbottom = b[:4]
+    ix0 = max(ax0, bx0)
+    iy0 = max(atop, btop)
+    ix1 = min(ax1, bx1)
+    iy1 = min(abottom, bbottom)
+    if ix1 <= ix0 or iy1 <= iy0:
+        return 0.0
+    intersection = (ix1 - ix0) * (iy1 - iy0)
+    min_area = min(_bbox_area(a), _bbox_area(b))
+    if min_area <= 0:
+        return 0.0
+    return intersection / min_area
+
+
+def _dedupe_overlapping_tables(
+    tables: List[Dict[str, Any]],
+    overlap_threshold: float = 0.5,
+) -> List[Dict[str, Any]]:
+    """Drop lower-scoring tables whose bbox overlaps an already kept table."""
+    ranked = sorted(tables, key=lambda item: float(item.get("score") or 0.0), reverse=True)
+    kept: List[Dict[str, Any]] = []
+    for item in ranked:
+        bbox = item.get("bbox")
+        if bbox is None:
+            kept.append(item)
+            continue
+        overlaps = False
+        for existing in kept:
+            existing_bbox = existing.get("bbox")
+            if existing_bbox and _bbox_overlap_ratio(tuple(bbox), tuple(existing_bbox)) >= overlap_threshold:
+                overlaps = True
+                break
+        if not overlaps:
+            kept.append(item)
+    return kept
+
+
 class PageFeatureAnalyzer:
     """Docstring."""
     
@@ -353,10 +399,15 @@ class TableProcessor:
             'pdfplumber_custom_params': self.params.get('pdfplumber_custom_params'),
             'score_threshold': 0.0
         }
-        
-        pdfplumber_lines = pdfplumber_extractor.extract_tables(page, feature_analyzer, pdfplumber_params_lines)
-        pdfplumber_text = pdfplumber_extractor.extract_tables(page, feature_analyzer, pdfplumber_params_text)
-        all_pdfplumber = pdfplumber_lines + pdfplumber_text
+
+        table_type = feature_analyzer.predict_table_type()
+        primary_params = pdfplumber_params_lines if table_type == "bordered" else pdfplumber_params_text
+        fallback_params = pdfplumber_params_text if table_type == "bordered" else pdfplumber_params_lines
+
+        all_pdfplumber = pdfplumber_extractor.extract_tables(page, feature_analyzer, primary_params)
+        if not all_pdfplumber:
+            all_pdfplumber = pdfplumber_extractor.extract_tables(page, feature_analyzer, fallback_params)
+        all_pdfplumber = _dedupe_overlapping_tables(all_pdfplumber)
         
         # Comment.
         high_score_bboxes = [r["bbox"] for r in all_pdfplumber if r["score"] > 0.7 and r["bbox"] is not None]
@@ -365,7 +416,6 @@ class TableProcessor:
         # Comment.
         camelot_results = []
         if high_score_bboxes:
-            table_type = feature_analyzer.predict_table_type()
             camelot_params = {
                 'pdf_path': pdf_path,
                 'page_num': page_num,
@@ -380,6 +430,7 @@ class TableProcessor:
         
         # Comment.
         all_results = all_pdfplumber + camelot_results
+        all_results = _dedupe_overlapping_tables(all_results)
         unique_tables = {}
         for item in all_results:
             bbox_key = tuple(np.round(item['bbox'], 2)) if item['bbox'] is not None else None

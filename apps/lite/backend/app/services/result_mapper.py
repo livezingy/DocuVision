@@ -4,13 +4,19 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from docuvision_core.utils.pdf_text_utils import sanitize_pdf_text
+
+
+def _clean_cell(value: Any) -> str:
+    return sanitize_pdf_text(value)
+
 
 def _dataframe_to_rows(table_obj: Any) -> Tuple[List[str], List[List[str]]]:
     df = getattr(table_obj, "df", None)
     if df is None:
         return [], []
-    headers = [str(c) for c in df.columns.tolist()]
-    rows = df.fillna("").astype(str).values.tolist()
+    headers = [_clean_cell(c) for c in df.columns.tolist()]
+    rows = [[_clean_cell(c) for c in row] for row in df.fillna("").astype(str).values.tolist()]
     return headers, rows
 
 
@@ -34,7 +40,7 @@ def raw_results_to_lite_tables(
         if not rows and table_obj is not None and hasattr(table_obj, "extract"):
             try:
                 extracted = table_obj.extract() or []
-                rows = [[str(c) for c in row] for row in extracted]
+                rows = [[_clean_cell(c) for c in row] for row in extracted]
             except Exception:
                 rows = []
 

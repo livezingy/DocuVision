@@ -157,7 +157,10 @@ async function selectQueueItem(index) {
 }
 
 function enqueueFiles(files) {
-  const list = Array.from(files || []).slice(0, 3);
+  const maxQueue = 3;
+  const room = maxQueue - state.queue.length;
+  if (room <= 0) return 0;
+  const list = Array.from(files || []).slice(0, room);
   list.forEach((file) => {
     state.queue.push({
       file,
@@ -167,10 +170,45 @@ function enqueueFiles(files) {
       statusMessage: "",
     });
   });
-  if (state.activeIndex < 0 && state.queue.length) {
-    state.activeIndex = 0;
+  return list.length;
+}
+
+function resetPreviewState() {
+  state.currentPage = 1;
+  state.pdfDoc = null;
+  if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+  state.previewUrl = null;
+}
+
+async function addFilesToQueue(files, { replace = false } = {}) {
+  if (!files?.length) return 0;
+  if (replace) {
+    state.queue = [];
+    state.activeIndex = -1;
+    resetPreviewState();
   }
+  const added = enqueueFiles(files);
+  if (!added) {
+    setStatus("Queue is full (max 3 files)");
+    return 0;
+  }
+  state.activeIndex = state.queue.length - 1;
+  syncActiveFromQueue();
+  state.result = null;
+  els.runBtn.disabled = false;
+  renderResults(null);
+  setStatus(`Added ${added} file(s) to queue (${state.queue.length} total)`);
+
+  const item = getActiveItem();
+  if (!item) return added;
+
+  await renderPreview(item.file);
+  await fetchProfile(item.file);
+  item.profile = state.profile;
+  item.status = "ready";
+  item.statusMessage = "Profile ready";
   updateQueueUI();
+  return added;
 }
 
 async function processQueueSequential() {
@@ -221,50 +259,12 @@ function escapeHtml(s) {
 
 async function handleFile(file) {
   if (!file) return;
-  state.queue = [];
-  state.activeIndex = -1;
-  state.currentPage = 1;
-  state.pdfDoc = null;
-  if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
-  state.previewUrl = null;
-  enqueueFiles([file]);
-  syncActiveFromQueue();
-  state.result = null;
-
-  els.runBtn.disabled = false;
-  renderResults(null);
-  setStatus("Analyzing document profile…");
-
-  await renderPreview(file);
-  await fetchProfile(file);
-  const item = getActiveItem();
-  if (item) {
-    item.profile = state.profile;
-    item.status = "ready";
-    item.statusMessage = "Profile ready";
-  }
-  updateQueueUI();
+  await addFilesToQueue([file], { replace: false });
 }
 
 async function handleFiles(files) {
   if (!files?.length) return;
-  state.queue = [];
-  state.activeIndex = -1;
-  enqueueFiles(files);
-  syncActiveFromQueue();
-  if (!state.file) return;
-  state.result = null;
-  els.runBtn.disabled = false;
-  renderResults(null);
-  setStatus(`Added ${state.queue.length} file(s) to queue`);
-  await renderPreview(state.file);
-  await fetchProfile(state.file);
-  const item = getActiveItem();
-  if (item) {
-    item.profile = state.profile;
-    item.status = "ready";
-  }
-  updateQueueUI();
+  await addFilesToQueue(files, { replace: true });
 }
 
 async function renderPreview(file) {
@@ -555,7 +555,7 @@ function renderTable(table, index) {
     const tr = document.createElement("tr");
     row.forEach((cell) => {
       const cellEl = document.createElement(ri === 0 && table.headers?.length ? "th" : "td");
-      cellEl.textContent = cell ?? "";
+      cellEl.textContent = decodeCidPlaceholders(cell ?? "");
       tr.appendChild(cellEl);
     });
     tableEl.appendChild(tr);
@@ -564,16 +564,43 @@ function renderTable(table, index) {
   return wrap;
 }
 
+function decodeCidPlaceholders(text) {
+  if (!text || !text.includes("(cid:")) return text;
+  return text
+    .replace(/(?:\(cid:\d+\))+/g, (run) => {
+      const codes = [...run.matchAll(/\(cid:(\d+)\)/g)].map((m) => Number(m[1]));
+      if (!codes.length) return run;
+      if (codes.every((code) => code <= 255)) {
+        try {
+          return new TextDecoder("utf-8").decode(Uint8Array.from(codes));
+        } catch {
+          /* fall through */
+        }
+      }
+      if (codes.length === 1 && codes[0] < 0x110000) {
+        try {
+          return String.fromCodePoint(codes[0]);
+        } catch {
+          /* fall through */
+        }
+      }
+      return "";
+    })
+    .replace(/\(cid:\d+\)/g, "");
+}
+
 function buildFullText(data) {
   if (data.ocr?.length) {
-    return data.ocr.map((b) => b.text).join("\n");
+    return data.ocr.map((b) => decodeCidPlaceholders(b.text)).join("\n");
   }
   if (data.text_preview) {
-    return data.text_preview;
+    return decodeCidPlaceholders(data.text_preview);
   }
   if (data.tables?.length) {
     return (
-      data.tables.flatMap((t) => (t.rows || []).map((r) => r.join("\t"))).join("\n") || "No plain text."
+      data.tables
+        .flatMap((t) => (t.rows || []).map((r) => r.map((cell) => decodeCidPlaceholders(cell)).join("\t")))
+        .join("\n") || "No plain text."
     );
   }
   return "No text content in result.";
@@ -762,8 +789,9 @@ function initUpload() {
   els.uploadZone.addEventListener("click", () => els.fileInput.click());
   els.fileInput.addEventListener("change", () => {
     const files = els.fileInput.files;
-    if (files?.length > 1) handleFiles(files);
-    else if (files?.[0]) handleFile(files[0]);
+    if (files?.length > 1) void handleFiles(files);
+    else if (files?.[0]) void handleFile(files[0]);
+    els.fileInput.value = "";
   });
   els.uploadZone.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -774,8 +802,8 @@ function initUpload() {
     e.preventDefault();
     els.uploadZone.classList.remove("dragover");
     const files = e.dataTransfer.files;
-    if (files?.length > 1) handleFiles(files);
-    else if (files?.[0]) handleFile(files[0]);
+    if (files?.length > 1) void handleFiles(files);
+    else if (files?.[0]) void handleFile(files[0]);
   });
 }
 

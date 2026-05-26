@@ -4,62 +4,239 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DocuVision Lite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="lite.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
-  <header class="top-bar">
-    <div class="brand">
-      <span class="logo">DocuVision</span>
-      <span class="subtitle">Lite — CPU Table &amp; OCR</span>
+  <div class="app-container">
+    <header class="top-nav">
+      <div class="nav-left">
+        <div class="logo">
+          <span class="logo-text">DocuVision</span>
+          <span class="logo-subtitle">Lite — CPU Table &amp; OCR</span>
+        </div>
+      </div>
+      <div class="nav-right">
+        <a class="nav-link" href="/docs" target="_blank" rel="noopener">Help</a>
+        <a class="nav-link pro-link" href="https://github.com/livezingy/DocuVision" target="_blank" rel="noopener">Upgrade to Pro →</a>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <aside class="left-panel">
+        <div class="panel-section">
+          <h3 class="section-title">Upload Document</h3>
+          <div class="upload-zone" id="uploadZone">
+            <p class="upload-text">Drop file here</p>
+            <p class="upload-hint">or click to browse</p>
+            <p class="upload-formats">PDF, PNG, JPG, TIFF</p>
+            <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tif,.tiff" hidden />
+          </div>
+        </div>
+        <div class="panel-section">
+          <h3 class="section-title">Processing Queue <span class="queue-count" id="queueCount">0</span></h3>
+          <div class="queue-list" id="queueList"></div>
+        </div>
+      </aside>
+
+      <section class="center-panel">
+        <div class="preview-header">
+          <div class="action-buttons">
+            <button class="action-btn primary" id="runBtn" disabled>Run Extraction</button>
+            <button class="action-btn" id="analysisOptionsBtn">Analysis Options</button>
+          </div>
+        </div>
+        <div class="preview-container" id="previewContainer">
+          <div class="preview-placeholder" id="previewPlaceholder">Upload a document to preview</div>
+          <canvas id="previewCanvas" class="hidden"></canvas>
+          <img id="previewImage" class="hidden" alt="Preview" />
+        </div>
+        <div class="preview-pagination">
+          <button class="page-btn" id="prevPage" disabled>‹</button>
+          <span class="page-info"><span id="currentPage">1</span> / <span id="totalPages">1</span></span>
+          <button class="page-btn" id="nextPage" disabled>›</button>
+        </div>
+
+        <div class="document-profile hidden" id="documentProfile">
+          <div class="profile-header">
+            <h4>Document Profile</h4>
+            <label class="profile-page-select">
+              Page
+              <select id="profilePageSelect"></select>
+            </label>
+          </div>
+          <div id="profileContent"></div>
+          <button type="button" class="action-btn profile-apply-btn" id="applyProfileBtn">Apply to Advanced settings</button>
+        </div>
+      </section>
+
+      <aside class="right-panel">
+        <div class="result-header">
+          <h3 class="result-title">Processing Results</h3>
+          <div class="result-main-tabs">
+            <button class="result-main-tab active" data-main-tab="content">Content</button>
+            <button class="result-main-tab" data-main-tab="result">Result</button>
+          </div>
+        </div>
+
+        <div class="result-main-view active" id="contentView">
+          <div class="content-sub-tabs">
+            <button class="content-sub-tab active" data-content="text">Text</button>
+            <button class="content-sub-tab" data-content="tables">Tables</button>
+            <button class="content-sub-tab" data-content="figures">Figures</button>
+          </div>
+          <div class="content-view active" id="contentTextView">
+            <div class="text-content" id="contentText">No text extracted yet.</div>
+          </div>
+          <div class="content-view" id="contentTablesView">
+            <div class="table-list" id="contentTableList"></div>
+          </div>
+          <div class="content-view" id="contentFiguresView">
+            <div class="empty-state">
+              <p>Figure extraction requires DocuVision Pro.</p>
+              <a href="https://github.com/livezingy/DocuVision" target="_blank" rel="noopener">Learn about Pro →</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-main-view" id="resultView">
+          <div class="result-view-toolbar">
+            <button class="result-tool-btn" id="copyJsonBtn">Copy JSON</button>
+          </div>
+          <pre class="json-viewer" id="resultJson"><code>No result data available</code></pre>
+        </div>
+
+        <div class="export-section">
+          <h4 class="export-title">Export Results</h4>
+          <div class="export-buttons">
+            <button class="export-btn" id="exportJsonBtn" disabled>JSON</button>
+            <button class="export-btn" id="exportCsvBtn" disabled>CSV</button>
+            <button class="export-btn" id="exportXlsxBtn" disabled>Excel</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="status-bar">
+      <div class="status-left">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusEngines">Loading…</span>
+      </div>
+      <div class="status-center" id="statusMessage">Ready</div>
+      <div class="status-right" id="apiVersion">—</div>
+    </footer>
+  </div>
+
+  <!-- Analysis Options Modal -->
+  <div class="modal hidden" id="analysisOptionsModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Analysis Options</h3>
+        <button type="button" class="modal-close" id="closeAnalysisOptionsBtn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button type="button" class="modal-tab active" data-tab="processing">Processing</button>
+          <button type="button" class="modal-tab" data-tab="engines">Engines</button>
+          <button type="button" class="modal-tab" data-tab="advanced">Advanced</button>
+        </div>
+
+        <div class="modal-tab-content active" id="processingTab">
+          <div class="options-list">
+            <label class="option-item">
+              <input type="radio" name="extractMode" value="smart" checked />
+              <span>Smart (recommended)</span>
+            </label>
+            <label class="option-item">
+              <input type="radio" name="extractMode" value="advanced" />
+              <span>Advanced</span>
+            </label>
+            <hr class="options-divider" />
+            <label class="sub-option-item"><input type="checkbox" id="optExtractTables" checked /> Tables</label>
+            <label class="sub-option-item"><input type="checkbox" id="optExtractText" checked /> Text (OCR for scan/image)</label>
+            <label class="sub-option-item sub-option-disabled">
+              <input type="checkbox" disabled /> Figures <span class="option-badge">Pro</span>
+            </label>
+            <label class="field-row">
+              Pages
+              <input type="text" id="optPages" placeholder="all" class="text-input" />
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-tab-content" id="enginesTab">
+          <p class="modal-hint" id="enginesHint">Smart mode uses automatic engine selection.</p>
+          <label class="field-row">Table engine
+            <select id="optEngine" class="select-input" disabled>
+              <option value="auto">Auto</option>
+            </select>
+          </label>
+          <label class="field-row">Flavor
+            <select id="optFlavor" class="select-input" disabled>
+              <option value="auto">Auto</option>
+              <option value="lattice">lattice</option>
+              <option value="stream">stream</option>
+              <option value="lines">lines</option>
+              <option value="text">text</option>
+            </select>
+          </label>
+          <label class="field-row">OCR engine
+            <select id="optOcrEngine" class="select-input" disabled>
+              <option value="auto">Auto</option>
+              <option value="tesseract">Tesseract</option>
+              <option value="easyocr">EasyOCR</option>
+            </select>
+          </label>
+          <label class="field-row">Image tables (Transformer)
+            <select id="optTransformer" class="select-input" disabled>
+              <option value="off">Off</option>
+              <option value="transformer">Transformer</option>
+            </select>
+          </label>
+          <label class="field-row">Languages
+            <input type="text" id="optLanguages" class="text-input" value="eng" disabled />
+          </label>
+        </div>
+
+        <div class="modal-tab-content" id="advancedTab">
+          <label class="option-item">
+            <input type="radio" name="paramMode" value="auto" checked /> Param mode: Auto
+          </label>
+          <label class="option-item">
+            <input type="radio" name="paramMode" value="custom" /> Param mode: Custom
+          </label>
+          <div class="profile-summary" id="modalProfileSummary">Upload a file to see suggested parameters.</div>
+          <details class="param-group">
+            <summary>Camelot lattice params</summary>
+            <textarea id="paramsCamelotLattice" class="param-textarea" rows="4" disabled></textarea>
+          </details>
+          <details class="param-group">
+            <summary>Camelot stream params</summary>
+            <textarea id="paramsCamelotStream" class="param-textarea" rows="4" disabled></textarea>
+          </details>
+          <details class="param-group">
+            <summary>PDFPlumber bordered params</summary>
+            <textarea id="paramsPdfplumberBordered" class="param-textarea" rows="4" disabled></textarea>
+          </details>
+          <details class="param-group">
+            <summary>PDFPlumber unbordered params</summary>
+            <textarea id="paramsPdfplumberUnbordered" class="param-textarea" rows="4" disabled></textarea>
+          </details>
+          <label class="field-row">Score threshold
+            <input type="number" id="optScoreThreshold" class="text-input" value="0.5" min="0" max="1" step="0.05" />
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn secondary" id="resetOptionsBtn">Reset to Defaults</button>
+        <button type="button" class="modal-btn secondary" id="cancelOptionsBtn">Cancel</button>
+        <button type="button" class="modal-btn primary" id="saveOptionsBtn">Apply</button>
+      </div>
     </div>
-    <a class="pro-link" href="https://github.com/livezingy/DocuVision" target="_blank" rel="noopener">Upgrade to Pro →</a>
-  </header>
-
-  <main class="layout">
-    <aside class="panel left">
-      <h2>1. Upload</h2>
-      <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tif,.tiff" />
-      <p class="hint">PDF (digital) or image. Max 50 MB.</p>
-
-      <h2>2. Mode</h2>
-      <label><input type="radio" name="mode" value="smart" checked /> Smart (recommended)</label>
-      <label><input type="radio" name="mode" value="advanced" /> Advanced</label>
-
-      <div id="advancedOptions" class="advanced hidden">
-        <label>Engine
-          <select id="engineSelect">
-            <option value="auto">Auto</option>
-            <option value="pdfplumber">PDFPlumber</option>
-            <option value="camelot">Camelot</option>
-            <option value="easyocr">EasyOCR</option>
-            <option value="tesseract">Tesseract</option>
-          </select>
-        </label>
-        <label>Flavor
-          <select id="flavorSelect">
-            <option value="auto">Auto</option>
-            <option value="lines">lines</option>
-            <option value="text">text</option>
-            <option value="lattice">lattice</option>
-            <option value="stream">stream</option>
-          </select>
-        </label>
-      </div>
-
-      <button id="runBtn" class="primary">Extract</button>
-      <p id="status" class="status"></p>
-    </aside>
-
-    <section class="panel right">
-      <h2>3. Results</h2>
-      <div id="meta" class="meta"></div>
-      <div id="tables" class="tables"></div>
-      <div id="exports" class="exports hidden">
-        <a id="csvLink" href="#" download>Download CSV</a>
-        <a id="xlsxLink" href="#" download>Download Excel</a>
-      </div>
-    </section>
-  </main>
+  </div>
 
   <script src="lite.js"></script>
 </body>

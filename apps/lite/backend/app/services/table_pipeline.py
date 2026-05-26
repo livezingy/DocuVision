@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -46,6 +47,45 @@ def _resolve_table_method(mode: ExtractMode, engine: str) -> Tuple[str, str, Lis
     raise ValueError(f"Unsupported table engine: {engine}")
 
 
+def _parse_custom_params(custom_params: Optional[str]) -> Dict[str, Any]:
+    if not custom_params or not custom_params.strip():
+        return {}
+    try:
+        parsed = json.loads(custom_params)
+        return parsed if isinstance(parsed, dict) else {}
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid custom_params JSON: {exc}") from exc
+
+
+def _build_processor_params(
+    table_method: str,
+    resolved_flavor: str,
+    score_threshold: float,
+    param_mode: str,
+    custom: Dict[str, Any],
+) -> Dict[str, Any]:
+    params: Dict[str, Any] = {
+        "table_method": table_method,
+        "table_flavor": None if resolved_flavor == "auto" else resolved_flavor,
+        "table_score_threshold": score_threshold,
+    }
+    if param_mode == "custom":
+        params["pdfplumber_param_mode"] = "custom"
+        params["camelot_lattice_param_mode"] = "custom"
+        params["camelot_stream_param_mode"] = "custom"
+        if custom.get("pdfplumber"):
+            params["pdfplumber_custom_params"] = custom["pdfplumber"]
+        elif custom.get("pdfplumber_bordered"):
+            params["pdfplumber_custom_params"] = custom["pdfplumber_bordered"]
+        if custom.get("pdfplumber_unbordered"):
+            params["pdfplumber_unbordered_custom_params"] = custom["pdfplumber_unbordered"]
+        if custom.get("camelot_lattice"):
+            params["camelot_lattice_custom_params"] = custom["camelot_lattice"]
+        if custom.get("camelot_stream"):
+            params["camelot_stream_custom_params"] = custom["camelot_stream"]
+    return params
+
+
 def extract_tables_from_pdf(
     file_path: Path,
     *,
@@ -54,6 +94,8 @@ def extract_tables_from_pdf(
     flavor: str = "auto",
     pages_spec: Optional[str] = None,
     score_threshold: float = 0.5,
+    param_mode: str = "auto",
+    custom_params: Optional[str] = None,
     max_pages: int = 50,
 ) -> Dict[str, Any]:
     detected_type, page_count = detect_file_type(file_path)
@@ -67,11 +109,11 @@ def extract_tables_from_pdf(
     if flavor and flavor != "auto":
         resolved_flavor = flavor
 
-    processor_params = {
-        "table_method": table_method,
-        "table_flavor": None if resolved_flavor == "auto" else resolved_flavor,
-        "table_score_threshold": score_threshold,
-    }
+    custom = _parse_custom_params(custom_params)
+
+    processor_params = _build_processor_params(
+        table_method, resolved_flavor, score_threshold, param_mode, custom
+    )
     processor = TableProcessor(processor_params)
 
     all_tables: List[Dict[str, Any]] = []
@@ -121,7 +163,7 @@ def extract_tables_from_pdf(
             "engine_chain": engine_chain,
             "table_type_detected": table_type_detected,
             "flavor_used": flavor_used,
-            "param_mode": "auto",
+            "param_mode": param_mode,
             "profile": "cpu",
         },
         "quality": {

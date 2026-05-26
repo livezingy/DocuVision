@@ -1,5 +1,5 @@
 # DocuVision Lite — CPU contract tests
-# See docs/architecture/lite-api.md and docs/release/LITE_TEST_CHECKLIST.md
+# See docs/architecture/lite-api.md and apps/lite/backend/tests/README.md
 
 name: CI Lite
 
@@ -49,7 +49,7 @@ jobs:
 
       - name: Run docuvision-core tests
         working-directory: packages/docuvision-core
-        run: pip install -e ".[lite,dev]" && pytest tests/extractors/test_factory.py -q
+        run: pip install -e ".[lite,dev]" && pytest tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py -q
 
       - name: Run Lite API tests
         working-directory: apps/lite/backend

@@ -7,6 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 
+from app.api.upload_utils import validate_upload
 from app.core.config import settings
 from app.schemas.lite_result import (
     ExtractMode,
@@ -25,22 +26,17 @@ from app.services.table_pipeline import extract_tables_from_pdf
 router = APIRouter(tags=["extract"])
 
 
-def _validate_upload(file: UploadFile, raw: bytes) -> None:
-    size_mb = len(raw) / (1024 * 1024)
-    if size_mb > settings.MAX_FILE_SIZE_MB:
-        raise HTTPException(
-            status_code=413,
-            detail=LiteErrorResponse(
-                error=LiteError(
-                    code="file_too_large",
-                    message=f"File exceeds maximum size of {settings.MAX_FILE_SIZE_MB} MB",
-                    details={"max_file_size_mb": settings.MAX_FILE_SIZE_MB, "actual_size_mb": round(size_mb, 2)},
-                )
-            ).model_dump(),
-        )
-
-
-def _run_pipeline(file_path: Path, mime_type: str, mode: ExtractMode, engine: str, flavor: str, pages: Optional[str], score_threshold: float):
+def _run_pipeline(
+    file_path: Path,
+    mime_type: str,
+    mode: ExtractMode,
+    engine: str,
+    flavor: str,
+    pages: Optional[str],
+    score_threshold: float,
+    param_mode: str = "auto",
+    custom_params: Optional[str] = None,
+):
     detected, page_count = detect_file_type(file_path, mime_type)
     if detected.value == "pdf_digital":
         output = extract_tables_from_pdf(
@@ -50,6 +46,8 @@ def _run_pipeline(file_path: Path, mime_type: str, mode: ExtractMode, engine: st
             flavor=flavor,
             pages_spec=pages,
             score_threshold=score_threshold,
+            param_mode=param_mode,
+            custom_params=custom_params,
             max_pages=settings.MAX_PAGES,
         )
         output["detected_file_type"] = detected
@@ -71,9 +69,11 @@ async def extract_tables(
     flavor: str = Form("auto"),
     pages: Optional[str] = Form(None),
     score_threshold: float = Form(0.5),
+    param_mode: str = Form("auto"),
+    custom_params: Optional[str] = Form(None),
 ):
     raw = await file.read()
-    _validate_upload(file, raw)
+    validate_upload(file, raw)
     job_id = job_store.create()
     upload_path = job_store.save_upload(job_id, file.filename or "upload.pdf", raw)
     try:
@@ -85,6 +85,8 @@ async def extract_tables(
             flavor=flavor,
             pages_spec=pages,
             score_threshold=score_threshold,
+            param_mode=param_mode,
+            custom_params=custom_params,
             max_pages=settings.MAX_PAGES,
         )
         result = build_lite_result(
@@ -118,7 +120,7 @@ async def extract_ocr(
     min_confidence: float = Form(0.5),
 ):
     raw = await file.read()
-    _validate_upload(file, raw)
+    validate_upload(file, raw)
     job_id = job_store.create()
     upload_path = job_store.save_upload(job_id, file.filename or "upload.png", raw)
     try:
@@ -156,9 +158,11 @@ async def extract_auto(
     flavor: str = Form("auto"),
     pages: Optional[str] = Form(None),
     score_threshold: float = Form(0.5),
+    param_mode: str = Form("auto"),
+    custom_params: Optional[str] = Form(None),
 ):
     raw = await file.read()
-    _validate_upload(file, raw)
+    validate_upload(file, raw)
     job_id = job_store.create()
     upload_path = job_store.save_upload(job_id, file.filename or "upload.bin", raw)
     try:
@@ -171,6 +175,8 @@ async def extract_auto(
             flavor,
             pages,
             score_threshold,
+            param_mode,
+            custom_params,
         )
         result = build_lite_result(
             job_id=job_id,
@@ -209,6 +215,8 @@ def _background_extract(job_id: str, upload_path: Path, mime_type: str, form: di
             form.get("flavor", "auto"),
             form.get("pages"),
             float(form.get("score_threshold", 0.5)),
+            form.get("param_mode", "auto"),
+            form.get("custom_params"),
         )
         result = build_lite_result(
             job_id=job_id,
@@ -231,9 +239,11 @@ async def create_job(
     flavor: str = Form("auto"),
     pages: Optional[str] = Form(None),
     score_threshold: float = Form(0.5),
+    param_mode: str = Form("auto"),
+    custom_params: Optional[str] = Form(None),
 ):
     raw = await file.read()
-    _validate_upload(file, raw)
+    validate_upload(file, raw)
     job_id = job_store.create()
     upload_path = job_store.save_upload(job_id, file.filename or "upload.bin", raw)
     form = {
@@ -242,6 +252,8 @@ async def create_job(
         "flavor": flavor,
         "pages": pages,
         "score_threshold": score_threshold,
+        "param_mode": param_mode,
+        "custom_params": custom_params,
     }
     background_tasks.add_task(_background_extract, job_id, upload_path, file.content_type or "", form)
     return LiteJobAccepted(

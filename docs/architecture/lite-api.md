@@ -49,6 +49,7 @@ Lite 面向 **CPU 友好** 场景：born-digital PDF 表格（pdfplumber/camelot
 |------|------|------|------|
 | `GET` | `/health` | 健康检查、引擎就绪 | A ✅ |
 | `GET` | `/engines` | 可用引擎列表 | A ✅ |
+| `POST` | `/analyze/profile` | 上传后轻量预扫描，返回 LiteDocumentProfile | D ✅ |
 | `POST` | `/extract/tables` | PDF 表格提取 | C |
 | `POST` | `/extract/ocr` | 图片/扫描 OCR | C |
 | `POST` | `/extract/auto` | 自动路由统一入口 | C |
@@ -112,7 +113,13 @@ WarningCode: [scan_detected, low_confidence, engine_fallback, transformer_unavai
 
 **LiteInputMeta**：`filename`, `file_size_bytes`, `mime_type`, `detected_file_type`, `page_count`, `sha256`
 
-**LiteRoutingMeta**：`mode`, `requested_engine`, `engine_used`, `engine_chain`, `table_type_detected`, `flavor_used`, `param_mode`, `profile`
+**LiteRoutingMeta**：`mode`, `requested_engine`, `engine_used`, `engine_chain`, `table_type_detected`, `flavor_used`, `param_mode`, `profile`, `document_profile`（可选，extract 完成后回显）
+
+**LiteDocumentProfile**：`schema_version`, `api_version`, `input`, `pages[]`, `scan_profile`, `warnings[]`
+
+**LitePageProfile**：`page`, `table_type`, `table_type_score`, `classification_detail`, `typography_summary`, `suggested_routing`, `computed_params`
+
+**LiteScanProfile**：`recommended_ocr`, `transformer_available`, `message`
 
 **LiteQualityMeta**：`overall_confidence`, `tables_found`, `tables_accepted`, `pages_processed`, `pages_with_tables`, `ocr_blocks`, `processing_profile`
 
@@ -159,28 +166,88 @@ WarningCode: [scan_detected, low_confidence, engine_fallback, transformer_unavai
 
 返回引擎 metadata，供 Lite 前端 Advanced 面板使用（见实现 `routes_health.py`）。
 
-### 7.3 POST /extract/tables（阶段 C）
+### 7.3 POST /analyze/profile
+
+**Request** `multipart/form-data`：`file`
+
+轻量预扫描：分析页面特征、表格类型预判、推荐引擎与自动计算参数。**不执行**完整表格/OCR 提取。
+
+**响应 200** — `LiteDocumentProfile`：
+
+```json
+{
+  "schema_version": "1.0",
+  "api_version": "1.0.0-lite",
+  "input": {
+    "filename": "invoice.pdf",
+    "detected_file_type": "pdf_digital",
+    "page_count": 3
+  },
+  "pages": [
+    {
+      "page": 1,
+      "table_type": "bordered",
+      "table_type_score": 0.91,
+      "classification_detail": {
+        "method": "mad",
+        "h_lines": 20,
+        "v_lines": 18,
+        "line_concentration": 0.95,
+        "area_ratio": 0.15,
+        "direction_balance": 0.90
+      },
+      "typography_summary": {
+        "mode_char_width_pt": 6.0,
+        "mode_char_height_pt": 8.0,
+        "mode_line_height_pt": 10.0,
+        "mode_line_spacing_pt": 3.0,
+        "total_lines": 47,
+        "total_chars": 1284
+      },
+      "suggested_routing": {
+        "engine": "camelot",
+        "flavor": "lattice",
+        "param_mode": "auto"
+      },
+      "computed_params": {
+        "camelot_lattice": { "flavor": "lattice", "line_scale": 40 },
+        "camelot_stream": { "flavor": "stream", "edge_tol": 29 },
+        "pdfplumber_bordered": { "snap_tolerance": 1.2 },
+        "pdfplumber_unbordered": { "text_x_tolerance": 9.0 }
+      }
+    }
+  ],
+  "scan_profile": null,
+  "warnings": []
+}
+```
+
+- `pdf_digital`：返回 `pages[]`（最多 `sync_max_pages` 页）
+- `pdf_scan` / `image`：`pages=[]`，填充 `scan_profile`
+- 超出页数限制时 `warnings` 含 `page_truncated`
+
+### 7.4 POST /extract/tables（阶段 C）
 
 **Request** `multipart/form-data`：`file`, `mode`, `engine`, `flavor`, `pages`, `param_mode`, `custom_params`, `score_threshold`, `async`
 
 **Smart 路由**：
 
-```
+```  
 pdf_digital → table_type_classifier
   ├─ bordered    → camelot (auto)
   └─ unbordered  → pdfplumber (auto)
 失败 → engine_fallback + 备选引擎
 ```
 
-### 7.4 POST /extract/ocr（阶段 C）
+### 7.5 POST /extract/ocr（阶段 C）
 
 字段：`file`, `mode`, `engine`, `languages`, `with_tables`, `min_confidence`, `async`
 
-### 7.5 POST /extract/auto（阶段 C）
+### 7.6 POST /extract/auto（阶段 C）
 
 统一入口；按文件类型路由至 tables 或 ocr pipeline。
 
-### 7.6 Jobs / Export（阶段 C）
+### 7.7 Jobs / Export（阶段 C）
 
 - `POST /jobs` → 202 + `job_id`
 - `GET /jobs/{id}/result` → 完整 LiteResult
@@ -234,6 +301,7 @@ Pro 与 Lite **不在同一 UI 内切换**；通过顶栏外链或产品落地�
 - [x] Phase B：`packages/docuvision-core` 迁移
 - [x] Phase C：`/extract/*`, jobs, export（baseline）
 - [x] Phase D：`lite.html` 前端（baseline）
+- [x] Phase D+：`POST /analyze/profile` + 三栏 UI + Document Profile
 
 ---
 
@@ -242,3 +310,4 @@ Pro 与 Lite **不在同一 UI 内切换**；通过顶栏外链或产品落地�
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v0.1 | 2026-05-22 | 初版；Phase A health/engines 落地 |
+| v0.2 | 2026-05-26 | 新增 LiteDocumentProfile、`POST /analyze/profile` |

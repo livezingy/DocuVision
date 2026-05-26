@@ -89,6 +89,7 @@ class LiteRoutingMeta(LiteModel):
     flavor_used: str = "auto"
     param_mode: str = "auto"
     profile: str = "cpu"
+    document_profile: Optional["LiteDocumentProfile"] = None
 
 
 class LiteQualityMeta(LiteModel):
@@ -226,4 +227,60 @@ class LiteErrorResponse(LiteModel):
     error: LiteError
 
 
-# TODO: Phase C — wire LiteResult to table_pipeline / ocr_pipeline services.
+class LiteClassificationDetail(LiteModel):
+    method: str = "quick_filter"
+    h_lines: int = 0
+    v_lines: int = 0
+    line_concentration: Optional[float] = None
+    area_ratio: Optional[float] = None
+    direction_balance: Optional[float] = None
+
+
+class LiteTypographySummary(LiteModel):
+    mode_char_width_pt: float = 0.0
+    mode_char_height_pt: float = 0.0
+    mode_line_height_pt: float = 0.0
+    mode_line_spacing_pt: float = 0.0
+    total_lines: int = 0
+    total_chars: int = 0
+
+
+class LiteSuggestedRouting(LiteModel):
+    engine: str = "pdfplumber"
+    flavor: str = "text"
+    param_mode: str = "auto"
+
+
+class LiteComputedParams(LiteModel):
+    camelot_lattice: Dict[str, Any] = Field(default_factory=dict)
+    camelot_stream: Dict[str, Any] = Field(default_factory=dict)
+    pdfplumber_bordered: Dict[str, Any] = Field(default_factory=dict)
+    pdfplumber_unbordered: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LitePageProfile(LiteModel):
+    page: int = 1
+    table_type: str = "none"
+    table_type_score: float = 0.0
+    classification_detail: LiteClassificationDetail = Field(default_factory=LiteClassificationDetail)
+    typography_summary: LiteTypographySummary = Field(default_factory=LiteTypographySummary)
+    suggested_routing: LiteSuggestedRouting = Field(default_factory=LiteSuggestedRouting)
+    computed_params: LiteComputedParams = Field(default_factory=LiteComputedParams)
+
+
+class LiteScanProfile(LiteModel):
+    recommended_ocr: str = "tesseract"
+    transformer_available: bool = False
+    message: str = ""
+
+
+class LiteDocumentProfile(LiteModel):
+    schema_version: str = LITE_SCHEMA_VERSION
+    api_version: str = LITE_API_VERSION
+    input: LiteInputMeta = Field(default_factory=LiteInputMeta)
+    pages: List[LitePageProfile] = Field(default_factory=list)
+    scan_profile: Optional[LiteScanProfile] = None
+    warnings: List[LiteWarning] = Field(default_factory=list)
+
+
+LiteRoutingMeta.model_rebuild()

@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.api.routes_analyze import router as analyze_router
 from app.api.routes_extract import router as extract_router
 from app.api.routes_health import router as health_router
 from app.api.routes_jobs import router as jobs_router
@@ -37,6 +38,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router, prefix="/api/v1/lite")
+app.include_router(analyze_router, prefix="/api/v1/lite")
 app.include_router(extract_router, prefix="/api/v1/lite")
 app.include_router(jobs_router, prefix="/api/v1/lite")
 

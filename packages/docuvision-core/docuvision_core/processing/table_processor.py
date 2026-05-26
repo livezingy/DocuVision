@@ -66,6 +66,10 @@ class PageFeatureAnalyzer:
     def predict_table_type(self) -> str:
         """Docstring."""
         return self._classifier.predict_table_type()
+
+    def classify_table_type(self) -> dict:
+        """Return table type classification with detailed metrics."""
+        return self._classifier.classify()
     
     def get_pdfplumber_params(self, table_type: str = 'bordered') -> dict:
         """Docstring."""

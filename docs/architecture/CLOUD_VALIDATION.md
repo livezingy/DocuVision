@@ -21,7 +21,7 @@ source ~/docuvision_env/bin/activate
 cp -n .env.cloud .env   # 按需改模型路径，勿提交 .env
 ```
 
-**勿**在 Pro 环境中安装 Lite 依赖。启动前 **`source backend/env_pro_gpu.sh`**（设置 `LD_LIBRARY_PATH`，含 `libcusparseLt` 等 pip 自带库路径）。
+**勿**在 Pro 环境中安装 Lite 依赖。`install_pro_gpu.sh` 会在 venv 激活时自动设置 `LD_LIBRARY_PATH`；`python run.py` 与 pytest 也会自动设置，**通常无需**每次手动 `source env_pro_gpu.sh`。
 
 建议环境变量：
 
@@ -132,8 +132,39 @@ python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
 | `kie_error_message` | 失败时异常摘要（如历史 PDF 路径 bug） |
 | `kie_meta.error_message` | 与上同源，在完整 Envelope/任务结果中 |
 
-## 4. 相关文档
+## 4. DocuVision Lite（CPU，无 Paddle）
+
+> **本地不跑 Python/pytest**；改 Lite 代码时维护 `apps/lite/backend/tests/` 与 `packages/docuvision-core/tests/processing/`，由 CI 或云端验收。
+
+### 阶段 G — Lite 契约（GitHub Actions 或 Cloud Studio CPU）
+
+```bash
+cd apps/lite/backend
+pip install -r requirements-lite.txt
+pip install -e ../../packages/docuvision-core[lite,dev]
+pytest tests/ -q
+cd ../../packages/docuvision-core
+pytest tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py -q
+```
+
+**通过标准**：全部 `passed`（规则 **LITE-PROFILE-001～003**、**LITE-CORE-001～002**、**LITE-EXTRACT-001～002**，见 [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md)）。
+
+**GitHub Actions**：push/PR 至 `feature/docuvision-lite` 或 `main` 且 Lite 路径有变更时，[`.github/workflows/ci-lite.yml`](../../.github/workflows/ci-lite.yml) 自动执行。
+
+### 阶段 H — Lite UI 冒烟（可选）
+
+```bash
+cd apps/lite/backend && python run_lite.py
+# http://{host}:8001/lite/lite.html
+```
+
+上传 digital PDF → Document Profile；Run Extraction → Content/Tables；PNG → scan_profile。
+
+## 5. 相关文档
 
 - [kie.md](./kie.md) — KIE 契约、PDF 输入策略
 - [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md) — 云测批次记录
 - [test_data/acceptance/doc_types.md](../../test_data/acceptance/doc_types.md) — 样例矩阵
+- [lite-api.md](./lite-api.md) — Lite API
+- [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md) — Lite 验收规则
+- [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md) — Lite 验收规则与发版清单

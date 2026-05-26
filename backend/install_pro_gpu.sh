@@ -39,6 +39,20 @@ python -m pip install "paddlex[ocr]==3.3.12"
 echo "==> Re-pin NVIDIA CUDA 12.9 libs (+ cuSPARSELt for torch)"
 python -m pip install -r requirements-gpu-nvidia.txt
 
+echo "==> Install venv activate hook (auto LD_LIBRARY_PATH on activate)"
+if [[ -n "${VIRTUAL_ENV:-}" ]]; then
+  mkdir -p "${VIRTUAL_ENV}/bin/activate.d"
+  cp "$ROOT/env_pro_gpu.sh" "${VIRTUAL_ENV}/bin/docuvision_pro_gpu_env.sh"
+  cat > "${VIRTUAL_ENV}/bin/activate.d/docuvision_pro_gpu.sh" <<'EOF'
+# DocuVision Pro GPU — auto LD_LIBRARY_PATH when docuvision_env activates
+if [[ -n "${VIRTUAL_ENV:-}" && -f "${VIRTUAL_ENV}/bin/docuvision_pro_gpu_env.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "${VIRTUAL_ENV}/bin/docuvision_pro_gpu_env.sh"
+fi
+EOF
+  echo "Installed ${VIRTUAL_ENV}/bin/activate.d/docuvision_pro_gpu.sh"
+fi
+
 if [[ ! -f .env ]] && [[ -f .env.cloud ]]; then
   cp .env.cloud .env
   echo "Created .env from .env.cloud"
@@ -60,7 +74,10 @@ print("paddlex OK")
 PY
 
 echo ""
-echo "Pro GPU deps OK. Start with:"
+echo "Pro GPU deps OK. LD_LIBRARY_PATH is set when you:"
+echo "  1) source ~/docuvision_env/bin/activate  (venv activate.d hook)"
+echo "  2) python run.py / pytest                 (auto in run.py & conftest)"
+echo ""
+echo "Start server:"
 echo "  source ~/docuvision_env/bin/activate"
-echo "  cd backend && source ./env_pro_gpu.sh"
-echo "  DEBUG_MODE=false python run.py"
+echo "  cd backend && DEBUG_MODE=false python run.py"

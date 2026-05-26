@@ -27,6 +27,22 @@ from app.schemas.lite_result import (
 )
 from app.services.file_detector import detect_file_type
 
+_DEMO_MAPPING_PATH = Path(__file__).resolve().parents[1] / "config" / "demo_classification_mappings.json"
+
+
+def _enrich_demo_fields(pipeline_output: Dict[str, Any], tables: List[LiteTable]) -> tuple[list, list]:
+    from docuvision_core.demo.classification_mapper import apply_classification_mappings, load_mapping_config
+    from docuvision_core.demo.transaction_mapper import extract_transactions_from_result
+
+    payload = {
+        "tables": [t.model_dump(mode="json") for t in tables],
+        "kie_fields": pipeline_output.get("kie_fields") or {},
+    }
+    transactions = extract_transactions_from_result(payload)
+    config = load_mapping_config(_DEMO_MAPPING_PATH)
+    mapped = apply_classification_mappings(transactions, config)
+    return transactions, mapped
+
 
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -99,6 +115,8 @@ def build_lite_result(
     routing_data = pipeline_output.get("routing", {})
     quality_data = pipeline_output.get("quality", {})
 
+    transactions, mapped_transactions = _enrich_demo_fields(pipeline_output, tables)
+
     return LiteResult(
         job_id=job_id,
         status=status,
@@ -125,6 +143,8 @@ def build_lite_result(
         ),
         warnings=warnings,
         hints=hints,
+        transactions=transactions,
+        mapped_transactions=mapped_transactions,
         error=error,
     )
 

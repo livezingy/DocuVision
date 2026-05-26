@@ -18,15 +18,15 @@
 #   4. pip install paddleocr==3.3.2 "paddlex[ocr]==3.3.12"
 #   5. pip install -r requirements-gpu-nvidia.txt
 #   6. cp -n .env.cloud .env
-#   7. source ./env_pro_gpu.sh && DEBUG_MODE=false python run.py
+#   7. source ./env_pro_gpu.sh && DEBUG_MODE=false python run.py   # optional; auto via venv hook + run.py
 #
 # Notes:
 #   - paddlepaddle-gpu 3.3.0 GPU wheel is cu129-only on the official index.
-#   - torch uses cu124 wheels (requirements-gpu-torch.txt); nvidia 12.9 re-pin
+#   - torch/torchvision use cu124 wheels (requirements-gpu-torch.txt); nvidia 12.9 re-pin
 #     (requirements-gpu-nvidia.txt) avoids libnvJitLink / libcusparse conflicts.
 #   - requirements-gpu-nvidia.txt includes nvidia-cusparselt-cu12 (libcusparseLt).
-#   - Before run.py: source backend/env_pro_gpu.sh (sets LD_LIBRARY_PATH).
-#   - Do NOT set LD_LIBRARY_PATH to torch/lib only.
+#   - LD_LIBRARY_PATH: auto on venv activate (install_pro_gpu.sh) and in run.py / pytest.
+#   - Manual: source backend/env_pro_gpu.sh only if activate hook missing.
 #   - KIE warmup: see .env.cloud (DOCUVISION_KIE_WARMUP=1).
 #   - Cloud validation: docs/architecture/CLOUD_VALIDATION.md
 # =============================================================================

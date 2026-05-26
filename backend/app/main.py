@@ -7,6 +7,7 @@ Core Features: OCR, Layout Analysis, Table Extraction, Export, Batch Processing
 
 # CRITICAL: Set environment variables FIRST
 import os
+
 os.environ['FLAGS_use_mkldnn'] = '0'
 os.environ['FLAGS_onednn'] = '0'
 os.environ['MKLDNN_ENABLED'] = '0'
@@ -16,6 +17,10 @@ os.environ['PADDLE_USE_ONEDNN'] = '0'
 os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 os.environ['PADDLEX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
+
+from app.core.gpu_lib_path import ensure_pro_gpu_lib_path
+
+ensure_pro_gpu_lib_path()
 
 # PaddleX 3.3 使用 snapshot_download；在 import paddlex 前注册 aistudio shim（见 app.core.aistudio_compat）。
 from app.core.aistudio_compat import install_aistudio_snapshot_shim_for_paddlex

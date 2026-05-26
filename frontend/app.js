@@ -1891,6 +1891,91 @@ async function updateResultsDisplay(result) {
 
     // Update Result JSON view
     updateResultJson(result);
+
+    // Quality, transactions, mapping preview (trial demo)
+    renderQualityPanelPro(result);
+    await updateDemoTransactionViews(result);
+}
+
+/**
+ * Render quality / warnings for Pro results
+ */
+function renderQualityPanelPro(result) {
+    const panel = document.getElementById('qualityPanel');
+    if (!panel) return;
+    if (!result) {
+        panel.classList.add('hidden');
+        panel.innerHTML = '';
+        return;
+    }
+    const quality = result.quality || {};
+    const warnings = [];
+    if (quality.kie_error_message) {
+        warnings.push({ code: 'kie_error', message: quality.kie_error_message });
+    }
+    if (quality.kie_production_hit === false && quality.kie_production_reason) {
+        warnings.push({ code: 'kie_production', message: quality.kie_production_reason });
+    }
+    const score = quality.kie_confidence_avg != null
+        ? `${Math.round(quality.kie_confidence_avg * 100)}%`
+        : (quality.overall_confidence != null ? `${Math.round(quality.overall_confidence * 100)}%` : '—');
+    const warnHtml = warnings.map(w =>
+        `<div class="quality-warn">⚠ ${escapeHtml(w.code)}: ${escapeHtml(w.message)}</div>`
+    ).join('');
+    panel.innerHTML = `
+        <div class="quality-score">Confidence: ${score} · KIE fields: ${quality.kie_fields_count ?? '—'} · Tables: ${(result.view?.tables || []).length}</div>
+        ${warnHtml}`;
+    panel.classList.remove('hidden');
+}
+
+function renderDemoTransactionTable(containerId, rows, emptyMsg) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    if (!rows || !rows.length) {
+        container.innerHTML = `<p class="empty-state">${emptyMsg}</p>`;
+        return;
+    }
+    const headers = ['date', 'description', 'amount', 'internal_code', 'internal_label'];
+    const table = document.createElement('table');
+    table.className = 'extracted-table';
+    const thead = document.createElement('thead');
+    const hr = document.createElement('tr');
+    headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        hr.appendChild(th);
+    });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    rows.forEach(tx => {
+        const tr = document.createElement('tr');
+        headers.forEach(h => {
+            const td = document.createElement('td');
+            td.textContent = tx[h] ?? '—';
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+
+    const txTab = document.getElementById('tabBtnTransactions');
+    const mappedTab = document.getElementById('tabBtnMapped');
+    if (txTab) txTab.classList.remove('hidden');
+    if (mappedTab) mappedTab.classList.remove('hidden');
+}
+
+async function updateDemoTransactionViews(result) {
+    if (!window.DocuVisionDemo || !result) {
+        renderDemoTransactionTable('contentTransactionsList', [], 'No transactions.');
+        renderDemoTransactionTable('contentMappedList', [], 'No mapped transactions.');
+        return;
+    }
+    const enriched = await DocuVisionDemo.enrichResult(result);
+    renderDemoTransactionTable('contentTransactionsList', enriched.transactions, 'No transaction rows detected.');
+    renderDemoTransactionTable('contentMappedList', enriched.mapped_transactions, 'No mapped transactions.');
 }
 
 /**
@@ -3125,75 +3210,65 @@ function updateStatusBar(status = 'default', data = {}) {
 }
 
 /**
- * Export results
+ * Export results via backend /tasks/{task_id}/export/{format}
  */
 async function exportResults(format) {
-    // Sample data for export
-    const mockData = {
-        document: {
-            name: 'financial_report.pdf',
-            pages: 5,
-            processedAt: new Date().toISOString()
-        },
-        layout: {
-            headers: 1,
-            titles: 3,
-            paragraphs: 3,
-            tables: 1,
-            figures: 1
-        },
-        text: [
-            { type: 'title', content: 'TechCorp Industries Ltd.', confidence: 0.985 },
-            { type: 'subtitle', content: 'Annual Financial Report 2024', confidence: 0.972 }
-        ],
-        tables: [
-            {
-                name: 'Financial Summary',
-                rows: 4,
-                columns: 4,
-                data: [
-                    ['Item', '2024', '2023', 'Growth'],
-                    ['Revenue', '$52.8M', '$41.5M', '+27.2%'],
-                    ['Net Profit', '$8.92M', '$6.80M', '+31.2%'],
-                    ['R&D Investment', '$10.56M', '$8.30M', '+27.2%']
-                ]
-            }
-        ],
-        keywords: ['Artificial Intelligence', 'High-tech', 'R&D', 'Financial Report', 'Revenue', 'Net Profit']
-    };
-
-    let content, filename, mimeType;
-
-    format = format.toLowerCase();
-
-    switch (format) {
-        case 'json':
-            content = JSON.stringify(mockData, null, 2);
-            filename = 'document_result.json';
-            mimeType = 'application/json';
-            break;
-        case 'csv':
-            content = convertToCSV(mockData.tables[0].data);
-            filename = 'table_data.csv';
-            mimeType = 'text/csv';
-            break;
-        case 'markdown':
-            content = convertToMarkdown(mockData);
-            filename = 'document_result.md';
-            mimeType = 'text/markdown';
-            break;
-        case 'docx':
-        case 'word':
-            showNotification('Word export requires backend support', 'info');
-            return;
-        default:
-            showNotification(`Unknown format: ${format}`, 'error');
-            return;
+    if (!currentTaskId) {
+        showNotification('No completed task to export. Run analysis first.', 'error');
+        return;
     }
 
-    // Download file
-    downloadFile(content, filename, mimeType);
-    showNotification(`Exported ${format.toUpperCase()} file successfully`, 'success');
+    format = (format || '').toLowerCase();
+    const apiFormat = format === 'word' ? 'docx' : format;
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/tasks/${currentTaskId}/export/${apiFormat}`
+        );
+
+        if (!response.ok) {
+            let detail = response.statusText;
+            try {
+                const errBody = await response.json();
+                detail = errBody.detail || detail;
+            } catch (_) { /* ignore */ }
+            showNotification(`Export failed: ${detail}`, 'error');
+            return;
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json') && (apiFormat === 'markdown' || apiFormat === 'md')) {
+            const payload = await response.json();
+            const md = payload.markdown || '';
+            downloadFile(md, `${currentTaskId}_result.md`, 'text/markdown');
+        } else if (contentType.includes('application/json') && apiFormat === 'azure') {
+            const payload = await response.json();
+            downloadFile(
+                JSON.stringify(payload, null, 2),
+                `${currentTaskId}_azure.json`,
+                'application/json'
+            );
+        } else {
+            const blob = await response.blob();
+            const disposition = response.headers.get('content-disposition') || '';
+            const match = disposition.match(/filename="?([^";\n]+)"?/i);
+            const filename = match ? match[1] : `${currentTaskId}_export.${apiFormat}`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        showNotification(`Exported ${format.toUpperCase()} successfully`, 'success');
+    } catch (err) {
+        console.error('[Export]', err);
+        showNotification(`Export failed: ${err.message}`, 'error');
+    }
 }
 
 /**

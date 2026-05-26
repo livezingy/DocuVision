@@ -5,9 +5,14 @@ from __future__ import annotations
 import importlib.util
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from PIL import Image
+
+try:
+    import fitz  # PyMuPDF
+except ImportError:  # pragma: no cover
+    fitz = None  # type: ignore
 
 from app.schemas.lite_result import ExtractMode, WarningCode
 
@@ -21,6 +26,38 @@ def build_text_preview(ocr_blocks: List[Dict[str, Any]]) -> Optional[str]:
     preview = " ".join(b["text"] for b in ocr_blocks[:TEXT_PREVIEW_MAX_BLOCKS])
     preview = preview[:TEXT_PREVIEW_MAX_CHARS]
     return preview or None
+
+
+def _is_pdf(path: Path) -> bool:
+    if path.suffix.lower() == ".pdf":
+        return True
+    with path.open("rb") as handle:
+        return handle.read(4) == b"%PDF"
+
+
+def _rasterize_pdf_pages(pdf_path: Path, max_pages: int = 10, dpi: int = 200) -> List[Tuple[int, Image.Image]]:
+    """Rasterize PDF pages to PIL images using PyMuPDF."""
+    if fitz is None:
+        raise RuntimeError("PyMuPDF is required for scanned PDF OCR. Install: pip install PyMuPDF")
+
+    images: List[Tuple[int, Image.Image]] = []
+    matrix = fitz.Matrix(dpi / 72, dpi / 72)
+    with fitz.open(pdf_path) as doc:
+        for page_index in range(min(len(doc), max_pages)):
+            page = doc[page_index]
+            pix = page.get_pixmap(matrix=matrix, alpha=False)
+            mode = "RGB" if pix.n < 4 else "RGBA"
+            image = Image.frombytes(mode, (pix.width, pix.height), pix.samples)
+            if mode == "RGBA":
+                image = image.convert("RGB")
+            images.append((page_index + 1, image))
+    return images
+
+
+def _load_images_from_path(file_path: Path, max_pages: int = 10) -> List[Tuple[int, Image.Image]]:
+    if _is_pdf(file_path):
+        return _rasterize_pdf_pages(file_path, max_pages=max_pages)
+    return [(1, Image.open(file_path).convert("RGB"))]
 
 
 def _engine_available(name: str) -> bool:
@@ -124,22 +161,35 @@ def extract_ocr_from_image(
     engine: str = "auto",
     languages: Optional[List[str]] = None,
     min_confidence: float = 0.5,
+    max_pages: int = 10,
 ) -> Dict[str, Any]:
     engine_used = _resolve_ocr_engine(mode, engine)
-    image = Image.open(file_path).convert("RGB")
+    page_images = _load_images_from_path(file_path, max_pages=max_pages)
+    ocr_blocks: List[Dict[str, Any]] = []
 
-    if engine_used == "easyocr":
-        ocr_blocks = _run_easyocr(image, languages or ["en"], min_confidence)
-    elif engine_used == "tesseract":
-        ocr_blocks = _run_tesseract(image, min_confidence)
-    else:
-        raise RuntimeError("Transformer OCR is not enabled in Lite Phase C baseline")
+    for page_num, image in page_images:
+        if engine_used == "easyocr":
+            page_blocks = _run_easyocr(image, languages or ["en"], min_confidence)
+        elif engine_used == "tesseract":
+            page_blocks = _run_tesseract(image, min_confidence)
+        else:
+            raise RuntimeError("Transformer OCR is not enabled in Lite Phase C baseline")
+        for block in page_blocks:
+            block["page"] = page_num
+        ocr_blocks.extend(page_blocks)
 
     confidences = [b["confidence"] for b in ocr_blocks]
     overall = sum(confidences) / len(confidences) if confidences else 0.0
     text_preview = build_text_preview(ocr_blocks)
 
     warnings: List[Dict[str, Any]] = []
+    if _is_pdf(file_path):
+        warnings.append(
+            {
+                "code": WarningCode.SCAN_DETECTED.value,
+                "message": f"Scanned PDF rasterized to {len(page_images)} page(s) for OCR.",
+            }
+        )
     if overall < 0.6:
         warnings.append(
             {
@@ -166,7 +216,7 @@ def extract_ocr_from_image(
             "overall_confidence": overall,
             "tables_found": 0,
             "tables_accepted": 0,
-            "pages_processed": 1,
+            "pages_processed": len(page_images),
             "pages_with_tables": 0,
             "ocr_blocks": len(ocr_blocks),
             "processing_profile": "cpu",

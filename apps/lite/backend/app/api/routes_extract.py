@@ -36,9 +36,26 @@ def _run_pipeline(
     score_threshold: float,
     param_mode: str = "auto",
     custom_params: Optional[str] = None,
+    ocr_engine: str = "auto",
+    languages: Optional[str] = None,
+    extract_tables: bool = True,
+    extract_text: bool = True,
 ):
     detected, page_count = detect_file_type(file_path, mime_type)
+    lang_list = [p.strip() for p in (languages or "eng").split(",") if p.strip()] or ["eng"]
+
     if detected.value == "pdf_digital":
+        if not extract_tables:
+            return {
+                "tables": [],
+                "ocr": [],
+                "text_preview": None,
+                "routing": {"engine_used": "none", "mode": mode.value if hasattr(mode, "value") else mode},
+                "quality": {"overall_confidence": 0.0, "tables_found": 0, "tables_accepted": 0},
+                "warnings": [],
+                "detected_file_type": detected,
+                "page_count": page_count,
+            }
         output = extract_tables_from_pdf(
             file_path,
             mode=mode,
@@ -54,7 +71,24 @@ def _run_pipeline(
         output["page_count"] = page_count
         return output
     if detected.value in {"pdf_scan", "image"}:
-        output = extract_ocr_from_image(file_path, mode=mode, engine=engine)
+        if not extract_text:
+            return {
+                "tables": [],
+                "ocr": [],
+                "text_preview": None,
+                "routing": {"engine_used": "none", "mode": mode.value if hasattr(mode, "value") else mode},
+                "quality": {"overall_confidence": 0.0, "ocr_blocks": 0},
+                "warnings": [],
+                "detected_file_type": detected,
+                "page_count": page_count,
+            }
+        output = extract_ocr_from_image(
+            file_path,
+            mode=mode,
+            engine=ocr_engine if mode == ExtractMode.ADVANCED else engine,
+            languages=lang_list,
+            max_pages=settings.MAX_PAGES,
+        )
         output["detected_file_type"] = detected
         output["page_count"] = page_count
         return output
@@ -160,6 +194,10 @@ async def extract_auto(
     score_threshold: float = Form(0.5),
     param_mode: str = Form("auto"),
     custom_params: Optional[str] = Form(None),
+    ocr_engine: str = Form("auto"),
+    languages: Optional[str] = Form(None),
+    extract_tables: bool = Form(True),
+    extract_text: bool = Form(True),
 ):
     raw = await file.read()
     validate_upload(file, raw)
@@ -177,6 +215,10 @@ async def extract_auto(
             score_threshold,
             param_mode,
             custom_params,
+            ocr_engine,
+            languages,
+            extract_tables,
+            extract_text,
         )
         result = build_lite_result(
             job_id=job_id,

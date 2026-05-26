@@ -165,6 +165,8 @@ class LiteResult(LiteModel):
     exports: LiteExportLinks = Field(default_factory=LiteExportLinks)
     warnings: List[LiteWarning] = Field(default_factory=list)
     hints: List[LiteHint] = Field(default_factory=list)
+    transactions: List[Dict[str, Any]] = Field(default_factory=list)
+    mapped_transactions: List[Dict[str, Any]] = Field(default_factory=list)
     error: Optional[LiteError] = None
 
 

@@ -1,0 +1,41 @@
+{
+  "default_internal_code": "UNMAPPED",
+  "default_internal_label": "Unmapped",
+  "rules": [
+    {
+      "id": "office-supplies",
+      "external": "office",
+      "match": "contains",
+      "internal_code": "OPEX-4100",
+      "internal_label": "Office Supplies"
+    },
+    {
+      "id": "travel",
+      "external": "travel",
+      "match": "contains",
+      "internal_code": "OPEX-4200",
+      "internal_label": "Travel & Entertainment"
+    },
+    {
+      "id": "software",
+      "external": "software",
+      "match": "contains",
+      "internal_code": "OPEX-4300",
+      "internal_label": "Software & Subscriptions"
+    },
+    {
+      "id": "utilities",
+      "external": "utility",
+      "match": "contains",
+      "internal_code": "OPEX-4400",
+      "internal_label": "Utilities"
+    },
+    {
+      "id": "revenue",
+      "external": "revenue",
+      "match": "contains",
+      "internal_code": "REV-1000",
+      "internal_label": "Operating Revenue"
+    }
+  ]
+}

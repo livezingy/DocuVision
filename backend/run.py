@@ -23,6 +23,10 @@ os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 os.environ['PADDLEX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
 
+from app.core.gpu_lib_path import ensure_pro_gpu_lib_path
+
+ensure_pro_gpu_lib_path()
+
 
 def _ensure_env_from_cloud_template() -> None:
     """Create backend/.env from backend/.env.cloud when .env is missing."""

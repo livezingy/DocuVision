@@ -21,6 +21,8 @@ const DEFAULT_OPTIONS = {
 };
 
 const state = {
+  queue: [],
+  activeIndex: -1,
   file: null,
   profile: null,
   result: null,
@@ -29,7 +31,20 @@ const state = {
   pdfDoc: null,
   previewUrl: null,
   options: { ...DEFAULT_OPTIONS },
+  processing: false,
 };
+
+function getActiveItem() {
+  if (state.activeIndex < 0 || state.activeIndex >= state.queue.length) return null;
+  return state.queue[state.activeIndex];
+}
+
+function syncActiveFromQueue() {
+  const item = getActiveItem();
+  state.file = item?.file || null;
+  state.profile = item?.profile || null;
+  state.result = item?.result || null;
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -61,6 +76,10 @@ const els = {
   statusEngines: $("statusEngines"),
   statusMessage: $("statusMessage"),
   apiVersion: $("apiVersion"),
+  saveValidationBtn: $("saveValidationBtn"),
+  qualityPanel: $("qualityPanel"),
+  contentTransactionsList: $("contentTransactionsList"),
+  contentMappedList: $("contentMappedList"),
   modal: $("analysisOptionsModal"),
 };
 
@@ -107,16 +126,83 @@ async function fetchEnginesCatalog() {
 
 function updateQueueUI() {
   els.queueList.innerHTML = "";
-  if (!state.file) {
-    els.queueCount.textContent = "0";
-    return;
+  els.queueCount.textContent = String(state.queue.length);
+  if (!state.queue.length) return;
+
+  state.queue.forEach((item, index) => {
+    const row = document.createElement("div");
+    row.className = "queue-item" + (index === state.activeIndex ? " active" : "");
+    row.innerHTML = `<div class="queue-item-name">${escapeHtml(item.file.name)}</div>
+      <div class="queue-item-meta">${formatBytes(item.file.size)} · ${item.status || "pending"}</div>
+      <div class="queue-item-status">${item.statusMessage || ""}</div>`;
+    row.addEventListener("click", () => selectQueueItem(index));
+    els.queueList.appendChild(row);
+  });
+}
+
+async function selectQueueItem(index) {
+  if (index < 0 || index >= state.queue.length) return;
+  state.activeIndex = index;
+  syncActiveFromQueue();
+  updateQueueUI();
+  if (state.file) {
+    await renderPreview(state.file);
+    if (state.profile) {
+      renderDocumentProfile();
+    } else {
+      await fetchProfile(state.file);
+    }
+    renderResults(state.result);
   }
-  els.queueCount.textContent = "1";
-  const item = document.createElement("div");
-  item.className = "queue-item";
-  item.innerHTML = `<div class="queue-item-name">${escapeHtml(state.file.name)}</div>
-    <div class="queue-item-meta">${formatBytes(state.file.size)} · ${state.profile?.input?.detected_file_type || "pending"}</div>`;
-  els.queueList.appendChild(item);
+}
+
+function enqueueFiles(files) {
+  const list = Array.from(files || []).slice(0, 3);
+  list.forEach((file) => {
+    state.queue.push({
+      file,
+      profile: null,
+      result: null,
+      status: "pending",
+      statusMessage: "",
+    });
+  });
+  if (state.activeIndex < 0 && state.queue.length) {
+    state.activeIndex = 0;
+  }
+  updateQueueUI();
+}
+
+async function processQueueSequential() {
+  if (state.processing) return;
+  state.processing = true;
+  els.runBtn.disabled = true;
+
+  for (let i = 0; i < state.queue.length; i++) {
+    state.activeIndex = i;
+    syncActiveFromQueue();
+    const item = state.queue[i];
+    item.status = "profiling";
+    item.statusMessage = "Analyzing profile…";
+    updateQueueUI();
+
+    await renderPreview(item.file);
+    await fetchProfile(item.file);
+    item.profile = state.profile;
+
+    item.status = "extracting";
+    item.statusMessage = "Extracting…";
+    updateQueueUI();
+    await runExtractionForItem(item);
+
+    item.status = item.result ? "done" : "failed";
+    item.statusMessage = item.result ? `Done (${item.result.processing_ms || 0} ms)` : "Failed";
+    updateQueueUI();
+  }
+
+  state.processing = false;
+  els.runBtn.disabled = !state.queue.length;
+  setStatus("Queue processing complete");
 }
 
 function formatBytes(n) {
@@ -135,20 +221,49 @@ function escapeHtml(s) {
 
 async function handleFile(file) {
   if (!file) return;
-  state.file = file;
-  state.result = null;
-  state.profile = null;
+  state.queue = [];
+  state.activeIndex = -1;
   state.currentPage = 1;
   state.pdfDoc = null;
   if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+  state.previewUrl = null;
+  enqueueFiles([file]);
+  syncActiveFromQueue();
+  state.result = null;
 
   els.runBtn.disabled = false;
-  updateQueueUI();
   renderResults(null);
   setStatus("Analyzing document profile…");
 
   await renderPreview(file);
   await fetchProfile(file);
+  const item = getActiveItem();
+  if (item) {
+    item.profile = state.profile;
+    item.status = "ready";
+    item.statusMessage = "Profile ready";
+  }
+  updateQueueUI();
+}
+
+async function handleFiles(files) {
+  if (!files?.length) return;
+  state.queue = [];
+  state.activeIndex = -1;
+  enqueueFiles(files);
+  syncActiveFromQueue();
+  if (!state.file) return;
+  state.result = null;
+  els.runBtn.disabled = false;
+  renderResults(null);
+  setStatus(`Added ${state.queue.length} file(s) to queue`);
+  await renderPreview(state.file);
+  await fetchProfile(state.file);
+  const item = getActiveItem();
+  if (item) {
+    item.profile = state.profile;
+    item.status = "ready";
+  }
   updateQueueUI();
 }
 
@@ -464,16 +579,79 @@ function buildFullText(data) {
   return "No text content in result.";
 }
 
+function renderQualityPanel(data) {
+  if (!els.qualityPanel) return;
+  if (!data) {
+    els.qualityPanel.classList.add("hidden");
+    els.qualityPanel.innerHTML = "";
+    return;
+  }
+  const q = data.quality || {};
+  const warnings = data.warnings || [];
+  const hints = data.hints || [];
+  const score = q.overall_confidence != null ? `${Math.round(q.overall_confidence * 100)}%` : "—";
+  const warnHtml = warnings.length
+    ? warnings.map((w) => `<div class="quality-warn">⚠ ${escapeHtml(w.code || "")}: ${escapeHtml(w.message || "")}</div>`).join("")
+    : "";
+  const hintHtml = hints.length
+    ? hints.map((h) => `<div class="quality-hint">💡 ${escapeHtml(h.message || "")}</div>`).join("")
+    : "";
+  els.qualityPanel.innerHTML = `
+    <div class="quality-score">Confidence: ${score} · Tables: ${q.tables_accepted ?? 0}/${q.tables_found ?? 0} · Pages: ${q.pages_processed ?? 0}</div>
+    ${warnHtml}${hintHtml}`;
+  els.qualityPanel.classList.remove("hidden");
+}
+
+function renderTransactionTable(container, rows, emptyMsg) {
+  container.innerHTML = "";
+  if (!rows?.length) {
+    container.innerHTML = `<p class="scan-profile-msg">${emptyMsg}</p>`;
+    return;
+  }
+  const table = document.createElement("table");
+  table.className = "tx-table";
+  const headers = ["date", "description", "amount", "internal_code", "internal_label"];
+  const thead = document.createElement("thead");
+  const hr = document.createElement("tr");
+  headers.forEach((h) => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  rows.forEach((tx) => {
+    const tr = document.createElement("tr");
+    headers.forEach((h) => {
+      const td = document.createElement("td");
+      td.textContent = tx[h] ?? "—";
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
 function renderResults(data) {
   state.result = data;
+  const item = getActiveItem();
+  if (item) item.result = data;
+
   els.contentTableList.innerHTML = "";
   els.exportJsonBtn.disabled = true;
   els.exportCsvBtn.disabled = true;
   els.exportXlsxBtn.disabled = true;
+  els.saveValidationBtn.disabled = true;
+
+  renderQualityPanel(data);
 
   if (!data) {
     els.contentText.textContent = "No text extracted yet.";
     els.resultJson.querySelector("code").textContent = "No result data available";
+    renderTransactionTable(els.contentTransactionsList, [], "No transactions yet.");
+    renderTransactionTable(els.contentMappedList, [], "No mapped transactions yet.");
     return;
   }
 
@@ -483,25 +661,32 @@ function renderResults(data) {
     els.contentTableList.appendChild(renderTable(t, i));
   });
 
+  const transactions = data.transactions || (window.DocuVisionDemo && DocuVisionDemo.extractTransactions(data)) || [];
+  const mapped = data.mapped_transactions || transactions;
+  renderTransactionTable(els.contentTransactionsList, transactions, "No transaction rows detected from tables.");
+  renderTransactionTable(els.contentMappedList, mapped, "No mapped transactions.");
+
   els.resultJson.querySelector("code").textContent = JSON.stringify(data, null, 2);
   els.exportJsonBtn.disabled = false;
+  els.saveValidationBtn.disabled = false;
   if (data.exports?.csv) {
     els.exportCsvBtn.disabled = false;
     els.exportXlsxBtn.disabled = false;
   }
 }
 
-async function runExtraction() {
-  if (!state.file) {
-    setStatus("Please upload a file first.");
-    return;
-  }
+async function runExtractionForItem(item) {
+  if (!item?.file) return;
 
   const form = new FormData();
-  form.append("file", state.file);
+  form.append("file", item.file);
   form.append("mode", state.options.mode);
   form.append("engine", state.options.mode === "advanced" ? state.options.engine : "auto");
   form.append("flavor", state.options.mode === "advanced" ? state.options.flavor : "auto");
+  form.append("ocr_engine", state.options.mode === "advanced" ? state.options.ocrEngine : "auto");
+  form.append("languages", state.options.languages || "eng");
+  form.append("extract_tables", String(state.options.extractTables));
+  form.append("extract_text", String(state.options.extractText));
   if (state.options.pages) form.append("pages", state.options.pages);
   form.append("score_threshold", String(state.options.scoreThreshold));
   form.append("param_mode", state.options.paramMode);
@@ -509,25 +694,48 @@ async function runExtraction() {
     form.append("custom_params", JSON.stringify(state.options.customParams));
   }
 
-  els.runBtn.disabled = true;
-  setStatus("Extracting…");
-
   try {
     const res = await fetch(`${API_BASE}/extract/auto`, { method: "POST", body: form });
     const data = await res.json();
     if (!res.ok) {
       const msg = data?.error?.message || data?.detail?.error?.message || res.statusText;
       setStatus(`Error: ${msg}`);
+      item.result = null;
       return;
     }
-    renderResults(data);
-    setStatus(`Done in ${data.processing_ms} ms — ${data.routing?.engine_used || "n/a"}`);
-    setActiveMainTab("content");
-    setActiveContentTab(data.tables?.length ? "tables" : "text");
+    item.result = data;
+    if (state.activeIndex >= 0 && state.queue[state.activeIndex] === item) {
+      renderResults(data);
+      setStatus(`Done in ${data.processing_ms} ms — ${data.routing?.engine_used || "n/a"}`);
+    }
   } catch (err) {
     setStatus(`Request failed: ${err.message}`);
-  } finally {
-    els.runBtn.disabled = false;
+    item.result = null;
+  }
+}
+
+async function runExtraction() {
+  if (!state.queue.length) {
+    setStatus("Please upload a file first.");
+    return;
+  }
+  if (state.queue.length > 1) {
+    await processQueueSequential();
+    return;
+  }
+  const item = getActiveItem();
+  if (!item) return;
+  els.runBtn.disabled = true;
+  item.status = "extracting";
+  updateQueueUI();
+  setStatus("Extracting…");
+  await runExtractionForItem(item);
+  item.status = item.result ? "done" : "failed";
+  updateQueueUI();
+  els.runBtn.disabled = false;
+  if (item.result) {
+    setActiveMainTab("content");
+    setActiveContentTab(item.result.mapped_transactions?.length ? "mapped" : item.result.tables?.length ? "tables" : "text");
   }
 }
 
@@ -545,14 +753,17 @@ function setActiveContentTab(tab) {
   });
   $("contentTextView").classList.toggle("active", tab === "text");
   $("contentTablesView").classList.toggle("active", tab === "tables");
+  $("contentTransactionsView").classList.toggle("active", tab === "transactions");
+  $("contentMappedView").classList.toggle("active", tab === "mapped");
   $("contentFiguresView").classList.toggle("active", tab === "figures");
 }
 
 function initUpload() {
   els.uploadZone.addEventListener("click", () => els.fileInput.click());
   els.fileInput.addEventListener("change", () => {
-    const f = els.fileInput.files?.[0];
-    if (f) handleFile(f);
+    const files = els.fileInput.files;
+    if (files?.length > 1) handleFiles(files);
+    else if (files?.[0]) handleFile(files[0]);
   });
   els.uploadZone.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -562,8 +773,9 @@ function initUpload() {
   els.uploadZone.addEventListener("drop", (e) => {
     e.preventDefault();
     els.uploadZone.classList.remove("dragover");
-    const f = e.dataTransfer.files?.[0];
-    if (f) handleFile(f);
+    const files = e.dataTransfer.files;
+    if (files?.length > 1) handleFiles(files);
+    else if (files?.[0]) handleFile(files[0]);
   });
 }
 
@@ -664,6 +876,20 @@ function initResultsTabs() {
   });
   $("exportXlsxBtn").addEventListener("click", () => {
     if (state.result?.exports?.xlsx) window.open(state.result.exports.xlsx, "_blank");
+  });
+
+  els.saveValidationBtn?.addEventListener("click", async () => {
+    if (!state.result?.job_id) return;
+    els.saveValidationBtn.disabled = true;
+    try {
+      const res = await fetch(`${API_BASE}/demo/persist/${state.result.job_id}`, { method: "POST" });
+      const data = await res.json();
+      setStatus(data.message || (data.persisted ? "Saved to validation store" : "Save failed"));
+    } catch (err) {
+      setStatus(`Save failed: ${err.message}`);
+    } finally {
+      els.saveValidationBtn.disabled = false;
+    }
   });
 }
 

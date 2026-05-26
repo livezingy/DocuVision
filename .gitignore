@@ -169,6 +169,8 @@ docs/*
 !docs/architecture/智能文档处理系统设计方案.md
 !docs/architecture/media/
 !docs/architecture/media/**
+!docs/demo/
+!docs/demo/**
 docs/R&D/**
 
 # Intentionally not versioned / removed from repo (maintainer-local or retired paths)
@@ -196,6 +198,9 @@ backend/outputs/
 !package-lock.json
 !tsconfig.json
 !playwright.config.js
+!apps/lite/backend/app/config/demo_classification_mappings.json
+!frontend/shared/demo_classification_mappings.json
+!test_data/scripts/package.json
 
 # Upload files (user uploaded files)
 uploads/
@@ -214,6 +219,7 @@ backend/uploads/
 
 # Probe/debug generated artifacts
 scripts/outputs/
+test_data/scripts/node_modules/
 
 # Cloud test screenshots / artifacts (not versioned)
 test_data/TestResult/

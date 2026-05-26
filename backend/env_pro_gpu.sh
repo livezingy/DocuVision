@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # Append pip-shipped NVIDIA / PyTorch shared libraries for Pro GPU runtime.
 #
-# Usage (Cloud Studio):
-#   source ~/docuvision_env/bin/activate
-#   cd backend
-#   source ./env_pro_gpu.sh
-#   DEBUG_MODE=false python run.py
+# Applied automatically when docuvision_env is activated (see install_pro_gpu.sh).
+# Also invoked from run.py / app.main / pytest conftest — manual source is optional.
+#
+#   source ./env_pro_gpu.sh   # only if venv hook was not installed
 
 _pro_gpu_lib_dirs() {
   python - <<'PY'

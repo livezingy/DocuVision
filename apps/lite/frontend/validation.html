@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocuVision — Validation Dashboard (Demo)</title>
+  <link rel="stylesheet" href="/shared/layout.css" />
+  <style>
+    body { padding: 24px; font-family: Inter, system-ui, sans-serif; }
+    h1 { font-size: 1.25rem; margin-bottom: 8px; }
+    .meta { color: #64748b; margin-bottom: 20px; font-size: 0.875rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; }
+    th { background: #f8fafc; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #0369a1; font-size: 0.75rem; }
+    .empty { color: #94a3b8; padding: 24px; text-align: center; }
+    .toolbar { margin-bottom: 16px; display: flex; gap: 12px; align-items: center; }
+    button { padding: 8px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; }
+    button:hover { background: #f1f5f9; }
+  </style>
+</head>
+<body>
+  <h1>Validation Dashboard <span class="badge">Demo PoC</span></h1>
+  <p class="meta" id="backendMeta">Loading storage backend…</p>
+  <div class="toolbar">
+    <button type="button" id="refreshBtn">Refresh</button>
+    <a href="/lite/lite.html">← Back to Lite</a>
+  </div>
+  <div id="recordsRoot"><p class="empty">No records yet. Run extraction in Lite and click “Save to validation”.</p></div>
+  <script>
+    const API = window.LITE_API_BASE || "/api/v1/lite";
+
+    async function loadStatus() {
+      const res = await fetch(`${API}/demo/supabase/status`);
+      const data = await res.json();
+      document.getElementById("backendMeta").textContent =
+        `Backend: ${data.backend}${data.enabled ? " (Supabase connected)" : " (local JSON fallback)"}`;
+    }
+
+    function renderRecords(records) {
+      const root = document.getElementById("recordsRoot");
+      if (!records.length) {
+        root.innerHTML = '<p class="empty">No records yet. Run extraction in Lite and click “Save to validation”.</p>';
+        return;
+      }
+      root.innerHTML = records.map((rec) => {
+        const rows = (rec.mapped_transactions || []).map((tx) => `
+          <tr>
+            <td>${escapeHtml(tx.date || "—")}</td>
+            <td>${escapeHtml(tx.description || "—")}</td>
+            <td>${escapeHtml(tx.amount || "—")}</td>
+            <td><code>${escapeHtml(tx.internal_code || "—")}</code></td>
+            <td>${escapeHtml(tx.internal_label || "—")}</td>
+          </tr>`).join("");
+        return `
+          <section style="margin-bottom:28px">
+            <h2 style="font-size:1rem;margin-bottom:6px">${escapeHtml(rec.filename || rec.document_id)}</h2>
+            <p class="meta">${rec.transaction_count} transactions · ${rec.status} · ${rec.created_at || ""}</p>
+            <table>
+              <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Code</th><th>Label</th></tr></thead>
+              <tbody>${rows || '<tr><td colspan="5">No transactions</td></tr>'}</tbody>
+            </table>
+          </section>`;
+      }).join("");
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    async function loadRecords() {
+      const res = await fetch(`${API}/demo/validation/records`);
+      const data = await res.json();
+      renderRecords(Array.isArray(data) ? data : []);
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", () => {
+      loadStatus();
+      loadRecords();
+    });
+    loadStatus();
+    loadRecords();
+  </script>
+</body>
+</html>

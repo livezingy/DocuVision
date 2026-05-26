@@ -23,5 +23,9 @@ class LiteSettings(BaseSettings):
 
     JOB_DATA_DIR: str = "data/lite_jobs"
 
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    DEMO_VALIDATION_DIR: str = "data/demo_validation"
+
 
 settings = LiteSettings()

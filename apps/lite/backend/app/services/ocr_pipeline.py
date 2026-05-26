@@ -11,6 +11,17 @@ from PIL import Image
 
 from app.schemas.lite_result import ExtractMode, WarningCode
 
+# Short API summary only; full text is in LiteResult.ocr[]
+TEXT_PREVIEW_MAX_BLOCKS = 20
+TEXT_PREVIEW_MAX_CHARS = 500
+
+
+def build_text_preview(ocr_blocks: List[Dict[str, Any]]) -> Optional[str]:
+    """Build truncated summary for list/card views; UI Text tab should use ocr[] instead."""
+    preview = " ".join(b["text"] for b in ocr_blocks[:TEXT_PREVIEW_MAX_BLOCKS])
+    preview = preview[:TEXT_PREVIEW_MAX_CHARS]
+    return preview or None
+
 
 def _engine_available(name: str) -> bool:
     if name == "tesseract":
@@ -126,7 +137,7 @@ def extract_ocr_from_image(
 
     confidences = [b["confidence"] for b in ocr_blocks]
     overall = sum(confidences) / len(confidences) if confidences else 0.0
-    text_preview = " ".join(b["text"] for b in ocr_blocks[:20])[:500] or None
+    text_preview = build_text_preview(ocr_blocks)
 
     warnings: List[Dict[str, Any]] = []
     if overall < 0.6:

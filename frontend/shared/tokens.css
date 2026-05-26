@@ -1,0 +1,61 @@
+/* DocuVision shared design tokens (Pro + Lite) */
+:root {
+    --primary-50: #eef2ff;
+    --primary-100: #e0e7ff;
+    --primary-200: #c7d2fe;
+    --primary-300: #a5b4fc;
+    --primary-400: #818cf8;
+    --primary-500: #6366f1;
+    --primary-600: #4f46e5;
+    --primary-700: #4338ca;
+    --primary-800: #3730a3;
+    --primary-900: #312e81;
+
+    --accent-400: #22d3ee;
+    --accent-500: #06b6d4;
+    --accent-600: #0891b2;
+
+    --success-400: #4ade80;
+    --success-500: #22c55e;
+    --success-600: #16a34a;
+
+    --warning-400: #fbbf24;
+    --warning-500: #f59e0b;
+    --warning-600: #d97706;
+
+    --error-400: #fb7185;
+    --error-500: #f43f5e;
+    --error-600: #e11d48;
+
+    --bg-primary: #0f0f1a;
+    --bg-secondary: #161625;
+    --bg-tertiary: #1e1e32;
+    --bg-elevated: #252540;
+    --bg-hover: #2d2d4a;
+
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.15);
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --text-muted: #475569;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}

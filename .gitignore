@@ -31,6 +31,7 @@ ENV/
 
 # DocuVision Lite runtime data
 apps/lite/backend/data/
+apps/lite/backend/docs/
 env.bak/
 venv.bak/
 

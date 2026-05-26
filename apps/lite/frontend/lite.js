@@ -398,11 +398,11 @@ function readOptionsFromModal() {
 
 function openModal() {
   syncModalFromState();
-  els.modal.classList.remove("hidden");
+  els.modal.classList.add("active");
 }
 
 function closeModal() {
-  els.modal.classList.add("hidden");
+  els.modal.classList.remove("active");
 }
 
 function setActiveModalTab(tab) {
@@ -449,6 +449,21 @@ function renderTable(table, index) {
   return wrap;
 }
 
+function buildFullText(data) {
+  if (data.ocr?.length) {
+    return data.ocr.map((b) => b.text).join("\n");
+  }
+  if (data.text_preview) {
+    return data.text_preview;
+  }
+  if (data.tables?.length) {
+    return (
+      data.tables.flatMap((t) => (t.rows || []).map((r) => r.join("\t"))).join("\n") || "No plain text."
+    );
+  }
+  return "No text content in result.";
+}
+
 function renderResults(data) {
   state.result = data;
   els.contentTableList.innerHTML = "";
@@ -462,17 +477,7 @@ function renderResults(data) {
     return;
   }
 
-  if (data.text_preview) {
-    els.contentText.textContent = data.text_preview;
-  } else if (data.ocr?.length) {
-    els.contentText.textContent = data.ocr.map((b) => b.text).join("\n");
-  } else if (data.tables?.length) {
-    els.contentText.textContent = data.tables
-      .flatMap((t) => (t.rows || []).map((r) => r.join("\t")))
-      .join("\n") || "No plain text.";
-  } else {
-    els.contentText.textContent = "No text content in result.";
-  }
+  els.contentText.textContent = buildFullText(data);
 
   (data.tables || []).forEach((t, i) => {
     els.contentTableList.appendChild(renderTable(t, i));
@@ -518,7 +523,7 @@ async function runExtraction() {
     renderResults(data);
     setStatus(`Done in ${data.processing_ms} ms — ${data.routing?.engine_used || "n/a"}`);
     setActiveMainTab("content");
-    setActiveContentTab("tables");
+    setActiveContentTab(data.tables?.length ? "tables" : "text");
   } catch (err) {
     setStatus(`Request failed: ${err.message}`);
   } finally {
@@ -670,12 +675,30 @@ function downloadBlob(blob, name) {
   URL.revokeObjectURL(a.href);
 }
 
+function initPanelLayout() {
+  if (typeof initThreePanelResize === "function") {
+    initThreePanelResize({
+      left: $("leftPanel"),
+      center: $("centerPanel"),
+      right: $("rightPanel"),
+      leftHandle: $("leftPanelResizeHandle"),
+      rightHandle: $("rightPanelResizeHandle"),
+      leftMin: 180,
+      leftMax: 400,
+      rightMin: 250,
+      rightMax: 800,
+    });
+  }
+}
+
 function init() {
   initUpload();
   initPagination();
   initProfile();
   initModal();
   initResultsTabs();
+  initPanelLayout();
+  $("helpBtn")?.addEventListener("click", () => window.open("/docs", "_blank"));
   els.runBtn.addEventListener("click", runExtraction);
   fetchHealth();
   fetchEnginesCatalog();

@@ -43,8 +43,11 @@ app.include_router(extract_router, prefix="/api/v1/lite")
 app.include_router(jobs_router, prefix="/api/v1/lite")
 
 _frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+_shared_dir = Path(__file__).resolve().parents[4] / "frontend" / "shared"
 if _frontend_dir.exists():
     app.mount("/lite", StaticFiles(directory=str(_frontend_dir), html=True), name="lite-frontend")
+if _shared_dir.exists():
+    app.mount("/shared", StaticFiles(directory=str(_shared_dir)), name="shared-frontend")
 
 
 @app.get("/", tags=["root"])

@@ -1,0 +1,210 @@
+/* DocuVision Lite — overrides on top of /shared/layout.css */
+
+.logo-subtitle.lite-subtitle {
+    color: var(--accent-400);
+}
+
+.nav-link-lite {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.8125rem;
+}
+
+.nav-link-lite:hover {
+    color: var(--text-primary);
+}
+
+.nav-link-lite.pro-link {
+    color: var(--primary-400);
+}
+
+/* Document Profile (Lite-only, center panel bottom) */
+.document-profile {
+    margin: 0 12px 12px;
+    padding: 14px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+}
+
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.profile-header h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.profile-page-select {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.profile-page-select select {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+}
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.profile-card {
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+}
+
+.profile-card h5 {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-bordered {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--success-500);
+}
+
+.badge-unbordered {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning-500);
+}
+
+.score-bar {
+    height: 6px;
+    background: var(--bg-elevated);
+    border-radius: 3px;
+    margin: 6px 0;
+    overflow: hidden;
+}
+
+.score-bar-fill {
+    height: 100%;
+    background: var(--primary-500);
+    border-radius: 3px;
+}
+
+.profile-details {
+    margin-top: 8px;
+}
+
+.profile-details summary {
+    cursor: pointer;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.profile-details dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 12px;
+    font-size: 0.78rem;
+    padding: 8px 0;
+}
+
+.profile-details dt {
+    color: var(--text-tertiary);
+}
+
+.profile-details dd {
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.profile-apply-btn {
+    width: 100%;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+.scan-profile-msg {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Lite modal extras (Advanced tab) */
+.profile-summary {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    margin: 12px 0;
+    line-height: 1.5;
+}
+
+.param-group {
+    margin-bottom: 10px;
+}
+
+.param-group summary {
+    cursor: pointer;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.param-textarea {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    resize: vertical;
+}
+
+.param-textarea:disabled {
+    opacity: 0.5;
+}
+
+/* Lite export: 3 buttons */
+.export-buttons {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1100px) {
+    .main-content {
+        flex-direction: column;
+        overflow: auto;
+    }
+
+    .left-panel,
+    .right-panel {
+        width: 100% !important;
+        max-width: none;
+    }
+
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+}

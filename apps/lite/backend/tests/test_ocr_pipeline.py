@@ -8,7 +8,14 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.main import app
-from app.services.ocr_pipeline import _normalize_easyocr_bbox, _run_easyocr
+from app.services.ocr_pipeline import (
+    TEXT_PREVIEW_MAX_BLOCKS,
+    TEXT_PREVIEW_MAX_CHARS,
+    _normalize_easyocr_bbox,
+    _run_easyocr,
+    build_text_preview,
+    extract_ocr_from_image,
+)
 
 client = TestClient(app)
 
@@ -50,6 +57,48 @@ def test_run_easyocr_maps_bbox_rect(mock_create_engine):
     assert blocks[0]["text"] == "Hello"
     assert blocks[0]["engine"] == "easyocr"
     assert blocks[0]["confidence"] == pytest.approx(0.91)
+
+
+def test_text_preview_truncates_but_ocr_full():
+    blocks = [{"text": f"word{i}", "confidence": 0.9} for i in range(30)]
+    preview = build_text_preview(blocks)
+    assert preview is not None
+    assert len(preview) <= TEXT_PREVIEW_MAX_CHARS
+    assert len(blocks) == 30
+    full_join = " ".join(b["text"] for b in blocks)
+    assert len(full_join) > len(preview)
+
+
+@patch("app.services.ocr_pipeline._resolve_ocr_engine", return_value="easyocr")
+@patch("app.services.ocr_pipeline._run_easyocr")
+def test_extract_ocr_returns_full_blocks_and_truncated_preview(mock_run_easyocr, _mock_resolve):
+    mock_run_easyocr.return_value = [
+        {
+            "page": 1,
+            "bbox": [0.0, 0.0, 10.0, 10.0],
+            "text": f"block{i}",
+            "confidence": 0.9,
+            "engine": "easyocr",
+        }
+        for i in range(TEXT_PREVIEW_MAX_BLOCKS + 5)
+    ]
+    buf = BytesIO()
+    Image.new("RGB", (10, 10), "white").save(buf, format="PNG")
+    buf.seek(0)
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+        tmp.write(buf.getvalue())
+        tmp_path = Path(tmp.name)
+
+    try:
+        output = extract_ocr_from_image(tmp_path, mode="smart", engine="auto")
+        assert len(output["ocr"]) == TEXT_PREVIEW_MAX_BLOCKS + 5
+        assert output["text_preview"] is not None
+        assert len(output["text_preview"]) <= TEXT_PREVIEW_MAX_CHARS
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 @patch("app.services.ocr_pipeline._run_easyocr")

@@ -59,11 +59,14 @@ cd apps/lite/backend && python run_lite.py
 
 | 检查项 | 通过标准 |
 |--------|----------|
-| 三栏布局 | 左 Upload/Queue、中 Preview+Profile、右 Content/Result |
-| 上传 digital PDF | Document Profile 显示 table_type、score、routing |
-| Analysis Options | 三 Tab；Advanced 可预填参数 |
-| Run Extraction | Tables/Text 有结果；Figures 固定 Pro 空态；无 Fields Tab |
-| 上传 PNG | scan_profile 文案显示 |
+| 三栏 resize | 左/右 `panel-resize-handle` 拖动有效，中栏 `flex:1` 自适应 |
+| 按钮文案 | **Run Analysis** / **Analysis Options**（含 SVG，风格对齐 Pro） |
+| Text 全量 | 多 block 图片 OCR 后 Content/Text 字符数与 Result JSON 中 `ocr[]` 拼接一致（非 `text_preview` 截断） |
+| Fields | Content 子 Tab 仅有 Text / Tables / Figures，**无 Fields** |
+| Figures | 固定 Pro 空态文案 |
+| Document Profile | digital PDF 显示 table_type / routing；PNG 显示 scan_profile |
+| Analysis Options | 三 Tab；Advanced 可预填 custom params |
+| 本地 docs | `apps/lite/backend/docs/` 可存在本地；`git ls-files apps/lite/backend/docs/` 为空 |
 
 ## 4. Fixture 说明
 

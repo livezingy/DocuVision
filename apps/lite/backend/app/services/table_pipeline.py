@@ -179,16 +179,28 @@ def extract_tables_from_pdf(
     overall = sum(scores) / len(scores) if scores else 0.0
     pages_with_tables = len({t["page"] for t in all_tables})
 
+    sources_used = sorted({str(t.get("source", "")) for t in all_tables if t.get("source")})
+    engines_used = sorted({s.split("_")[0] for s in sources_used if s})
+    if table_method == "mixed" and engines_used:
+        engine_used_label = f"smart ({'+'.join(engines_used)})"
+        flavor_used_label = ", ".join(s.replace("_", " · ") for s in sources_used) or flavor_used
+    elif sources_used:
+        engine_used_label = sources_used[0].split("_")[0]
+        flavor_used_label = sources_used[0].replace("_", " · ")
+    else:
+        engine_used_label = engine_used or table_method
+        flavor_used_label = flavor_used
+
     return {
         "tables": all_tables,
         "text_preview": text_preview,
         "routing": {
             "mode": mode.value if hasattr(mode, "value") else mode,
             "requested_engine": engine,
-            "engine_used": engine_used or table_method,
-            "engine_chain": engine_chain,
+            "engine_used": engine_used_label,
+            "engine_chain": sources_used if sources_used else engine_chain,
             "table_type_detected": table_type_detected,
-            "flavor_used": flavor_used,
+            "flavor_used": flavor_used_label,
             "param_mode": param_mode,
             "profile": "cpu",
         },

@@ -25,6 +25,18 @@
     background: var(--bg-secondary);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
+    max-height: min(320px, 35vh);
+    overflow-y: auto;
+}
+
+#profileContent {
+    overflow: visible;
+}
+
+.profile-details-body {
+    max-height: 140px;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
 .profile-header {
@@ -235,6 +247,55 @@
     font-size: 0.6875rem;
     color: var(--text-secondary);
     margin-top: 2px;
+}
+
+.preview-stage {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-width: min-content;
+    min-height: min-content;
+}
+
+.preview-container .preview-zoomable {
+    max-width: none;
+    max-height: none;
+}
+
+.preview-zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: auto;
+    padding-left: 4px;
+}
+
+.zoom-level {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    min-width: 42px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.preview-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.preview-pagination .page-display-container {
+    width: auto;
+    flex: 1;
+    justify-content: center;
+}
+
+.profile-routing-note {
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    line-height: 1.4;
 }
 
 .tx-table {

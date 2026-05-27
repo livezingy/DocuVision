@@ -49,9 +49,14 @@ def _json_safe_params(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _suggested_routing(table_type: str) -> LiteSuggestedRouting:
+    # Smart mode runs pdfplumber first, then camelot refinement for bordered tables.
     if table_type == "bordered":
-        return LiteSuggestedRouting(engine="camelot", flavor="lattice", param_mode="auto")
-    return LiteSuggestedRouting(engine="pdfplumber", flavor="text", param_mode="auto")
+        return LiteSuggestedRouting(
+            engine="smart",
+            flavor="pdfplumber:lines + camelot:lattice",
+            param_mode="auto",
+        )
+    return LiteSuggestedRouting(engine="smart", flavor="pdfplumber:text", param_mode="auto")
 
 
 def _analyze_pdf_page(page, page_num: int) -> LitePageProfile:

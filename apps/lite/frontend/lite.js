@@ -1,4 +1,7 @@
 const API_BASE = window.LITE_API_BASE || "/api/v1/lite";
+const LITE_SESSION_KEY = "docuvision.lite.session.v1";
+const LITE_FILE_DB = "docuvision-lite-files";
+const LITE_FILE_STORE = "files";
 
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -32,6 +35,10 @@ const state = {
   previewUrl: null,
   options: { ...DEFAULT_OPTIONS },
   processing: false,
+  previewScale: 1,
+  previewBaseScale: 1,
+  previewNaturalWidth: 0,
+  previewNaturalHeight: 0,
 };
 
 function getActiveItem() {
@@ -58,6 +65,13 @@ const els = {
   previewPlaceholder: $("previewPlaceholder"),
   previewCanvas: $("previewCanvas"),
   previewImage: $("previewImage"),
+  previewStage: $("previewStage"),
+  previewContainer: $("previewContainer"),
+  zoomInBtn: $("zoomInBtn"),
+  zoomOutBtn: $("zoomOutBtn"),
+  zoomFitBtn: $("zoomFitBtn"),
+  zoomLevel: $("zoomLevel"),
+  openValidationLink: $("openValidationLink"),
   prevPage: $("prevPage"),
   nextPage: $("nextPage"),
   currentPage: $("currentPage"),
@@ -82,6 +96,169 @@ const els = {
   contentMappedList: $("contentMappedList"),
   modal: $("analysisOptionsModal"),
 };
+
+function newQueueItemId() {
+  return crypto.randomUUID ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function openLiteFileDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(LITE_FILE_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(LITE_FILE_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveQueueFileBlob(id, file) {
+  if (!id || !file) return;
+  try {
+    const db = await openLiteFileDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(LITE_FILE_STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore(LITE_FILE_STORE).put(file, id);
+    });
+  } catch (err) {
+    console.warn("[Lite] Failed to persist file blob:", err);
+  }
+}
+
+async function loadQueueFileBlob(id) {
+  try {
+    const db = await openLiteFileDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(LITE_FILE_STORE, "readonly");
+      tx.onerror = () => reject(tx.error);
+      const req = tx.objectStore(LITE_FILE_STORE).get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+function persistSession() {
+  try {
+    const payload = {
+      activeIndex: state.activeIndex,
+      options: state.options,
+      previewScale: state.previewScale,
+      items: state.queue.map((item) => ({
+        id: item.id,
+        name: item.file?.name || "",
+        size: item.file?.size || 0,
+        type: item.file?.type || "",
+        lastModified: item.file?.lastModified || 0,
+        status: item.status,
+        statusMessage: item.statusMessage,
+        profile: item.profile,
+        result: item.result,
+      })),
+    };
+    sessionStorage.setItem(LITE_SESSION_KEY, JSON.stringify(payload));
+  } catch (err) {
+    console.warn("[Lite] Failed to persist session:", err);
+  }
+}
+
+async function restoreSession() {
+  const raw = sessionStorage.getItem(LITE_SESSION_KEY);
+  if (!raw) return false;
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    sessionStorage.removeItem(LITE_SESSION_KEY);
+    return false;
+  }
+  if (!payload?.items?.length) return false;
+
+  const restored = [];
+  for (const meta of payload.items) {
+    const blob = await loadQueueFileBlob(meta.id);
+    if (!blob) continue;
+    const file = blob instanceof File
+      ? blob
+      : new File([blob], meta.name || "document", {
+          type: meta.type || blob.type || "application/octet-stream",
+          lastModified: meta.lastModified || Date.now(),
+        });
+    restored.push({
+      id: meta.id,
+      file,
+      profile: meta.profile || null,
+      result: meta.result || null,
+      status: meta.status || "pending",
+      statusMessage: meta.statusMessage || "",
+    });
+  }
+  if (!restored.length) return false;
+
+  state.queue = restored;
+  state.activeIndex = Math.min(Math.max(payload.activeIndex ?? 0, 0), restored.length - 1);
+  state.options = { ...DEFAULT_OPTIONS, ...(payload.options || {}), customParams: payload.options?.customParams ?? null };
+  state.previewScale = payload.previewScale || 1;
+  syncActiveFromQueue();
+  updateQueueUI();
+  return true;
+}
+
+function formatRoutingSummary(routing) {
+  if (!routing) return "n/a";
+  const engine = routing.engine_used || routing.requested_engine || "auto";
+  const flavor = routing.flavor_used;
+  if (flavor && flavor !== "auto" && !String(engine).includes(flavor)) {
+    return `${engine} · ${flavor}`;
+  }
+  return engine;
+}
+
+function formatTableSourceLabel(source) {
+  if (!source) return "unknown";
+  return String(source).replace(/_/g, " · ");
+}
+
+function updateZoomUI() {
+  const pct = Math.round(state.previewScale * 100);
+  if (els.zoomLevel) els.zoomLevel.textContent = `${pct}%`;
+  const hasPreview = Boolean(state.file);
+  [els.zoomInBtn, els.zoomOutBtn, els.zoomFitBtn].forEach((btn) => {
+    if (btn) btn.disabled = !hasPreview;
+  });
+}
+
+function applyImagePreviewZoom() {
+  if (!els.previewImage || els.previewImage.classList.contains("hidden")) return;
+  const w = state.previewNaturalWidth * state.previewBaseScale * state.previewScale;
+  const h = state.previewNaturalHeight * state.previewBaseScale * state.previewScale;
+  els.previewImage.style.width = `${Math.max(1, w)}px`;
+  els.previewImage.style.height = `${Math.max(1, h)}px`;
+  updateZoomUI();
+}
+
+async function refreshPreviewZoom() {
+  if (state.pdfDoc) {
+    await renderPdfPage(state.currentPage);
+  } else if (state.file && !els.previewImage.classList.contains("hidden")) {
+    applyImagePreviewZoom();
+  }
+  updateZoomUI();
+}
+
+function setPreviewScale(next, { persist = true } = {}) {
+  state.previewScale = Math.min(4, Math.max(0.25, next));
+  void refreshPreviewZoom();
+  if (persist) persistSession();
+}
+
+function resetPreviewScale() {
+  state.previewScale = 1;
+  void refreshPreviewZoom();
+  persistSession();
+}
 
 function setStatus(msg) {
   els.statusMessage.textContent = msg;
@@ -145,7 +322,9 @@ async function selectQueueItem(index) {
   state.activeIndex = index;
   syncActiveFromQueue();
   updateQueueUI();
+  persistSession();
   if (state.file) {
+    state.previewScale = 1;
     await renderPreview(state.file);
     if (state.profile) {
       renderDocumentProfile();
@@ -156,21 +335,29 @@ async function selectQueueItem(index) {
   }
 }
 
+function createQueueItem(file) {
+  return {
+    id: newQueueItemId(),
+    file,
+    profile: null,
+    result: null,
+    status: "pending",
+    statusMessage: "",
+  };
+}
+
 function enqueueFiles(files) {
   const maxQueue = 3;
   const room = maxQueue - state.queue.length;
-  if (room <= 0) return 0;
+  if (room <= 0) return [];
   const list = Array.from(files || []).slice(0, room);
+  const added = [];
   list.forEach((file) => {
-    state.queue.push({
-      file,
-      profile: null,
-      result: null,
-      status: "pending",
-      statusMessage: "",
-    });
+    const item = createQueueItem(file);
+    state.queue.push(item);
+    added.push(item);
   });
-  return list.length;
+  return added;
 }
 
 function resetPreviewState() {
@@ -187,28 +374,32 @@ async function addFilesToQueue(files, { replace = false } = {}) {
     state.activeIndex = -1;
     resetPreviewState();
   }
-  const added = enqueueFiles(files);
-  if (!added) {
+  const addedItems = enqueueFiles(files);
+  if (!addedItems.length) {
     setStatus("Queue is full (max 3 files)");
     return 0;
   }
+  await Promise.all(addedItems.map((item) => saveQueueFileBlob(item.id, item.file)));
+
   state.activeIndex = state.queue.length - 1;
   syncActiveFromQueue();
   state.result = null;
   els.runBtn.disabled = false;
   renderResults(null);
-  setStatus(`Added ${added} file(s) to queue (${state.queue.length} total)`);
+  setStatus(`Added ${addedItems.length} file(s) to queue (${state.queue.length} total)`);
 
   const item = getActiveItem();
-  if (!item) return added;
+  if (!item) return addedItems.length;
 
+  state.previewScale = 1;
   await renderPreview(item.file);
   await fetchProfile(item.file);
   item.profile = state.profile;
   item.status = "ready";
   item.statusMessage = "Profile ready";
   updateQueueUI();
-  return added;
+  persistSession();
+  return addedItems.length;
 }
 
 async function processQueueSequential() {
@@ -236,11 +427,13 @@ async function processQueueSequential() {
     item.status = item.result ? "done" : "failed";
     item.statusMessage = item.result ? `Done (${item.result.processing_ms || 0} ms)` : "Failed";
     updateQueueUI();
+    persistSession();
   }
 
   state.processing = false;
   els.runBtn.disabled = !state.queue.length;
   setStatus("Queue processing complete");
+  persistSession();
 }
 
 function formatBytes(n) {
@@ -271,8 +464,10 @@ async function renderPreview(file) {
   els.previewPlaceholder.classList.add("hidden");
   els.previewCanvas.classList.add("hidden");
   els.previewImage.classList.add("hidden");
+  updateZoomUI();
 
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
   state.previewUrl = URL.createObjectURL(file);
 
   if (isPdf && window.pdfjsLib) {
@@ -284,15 +479,29 @@ async function renderPreview(file) {
     updatePageButtons();
     await renderPdfPage(state.currentPage);
   } else if (file.type.startsWith("image/") || /\.(png|jpe?g|bmp|tiff?)$/i.test(file.name)) {
+    state.pdfDoc = null;
     state.totalPages = 1;
     state.currentPage = 1;
     els.totalPages.textContent = "1";
     els.currentPage.textContent = "1";
+    els.previewImage.onload = () => {
+      state.previewNaturalWidth = els.previewImage.naturalWidth || 1;
+      state.previewNaturalHeight = els.previewImage.naturalHeight || 1;
+      const container = els.previewContainer;
+      const fitScale = Math.min(
+        (container.clientWidth - 16) / state.previewNaturalWidth,
+        (container.clientHeight - 16) / state.previewNaturalHeight,
+        1,
+      );
+      state.previewBaseScale = Math.max(0.1, fitScale || 1);
+      applyImagePreviewZoom();
+    };
     els.previewImage.src = state.previewUrl;
     els.previewImage.classList.remove("hidden");
     els.prevPage.disabled = true;
     els.nextPage.disabled = true;
   } else {
+    state.pdfDoc = null;
     els.previewPlaceholder.textContent = file.name;
     els.previewPlaceholder.classList.remove("hidden");
   }
@@ -301,14 +510,27 @@ async function renderPreview(file) {
 async function renderPdfPage(pageNum) {
   if (!state.pdfDoc) return;
   const page = await state.pdfDoc.getPage(pageNum);
-  const viewport = page.getViewport({ scale: 1.2 });
+  const baseViewport = page.getViewport({ scale: 1 });
+  const container = els.previewContainer;
+  const fitScale = Math.min(
+    (container.clientWidth - 16) / baseViewport.width,
+    (container.clientHeight - 16) / baseViewport.height,
+    1.5,
+  );
+  state.previewBaseScale = Math.max(0.1, fitScale || 1);
+  state.previewNaturalWidth = baseViewport.width;
+  state.previewNaturalHeight = baseViewport.height;
+  const viewport = page.getViewport({ scale: state.previewBaseScale * state.previewScale });
   const canvas = els.previewCanvas;
   const ctx = canvas.getContext("2d");
   canvas.width = viewport.width;
   canvas.height = viewport.height;
+  canvas.style.width = `${viewport.width}px`;
+  canvas.style.height = `${viewport.height}px`;
   await page.render({ canvasContext: ctx, viewport }).promise;
   canvas.classList.remove("hidden");
   els.currentPage.textContent = pageNum;
+  updateZoomUI();
 }
 
 function updatePageButtons() {
@@ -329,8 +551,11 @@ async function fetchProfile(file) {
       return;
     }
     state.profile = data;
+    const item = getActiveItem();
+    if (item) item.profile = data;
     renderDocumentProfile();
     setStatus("Profile ready — configure options or run extraction");
+    persistSession();
   } catch (err) {
     setStatus(`Profile failed: ${err.message}`);
     els.documentProfile.classList.add("hidden");
@@ -396,29 +621,36 @@ function renderPageProfileDetail(pageProf) {
       </div>
       <div class="profile-card">
         <h5>Routing suggestion</h5>
-        <div>Engine: <strong>${escapeHtml(sr.engine)}</strong></div>
-        <div>Flavor: <strong>${escapeHtml(sr.flavor)}</strong></div>
+        <div>Mode: <strong>${escapeHtml(sr.engine || "smart")}</strong></div>
+        <div>Strategy: <strong>${escapeHtml(sr.flavor || "auto")}</strong></div>
         <div>Params: ${escapeHtml(sr.param_mode || "auto")}</div>
+        <p class="profile-routing-note">Smart mode runs pdfplumber first; camelot refines bordered tables when needed.</p>
       </div>
     </div>
-    <details class="profile-details">
+    <details class="profile-details" open>
       <summary>Typography &amp; spacing</summary>
-      <dl>
-        <dt>Char width (mode)</dt><dd>${ty.mode_char_width_pt} pt</dd>
-        <dt>Char height (mode)</dt><dd>${ty.mode_char_height_pt} pt</dd>
-        <dt>Line height (mode)</dt><dd>${ty.mode_line_height_pt} pt</dd>
-        <dt>Line spacing (mode)</dt><dd>${ty.mode_line_spacing_pt} pt</dd>
-        <dt>Text lines / chars</dt><dd>${ty.total_lines} / ${ty.total_chars}</dd>
-      </dl>
+      <div class="profile-details-body">
+        <dl>
+          <dt>Char width (mode)</dt><dd>${ty.mode_char_width_pt} pt</dd>
+          <dt>Char height (mode)</dt><dd>${ty.mode_char_height_pt} pt</dd>
+          <dt>Line height (mode)</dt><dd>${ty.mode_line_height_pt} pt</dd>
+          <dt>Line spacing (mode)</dt><dd>${ty.mode_line_spacing_pt} pt</dd>
+          <dt>Text lines / chars</dt><dd>${ty.total_lines} / ${ty.total_chars}</dd>
+        </dl>
+      </div>
     </details>
     <details class="profile-details">
       <summary>Line analysis</summary>
-      <dl>
-        <dt>Method</dt><dd>${escapeHtml(cd.method || "—")}</dd>
-        <dt>Line concentration</dt><dd>${cd.line_concentration != null ? cd.line_concentration.toFixed(2) : "—"}</dd>
-        <dt>Area ratio</dt><dd>${cd.area_ratio != null ? cd.area_ratio.toFixed(2) : "—"}</dd>
-        <dt>Direction balance</dt><dd>${cd.direction_balance != null ? cd.direction_balance.toFixed(2) : "—"}</dd>
-      </dl>
+      <div class="profile-details-body">
+        <dl>
+          <dt>Method</dt><dd>${escapeHtml(cd.method || "—")}</dd>
+          <dt>Horizontal lines</dt><dd>${cd.h_lines ?? "—"}</dd>
+          <dt>Vertical lines</dt><dd>${cd.v_lines ?? "—"}</dd>
+          <dt>Line concentration</dt><dd>${cd.line_concentration != null ? cd.line_concentration.toFixed(2) : "—"}</dd>
+          <dt>Area ratio</dt><dd>${cd.area_ratio != null ? cd.area_ratio.toFixed(2) : "—"}</dd>
+          <dt>Direction balance</dt><dd>${cd.direction_balance != null ? cd.direction_balance.toFixed(2) : "—"}</dd>
+        </dl>
+      </div>
     </details>`;
 }
 
@@ -534,7 +766,7 @@ function renderTable(table, index) {
   wrap.className = "table-card";
   const header = document.createElement("div");
   header.className = "table-card-header";
-  header.textContent = `Table ${index + 1} · page ${table.page} · score ${(table.score || 0).toFixed(2)} · ${table.source || ""}`;
+  header.textContent = `Table ${index + 1} · page ${table.page} · score ${(table.score || 0).toFixed(2)} · ${formatTableSourceLabel(table.source)}`;
   wrap.appendChild(header);
 
   const rows = [];
@@ -617,6 +849,7 @@ function renderQualityPanel(data) {
   const warnings = data.warnings || [];
   const hints = data.hints || [];
   const score = q.overall_confidence != null ? `${Math.round(q.overall_confidence * 100)}%` : "—";
+  const routingLine = data.routing ? formatRoutingSummary(data.routing) : null;
   const warnHtml = warnings.length
     ? warnings.map((w) => `<div class="quality-warn">⚠ ${escapeHtml(w.code || "")}: ${escapeHtml(w.message || "")}</div>`).join("")
     : "";
@@ -625,6 +858,7 @@ function renderQualityPanel(data) {
     : "";
   els.qualityPanel.innerHTML = `
     <div class="quality-score">Confidence: ${score} · Tables: ${q.tables_accepted ?? 0}/${q.tables_found ?? 0} · Pages: ${q.pages_processed ?? 0}</div>
+    ${routingLine ? `<div class="quality-hint">Routing: ${escapeHtml(routingLine)}</div>` : ""}
     ${warnHtml}${hintHtml}`;
   els.qualityPanel.classList.remove("hidden");
 }
@@ -700,6 +934,7 @@ function renderResults(data) {
     els.exportCsvBtn.disabled = false;
     els.exportXlsxBtn.disabled = false;
   }
+  persistSession();
 }
 
 async function runExtractionForItem(item) {
@@ -733,8 +968,10 @@ async function runExtractionForItem(item) {
     item.result = data;
     if (state.activeIndex >= 0 && state.queue[state.activeIndex] === item) {
       renderResults(data);
-      setStatus(`Done in ${data.processing_ms} ms — ${data.routing?.engine_used || "n/a"}`);
+      const routing = formatRoutingSummary(data.routing);
+      setStatus(`Done in ${data.processing_ms} ms — ${routing}`);
     }
+    persistSession();
   } catch (err) {
     setStatus(`Request failed: ${err.message}`);
     item.result = null;
@@ -760,6 +997,7 @@ async function runExtraction() {
   item.status = item.result ? "done" : "failed";
   updateQueueUI();
   els.runBtn.disabled = false;
+  persistSession();
   if (item.result) {
     setActiveMainTab("content");
     setActiveContentTab(item.result.mapped_transactions?.length ? "mapped" : item.result.tables?.length ? "tables" : "text");
@@ -945,18 +1183,61 @@ function initPanelLayout() {
   }
 }
 
-function init() {
+function initPreviewZoom() {
+  els.zoomInBtn?.addEventListener("click", () => setPreviewScale(state.previewScale + 0.15));
+  els.zoomOutBtn?.addEventListener("click", () => setPreviewScale(state.previewScale - 0.15));
+  els.zoomFitBtn?.addEventListener("click", () => resetPreviewScale());
+
+  els.previewContainer?.addEventListener(
+    "wheel",
+    (e) => {
+      if (!state.file) return;
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setPreviewScale(state.previewScale + delta);
+    },
+    { passive: false },
+  );
+
+  els.openValidationLink?.addEventListener("click", () => {
+    persistSession();
+  });
+
+  window.addEventListener("beforeunload", () => {
+    persistSession();
+  });
+
+  updateZoomUI();
+}
+
+async function init() {
   initUpload();
   initPagination();
   initProfile();
   initModal();
   initResultsTabs();
   initPanelLayout();
+  initPreviewZoom();
   $("helpBtn")?.addEventListener("click", () => window.open("/docs", "_blank"));
   els.runBtn.addEventListener("click", runExtraction);
   fetchHealth();
   fetchEnginesCatalog();
-  setStatus("Ready");
+
+  const restored = await restoreSession();
+  if (restored && state.file) {
+    els.runBtn.disabled = false;
+    await renderPreview(state.file);
+    if (state.profile) {
+      renderDocumentProfile();
+    } else {
+      await fetchProfile(state.file);
+    }
+    renderResults(state.result);
+    setStatus(`Restored ${state.queue.length} file(s) from session`);
+  } else {
+    setStatus("Ready");
+  }
 }
 
-init();
+void init();

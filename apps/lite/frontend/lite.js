@@ -1,5 +1,5 @@
 const API_BASE = window.LITE_API_BASE || "/api/v1/lite";
-const LITE_SESSION_KEY = "docuvision.lite.session.v2";
+const LITE_SESSION_KEY = "docuvision.lite.session.v1";
 const LITE_FILE_DB = "docuvision-lite-files";
 const LITE_FILE_STORE = "files";
 
@@ -35,7 +35,10 @@ const state = {
   previewUrl: null,
   options: { ...DEFAULT_OPTIONS },
   processing: false,
-  activeMainTab: "profile",
+  previewScale: 1,
+  previewBaseScale: 1,
+  previewNaturalWidth: 0,
+  previewNaturalHeight: 0,
 };
 
 function getActiveItem() {
@@ -62,12 +65,18 @@ const els = {
   previewPlaceholder: $("previewPlaceholder"),
   previewCanvas: $("previewCanvas"),
   previewImage: $("previewImage"),
+  previewStage: $("previewStage"),
   previewContainer: $("previewContainer"),
+  zoomInBtn: $("zoomInBtn"),
+  zoomOutBtn: $("zoomOutBtn"),
+  zoomFitBtn: $("zoomFitBtn"),
+  zoomLevel: $("zoomLevel"),
   openValidationLink: $("openValidationLink"),
   prevPage: $("prevPage"),
   nextPage: $("nextPage"),
   currentPage: $("currentPage"),
   totalPages: $("totalPages"),
+  documentProfile: $("documentProfile"),
   profilePageSelect: $("profilePageSelect"),
   profileContent: $("profileContent"),
   applyProfileBtn: $("applyProfileBtn"),
@@ -135,9 +144,8 @@ function persistSession() {
   try {
     const payload = {
       activeIndex: state.activeIndex,
-      activeMainTab: state.activeMainTab,
-      currentPage: state.currentPage,
       options: state.options,
+      previewScale: state.previewScale,
       items: state.queue.map((item) => ({
         id: item.id,
         name: item.file?.name || "",
@@ -157,7 +165,6 @@ function persistSession() {
 }
 
 async function restoreSession() {
-  sessionStorage.removeItem("docuvision.lite.session.v1");
   const raw = sessionStorage.getItem(LITE_SESSION_KEY);
   if (!raw) return false;
   let payload;
@@ -192,24 +199,11 @@ async function restoreSession() {
 
   state.queue = restored;
   state.activeIndex = Math.min(Math.max(payload.activeIndex ?? 0, 0), restored.length - 1);
-  state.activeMainTab = payload.activeMainTab || "profile";
-  state.currentPage = payload.currentPage || 1;
   state.options = { ...DEFAULT_OPTIONS, ...(payload.options || {}), customParams: payload.options?.customParams ?? null };
+  state.previewScale = payload.previewScale || 1;
   syncActiveFromQueue();
   updateQueueUI();
   return true;
-}
-
-function waitForLayout() {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  });
-}
-
-function getPreviewFitScale(pageWidth) {
-  const container = els.previewContainer;
-  const available = container?.clientWidth > 0 ? container.clientWidth - 16 : 640;
-  return Math.min(Math.max(200, available) / pageWidth, 2);
 }
 
 function formatRoutingSummary(routing) {
@@ -225,6 +219,45 @@ function formatRoutingSummary(routing) {
 function formatTableSourceLabel(source) {
   if (!source) return "unknown";
   return String(source).replace(/_/g, " · ");
+}
+
+function updateZoomUI() {
+  const pct = Math.round(state.previewScale * 100);
+  if (els.zoomLevel) els.zoomLevel.textContent = `${pct}%`;
+  const hasPreview = Boolean(state.file);
+  [els.zoomInBtn, els.zoomOutBtn, els.zoomFitBtn].forEach((btn) => {
+    if (btn) btn.disabled = !hasPreview;
+  });
+}
+
+function applyImagePreviewZoom() {
+  if (!els.previewImage || els.previewImage.classList.contains("hidden")) return;
+  const w = state.previewNaturalWidth * state.previewBaseScale * state.previewScale;
+  const h = state.previewNaturalHeight * state.previewBaseScale * state.previewScale;
+  els.previewImage.style.width = `${Math.max(1, w)}px`;
+  els.previewImage.style.height = `${Math.max(1, h)}px`;
+  updateZoomUI();
+}
+
+async function refreshPreviewZoom() {
+  if (state.pdfDoc) {
+    await renderPdfPage(state.currentPage);
+  } else if (state.file && !els.previewImage.classList.contains("hidden")) {
+    applyImagePreviewZoom();
+  }
+  updateZoomUI();
+}
+
+function setPreviewScale(next, { persist = true } = {}) {
+  state.previewScale = Math.min(4, Math.max(0.25, next));
+  void refreshPreviewZoom();
+  if (persist) persistSession();
+}
+
+function resetPreviewScale() {
+  state.previewScale = 1;
+  void refreshPreviewZoom();
+  persistSession();
 }
 
 function setStatus(msg) {
@@ -291,6 +324,7 @@ async function selectQueueItem(index) {
   updateQueueUI();
   persistSession();
   if (state.file) {
+    state.previewScale = 1;
     await renderPreview(state.file);
     if (state.profile) {
       renderDocumentProfile();
@@ -357,13 +391,13 @@ async function addFilesToQueue(files, { replace = false } = {}) {
   const item = getActiveItem();
   if (!item) return addedItems.length;
 
+  state.previewScale = 1;
   await renderPreview(item.file);
   await fetchProfile(item.file);
   item.profile = state.profile;
   item.status = "ready";
   item.statusMessage = "Profile ready";
   updateQueueUI();
-  setActiveMainTab("profile");
   persistSession();
   return addedItems.length;
 }
@@ -426,90 +460,77 @@ async function handleFiles(files) {
   await addFilesToQueue(files, { replace: true });
 }
 
-async function showImagePreview(url) {
-  const img = els.previewImage;
-  await new Promise((resolve, reject) => {
-    const done = () => resolve();
-    img.onload = done;
-    img.onerror = () => reject(new Error("Image load failed"));
-    img.src = url;
-    if (img.complete && img.naturalWidth > 0) done();
-  });
-  img.style.width = "100%";
-  img.style.height = "auto";
-  img.classList.remove("hidden");
-}
-
 async function renderPreview(file) {
   els.previewPlaceholder.classList.add("hidden");
   els.previewCanvas.classList.add("hidden");
   els.previewImage.classList.add("hidden");
-  els.previewImage.removeAttribute("style");
+  updateZoomUI();
 
-  if (!file) {
-    els.previewPlaceholder.textContent = "Upload a document to preview";
-    els.previewPlaceholder.classList.remove("hidden");
-    state.pdfDoc = null;
-    return;
-  }
-
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
   state.previewUrl = URL.createObjectURL(file);
 
-  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-
-  try {
-    await waitForLayout();
-    if (isPdf && window.pdfjsLib) {
-      const buf = await file.arrayBuffer();
-      state.pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
-      state.totalPages = state.pdfDoc.numPages;
-      if (state.currentPage > state.totalPages) state.currentPage = 1;
-      els.totalPages.textContent = state.totalPages;
-      els.currentPage.textContent = state.currentPage;
-      updatePageButtons();
-      await renderPdfPage(state.currentPage);
-    } else if (file.type.startsWith("image/") || /\.(png|jpe?g|bmp|tiff?)$/i.test(file.name)) {
-      state.pdfDoc = null;
-      state.totalPages = 1;
-      state.currentPage = 1;
-      els.totalPages.textContent = "1";
-      els.currentPage.textContent = "1";
-      els.prevPage.disabled = true;
-      els.nextPage.disabled = true;
-      await showImagePreview(state.previewUrl);
-    } else {
-      state.pdfDoc = null;
-      els.previewPlaceholder.textContent = file.name;
-      els.previewPlaceholder.classList.remove("hidden");
-    }
-  } catch (err) {
-    console.error("[Lite] Preview failed:", err);
+  if (isPdf && window.pdfjsLib) {
+    const buf = await file.arrayBuffer();
+    state.pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+    state.totalPages = state.pdfDoc.numPages;
+    els.totalPages.textContent = state.totalPages;
+    els.currentPage.textContent = state.currentPage;
+    updatePageButtons();
+    await renderPdfPage(state.currentPage);
+  } else if (file.type.startsWith("image/") || /\.(png|jpe?g|bmp|tiff?)$/i.test(file.name)) {
     state.pdfDoc = null;
-    els.previewPlaceholder.textContent = `Preview failed: ${err.message}`;
+    state.totalPages = 1;
+    state.currentPage = 1;
+    els.totalPages.textContent = "1";
+    els.currentPage.textContent = "1";
+    els.previewImage.onload = () => {
+      state.previewNaturalWidth = els.previewImage.naturalWidth || 1;
+      state.previewNaturalHeight = els.previewImage.naturalHeight || 1;
+      const container = els.previewContainer;
+      const fitScale = Math.min(
+        (container.clientWidth - 16) / state.previewNaturalWidth,
+        (container.clientHeight - 16) / state.previewNaturalHeight,
+        1,
+      );
+      state.previewBaseScale = Math.max(0.1, fitScale || 1);
+      applyImagePreviewZoom();
+    };
+    els.previewImage.src = state.previewUrl;
+    els.previewImage.classList.remove("hidden");
+    els.prevPage.disabled = true;
+    els.nextPage.disabled = true;
+  } else {
+    state.pdfDoc = null;
+    els.previewPlaceholder.textContent = file.name;
     els.previewPlaceholder.classList.remove("hidden");
   }
-  persistSession();
 }
 
 async function renderPdfPage(pageNum) {
   if (!state.pdfDoc) return;
-  await waitForLayout();
   const page = await state.pdfDoc.getPage(pageNum);
   const baseViewport = page.getViewport({ scale: 1 });
-  const scale = getPreviewFitScale(baseViewport.width);
-  const viewport = page.getViewport({ scale });
+  const container = els.previewContainer;
+  const fitScale = Math.min(
+    (container.clientWidth - 16) / baseViewport.width,
+    (container.clientHeight - 16) / baseViewport.height,
+    1.5,
+  );
+  state.previewBaseScale = Math.max(0.1, fitScale || 1);
+  state.previewNaturalWidth = baseViewport.width;
+  state.previewNaturalHeight = baseViewport.height;
+  const viewport = page.getViewport({ scale: state.previewBaseScale * state.previewScale });
   const canvas = els.previewCanvas;
   const ctx = canvas.getContext("2d");
   canvas.width = viewport.width;
   canvas.height = viewport.height;
-  canvas.style.width = "100%";
-  canvas.style.height = "auto";
+  canvas.style.width = `${viewport.width}px`;
+  canvas.style.height = `${viewport.height}px`;
   await page.render({ canvasContext: ctx, viewport }).promise;
   canvas.classList.remove("hidden");
-  state.currentPage = pageNum;
   els.currentPage.textContent = pageNum;
-  persistSession();
+  updateZoomUI();
 }
 
 function updatePageButtons() {
@@ -526,7 +547,7 @@ async function fetchProfile(file) {
     if (!res.ok) {
       const msg = data?.error?.message || data?.detail?.error?.message || res.statusText;
       setStatus(`Profile error: ${msg}`);
-      els.profileContent.innerHTML = `<p class="profile-empty">${escapeHtml(msg)}</p>`;
+      els.documentProfile.classList.add("hidden");
       return;
     }
     state.profile = data;
@@ -534,11 +555,10 @@ async function fetchProfile(file) {
     if (item) item.profile = data;
     renderDocumentProfile();
     setStatus("Profile ready — configure options or run extraction");
-    setActiveMainTab("profile");
     persistSession();
   } catch (err) {
     setStatus(`Profile failed: ${err.message}`);
-    els.profileContent.innerHTML = `<p class="profile-empty">${escapeHtml(err.message)}</p>`;
+    els.documentProfile.classList.add("hidden");
   }
 }
 
@@ -551,12 +571,10 @@ function getCurrentPageProfile() {
 function renderDocumentProfile() {
   const profile = state.profile;
   if (!profile) {
-    els.profilePageSelect.innerHTML = "";
-    els.applyProfileBtn.disabled = true;
-    els.profileContent.innerHTML = `<p class="profile-empty">Upload a document to see Document Profile.</p>`;
+    els.documentProfile.classList.add("hidden");
     return;
   }
-  els.applyProfileBtn.disabled = false;
+  els.documentProfile.classList.remove("hidden");
 
   els.profilePageSelect.innerHTML = "";
   if (profile.scan_profile) {
@@ -609,27 +627,31 @@ function renderPageProfileDetail(pageProf) {
         <p class="profile-routing-note">Smart mode runs pdfplumber first; camelot refines bordered tables when needed.</p>
       </div>
     </div>
-    <section class="profile-section">
-      <div class="profile-section-title">Typography &amp; spacing</div>
-      <dl>
-        <dt>Char width (mode)</dt><dd>${ty.mode_char_width_pt} pt</dd>
-        <dt>Char height (mode)</dt><dd>${ty.mode_char_height_pt} pt</dd>
-        <dt>Line height (mode)</dt><dd>${ty.mode_line_height_pt} pt</dd>
-        <dt>Line spacing (mode)</dt><dd>${ty.mode_line_spacing_pt} pt</dd>
-        <dt>Text lines / chars</dt><dd>${ty.total_lines} / ${ty.total_chars}</dd>
-      </dl>
-    </section>
-    <section class="profile-section">
-      <div class="profile-section-title">Line analysis</div>
-      <dl>
-        <dt>Method</dt><dd>${escapeHtml(cd.method || "—")}</dd>
-        <dt>Horizontal lines</dt><dd>${cd.h_lines ?? "—"}</dd>
-        <dt>Vertical lines</dt><dd>${cd.v_lines ?? "—"}</dd>
-        <dt>Line concentration</dt><dd>${cd.line_concentration != null ? cd.line_concentration.toFixed(2) : "—"}</dd>
-        <dt>Area ratio</dt><dd>${cd.area_ratio != null ? cd.area_ratio.toFixed(2) : "—"}</dd>
-        <dt>Direction balance</dt><dd>${cd.direction_balance != null ? cd.direction_balance.toFixed(2) : "—"}</dd>
-      </dl>
-    </section>`;
+    <details class="profile-details" open>
+      <summary>Typography &amp; spacing</summary>
+      <div class="profile-details-body">
+        <dl>
+          <dt>Char width (mode)</dt><dd>${ty.mode_char_width_pt} pt</dd>
+          <dt>Char height (mode)</dt><dd>${ty.mode_char_height_pt} pt</dd>
+          <dt>Line height (mode)</dt><dd>${ty.mode_line_height_pt} pt</dd>
+          <dt>Line spacing (mode)</dt><dd>${ty.mode_line_spacing_pt} pt</dd>
+          <dt>Text lines / chars</dt><dd>${ty.total_lines} / ${ty.total_chars}</dd>
+        </dl>
+      </div>
+    </details>
+    <details class="profile-details">
+      <summary>Line analysis</summary>
+      <div class="profile-details-body">
+        <dl>
+          <dt>Method</dt><dd>${escapeHtml(cd.method || "—")}</dd>
+          <dt>Horizontal lines</dt><dd>${cd.h_lines ?? "—"}</dd>
+          <dt>Vertical lines</dt><dd>${cd.v_lines ?? "—"}</dd>
+          <dt>Line concentration</dt><dd>${cd.line_concentration != null ? cd.line_concentration.toFixed(2) : "—"}</dd>
+          <dt>Area ratio</dt><dd>${cd.area_ratio != null ? cd.area_ratio.toFixed(2) : "—"}</dd>
+          <dt>Direction balance</dt><dd>${cd.direction_balance != null ? cd.direction_balance.toFixed(2) : "—"}</dd>
+        </dl>
+      </div>
+    </details>`;
 }
 
 function applyProfileToAdvanced() {
@@ -983,14 +1005,11 @@ async function runExtraction() {
 }
 
 function setActiveMainTab(tab) {
-  state.activeMainTab = tab;
   document.querySelectorAll(".result-main-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.mainTab === tab);
   });
-  $("profileView").classList.toggle("active", tab === "profile");
   $("contentView").classList.toggle("active", tab === "content");
   $("resultView").classList.toggle("active", tab === "result");
-  persistSession();
 }
 
 function setActiveContentTab(tab) {
@@ -1055,9 +1074,8 @@ function initProfile() {
   els.profilePageSelect.addEventListener("change", () => {
     const p = parseInt(els.profilePageSelect.value, 10);
     state.currentPage = p;
-    if (state.pdfDoc) void renderPdfPage(p);
+    if (state.pdfDoc) renderPdfPage(p);
     renderPageProfileDetail(getCurrentPageProfile());
-    persistSession();
   });
   els.applyProfileBtn.addEventListener("click", applyProfileToAdvanced);
 }
@@ -1159,31 +1177,38 @@ function initPanelLayout() {
       rightHandle: $("rightPanelResizeHandle"),
       leftMin: 180,
       leftMax: 400,
-      rightMin: 280,
+      rightMin: 250,
       rightMax: 800,
     });
   }
 }
 
-function initSessionPersistence() {
+function initPreviewZoom() {
+  els.zoomInBtn?.addEventListener("click", () => setPreviewScale(state.previewScale + 0.15));
+  els.zoomOutBtn?.addEventListener("click", () => setPreviewScale(state.previewScale - 0.15));
+  els.zoomFitBtn?.addEventListener("click", () => resetPreviewScale());
+
+  els.previewContainer?.addEventListener(
+    "wheel",
+    (e) => {
+      if (!state.file) return;
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setPreviewScale(state.previewScale + delta);
+    },
+    { passive: false },
+  );
+
   els.openValidationLink?.addEventListener("click", () => {
     persistSession();
   });
+
   window.addEventListener("beforeunload", () => {
     persistSession();
   });
-}
 
-async function restoreSessionUI() {
-  const restored = await restoreSession();
-  if (!restored || !state.file) return false;
-  els.runBtn.disabled = false;
-  setActiveMainTab(state.activeMainTab || "profile");
-  await waitForLayout();
-  await renderPreview(state.file);
-  renderDocumentProfile();
-  renderResults(state.result);
-  return true;
+  updateZoomUI();
 }
 
 async function init() {
@@ -1193,16 +1218,24 @@ async function init() {
   initModal();
   initResultsTabs();
   initPanelLayout();
-  initSessionPersistence();
+  initPreviewZoom();
   $("helpBtn")?.addEventListener("click", () => window.open("/docs", "_blank"));
   els.runBtn.addEventListener("click", runExtraction);
   fetchHealth();
   fetchEnginesCatalog();
 
-  if (await restoreSessionUI()) {
+  const restored = await restoreSession();
+  if (restored && state.file) {
+    els.runBtn.disabled = false;
+    await renderPreview(state.file);
+    if (state.profile) {
+      renderDocumentProfile();
+    } else {
+      await fetchProfile(state.file);
+    }
+    renderResults(state.result);
     setStatus(`Restored ${state.queue.length} file(s) from session`);
   } else {
-    setActiveMainTab("profile");
     setStatus("Ready");
   }
 }

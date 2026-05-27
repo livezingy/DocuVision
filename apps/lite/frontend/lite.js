@@ -328,6 +328,7 @@ async function selectQueueItem(index) {
     await renderPreview(state.file);
     if (state.profile) {
       renderDocumentProfile();
+      setActiveMainTab("profile");
     } else {
       await fetchProfile(state.file);
     }
@@ -547,18 +548,19 @@ async function fetchProfile(file) {
     if (!res.ok) {
       const msg = data?.error?.message || data?.detail?.error?.message || res.statusText;
       setStatus(`Profile error: ${msg}`);
-      els.documentProfile.classList.add("hidden");
+      els.profileContent.innerHTML = `<p class="scan-profile-msg">Profile unavailable: ${escapeHtml(msg)}</p>`;
       return;
     }
     state.profile = data;
     const item = getActiveItem();
     if (item) item.profile = data;
     renderDocumentProfile();
+    setActiveMainTab("profile");
     setStatus("Profile ready — configure options or run extraction");
     persistSession();
   } catch (err) {
     setStatus(`Profile failed: ${err.message}`);
-    els.documentProfile.classList.add("hidden");
+    els.profileContent.innerHTML = `<p class="scan-profile-msg">Profile failed: ${escapeHtml(err.message)}</p>`;
   }
 }
 
@@ -571,10 +573,10 @@ function getCurrentPageProfile() {
 function renderDocumentProfile() {
   const profile = state.profile;
   if (!profile) {
-    els.documentProfile.classList.add("hidden");
+    els.profileContent.innerHTML = "<p class=\"scan-profile-msg\">Upload a document to see profile.</p>";
+    els.profilePageSelect.innerHTML = "";
     return;
   }
-  els.documentProfile.classList.remove("hidden");
 
   els.profilePageSelect.innerHTML = "";
   if (profile.scan_profile) {
@@ -911,8 +913,12 @@ function renderResults(data) {
   if (!data) {
     els.contentText.textContent = "No text extracted yet.";
     els.resultJson.querySelector("code").textContent = "No result data available";
-    renderTransactionTable(els.contentTransactionsList, [], "No transactions yet.");
-    renderTransactionTable(els.contentMappedList, [], "No mapped transactions yet.");
+    if (window.DocuVisionUiFeatures?.isContentTabEnabled("transactions")) {
+      renderTransactionTable(els.contentTransactionsList, [], "No transactions yet.");
+    }
+    if (window.DocuVisionUiFeatures?.isContentTabEnabled("mapped")) {
+      renderTransactionTable(els.contentMappedList, [], "No mapped transactions yet.");
+    }
     return;
   }
 
@@ -922,10 +928,17 @@ function renderResults(data) {
     els.contentTableList.appendChild(renderTable(t, i));
   });
 
-  const transactions = data.transactions || (window.DocuVisionDemo && DocuVisionDemo.extractTransactions(data)) || [];
-  const mapped = data.mapped_transactions || transactions;
-  renderTransactionTable(els.contentTransactionsList, transactions, "No transaction rows detected from tables.");
-  renderTransactionTable(els.contentMappedList, mapped, "No mapped transactions.");
+  if (window.DocuVisionUiFeatures?.isContentTabEnabled("transactions")) {
+    const transactions = data.transactions || (window.DocuVisionDemo && DocuVisionDemo.extractTransactions(data)) || [];
+    renderTransactionTable(els.contentTransactionsList, transactions, "No transaction rows detected from tables.");
+  }
+  if (window.DocuVisionUiFeatures?.isContentTabEnabled("mapped")) {
+    const mapped = data.mapped_transactions
+      || (window.DocuVisionUiFeatures?.isContentTabEnabled("transactions")
+        ? (data.transactions || (window.DocuVisionDemo && DocuVisionDemo.extractTransactions(data)) || [])
+        : []);
+    renderTransactionTable(els.contentMappedList, mapped, "No mapped transactions.");
+  }
 
   els.resultJson.querySelector("code").textContent = JSON.stringify(data, null, 2);
   els.exportJsonBtn.disabled = false;
@@ -1000,7 +1013,7 @@ async function runExtraction() {
   persistSession();
   if (item.result) {
     setActiveMainTab("content");
-    setActiveContentTab(item.result.mapped_transactions?.length ? "mapped" : item.result.tables?.length ? "tables" : "text");
+    setActiveContentTab(item.result.tables?.length ? "tables" : "text");
   }
 }
 
@@ -1008,11 +1021,19 @@ function setActiveMainTab(tab) {
   document.querySelectorAll(".result-main-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.mainTab === tab);
   });
+  $("profileView").classList.toggle("active", tab === "profile");
   $("contentView").classList.toggle("active", tab === "content");
   $("resultView").classList.toggle("active", tab === "result");
 }
 
 function setActiveContentTab(tab) {
+  const tabBtn = document.querySelector(`.content-sub-tab[data-content="${tab}"]`);
+  if (
+    !window.DocuVisionUiFeatures?.isContentTabEnabled(tab)
+    || (tabBtn && tabBtn.classList.contains("hidden"))
+  ) {
+    tab = "text";
+  }
   document.querySelectorAll(".content-sub-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.content === tab);
   });
@@ -1212,6 +1233,7 @@ function initPreviewZoom() {
 }
 
 async function init() {
+  window.DocuVisionUiFeatures?.applyContentTabFeatures();
   initUpload();
   initPagination();
   initProfile();
@@ -1230,6 +1252,7 @@ async function init() {
     await renderPreview(state.file);
     if (state.profile) {
       renderDocumentProfile();
+      setActiveMainTab("profile");
     } else {
       await fetchProfile(state.file);
     }

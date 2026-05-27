@@ -294,7 +294,37 @@ Pro 与 Lite **不在同一 UI 内切换**；通过顶栏外链或产品落地�
 
 ---
 
-## 10. 实现检查清单
+## 10. Lite 前端 UI 布局
+
+Lite 采用与 Pro 一致的三栏结构：
+
+| 区域 | 内容 |
+|------|------|
+| 左栏 | Upload Document、Processing Queue（最多 3 个文件） |
+| 中栏 | 文档预览（`preview-header` → `preview-container` → `preview-pagination`），**不含** Document Profile |
+| 右栏 | Processing Results |
+
+### 10.1 右栏主 Tab
+
+| Tab | 说明 | 数据来源 |
+|-----|------|----------|
+| **Profile** | Lite 独有；上传后预扫描结果 | `POST /analyze/profile` → `LiteDocumentProfile` |
+| **Content** | 提取结果（Text / Tables / Figures） | `LiteResult` |
+| **Result** | 完整 JSON | `LiteResult` |
+
+**默认 Tab 行为：**
+
+- 上传并完成 profile 分析后 → 自动切换到 **Profile**
+- Run Analysis 完成后 → 自动切换到 **Content**（优先 Tables，否则 Text）
+- 中间预览翻页与 Profile 页选择器双向同步
+
+### 10.2 可选 Content 子 Tab（Transactions / Mapped）
+
+Lite 与 Pro 共用 [`frontend/shared/ui-features.js`](../../frontend/shared/ui-features.js) 控制 **Transactions**、**Mapped** 子 Tab 的显示。当前默认隐藏；用途与启用步骤见 [`智能文档处理系统设计方案.md`](./智能文档处理系统设计方案.md) §9.2。
+
+---
+
+## 11. 实现检查清单
 
 - [x] Phase A：`LiteResult` Pydantic models
 - [x] Phase A：`GET /health`, `GET /engines`
@@ -302,12 +332,14 @@ Pro 与 Lite **不在同一 UI 内切换**；通过顶栏外链或产品落地�
 - [x] Phase C：`/extract/*`, jobs, export（baseline）
 - [x] Phase D：`lite.html` 前端（baseline）
 - [x] Phase D+：`POST /analyze/profile` + 三栏 UI + Document Profile
+- [x] Phase D++：Document Profile 迁至右栏 Profile Tab；中栏预览与 Pro 对齐
 
 ---
 
-## 11. 修订记录
+## 12. 修订记录
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v0.1 | 2026-05-22 | 初版；Phase A health/engines 落地 |
 | v0.2 | 2026-05-26 | 新增 LiteDocumentProfile、`POST /analyze/profile` |
+| v0.3 | 2026-05-27 | Document Profile 移至右栏 Profile Tab；Transactions/Mapped 默认隐藏（ui-features.js） |

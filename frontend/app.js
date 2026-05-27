@@ -756,6 +756,10 @@ function initResultTabs() {
             updateEnhancementTabs(optEnableFormula ? optEnableFormula.checked : false, optEnableSeal.checked);
         });
     }
+
+    if (window.DocuVisionUiFeatures) {
+        DocuVisionUiFeatures.applyContentTabFeatures();
+    }
 }
 
 /**
@@ -1960,27 +1964,41 @@ function renderDemoTransactionTable(containerId, rows, emptyMsg) {
     });
     table.appendChild(tbody);
     container.appendChild(table);
-
-    const txTab = document.getElementById('tabBtnTransactions');
-    const mappedTab = document.getElementById('tabBtnMapped');
-    if (txTab) txTab.classList.remove('hidden');
-    if (mappedTab) mappedTab.classList.remove('hidden');
 }
 
 async function updateDemoTransactionViews(result) {
+    const features = window.DocuVisionUiFeatures;
+    if (
+        !features
+        || (!features.isContentTabEnabled('transactions') && !features.isContentTabEnabled('mapped'))
+    ) {
+        return;
+    }
     if (!window.DocuVisionDemo || !result) {
-        renderDemoTransactionTable('contentTransactionsList', [], 'No transactions.');
-        renderDemoTransactionTable('contentMappedList', [], 'No mapped transactions.');
+        if (features.isContentTabEnabled('transactions')) {
+            renderDemoTransactionTable('contentTransactionsList', [], 'No transactions.');
+        }
+        if (features.isContentTabEnabled('mapped')) {
+            renderDemoTransactionTable('contentMappedList', [], 'No mapped transactions.');
+        }
         return;
     }
     try {
         const enriched = await DocuVisionDemo.enrichResult(result);
-        renderDemoTransactionTable('contentTransactionsList', enriched.transactions, 'No transaction rows detected.');
-        renderDemoTransactionTable('contentMappedList', enriched.mapped_transactions, 'No mapped transactions.');
+        if (features.isContentTabEnabled('transactions')) {
+            renderDemoTransactionTable('contentTransactionsList', enriched.transactions, 'No transaction rows detected.');
+        }
+        if (features.isContentTabEnabled('mapped')) {
+            renderDemoTransactionTable('contentMappedList', enriched.mapped_transactions, 'No mapped transactions.');
+        }
     } catch (error) {
         console.warn('[Demo] Transaction preview failed:', error);
-        renderDemoTransactionTable('contentTransactionsList', [], 'No transaction rows detected.');
-        renderDemoTransactionTable('contentMappedList', [], 'No mapped transactions.');
+        if (features.isContentTabEnabled('transactions')) {
+            renderDemoTransactionTable('contentTransactionsList', [], 'No transaction rows detected.');
+        }
+        if (features.isContentTabEnabled('mapped')) {
+            renderDemoTransactionTable('contentMappedList', [], 'No mapped transactions.');
+        }
     }
 }
 

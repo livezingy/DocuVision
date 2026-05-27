@@ -40,9 +40,9 @@ Pre-run each sample once and note `processing_ms` before the live session.
 
 ## 30-minute script
 
-1. **Lite (5 min)** — Upload born-digital PDF → Document Profile → Run Analysis → **Tables**, **Transactions**, **Quality** panel → Export CSV/JSON.
+1. **Lite (5 min)** — Upload born-digital PDF → 右栏 **Profile** Tab（自动切换）→ Run Analysis → **Tables** + **Quality** panel → Export CSV/JSON。
 2. **Pro (15 min)** — Upload invoice/receipt → Analysis Options → **Invoice** or **Receipt** mode → **Fields** + Result JSON → **Export** (real API).
-3. **Mapping + persistence (10 min)** — Show **Mapped** tab (config-driven taxonomy) → **Save to validation** → open `validation.html`.
+3. **Persistence (10 min)** — **Save to validation** → open `validation.html`.（**Mapped** Tab 当前默认隐藏；启用 Transactions/Mapped 见 [`智能文档处理系统设计方案.md`](../architecture/智能文档处理系统设计方案.md) §9.2）
 
 ## Supabase PoC (post-trial / Assessment)
 

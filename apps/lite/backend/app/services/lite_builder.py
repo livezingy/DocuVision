@@ -148,8 +148,10 @@ def build_lite_result(
         text_preview=pipeline_output.get("text_preview"),
         exports=LiteExportLinks(
             csv=f"/api/v1/lite/export/{job_id}.csv",
-            xlsx=f"/api/v1/lite/export/{job_id}.xlsx",
+            markdown=f"/api/v1/lite/export/{job_id}.markdown",
+            docx=f"/api/v1/lite/export/{job_id}.docx",
             json=f"/api/v1/lite/jobs/{job_id}/result",
+            xlsx=f"/api/v1/lite/export/{job_id}.xlsx",
         ),
         warnings=warnings,
         hints=hints,

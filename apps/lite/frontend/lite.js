@@ -16,7 +16,7 @@ const DEFAULT_OPTIONS = {
   engine: "auto",
   flavor: "auto",
   ocrEngine: "auto",
-  transformer: "off",
+  transformer: "transformer",
   languages: "eng",
   paramMode: "auto",
   customParams: null,
@@ -85,7 +85,8 @@ const els = {
   resultJson: $("resultJson"),
   exportJsonBtn: $("exportJsonBtn"),
   exportCsvBtn: $("exportCsvBtn"),
-  exportXlsxBtn: $("exportXlsxBtn"),
+  exportMarkdownBtn: $("exportMarkdownBtn"),
+  exportDocxBtn: $("exportDocxBtn"),
   statusDot: $("statusDot"),
   statusEngines: $("statusEngines"),
   statusMessage: $("statusMessage"),
@@ -456,10 +457,7 @@ function createQueueItem(file) {
 }
 
 function enqueueFiles(files) {
-  const maxQueue = 3;
-  const room = maxQueue - state.queue.length;
-  if (room <= 0) return [];
-  const list = Array.from(files || []).slice(0, room);
+  const list = Array.from(files || []);
   const added = [];
   list.forEach((file) => {
     const item = createQueueItem(file);
@@ -485,7 +483,7 @@ async function addFilesToQueue(files, { replace = false } = {}) {
   }
   const addedItems = enqueueFiles(files);
   if (!addedItems.length) {
-    setStatus("Queue is full (max 3 files). Remove a file from the queue to add more.");
+    setStatus("No files were added to the queue.");
     return 0;
   }
   await Promise.all(addedItems.map((item) => saveQueueFileBlob(item.id, item.file)));
@@ -1040,7 +1038,8 @@ function renderResults(data) {
   els.contentTableList.innerHTML = "";
   els.exportJsonBtn.disabled = true;
   els.exportCsvBtn.disabled = true;
-  els.exportXlsxBtn.disabled = true;
+  els.exportMarkdownBtn.disabled = true;
+  els.exportDocxBtn.disabled = true;
   els.saveValidationBtn.disabled = true;
 
   renderQualityPanel(data);
@@ -1077,11 +1076,10 @@ function renderResults(data) {
 
   els.resultJson.querySelector("code").textContent = JSON.stringify(data, null, 2);
   els.exportJsonBtn.disabled = false;
+  els.exportCsvBtn.disabled = false;
+  els.exportMarkdownBtn.disabled = false;
+  els.exportDocxBtn.disabled = false;
   els.saveValidationBtn.disabled = false;
-  if (data.exports?.csv) {
-    els.exportCsvBtn.disabled = false;
-    els.exportXlsxBtn.disabled = false;
-  }
   persistSession();
 }
 
@@ -1099,6 +1097,10 @@ async function runExtractionForItem(item, { silent = false } = {}) {
   form.append("languages", state.options.languages || "eng");
   form.append("extract_tables", String(state.options.extractTables));
   form.append("extract_text", String(state.options.extractText));
+  form.append(
+    "use_transformer",
+    String(state.options.extractTables && state.options.transformer === "transformer"),
+  );
   if (state.options.pages) form.append("pages", state.options.pages);
   form.append("score_threshold", String(state.options.scoreThreshold));
   form.append("param_mode", state.options.paramMode);
@@ -1326,17 +1328,7 @@ function initResultsTabs() {
     if (state.result) navigator.clipboard.writeText(JSON.stringify(state.result, null, 2));
   });
 
-  $("exportJsonBtn").addEventListener("click", () => {
-    if (!state.result) return;
-    const blob = new Blob([JSON.stringify(state.result, null, 2)], { type: "application/json" });
-    downloadBlob(blob, "lite-result.json");
-  });
-  $("exportCsvBtn").addEventListener("click", () => {
-    if (state.result?.exports?.csv) window.open(state.result.exports.csv, "_blank");
-  });
-  $("exportXlsxBtn").addEventListener("click", () => {
-    if (state.result?.exports?.xlsx) window.open(state.result.exports.xlsx, "_blank");
-  });
+  initExportButtons();
 
   els.saveValidationBtn?.addEventListener("click", async () => {
     if (!state.result?.job_id) return;
@@ -1359,6 +1351,58 @@ function downloadBlob(blob, name) {
   a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+function initExportButtons() {
+  document.querySelectorAll(".export-btn[data-format]").forEach((btn) => {
+    btn.addEventListener("click", () => exportLiteResults(btn.dataset.format));
+  });
+}
+
+async function exportLiteResults(format) {
+  if (!state.result?.job_id) {
+    setStatus("No completed result to export. Run analysis first.");
+    return;
+  }
+
+  const jobId = state.result.job_id;
+  const apiFormat = (format || "").toLowerCase() === "word" ? "docx" : (format || "").toLowerCase();
+  const url = `${API_BASE}/export/${jobId}.${apiFormat}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const errBody = await response.json();
+        detail = errBody.detail || errBody?.error?.message || detail;
+      } catch {
+        /* ignore */
+      }
+      setStatus(`Export failed: ${detail}`);
+      return;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json") && apiFormat === "markdown") {
+      const payload = await response.json();
+      const md = payload.markdown || "";
+      downloadBlob(new Blob([md], { type: "text/markdown" }), `${jobId}_result.md`);
+    } else if (apiFormat === "json") {
+      const text = await response.text();
+      downloadBlob(new Blob([text], { type: "application/json" }), `${jobId}_result.json`);
+    } else {
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") || "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] || `${jobId}_result.${apiFormat}`;
+      downloadBlob(blob, filename);
+    }
+    setStatus(`Exported ${apiFormat.toUpperCase()} successfully`);
+  } catch (err) {
+    setStatus(`Export failed: ${err.message}`);
+  }
 }
 
 function initPanelLayout() {

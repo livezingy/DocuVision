@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 
 from app.schemas.lite_result import JobStatus, LiteError, LiteErrorResponse, LiteJobStatus, LiteResult
 from app.services.job_store import job_store
 from docuvision_core.export.tables import export_tables_to_csv, export_tables_to_xlsx
+from app.services.lite_export import export_lite_to_docx_bytes, export_lite_to_json, export_lite_to_markdown
 
 router = APIRouter(tags=["jobs"])
 
@@ -79,4 +80,42 @@ def export_xlsx(job_id: str, merge_tables: bool = False) -> Response:
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{job_id}.xlsx"'},
+    )
+
+
+@router.get("/export/{job_id}.json")
+def export_json(job_id: str) -> Response:
+    job = job_store.get(job_id)
+    if not job or not job.get("result"):
+        raise HTTPException(status_code=404, detail="Job not found or no result")
+    content = export_lite_to_json(job["result"])
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{job_id}_result.json"'},
+    )
+
+
+@router.get("/export/{job_id}.markdown")
+def export_markdown(job_id: str) -> Response:
+    job = job_store.get(job_id)
+    if not job or not job.get("result"):
+        raise HTTPException(status_code=404, detail="Job not found or no result")
+    content = export_lite_to_markdown(job["result"])
+    return JSONResponse(content={"markdown": content})
+
+
+@router.get("/export/{job_id}.docx")
+def export_docx(job_id: str) -> Response:
+    job = job_store.get(job_id)
+    if not job or not job.get("result"):
+        raise HTTPException(status_code=404, detail="Job not found or no result")
+    try:
+        content = export_lite_to_docx_bytes(job["result"])
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{job_id}_result.docx"'},
     )

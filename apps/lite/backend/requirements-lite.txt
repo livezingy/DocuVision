@@ -14,3 +14,4 @@ httpx>=0.24.0,<0.28.0
 
 pytest>=7.4.0
 pytest-asyncio>=0.23.0
+python-docx>=1.1.0

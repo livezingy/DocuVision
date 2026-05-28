@@ -134,8 +134,10 @@ class LiteOcrBlock(LiteModel):
 
 class LiteExportLinks(LiteModel):
     csv: Optional[str] = None
-    xlsx: Optional[str] = None
+    markdown: Optional[str] = None
+    docx: Optional[str] = None
     json: Optional[str] = None
+    xlsx: Optional[str] = None
 
 
 class LiteWarning(LiteModel):

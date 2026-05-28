@@ -18,7 +18,7 @@ TEXT_PREVIEW_MAX_CHARS = 8000
 
 
 def _build_page_text_preview(pages: List[Any]) -> Optional[str]:
-    from docuvision_core.utils.pdf_text_utils import sanitize_pdf_text
+    from docuvision_core.utils.pdf_text_utils import normalize_pdf_text_preserve_paragraphs
 
     parts: List[str] = []
     for page in pages:
@@ -26,7 +26,7 @@ def _build_page_text_preview(pages: List[Any]) -> Optional[str]:
             text = page.extract_text() or ""
         except Exception:
             text = ""
-        cleaned = sanitize_pdf_text(text)
+        cleaned = normalize_pdf_text_preserve_paragraphs(text)
         if cleaned:
             parts.append(cleaned)
     if not parts:
@@ -236,6 +236,54 @@ def extract_tables_from_pdf(
             "processing_profile": "cpu",
         },
         "warnings": warnings,
+        "page_count": page_count,
+        "detected_file_type": detected_type,
+    }
+
+
+def extract_digital_pdf_text(
+    file_path: Path,
+    *,
+    pages_spec: Optional[str] = None,
+    max_pages: int = 50,
+) -> Dict[str, Any]:
+    """Extract born-digital PDF body text with paragraph breaks preserved."""
+    detected_type, page_count = detect_file_type(file_path)
+    if detected_type.value != "pdf_digital":
+        raise ValueError("Text extraction requires a digital PDF with extractable text")
+
+    page_count = min(page_count, max_pages)
+    page_numbers = _parse_pages_spec(pages_spec, page_count)
+
+    text_preview: Optional[str] = None
+    with pdfplumber.open(str(file_path)) as pdf:
+        preview_pages = [pdf.pages[p - 1] for p in page_numbers]
+        text_preview = _build_page_text_preview(preview_pages)
+
+    return {
+        "tables": [],
+        "ocr": [],
+        "text_preview": text_preview,
+        "routing": {
+            "mode": "smart",
+            "requested_engine": "pdfplumber",
+            "engine_used": "pdfplumber_text",
+            "engine_chain": ["pdfplumber"],
+            "table_type_detected": "none",
+            "flavor_used": "text",
+            "param_mode": "auto",
+            "profile": "cpu",
+        },
+        "quality": {
+            "overall_confidence": 1.0 if text_preview else 0.0,
+            "tables_found": 0,
+            "tables_accepted": 0,
+            "pages_processed": len(page_numbers),
+            "pages_with_tables": 0,
+            "ocr_blocks": 0,
+            "processing_profile": "cpu",
+        },
+        "warnings": [],
         "page_count": page_count,
         "detected_file_type": detected_type,
     }

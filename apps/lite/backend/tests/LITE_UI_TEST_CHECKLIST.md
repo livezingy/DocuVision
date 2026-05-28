@@ -25,7 +25,7 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Upload scan/image; Run with EasyOCR | **Content/Text** shows extracted text if any blocks exist |
+| 1 | Upload scan/image with **Tables** enabled | Transformer runs when torch/transformers installed; tables in Content |
 | 2 | Low confidence case | Quality panel warns `low_confidence`; text still visible; hint may mention Pro |
 | 3 | True failure (no engine / init error) | Quality panel shows `ocr_extraction_failed`; Text explains failure |
 | 4 | No text detected | Text tab shows `no_text_detected` message, not blank Pro-only state |
@@ -34,8 +34,8 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Upload 3 files | Queue count = 3; status message confirms |
-| 2 | Try upload 4th file | Status: queue full; suggests removing a file |
+| 1 | Upload multiple files | Queue count increases; no fixed max of 3 |
+| 2 | Try upload 4th file | All valid files are accepted (same as Pro; no fixed cap) |
 | 3 | Hover queue item | **Remove (×)** button appears |
 | 4 | Remove a completed file | Item deleted; can upload another file |
 | 5 | Remove active file | Preview + results switch to next item or empty state |
@@ -45,8 +45,9 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Open Result export section | JSON / CSV / Excel visible |
-| 2 | Validation Dashboard / Save | **Hidden** in generic Lite (enable via `ui-features.js` for custom demos) |
+| 1 | Run analysis, open Export Results | Buttons: **JSON**, **CSV**, **Markdown**, **Word** (Pro-style icons) |
+| 2 | Click each export button | Downloads via `/api/v1/lite/export/{job_id}.{format}` |
+| 3 | Validation Dashboard / Save | **Hidden** in generic Lite (enable via `ui-features.js` for custom demos) |
 
 ## LITE-UI-006 Bordered PDF tables
 

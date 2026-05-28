@@ -1,17 +1,15 @@
-"""Tests for PDF text cleanup utilities."""
+"""Tests for PDF text paragraph preservation."""
 
-from docuvision_core.utils.pdf_text_utils import decode_cid_placeholders, sanitize_pdf_text
-
-
-def test_decode_cid_utf8_em_dash():
-    raw = "(cid:226)(cid:128)(cid:148)"
-    assert decode_cid_placeholders(raw) == "\u2014"
+from docuvision_core.utils.pdf_text_utils import normalize_pdf_text_preserve_paragraphs
 
 
-def test_decode_cid_leaves_plain_text():
-    assert decode_cid_placeholders("ACH OUT - PAYROLL") == "ACH OUT - PAYROLL"
+def test_normalize_pdf_text_preserve_paragraphs_keeps_blank_line_breaks():
+    raw = "First paragraph line one\nline two\n\nSecond paragraph"
+    result = normalize_pdf_text_preserve_paragraphs(raw)
+    assert result == "First paragraph line one\nline two\n\nSecond paragraph"
 
 
-def test_sanitize_pdf_text_strips_cid_and_whitespace():
-    raw = "  (cid:226)(cid:128)(cid:148)  memo  "
-    assert sanitize_pdf_text(raw) == "\u2014 memo"
+def test_normalize_pdf_text_collapse_within_line():
+    from docuvision_core.utils.pdf_text_utils import sanitize_pdf_text
+
+    assert sanitize_pdf_text("too   many   spaces") == "too many spaces"

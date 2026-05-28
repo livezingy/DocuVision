@@ -16,12 +16,15 @@ from app.schemas.lite_result import (
     LiteErrorResponse,
     LiteJobAccepted,
     LiteResult,
+    WarningCode,
 )
 from app.services.file_detector import detect_file_type
+from app.services.image_table_pipeline import extract_tables_from_image
 from app.services.job_store import job_store
 from app.services.lite_builder import build_lite_result, timed_pipeline
 from app.services.ocr_pipeline import extract_ocr_from_image
-from app.services.table_pipeline import extract_tables_from_pdf
+from app.services.pipeline_merge import _empty_scan_image_result, merge_pipeline_outputs
+from app.services.table_pipeline import extract_digital_pdf_text, extract_tables_from_pdf
 
 router = APIRouter(tags=["extract"])
 
@@ -40,58 +43,81 @@ def _run_pipeline(
     languages: Optional[str] = None,
     extract_tables: bool = True,
     extract_text: bool = True,
+    use_transformer: bool = True,
 ):
     detected, page_count = detect_file_type(file_path, mime_type)
     lang_list = [p.strip() for p in (languages or "eng").split(",") if p.strip()] or ["eng"]
 
     if detected.value == "pdf_digital":
-        if not extract_tables:
-            return {
-                "tables": [],
-                "ocr": [],
-                "text_preview": None,
-                "routing": {"engine_used": "none", "mode": mode.value if hasattr(mode, "value") else mode},
-                "quality": {"overall_confidence": 0.0, "tables_found": 0, "tables_accepted": 0},
-                "warnings": [],
-                "detected_file_type": detected,
-                "page_count": page_count,
-            }
-        output = extract_tables_from_pdf(
-            file_path,
-            mode=mode,
-            engine=engine,
-            flavor=flavor,
-            pages_spec=pages,
-            score_threshold=score_threshold,
-            param_mode=param_mode,
-            custom_params=custom_params,
-            max_pages=settings.MAX_PAGES,
-        )
-        output["detected_file_type"] = detected
-        output["page_count"] = page_count
-        return output
+        if extract_tables:
+            output = extract_tables_from_pdf(
+                file_path,
+                mode=mode,
+                engine=engine,
+                flavor=flavor,
+                pages_spec=pages,
+                score_threshold=score_threshold,
+                param_mode=param_mode,
+                custom_params=custom_params,
+                max_pages=settings.MAX_PAGES,
+            )
+            output["detected_file_type"] = detected
+            output["page_count"] = page_count
+            return output
+        if extract_text:
+            output = extract_digital_pdf_text(
+                file_path,
+                pages_spec=pages,
+                max_pages=settings.MAX_PAGES,
+            )
+            output["detected_file_type"] = detected
+            output["page_count"] = page_count
+            return output
+        return {
+            "tables": [],
+            "ocr": [],
+            "text_preview": None,
+            "routing": {"engine_used": "none", "mode": mode.value if hasattr(mode, "value") else mode},
+            "quality": {"overall_confidence": 0.0, "tables_found": 0, "tables_accepted": 0},
+            "warnings": [],
+            "detected_file_type": detected,
+            "page_count": page_count,
+        }
+
     if detected.value in {"pdf_scan", "image"}:
-        if not extract_text:
-            return {
-                "tables": [],
-                "ocr": [],
-                "text_preview": None,
-                "routing": {"engine_used": "none", "mode": mode.value if hasattr(mode, "value") else mode},
-                "quality": {"overall_confidence": 0.0, "ocr_blocks": 0},
-                "warnings": [],
-                "detected_file_type": detected,
-                "page_count": page_count,
-            }
-        output = extract_ocr_from_image(
-            file_path,
-            mode=mode,
-            engine=ocr_engine if mode == ExtractMode.ADVANCED else engine,
-            languages=lang_list,
-            max_pages=settings.MAX_PAGES,
-        )
-        output["detected_file_type"] = detected
-        output["page_count"] = page_count
-        return output
+        if not extract_tables and not extract_text:
+            return _empty_scan_image_result(detected, page_count)
+
+        result = _empty_scan_image_result(detected, page_count)
+        result["routing"] = {"mode": mode.value if hasattr(mode, "value") else mode}
+
+        if extract_tables and detected.value == "image" and use_transformer:
+            try:
+                table_output = extract_tables_from_image(
+                    file_path,
+                    mode=mode,
+                    score_threshold=score_threshold,
+                )
+                result = merge_pipeline_outputs(result, table_output)
+            except RuntimeError as exc:
+                result["warnings"].append(
+                    {
+                        "code": WarningCode.TRANSFORMER_UNAVAILABLE.value,
+                        "message": str(exc),
+                    }
+                )
+
+        if extract_text:
+            ocr_output = extract_ocr_from_image(
+                file_path,
+                mode=mode,
+                engine=ocr_engine if mode == ExtractMode.ADVANCED else engine,
+                languages=lang_list,
+                max_pages=settings.MAX_PAGES,
+            )
+            result = merge_pipeline_outputs(result, ocr_output)
+
+        return result
     raise ValueError("Unsupported file type for Lite extraction")
 
 
@@ -198,6 +224,7 @@ async def extract_auto(
     languages: Optional[str] = Form(None),
     extract_tables: bool = Form(True),
     extract_text: bool = Form(True),
+    use_transformer: bool = Form(True),
 ):
     raw = await file.read()
     validate_upload(file, raw)
@@ -219,6 +246,7 @@ async def extract_auto(
             languages,
             extract_tables,
             extract_text,
+            use_transformer,
         )
         result = build_lite_result(
             job_id=job_id,

@@ -41,3 +41,17 @@ def sanitize_pdf_text(value: Any) -> str:
     text = str(value)
     text = decode_cid_placeholders(text)
     return " ".join(text.split())
+
+
+def normalize_pdf_text_preserve_paragraphs(value: Any) -> str:
+    """Keep paragraph breaks from pdfplumber extract_text while normalizing lines."""
+    if value is None:
+        return ""
+    text = decode_cid_placeholders(str(value))
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    paragraphs: list[str] = []
+    for block in re.split(r"\n\s*\n", text):
+        lines = [" ".join(line.split()) for line in block.split("\n") if line.strip()]
+        if lines:
+            paragraphs.append("\n".join(lines))
+    return "\n\n".join(paragraphs)

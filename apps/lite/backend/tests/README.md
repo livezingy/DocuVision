@@ -46,7 +46,10 @@ python -m pytest tests/ -q
 
 # docuvision-core（含 classify 单元测试）
 cd ../../../packages/docuvision-core
-python -m pytest tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py -q
+python -m pytest tests/utils/test_pdf_text_utils.py tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py -q
+
+# Transformer image tables (cloud GPU env with ocr-heavy deps):
+# pip install -e ../../../packages/docuvision-core[ocr-heavy]
 ```
 
 ## 3. Document Profile + 三栏 UI 验收标准

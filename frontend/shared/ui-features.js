@@ -8,6 +8,10 @@
     mapped: false,
   };
 
+  const exportActions = {
+    validationDashboard: false,
+  };
+
   function isContentTabEnabled(name) {
     if (!(name in contentTabs)) return true;
     return !!contentTabs[name];
@@ -20,9 +24,25 @@
     });
   }
 
+  function applyExportActionFeatures() {
+    const showValidation = !!exportActions.validationDashboard;
+    ["openValidationLink", "saveValidationBtn"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle("hidden", !showValidation);
+    });
+  }
+
+  function applyLiteUiFeatures() {
+    applyContentTabFeatures();
+    applyExportActionFeatures();
+  }
+
   global.DocuVisionUiFeatures = {
     contentTabs,
+    exportActions,
     isContentTabEnabled,
     applyContentTabFeatures,
+    applyExportActionFeatures,
+    applyLiteUiFeatures,
   };
 })(typeof window !== "undefined" ? window : globalThis);

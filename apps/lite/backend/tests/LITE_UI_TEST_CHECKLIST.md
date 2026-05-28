@@ -39,8 +39,16 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 | 3 | Hover queue item | **Remove (×)** button appears |
 | 4 | Remove a completed file | Item deleted; can upload another file |
 | 5 | Remove active file | Preview + results switch to next item or empty state |
+| 6 | Upload 3 files, select file 3, Run Analysis | Preview stays on file 3 while queue processes all; results show file 3 when done |
 
-## LITE-UI-005 Bordered PDF tables
+## LITE-UI-005 Export actions (Lite generic)
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Open Result export section | JSON / CSV / Excel visible |
+| 2 | Validation Dashboard / Save | **Hidden** in generic Lite (enable via `ui-features.js` for custom demos) |
+
+## LITE-UI-006 Bordered PDF tables
 
 | Step | Action | Expected |
 |------|--------|----------|
@@ -48,7 +56,7 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 | 2 | Run Analysis (Smart) | Tables tab: at least one table with rows/columns |
 | 3 | Export JSON | `tables[]` non-empty in Result tab |
 
-## LITE-UI-006 Analysis Options
+## LITE-UI-007 Analysis Options
 
 | Step | Action | Expected |
 |------|--------|----------|

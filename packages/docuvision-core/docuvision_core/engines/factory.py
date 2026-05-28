@@ -12,6 +12,12 @@ class EngineFactory:
     _ocr_engines: Dict[str, Type[BaseOCREngine]] = {}
     _detection_engines: Dict[str, Type[BaseDetectionEngine]] = {}
     _logger = AppLogger.get_logger()
+
+    @classmethod
+    def _ensure_registered(cls) -> None:
+        from docuvision_core.engines import _lazy_register
+
+        _lazy_register()
     
     @classmethod
     def register_ocr(cls, name: str, engine_class: Type[BaseOCREngine]):
@@ -36,6 +42,7 @@ class EngineFactory:
     @classmethod
     def create_ocr(cls, name: str, **kwargs) -> BaseOCREngine:
         """Docstring."""
+        cls._ensure_registered()
         name_lower = name.lower()
         if name_lower not in cls._ocr_engines:
             available = ', '.join(cls._ocr_engines.keys())
@@ -50,6 +57,7 @@ class EngineFactory:
     @classmethod
     def create_detection(cls, name: str, **kwargs) -> BaseDetectionEngine:
         """Docstring."""
+        cls._ensure_registered()
         name_lower = name.lower()
         if name_lower not in cls._detection_engines:
             available = ', '.join(cls._detection_engines.keys())
@@ -64,19 +72,23 @@ class EngineFactory:
     @classmethod
     def list_available_ocr(cls) -> List[str]:
         """Docstring."""
+        cls._ensure_registered()
         return list(cls._ocr_engines.keys())
     
     @classmethod
     def list_available_detection(cls) -> List[str]:
         """Docstring."""
+        cls._ensure_registered()
         return list(cls._detection_engines.keys())
     
     @classmethod
     def is_ocr_registered(cls, name: str) -> bool:
         """Docstring."""
+        cls._ensure_registered()
         return name.lower() in cls._ocr_engines
     
     @classmethod
     def is_detection_registered(cls, name: str) -> bool:
         """Docstring."""
+        cls._ensure_registered()
         return name.lower() in cls._detection_engines

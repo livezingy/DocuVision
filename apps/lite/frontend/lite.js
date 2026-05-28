@@ -515,28 +515,47 @@ async function processQueueSequential() {
   if (state.processing) return;
   state.processing = true;
   els.runBtn.disabled = true;
+  const pinnedIndex = state.activeIndex >= 0 ? state.activeIndex : state.queue.length - 1;
 
   for (let i = 0; i < state.queue.length; i++) {
-    state.activeIndex = i;
-    syncActiveFromQueue();
     const item = state.queue[i];
     item.status = "profiling";
     item.statusMessage = "Analyzing profile…";
     updateQueueUI();
 
-    await renderPreview(item.file);
-    await fetchProfile(item.file);
-    item.profile = state.profile;
+    try {
+      item.profile = await fetchProfileForItem(item.file);
+    } catch (err) {
+      item.status = "failed";
+      item.statusMessage = err.message || "Profile failed";
+      updateQueueUI();
+      persistSession();
+      continue;
+    }
 
     item.status = "extracting";
     item.statusMessage = "Extracting…";
     updateQueueUI();
-    await runExtractionForItem(item);
+    await runExtractionForItem(item, { silent: true });
 
     item.status = item.result ? "done" : "failed";
     item.statusMessage = item.result ? `Done (${item.result.processing_ms || 0} ms)` : "Failed";
     updateQueueUI();
     persistSession();
+  }
+
+  state.activeIndex = Math.min(Math.max(pinnedIndex, 0), state.queue.length - 1);
+  syncActiveFromQueue();
+  const active = getActiveItem();
+  if (active?.file) {
+    await renderPreview(active.file);
+  }
+  state.profile = active?.profile || null;
+  renderDocumentProfile();
+  renderResults(active?.result || null);
+  if (active?.result) {
+    setActiveMainTab("content");
+    setActiveContentTab(active.result.tables?.length ? "tables" : "text");
   }
 
   state.processing = false;
@@ -647,28 +666,37 @@ function updatePageButtons() {
   els.nextPage.disabled = state.currentPage >= state.totalPages;
 }
 
-async function fetchProfile(file) {
+async function fetchProfileForItem(file) {
   const form = new FormData();
   form.append("file", file);
+  const res = await fetch(`${API_BASE}/analyze/profile`, { method: "POST", body: form });
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = data?.error?.message || data?.detail?.error?.message || res.statusText;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+async function fetchProfile(file, { silent = false } = {}) {
   try {
-    const res = await fetch(`${API_BASE}/analyze/profile`, { method: "POST", body: form });
-    const data = await res.json();
-    if (!res.ok) {
-      const msg = data?.error?.message || data?.detail?.error?.message || res.statusText;
-      setStatus(`Profile error: ${msg}`);
-      els.profileContent.innerHTML = `<p class="scan-profile-msg">Profile unavailable: ${escapeHtml(msg)}</p>`;
-      return;
-    }
+    const data = await fetchProfileForItem(file);
     state.profile = data;
     const item = getActiveItem();
     if (item) item.profile = data;
-    renderDocumentProfile();
-    setActiveMainTab("profile");
-    setStatus("Profile ready — configure options or run extraction");
-    persistSession();
+    if (!silent) {
+      renderDocumentProfile();
+      setActiveMainTab("profile");
+      setStatus("Profile ready — configure options or run extraction");
+      persistSession();
+    }
+    return data;
   } catch (err) {
-    setStatus(`Profile failed: ${err.message}`);
-    els.profileContent.innerHTML = `<p class="scan-profile-msg">Profile failed: ${escapeHtml(err.message)}</p>`;
+    if (!silent) {
+      setStatus(`Profile failed: ${err.message}`);
+      els.profileContent.innerHTML = `<p class="scan-profile-msg">Profile failed: ${escapeHtml(err.message)}</p>`;
+    }
+    throw err;
   }
 }
 
@@ -943,7 +971,14 @@ function decodeCidPlaceholders(text) {
 
 function buildFullText(data) {
   if (data.ocr?.length) {
-    return data.ocr.map((b) => decodeCidPlaceholders(b.text)).join("\n");
+    const blocks = [...data.ocr].sort((a, b) => {
+      if (a.page !== b.page) return a.page - b.page;
+      const ay = a.bbox?.[1] ?? 0;
+      const by = b.bbox?.[1] ?? 0;
+      if (Math.abs(ay - by) > 8) return ay - by;
+      return (a.bbox?.[0] ?? 0) - (b.bbox?.[0] ?? 0);
+    });
+    return blocks.map((b) => decodeCidPlaceholders(b.text)).join("\n");
   }
   if (data.text_preview) {
     return decodeCidPlaceholders(data.text_preview);
@@ -965,19 +1000,24 @@ function describeContentText(data) {
   }
 
   const warnings = data.warnings || [];
-  const failed = warnings.find((w) => w.code === "ocr_extraction_failed");
-  if (failed) {
-    return failed.message || "OCR extraction failed.";
-  }
-
   const text = buildFullText(data);
   const hasOcr = (data.ocr || []).some((b) => (b.text || "").trim());
   const hasTables = (data.tables || []).length > 0;
   const hasPreview = !!(data.text_preview || "").trim();
+  const hasText = hasOcr || hasTables || hasPreview;
 
-  if (!hasOcr && !hasTables && !hasPreview) {
+  const failed = warnings.find((w) => w.code === "ocr_extraction_failed");
+  if (failed && !hasText) {
+    return failed.message || "OCR extraction failed.";
+  }
+
+  if (!hasText) {
     const noText = warnings.find((w) => w.code === "no_text_detected");
     return noText?.message || "Extraction completed but no text or tables were detected.";
+  }
+
+  if (failed && hasText) {
+    return `${text}\n\nNote: ${failed.message || "Partial OCR failure on one or more pages."}`;
   }
 
   return text;
@@ -1098,7 +1138,7 @@ function renderResults(data) {
   persistSession();
 }
 
-async function runExtractionForItem(item) {
+async function runExtractionForItem(item, { silent = false } = {}) {
   if (!item?.file) return;
 
   const form = new FormData();
@@ -1124,9 +1164,9 @@ async function runExtractionForItem(item) {
     const data = await res.json();
     if (!res.ok) {
       const msg = data?.error?.message || data?.detail?.error?.message || res.statusText;
-      setStatus(`Extraction failed: ${msg}`);
+      if (!silent) setStatus(`Extraction failed: ${msg}`);
       item.result = null;
-      if (state.activeIndex >= 0 && state.queue[state.activeIndex] === item) {
+      if (!silent && state.activeIndex >= 0 && state.queue[state.activeIndex] === item) {
         els.contentText.textContent = `Extraction failed: ${msg}`;
         els.resultJson.querySelector("code").textContent = JSON.stringify(data, null, 2);
         renderQualityPanel(null);
@@ -1136,14 +1176,14 @@ async function runExtractionForItem(item) {
       return;
     }
     item.result = data;
-    if (state.activeIndex >= 0 && state.queue[state.activeIndex] === item) {
+    if (!silent && state.activeIndex >= 0 && state.queue[state.activeIndex] === item) {
       renderResults(data);
       const routing = formatRoutingSummary(data.routing);
       setStatus(`Done in ${data.processing_ms} ms — ${routing}`);
     }
     persistSession();
   } catch (err) {
-    setStatus(`Request failed: ${err.message}`);
+    if (!silent) setStatus(`Request failed: ${err.message}`);
     item.result = null;
   }
 }
@@ -1390,7 +1430,8 @@ function initPreviewZoom() {
 }
 
 async function init() {
-  window.DocuVisionUiFeatures?.applyContentTabFeatures();
+  window.DocuVisionUiFeatures?.applyLiteUiFeatures?.()
+    || window.DocuVisionUiFeatures?.applyContentTabFeatures();
   initUpload();
   initPagination();
   initProfile();

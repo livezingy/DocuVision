@@ -3,7 +3,10 @@
 
 name: KIE Phase A
 
+# Push does not trigger CI by default. Run manually (workflow_dispatch) or open a PR to main.
+# Optional push trigger: include "[run ci]" in the commit message (see .cursor/rules/003-git.mdc).
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -21,6 +24,7 @@ concurrency:
 
 jobs:
   kie-contract:
+    if: github.event_name != 'push' || contains(github.event.head_commit.message, '[run ci]')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:

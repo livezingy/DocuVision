@@ -3,11 +3,17 @@
 > **本地职责**：仅修改代码与测试文件，**不在本地执行 Python/pytest**。  
 > **验证职责**：GitHub Actions（`CI Lite` workflow）或 Cloud Studio CPU 环境执行本节命令。
 
-## 1. 自动化（推荐）
+## 1. 自动化
 
-Push 至 `main` 或 `feature/docuvision-lite` 且变更路径含 `apps/lite/**`、`packages/docuvision-core/**` 时，GitHub Actions [`.github/workflows/ci-lite.yml`](../../../../.github/workflows/ci-lite.yml) 自动运行。
+| 触发方式 | 何时运行 `CI Lite` |
+|----------|-------------------|
+| **PR → `main`** | 变更含 `apps/lite/**`、`packages/docuvision-core/**` 等路径时 **自动** |
+| **手动** | GitHub → Actions → **CI Lite** → Run workflow |
+| **Push（可选）** | 仅当 commit message 含 **`[run ci]`** 时执行（日常 push **不加** 此标记） |
 
-**通过标准**：workflow 全绿。
+Workflow 定义：[`.github/workflows/ci-lite.yml`](../../../../.github/workflows/ci-lite.yml)
+
+**通过标准**：workflow 全绿。日常开发优先 §2 云端 pytest；合并前以 PR 上 Actions 为准。
 
 ## 2. 云端手动命令
 
@@ -34,12 +40,14 @@ git pull origin feature/docuvision-lite
 
 ### 2.2 环境与 pytest
 
+> **zsh**：extras 方括号会被 shell 展开，以下 `pip install -e '...'` 请保留单引号。
+
 ```bash
 cd apps/lite/backend
 python3 -m venv ~/docuvision_lite_env
 source ~/docuvision_lite_env/bin/activate
 pip install -r requirements-lite.txt
-pip install -e ../../../packages/docuvision-core[lite,dev]
+pip install -e '../../../packages/docuvision-core[lite,dev]'
 
 # Lite API 契约
 python -m pytest tests/ -q
@@ -49,7 +57,7 @@ cd ../../../packages/docuvision-core
 python -m pytest tests/utils/test_pdf_text_utils.py tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py -q
 
 # Transformer image tables (cloud GPU env with ocr-heavy deps):
-# pip install -e ../../../packages/docuvision-core[ocr-heavy]
+# pip install -e '../../../packages/docuvision-core[ocr-heavy]'
 ```
 
 ## 3. Document Profile + 三栏 UI 验收标准

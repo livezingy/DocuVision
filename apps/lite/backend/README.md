@@ -4,12 +4,14 @@ CPU-friendly table extraction and OCR API (`/api/v1/lite`).
 
 ## Run locally
 
+> **zsh**: quote the editable install path so `[lite,dev]` is not glob-expanded.
+
 ```bash
 cd apps/lite/backend
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements-lite.txt
-pip install -e ../../../packages/docuvision-core[lite,dev]
+pip install -e '../../../packages/docuvision-core[lite,dev]'
 python run_lite.py
 ```
 

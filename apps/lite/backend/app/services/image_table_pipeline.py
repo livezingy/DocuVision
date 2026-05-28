@@ -82,7 +82,7 @@ def extract_tables_from_image(
     if not _transformer_available():
         raise RuntimeError(
             "Table Transformer requires torch and transformers. "
-            "Install: pip install docuvision-core[ocr-heavy]"
+            "Install: pip install 'docuvision-core[ocr-heavy]'"
         )
 
     detected_type, page_count = detect_file_type(file_path)

@@ -1,7 +1,7 @@
 ---
-description:
+description: Git commit, push, and GitHub Actions policy
 globs:
-alwaysApply: false
+alwaysApply: true
 ---
 # Git 规范
 
@@ -30,6 +30,17 @@ git 提交记录样例：[type]: [description]。一个具体的例子, docs: �
 
 - 在本仓库内完成**可交付的代码或前端资源变更**后，若用户明确要求「提交 / 推送到 GitHub」，或用户约定「改完即同步远端」，应在合理自检（lint、关键路径冒烟等，视改动范围）后执行：`git add` → `git commit`（遵循上文提交规范）→ `git push` 至当前分支对应的 `origin`。
 - 推送前确认工作区仅包含拟交付的变更；密钥、token、`.env` 等敏感内容不得进入 commit。
+
+## GitHub Actions 策略
+
+- **默认 push 不跑 CI**：`.github/workflows/*.yml` 中 push 事件仅当 commit message 含 **`[run ci]`** 时才执行 job；日常 push **不要**加该标记。
+- **PR 至 `main`**：路径匹配时 **自动** 运行 `CI Lite` / `KIE Phase A`（无需额外标记）。
+- **手动触发**：GitHub → Actions → 选择 workflow → **Run workflow**（`workflow_dispatch`）。
+- **修改 workflow**：属 CI/CD 变更（见 `004-project.mdc` 红线）。未获用户明确同意前，助手不得改 `.github/workflows/**`。
+- **助手若要建议跑 Actions**：须先说明理由（例如合并前契约回归、改了 workflow 本身需验证），再询问用户；仅当用户明确同意，或用户说「激活 workflow / 跑 CI / commit 加 [run ci]」时，方可：
+  - 在 commit message 中加入 `[run ci]` 再 push，或
+  - 指引 / 代用户在 GitHub 上 `workflow_dispatch`。
+- **日常验证**：优先 Cloud Studio 手动 pytest；Actions 用于 PR 门禁或用户点名时。
 
 ## 重要原则
 

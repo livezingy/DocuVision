@@ -44,7 +44,7 @@ pytest tests/test_kie_field_metrics.py tests/test_kie_service.py \
 
 **通过标准**：全部 `passed`（含 `test_pdf_preprocessed_path_same_as_pdf_still_rasterizes`）。
 
-**GitHub Actions（自动）**：push/PR 至 `main` 且 `backend/**` 有变更时，workflow [`.github/workflows/kie-phase-a.yml`](../../.github/workflows/kie-phase-a.yml) 在 CPU runner 上执行与本节相同命令；依赖见 [`backend/requirements-ci-phase-a.txt`](../../backend/requirements-ci-phase-a.txt)（无 Paddle、无 torch/transformers、不下载 Qwen 权重）。
+**GitHub Actions**：**PR 至 `main`** 且 `backend/**` 有变更时自动运行 [`.github/workflows/kie-phase-a.yml`](../../.github/workflows/kie-phase-a.yml)（CPU runner，与本节相同命令）。日常 push 默认不触发；需 push 后跑 CI 时在 commit message 加 **`[run ci]`**，或在 Actions 页 **Run workflow**。依赖见 [`backend/requirements-ci-phase-a.txt`](../../backend/requirements-ci-phase-a.txt)（无 Paddle、无 torch/transformers、不下载 Qwen 权重）。
 
 ### 阶段 B — 服务就绪
 
@@ -141,15 +141,17 @@ python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
 ```bash
 cd apps/lite/backend
 pip install -r requirements-lite.txt
-pip install -e ../../packages/docuvision-core[lite,dev]
+pip install -e '../../packages/docuvision-core[lite,dev]'
 pytest tests/ -q
 cd ../../packages/docuvision-core
 pytest tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py -q
 ```
 
+（zsh 下 `pip install -e` 的 extras 路径须加单引号，见 [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md) §2.2。）
+
 **通过标准**：全部 `passed`（规则 **LITE-PROFILE-001～003**、**LITE-CORE-001～002**、**LITE-EXTRACT-001～002**，见 [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md)）。
 
-**GitHub Actions**：push/PR 至 `feature/docuvision-lite` 或 `main` 且 Lite 路径有变更时，[`.github/workflows/ci-lite.yml`](../../.github/workflows/ci-lite.yml) 自动执行。
+**GitHub Actions**：**PR 至 `main`** 且 Lite 路径有变更时，[`.github/workflows/ci-lite.yml`](../../.github/workflows/ci-lite.yml) 自动执行。日常 push 至 `feature/docuvision-lite` 默认不跑；需 CI 时用 **`[run ci]`** 或 Actions 页 **Run workflow**。
 
 ### 阶段 H — Lite UI 冒烟（可选）
 

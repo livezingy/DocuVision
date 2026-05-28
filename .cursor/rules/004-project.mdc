@@ -16,7 +16,7 @@
 ## 测试与验证（pytest）
 
 - **本地无 backend 完整依赖**（无 Paddle / Qwen 等与线上一致的 venv）。**禁止在本地仓库内执行 `pytest` 作为验证手段**；助手**不得**在本地调用终端去跑 backend 的 pytest 并据此声称「已验证通过」。
-- **DocuVision Lite**：本地仅改代码与 `apps/lite/backend/tests/`、`packages/docuvision-core/tests/`；验收见 [apps/lite/backend/tests/README.md](../apps/lite/backend/tests/README.md) 与 GitHub Actions `CI Lite`。**勿在本地检查 Python 是否可用**。
+- **DocuVision Lite**：本地仅改代码与 `apps/lite/backend/tests/`、`packages/docuvision-core/tests/`；验收见 [apps/lite/backend/tests/README.md](../apps/lite/backend/tests/README.md) 与 GitHub Actions `CI Lite`（**PR 至 main 自动跑**；日常 push 默认不触发，见 `003-git.mdc`）。**勿在本地检查 Python 是否可用**。
 - **pytest 仅在云端（腾讯 Cloud Studio GPU-environment 等与线上一致的依赖环境）由用户执行**；助手默认**不**代替用户在云端跑测，除非用户明确要求助手在可联网/可执行命令的环境中代跑。
 - 改动了后端/KIE/编排等与运行时强相关的逻辑时，助手应在交付说明中给出**供用户在云端复制执行的命令**及**期望结果**（见下节「何时必须先测」）。
 - 「改完主动跑验证」：对用户而言在云端执行；助手侧以**给出可复制的云端命令 + 期望**代替本地 pytest。
@@ -80,7 +80,7 @@ DocuVision/
 
 - 删除文件、目录或 git 历史
 
-- 修改 .env、密钥、token、CI/CD 配置
+- 修改 .env、密钥、token、**CI/CD 配置**（含 `.github/workflows/**`；日常 push 默认不跑 Actions，见 `003-git.mdc`）
 
 - 数据库 schema 变更或数据迁移
 

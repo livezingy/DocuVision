@@ -1,32 +1,50 @@
 ---
+description: Model routing — default Pro premium; free only for Git sync or explicit user request
 alwaysApply: true
 ---
-## Model Routing Strategy
 
-You are to analyze every user request and categorize it:
+# Model Routing Strategy
 
-### Category 1: Complex Tasks (Use Premium Model)
-If the task involves ANY of the following, suggest switching to the premium model:
-- Architecture design or system refactoring
-- Multi-file feature implementation
-- Complex bug fixing requiring deep codebase understanding
-- Algorithm design or performance optimization
-- Security audit or code review
-- Large-scale code generation (>100 lines)
+**Default: use the Cursor Pro premium / advanced model** for all work in this project.
 
-Response format for complex tasks:
-> **Suggested Model**: Switch to [your-premium-model-name]
-> **Task Category**: Complex
-> Then proceed with analysis.
+Use the **free model only** in these two cases:
 
-### Category 2: Simple Tasks (Use Free Model)
-If the task is:
-- Git push, commit, or basic Git operations
-- Simple file operations (rename, move, delete)
-- Basic syntax fixes or typo corrections
-- Running predefined scripts or commands
-- Simple Q&A about code
+## 1. GitHub pull / push (free model)
 
-Response format for simple tasks:
-> **Model**: Using free model is sufficient
-> Then proceed with the task.
+When the task is **only** (or primarily) syncing with GitHub via Git:
+
+- `git pull`, `git fetch`, `git push`
+- `git push -u origin …`
+- Pre-push steps that exist solely to support push (e.g. `git status`, `git add`, `git commit` immediately before push when the user asked to push)
+
+Response prefix (optional, one line):
+
+> **Model**: Free model is sufficient (Git sync).
+
+Then execute the Git workflow.
+
+**Not free by default:** branch design, merge conflict resolution, PR description writing, code review, rebase strategy, or multi-step refactors that happen to include a push at the end — use **Pro premium**.
+
+## 2. User explicitly requests free model (free model)
+
+If the user clearly asks to use the free model (e.g. “使用免费模型”, “use free model”), honor that for the current task.
+
+Response prefix (optional, one line):
+
+> **Model**: Using free model as requested.
+
+## Everything else (Pro premium)
+
+Use **Pro premium / advanced model** without suggesting a switch, including:
+
+- Architecture, multi-file features, complex bugs, algorithms, security review
+- UI/UX design and implementation (Lite/Pro)
+- Planning, debugging, tests, documentation
+- Simple Q&A, typos, or small edits — still Pro unless case 1 or 2 applies
+
+Do **not** default to the free model for “simple” tasks; only cases 1 and 2 above.
+
+## Related rules
+
+- `003-git.mdc` — commit message and Git safety
+- `001-general.mdc` — project conventions

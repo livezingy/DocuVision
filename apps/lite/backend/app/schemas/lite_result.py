@@ -49,6 +49,8 @@ class DetectedFileType(str, Enum):
 class WarningCode(str, Enum):
     SCAN_DETECTED = "scan_detected"
     LOW_CONFIDENCE = "low_confidence"
+    NO_TEXT_DETECTED = "no_text_detected"
+    OCR_EXTRACTION_FAILED = "ocr_extraction_failed"
     ENGINE_FALLBACK = "engine_fallback"
     TRANSFORMER_UNAVAILABLE = "transformer_unavailable"
     PAGE_TRUNCATED = "page_truncated"

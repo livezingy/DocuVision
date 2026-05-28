@@ -140,6 +140,21 @@ async function loadQueueFileBlob(id) {
   }
 }
 
+async function deleteQueueFileBlob(id) {
+  if (!id) return;
+  try {
+    const db = await openLiteFileDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(LITE_FILE_STORE, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore(LITE_FILE_STORE).delete(id);
+    });
+  } catch (err) {
+    console.warn("[Lite] Failed to delete file blob:", err);
+  }
+}
+
 function persistSession() {
   try {
     const payload = {
@@ -333,17 +348,81 @@ async function fetchEnginesCatalog() {
 function updateQueueUI() {
   els.queueList.innerHTML = "";
   els.queueCount.textContent = String(state.queue.length);
-  if (!state.queue.length) return;
+  if (!state.queue.length) {
+    els.runBtn.disabled = true;
+    return;
+  }
+  els.runBtn.disabled = false;
 
   state.queue.forEach((item, index) => {
     const row = document.createElement("div");
     row.className = "queue-item" + (index === state.activeIndex ? " active" : "");
-    row.innerHTML = `<div class="queue-item-name">${escapeHtml(item.file.name)}</div>
-      <div class="queue-item-meta">${formatBytes(item.file.size)} · ${item.status || "pending"}</div>
-      <div class="queue-item-status">${item.statusMessage || ""}</div>`;
-    row.addEventListener("click", () => selectQueueItem(index));
+    row.innerHTML = `
+      <div class="queue-item-body">
+        <div class="queue-item-name">${escapeHtml(item.file.name)}</div>
+        <div class="queue-item-meta">${formatBytes(item.file.size)} · ${item.status || "pending"}</div>
+        <div class="queue-item-status">${escapeHtml(item.statusMessage || "")}</div>
+      </div>
+      <button type="button" class="queue-item-action" title="Remove from queue" aria-label="Remove">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>`;
+    row.querySelector(".queue-item-body").addEventListener("click", () => selectQueueItem(index));
+    row.querySelector(".queue-item-action").addEventListener("click", (e) => {
+      e.stopPropagation();
+      void removeQueueItem(index);
+    });
     els.queueList.appendChild(row);
   });
+}
+
+async function removeQueueItem(index) {
+  if (index < 0 || index >= state.queue.length) return;
+  const item = state.queue[index];
+  const wasActive = index === state.activeIndex;
+  await deleteQueueFileBlob(item.id);
+  state.queue.splice(index, 1);
+
+  if (!state.queue.length) {
+    state.activeIndex = -1;
+    state.file = null;
+    state.profile = null;
+    state.result = null;
+    resetPreviewState();
+    els.previewPlaceholder.classList.remove("hidden");
+    els.previewCanvas.classList.add("hidden");
+    els.previewImage.classList.add("hidden");
+    renderDocumentProfile();
+    renderResults(null);
+    els.runBtn.disabled = true;
+    updateQueueUI();
+    persistSession();
+    setStatus("Queue empty");
+    return;
+  }
+
+  if (wasActive) {
+    state.activeIndex = Math.min(index, state.queue.length - 1);
+  } else if (state.activeIndex > index) {
+    state.activeIndex--;
+  }
+  syncActiveFromQueue();
+  updateQueueUI();
+  if (wasActive && state.file) {
+    state.previewScale = 1;
+    await renderPreview(state.file);
+    if (state.profile) {
+      renderDocumentProfile();
+      setActiveMainTab("profile");
+    } else {
+      await fetchProfile(state.file);
+    }
+    renderResults(state.result);
+  }
+  persistSession();
+  setStatus(`Removed ${item.file.name} from queue`);
 }
 
 async function selectQueueItem(index) {
@@ -406,7 +485,7 @@ async function addFilesToQueue(files, { replace = false } = {}) {
   }
   const addedItems = enqueueFiles(files);
   if (!addedItems.length) {
-    setStatus("Queue is full (max 3 files)");
+    setStatus("Queue is full (max 3 files). Remove a file from the queue to add more.");
     return 0;
   }
   await Promise.all(addedItems.map((item) => saveQueueFileBlob(item.id, item.file)));
@@ -879,6 +958,31 @@ function buildFullText(data) {
   return "No text content in result.";
 }
 
+function describeContentText(data) {
+  if (!data) return "No text extracted yet.";
+  if (data.status === "failed" || data.error) {
+    return `Extraction failed: ${data.error?.message || "Unknown error."}`;
+  }
+
+  const warnings = data.warnings || [];
+  const failed = warnings.find((w) => w.code === "ocr_extraction_failed");
+  if (failed) {
+    return failed.message || "OCR extraction failed.";
+  }
+
+  const text = buildFullText(data);
+  const hasOcr = (data.ocr || []).some((b) => (b.text || "").trim());
+  const hasTables = (data.tables || []).length > 0;
+  const hasPreview = !!(data.text_preview || "").trim();
+
+  if (!hasOcr && !hasTables && !hasPreview) {
+    const noText = warnings.find((w) => w.code === "no_text_detected");
+    return noText?.message || "Extraction completed but no text or tables were detected.";
+  }
+
+  return text;
+}
+
 function renderQualityPanel(data) {
   if (!els.qualityPanel) return;
   if (!data) {
@@ -891,14 +995,19 @@ function renderQualityPanel(data) {
   const hints = data.hints || [];
   const score = q.overall_confidence != null ? `${Math.round(q.overall_confidence * 100)}%` : "—";
   const routingLine = data.routing ? formatRoutingSummary(data.routing) : null;
+  const ocrBlocks = q.ocr_blocks ?? (data.ocr || []).length;
   const warnHtml = warnings.length
-    ? warnings.map((w) => `<div class="quality-warn">⚠ ${escapeHtml(w.code || "")}: ${escapeHtml(w.message || "")}</div>`).join("")
+    ? warnings.map((w) => {
+        const isFailure = w.code === "ocr_extraction_failed";
+        const cls = isFailure ? "quality-warn quality-fail" : "quality-warn";
+        return `<div class="${cls}">⚠ ${escapeHtml(w.code || "")}: ${escapeHtml(w.message || "")}</div>`;
+      }).join("")
     : "";
   const hintHtml = hints.length
     ? hints.map((h) => `<div class="quality-hint">💡 ${escapeHtml(h.message || "")}</div>`).join("")
     : "";
   els.qualityPanel.innerHTML = `
-    <div class="quality-score">Confidence: ${score} · Tables: ${q.tables_accepted ?? 0}/${q.tables_found ?? 0} · Pages: ${q.pages_processed ?? 0}</div>
+    <div class="quality-score">Confidence: ${score} · Tables: ${q.tables_accepted ?? 0}/${q.tables_found ?? 0} · OCR blocks: ${ocrBlocks} · Pages: ${q.pages_processed ?? 0}</div>
     ${routingLine ? `<div class="quality-hint">Routing: ${escapeHtml(routingLine)}</div>` : ""}
     ${warnHtml}${hintHtml}`;
   els.qualityPanel.classList.remove("hidden");
@@ -961,7 +1070,7 @@ function renderResults(data) {
     return;
   }
 
-  els.contentText.textContent = buildFullText(data);
+  els.contentText.textContent = describeContentText(data);
 
   (data.tables || []).forEach((t, i) => {
     els.contentTableList.appendChild(renderTable(t, i));
@@ -1015,8 +1124,15 @@ async function runExtractionForItem(item) {
     const data = await res.json();
     if (!res.ok) {
       const msg = data?.error?.message || data?.detail?.error?.message || res.statusText;
-      setStatus(`Error: ${msg}`);
+      setStatus(`Extraction failed: ${msg}`);
       item.result = null;
+      if (state.activeIndex >= 0 && state.queue[state.activeIndex] === item) {
+        els.contentText.textContent = `Extraction failed: ${msg}`;
+        els.resultJson.querySelector("code").textContent = JSON.stringify(data, null, 2);
+        renderQualityPanel(null);
+        setActiveMainTab("content");
+        setActiveContentTab("text");
+      }
       return;
     }
     item.result = data;

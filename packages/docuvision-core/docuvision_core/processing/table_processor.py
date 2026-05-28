@@ -72,6 +72,23 @@ def _dedupe_overlapping_tables(
     return kept
 
 
+def _pdfplumber_result_has_content(item: Dict[str, Any]) -> bool:
+    table = item.get("table")
+    if table is None:
+        return False
+    try:
+        if hasattr(table, "extract"):
+            rows = table.extract() or []
+            if rows:
+                return True
+        df = getattr(table, "df", None)
+        if df is not None and not df.empty:
+            return True
+    except Exception:
+        return False
+    return False
+
+
 class PageFeatureAnalyzer:
     """Docstring."""
     
@@ -412,9 +429,10 @@ class TableProcessor:
         page_num = getattr(page, "page_number", 1)
         fallback_threshold = self.params.get('smart_camelot_fallback_threshold', 0.8)
         max_pdfplumber_score = max((r["score"] for r in all_pdfplumber), default=0.0)
+        has_substantive_pdfplumber = any(_pdfplumber_result_has_content(r) for r in all_pdfplumber)
 
         camelot_results = []
-        if max_pdfplumber_score < fallback_threshold:
+        if max_pdfplumber_score < fallback_threshold or not has_substantive_pdfplumber:
             camelot_params = {
                 'pdf_path': pdf_path,
                 'page_num': page_num,

@@ -103,11 +103,21 @@ def build_lite_result(
         )
 
     hints: List[LiteHint] = []
-    if detected == DetectedFileType.PDF_SCAN:
+    has_content = bool(tables) or bool(ocr_blocks)
+    overall_confidence = float(quality_data.get("overall_confidence") or 0.0)
+    if detected == DetectedFileType.PDF_SCAN and not has_content:
         hints.append(
             LiteHint(
                 code="pro_recommended",
-                message="For scan/layout/KIE quality, use DocuVision Pro.",
+                message="Scan OCR returned no usable text or tables. Try Advanced OCR settings or DocuVision Pro.",
+                link="https://github.com/livezingy/DocuVision",
+            )
+        )
+    elif detected == DetectedFileType.PDF_SCAN and has_content and overall_confidence < 0.6:
+        hints.append(
+            LiteHint(
+                code="pro_recommended",
+                message="Results shown with low OCR confidence. DocuVision Pro may improve scan/layout quality.",
                 link="https://github.com/livezingy/DocuVision",
             )
         )

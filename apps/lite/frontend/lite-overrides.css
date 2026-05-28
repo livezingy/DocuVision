@@ -240,6 +240,52 @@
     border-color: var(--primary-400);
 }
 
+.queue-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.queue-item-body {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.queue-item-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    opacity: 0;
+}
+
+.queue-item:hover .queue-item-action {
+    opacity: 1;
+}
+
+.queue-item-action:hover {
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+}
+
+.queue-item-action svg {
+    width: 16px;
+    height: 16px;
+}
+
+.quality-panel .quality-fail {
+    color: #dc2626;
+}
+
 .queue-item-status {
     font-size: 0.6875rem;
     color: var(--text-secondary);

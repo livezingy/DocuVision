@@ -68,6 +68,26 @@ cd apps/lite/backend && python run_lite.py
 | Analysis Options | 三 Tab；Advanced 可预填 custom params |
 | 本地 docs | `apps/lite/backend/docs/` 可存在本地；`git ls-files apps/lite/backend/docs/` 为空 |
 
+### 3.5 OCR messaging
+
+| Rule ID | Test file | Pass standard |
+|---------|-----------|---------------|
+| **LITE-OCR-001** | `test_lite_ocr_messaging.py::test_normalize_easyocr_languages_maps_eng_to_en` | `eng` maps to `en` for EasyOCR |
+| **LITE-OCR-002** | `test_lite_ocr_messaging.py::test_low_confidence_still_returns_ocr_blocks` | Low confidence still returns OCR text + `low_confidence` warning |
+| **LITE-OCR-003** | `test_lite_ocr_messaging.py::test_empty_ocr_emits_no_text_detected` | Empty OCR emits `no_text_detected` |
+| **LITE-OCR-004** | `test_lite_ocr_messaging.py::test_ocr_runtime_error_emits_extraction_failed` | Runtime error emits `ocr_extraction_failed` |
+
+### 3.6 Bordered table extract
+
+| Rule ID | Test file | Pass standard |
+|---------|-----------|---------------|
+| **LITE-TBL-001** | `test_lite_bordered_tables.py::test_extract_auto_bordered_pdf_returns_tables` | Smart extract returns >=1 table with rows |
+| **LITE-TBL-002** | `test_lite_bordered_tables.py::test_analyze_profile_bordered_type` | Profile returns bordered/unbordered |
+
+### 3.7 UI manual checklist
+
+See [`tests/LITE_UI_TEST_CHECKLIST.md`](LITE_UI_TEST_CHECKLIST.md) — queue remove, Content tabs, OCR messaging, bordered tables.
+
 ## 4. Fixture 说明
 
 - `tests/fixtures/sample_bordered.pdf` — digital PDF 样例（缺失时 `test_analyze_profile_digital_pdf` 自动 skip）

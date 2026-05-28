@@ -1,0 +1,79 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Length 679 >>
+stream
+BT
+/F2 14 Tf
+1 0 0 1 50 740 Tm
+(ScanSim Corp  -  Monthly Expense Summary) Tj
+/F1 10 Tf
+1 0 0 1 50 720 Tm
+(\(Low-density text sample for scan / OCR routing tests\)) Tj
+/F2 10 Tf
+1 0 0 1 54 646 Tm
+(Date) Tj
+/F2 10 Tf
+1 0 0 1 144 646 Tm
+(Description) Tj
+/F2 10 Tf
+1 0 0 1 394 646 Tm
+(Amount) Tj
+/F2 10 Tf
+1 0 0 1 484 646 Tm
+(Category) Tj
+/F1 10 Tf
+1 0 0 1 54 626 Tm
+(2024-05-01) Tj
+/F1 10 Tf
+1 0 0 1 144 626 Tm
+(Misc expense) Tj
+/F1 10 Tf
+1 0 0 1 394 626 Tm
+($120.00) Tj
+/F1 10 Tf
+1 0 0 1 484 626 Tm
+(Office) Tj
+/F1 10 Tf
+1 0 0 1 54 606 Tm
+(2024-05-10) Tj
+/F1 10 Tf
+1 0 0 1 144 606 Tm
+(Travel) Tj
+/F1 10 Tf
+1 0 0 1 394 606 Tm
+($340.00) Tj
+/F1 10 Tf
+1 0 0 1 484 606 Tm
+(Travel) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Type /Pages /Kids [ 4 0 R ] /Count 1 >>
+endobj
+6 0 obj
+<< /Type /Catalog /Pages 5 0 R >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000154 00000 n 
+0000000884 00000 n 
+0000001020 00000 n 
+0000001079 00000 n 
+trailer
+<< /Size 7 /Root 6 0 R >>
+startxref
+1128
+%%EOF

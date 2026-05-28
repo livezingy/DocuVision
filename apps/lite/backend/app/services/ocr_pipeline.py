@@ -70,6 +70,30 @@ def _engine_available(name: str) -> bool:
     return False
 
 
+_EASYOCR_LANG_MAP = {
+    "eng": "en",
+    "en": "en",
+    "ch_sim": "ch_sim",
+    "ch_tra": "ch_tra",
+    "fr": "fr",
+    "de": "de",
+    "es": "es",
+    "ja": "ja",
+    "ko": "ko",
+}
+
+
+def _normalize_easyocr_languages(languages: Optional[List[str]]) -> List[str]:
+    raw = languages or ["en"]
+    mapped: List[str] = []
+    for lang in raw:
+        key = str(lang or "").strip().lower().replace("-", "_")
+        if not key:
+            continue
+        mapped.append(_EASYOCR_LANG_MAP.get(key, key))
+    return mapped or ["en"]
+
+
 def _resolve_ocr_engine(mode: ExtractMode, engine: str) -> str:
     engine = (engine or "auto").lower()
     if mode == ExtractMode.SMART or engine == "auto":
@@ -109,8 +133,10 @@ def _create_easyocr_engine(languages: List[str], gpu: bool = False):
 
 
 def _run_easyocr(image: Image.Image, languages: List[str], min_confidence: float) -> List[Dict[str, Any]]:
-    ocr = _create_easyocr_engine(languages or ["en"], gpu=False)
-    ocr.initialize()
+    lang_list = _normalize_easyocr_languages(languages)
+    ocr = _create_easyocr_engine(lang_list, gpu=False)
+    if not ocr.initialize():
+        raise RuntimeError("EasyOCR failed to initialize; check language packs and installation.")
     blocks = ocr.recognize_text(image, min_confidence=min_confidence)
     return [
         {
@@ -160,20 +186,25 @@ def extract_ocr_from_image(
     mode: ExtractMode = ExtractMode.SMART,
     engine: str = "auto",
     languages: Optional[List[str]] = None,
-    min_confidence: float = 0.5,
+    min_confidence: float = 0.2,
     max_pages: int = 10,
 ) -> Dict[str, Any]:
     engine_used = _resolve_ocr_engine(mode, engine)
     page_images = _load_images_from_path(file_path, max_pages=max_pages)
     ocr_blocks: List[Dict[str, Any]] = []
+    extraction_errors: List[str] = []
 
     for page_num, image in page_images:
-        if engine_used == "easyocr":
-            page_blocks = _run_easyocr(image, languages or ["en"], min_confidence)
-        elif engine_used == "tesseract":
-            page_blocks = _run_tesseract(image, min_confidence)
-        else:
-            raise RuntimeError("Transformer OCR is not enabled in Lite Phase C baseline")
+        try:
+            if engine_used == "easyocr":
+                page_blocks = _run_easyocr(image, languages, min_confidence)
+            elif engine_used == "tesseract":
+                page_blocks = _run_tesseract(image, min_confidence)
+            else:
+                raise RuntimeError("Transformer OCR is not enabled in Lite Phase C baseline")
+        except Exception as exc:
+            extraction_errors.append(str(exc))
+            page_blocks = []
         for block in page_blocks:
             block["page"] = page_num
         ocr_blocks.extend(page_blocks)
@@ -190,11 +221,25 @@ def extract_ocr_from_image(
                 "message": f"Scanned PDF rasterized to {len(page_images)} page(s) for OCR.",
             }
         )
-    if overall < 0.6:
+    if extraction_errors:
+        warnings.append(
+            {
+                "code": WarningCode.OCR_EXTRACTION_FAILED.value,
+                "message": f"OCR extraction failed ({engine_used}): {extraction_errors[0]}",
+            }
+        )
+    elif not ocr_blocks:
+        warnings.append(
+            {
+                "code": WarningCode.NO_TEXT_DETECTED.value,
+                "message": "No text detected in the image. Try Advanced mode, another OCR engine, or higher-resolution input.",
+            }
+        )
+    elif overall < 0.6:
         warnings.append(
             {
                 "code": WarningCode.LOW_CONFIDENCE.value,
-                "message": "OCR confidence is low; consider DocuVision Pro for scan/layout quality.",
+                "message": "OCR confidence is low; results are shown below. DocuVision Pro may improve scan/layout quality.",
             }
         )
 

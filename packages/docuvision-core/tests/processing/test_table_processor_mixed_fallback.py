@@ -50,8 +50,10 @@ def test_mixed_skips_camelot_when_pdfplumber_max_score_above_threshold(mock_fact
     camelot = MagicMock()
     mock_factory.create.side_effect = lambda name: pdfplumber if name == "pdfplumber" else camelot
 
+    table = MagicMock()
+    table.extract.return_value = [["A", "B"], ["1", "2"]]
     pdfplumber.extract_tables.return_value = [
-        {"bbox": (0, 0, 100, 100), "score": 0.85, "source": "pdfplumber_lines"},
+        {"bbox": (0, 0, 100, 100), "score": 0.85, "source": "pdfplumber_lines", "table": table},
     ]
 
     page = MagicMock()
@@ -65,3 +67,31 @@ def test_mixed_skips_camelot_when_pdfplumber_max_score_above_threshold(mock_fact
     camelot.extract_tables.assert_not_called()
     assert len(results) == 1
     assert results[0]["score"] == 0.85
+
+
+@patch("docuvision_core.processing.table_processor.ExtractorFactory")
+def test_mixed_runs_camelot_when_pdfplumber_high_score_but_empty_table(mock_factory):
+    pdfplumber = MagicMock()
+    camelot = MagicMock()
+    mock_factory.create.side_effect = lambda name: pdfplumber if name == "pdfplumber" else camelot
+
+    empty_table = MagicMock()
+    empty_table.extract.return_value = []
+    pdfplumber.extract_tables.return_value = [
+        {"bbox": (0, 0, 100, 100), "score": 0.9, "source": "pdfplumber_lines", "table": empty_table},
+    ]
+    camelot.extract_tables.return_value = [
+        {"bbox": (0, 0, 100, 100), "score": 0.88, "source": "camelot_lattice"},
+    ]
+
+    page = MagicMock()
+    page.page_number = 1
+    analyzer = MagicMock()
+    analyzer.predict_table_type.return_value = "bordered"
+
+    processor = _make_processor(threshold=0.8)
+    results = processor._process_mixed("/tmp/sample.pdf", page, analyzer, score_threshold=0.5)
+
+    camelot.extract_tables.assert_called_once()
+    assert len(results) == 1
+    assert results[0]["source"] == "camelot_lattice"

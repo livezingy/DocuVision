@@ -31,6 +31,8 @@ def build_text_preview(ocr_blocks: List[Dict[str, Any]]) -> Optional[str]:
 def _is_pdf(path: Path) -> bool:
     if path.suffix.lower() == ".pdf":
         return True
+    if not path.is_file():
+        return False
     with path.open("rb") as handle:
         return handle.read(4) == b"%PDF"
 

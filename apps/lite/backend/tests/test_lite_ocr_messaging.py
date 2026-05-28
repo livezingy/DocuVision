@@ -7,6 +7,7 @@ from PIL import Image
 
 from app.schemas.lite_result import WarningCode
 from app.services.ocr_pipeline import (
+    _is_pdf,
     _normalize_easyocr_languages,
     extract_ocr_from_image,
 )
@@ -18,6 +19,10 @@ _DUMMY_IMAGE = Path("scan.png")
 def test_normalize_easyocr_languages_maps_eng_to_en():
     assert _normalize_easyocr_languages(["eng"]) == ["en"]
     assert _normalize_easyocr_languages(["en", "eng"]) == ["en", "en"]
+
+
+def test_is_pdf_returns_false_for_missing_non_pdf_path():
+    assert _is_pdf(Path("nonexistent_scan.png")) is False
 
 
 @patch("app.services.ocr_pipeline._load_images_from_path")

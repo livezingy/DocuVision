@@ -205,8 +205,8 @@ WarningCode: [scan_detected, low_confidence, engine_fallback, transformer_unavai
         "total_chars": 1284
       },
       "suggested_routing": {
-        "engine": "camelot",
-        "flavor": "lattice",
+        "engine": "smart",
+        "flavor": "bordered",
         "param_mode": "auto"
       },
       "computed_params": {
@@ -232,12 +232,37 @@ WarningCode: [scan_detected, low_confidence, engine_fallback, transformer_unavai
 
 **Smart 路由**：
 
-```  
+```
 pdf_digital → table_type_classifier
-  ├─ bordered    → camelot (auto)
-  └─ unbordered  → pdfplumber (auto)
+  ├─ bordered    → pdfplumber (lines) first; camelot (lattice) full-page fallback when max score < threshold
+  └─ unbordered  → pdfplumber (text) first; camelot (stream) full-page fallback when max score < threshold
 失败 → engine_fallback + 备选引擎
 ```
+
+### 7.3.1 Flavor 语义（Lite UI / API）
+
+Lite 面向用户的 **flavor** 为统一的三档值，Advanced 模式下由前端或 API 映射到引擎原生 flavor：
+
+| UI / API flavor | 含义 | pdfplumber | camelot |
+|-----------------|------|------------|---------|
+| `auto` | 由 Smart 路由与页面特征决定 | — | — |
+| `bordered` | 有边框/网格线表格 | `lines` | `lattice` |
+| `unbordered` | 无边框、文本对齐表格 | `text` | `stream` |
+
+- `GET /engines` 与 Advanced 面板下拉框均暴露 `auto` / `bordered` / `unbordered`
+- `POST /analyze/profile` 的 `suggested_routing.flavor` 使用同一套值（如 `bordered`、`unbordered`）
+- Smart 模式下请求仍传 `flavor=auto`；Camelot 仅在 pdfplumber 最高分低于阈值时作为整页兜底
+
+### 7.3.2 Smart Camelot 兜底策略
+
+Smart（`table_method=mixed`）处理流程：
+
+1. 按页面 `table_type` 用 pdfplumber 提取（bordered→lines，unbordered→text），必要时 flavor 互换重试
+2. 计算 pdfplumber 结果的最高 `score`
+3. 若 `max_score < smart_camelot_fallback_threshold`（默认 **0.8**，可通过 processor params 配置），对该页运行 **整页** Camelot（bordered→lattice，unbordered→stream）
+4. 合并 pdfplumber 与 Camelot 结果，按 bbox 去重（保留较高 score），再按 `score_threshold` 过滤
+
+与旧版「高置信 bbox 局部 Camelot 精修」不同，新版在 pdfplumber 整体质量偏低时触发全页 Camelot，以提高弱线框/扫描类数字 PDF 的召回。
 
 ### 7.5 POST /extract/ocr（阶段 C）
 
@@ -343,3 +368,4 @@ Lite 与 Pro 共用 [`frontend/shared/ui-features.js`](../../frontend/shared/ui-
 | v0.1 | 2026-05-22 | 初版；Phase A health/engines 落地 |
 | v0.2 | 2026-05-26 | 新增 LiteDocumentProfile、`POST /analyze/profile` |
 | v0.3 | 2026-05-27 | Document Profile 移至右栏 Profile Tab；Transactions/Mapped 默认隐藏（ui-features.js） |
+| v0.4 | 2026-05-27 | 统一 flavor 语义（auto/bordered/unbordered）；Smart Camelot 低分兜底策略 |

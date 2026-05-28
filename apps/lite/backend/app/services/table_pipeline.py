@@ -79,6 +79,27 @@ def _parse_custom_params(custom_params: Optional[str]) -> Dict[str, Any]:
         raise ValueError(f"Invalid custom_params JSON: {exc}") from exc
 
 
+def _resolve_user_flavor(engine: str, flavor: str) -> str:
+    """Map user-facing flavor (auto/bordered/unbordered) to engine-specific flavor."""
+    flavor = (flavor or "auto").lower()
+    if flavor in ("auto", "lines", "text", "lattice", "stream"):
+        return flavor
+    engine = (engine or "auto").lower()
+    if flavor == "bordered":
+        if engine == "camelot":
+            return "lattice"
+        if engine == "pdfplumber":
+            return "lines"
+        return "bordered"
+    if flavor == "unbordered":
+        if engine == "camelot":
+            return "stream"
+        if engine == "pdfplumber":
+            return "text"
+        return "unbordered"
+    return flavor
+
+
 def _build_processor_params(
     table_method: str,
     resolved_flavor: str,
@@ -90,6 +111,7 @@ def _build_processor_params(
         "table_method": table_method,
         "table_flavor": None if resolved_flavor == "auto" else resolved_flavor,
         "table_score_threshold": score_threshold,
+        "smart_camelot_fallback_threshold": 0.8,
     }
     if param_mode == "custom":
         params["pdfplumber_param_mode"] = "custom"
@@ -129,7 +151,7 @@ def extract_tables_from_pdf(
 
     table_method, resolved_flavor, engine_chain = _resolve_table_method(mode, engine)
     if flavor and flavor != "auto":
-        resolved_flavor = flavor
+        resolved_flavor = _resolve_user_flavor(engine, flavor)
 
     custom = _parse_custom_params(custom_params)
 

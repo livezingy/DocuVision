@@ -24,6 +24,7 @@ def test_analyze_profile_digital_pdf():
     assert data["input"]["detected_file_type"] == "pdf_digital"
     assert len(data["pages"]) >= 1
     assert data["pages"][0]["table_type"] in ("bordered", "unbordered", "none")
+    assert data["pages"][0]["suggested_routing"]["flavor"] in ("bordered", "unbordered")
     assert data["scan_profile"] is None
 
 

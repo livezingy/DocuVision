@@ -211,9 +211,38 @@ function formatRoutingSummary(routing) {
   const engine = routing.engine_used || routing.requested_engine || "auto";
   const flavor = routing.flavor_used;
   if (flavor && flavor !== "auto" && !String(engine).includes(flavor)) {
-    return `${engine} · ${flavor}`;
+    return `${engine} · ${formatFlavorLabel(flavor)}`;
   }
   return engine;
+}
+
+function formatFlavorLabel(flavor) {
+  const labels = { auto: "Auto", bordered: "Bordered", unbordered: "Unbordered" };
+  return labels[flavor] || flavor;
+}
+
+function normalizeFlavorFromProfile(flavor) {
+  if (!flavor || flavor === "auto") return "auto";
+  const f = String(flavor).toLowerCase();
+  if (f === "bordered" || f.includes("lines") || f.includes("lattice")) return "bordered";
+  if (f === "unbordered" || f.includes("text") || f.includes("stream")) return "unbordered";
+  return "auto";
+}
+
+function resolveFlavorForApi(engine, flavor) {
+  if (!flavor || flavor === "auto") return "auto";
+  const eng = (engine || "auto").toLowerCase();
+  if (flavor === "bordered") {
+    if (eng === "camelot") return "lattice";
+    if (eng === "pdfplumber") return "lines";
+    return "bordered";
+  }
+  if (flavor === "unbordered") {
+    if (eng === "camelot") return "stream";
+    if (eng === "pdfplumber") return "text";
+    return "unbordered";
+  }
+  return flavor;
 }
 
 function formatTableSourceLabel(source) {
@@ -624,9 +653,9 @@ function renderPageProfileDetail(pageProf) {
       <div class="profile-card">
         <h5>Routing suggestion</h5>
         <div>Mode: <strong>${escapeHtml(sr.engine || "smart")}</strong></div>
-        <div>Strategy: <strong>${escapeHtml(sr.flavor || "auto")}</strong></div>
+        <div>Strategy: <strong>${escapeHtml(formatFlavorLabel(normalizeFlavorFromProfile(sr.flavor)))}</strong></div>
         <div>Params: ${escapeHtml(sr.param_mode || "auto")}</div>
-        <p class="profile-routing-note">Smart mode runs pdfplumber first; camelot refines bordered tables when needed.</p>
+        <p class="profile-routing-note">Smart mode runs pdfplumber first; camelot full-page fallback when scores are low.</p>
       </div>
     </div>
     <details class="profile-details" open>
@@ -662,7 +691,7 @@ function applyProfileToAdvanced() {
   state.options.mode = "advanced";
   state.options.paramMode = "custom";
   state.options.engine = pageProf.suggested_routing?.engine || "auto";
-  state.options.flavor = pageProf.suggested_routing?.flavor || "auto";
+  state.options.flavor = normalizeFlavorFromProfile(pageProf.suggested_routing?.flavor);
   state.options.customParams = pageProf.computed_params;
   openModal();
   syncModalFromState();
@@ -675,7 +704,7 @@ function syncModalFromState() {
   $("optExtractText").checked = state.options.extractText;
   $("optPages").value = state.options.pages || "";
   $("optEngine").value = state.options.engine;
-  $("optFlavor").value = state.options.flavor;
+  $("optFlavor").value = normalizeFlavorFromProfile(state.options.flavor);
   $("optOcrEngine").value = state.options.ocrEngine;
   $("optTransformer").value = state.options.transformer;
   $("optLanguages").value = state.options.languages;
@@ -699,7 +728,7 @@ function updateModalProfileSummary() {
     el.textContent = state.profile?.scan_profile?.message || "Upload a file to see suggested parameters.";
     return;
   }
-  el.textContent = `Page ${pp.page}: ${pp.table_type} (score ${pp.table_type_score?.toFixed(2)}) → ${pp.suggested_routing?.engine} / ${pp.suggested_routing?.flavor}`;
+  el.textContent = `Page ${pp.page}: ${pp.table_type} (score ${pp.table_type_score?.toFixed(2)}) → ${pp.suggested_routing?.engine} / ${formatFlavorLabel(normalizeFlavorFromProfile(pp.suggested_routing?.flavor))}`;
 }
 
 function updateAdvancedControls() {
@@ -708,6 +737,16 @@ function updateAdvancedControls() {
   $("enginesHint").textContent = advanced
     ? "Override Smart routing with explicit engine settings."
     : "Smart mode uses automatic engine selection.";
+  const hintEl = $("paramModeHint");
+  if (hintEl) {
+    if (!advanced) {
+      hintEl.textContent = "";
+    } else if (custom) {
+      hintEl.textContent = "Custom mode uses the JSON parameter blocks below. Edit values or apply profile suggestions.";
+    } else {
+      hintEl.textContent = "Auto param mode derives extraction settings from page features at runtime.";
+    }
+  }
   ["optEngine", "optFlavor", "optOcrEngine", "optTransformer", "optLanguages"].forEach((id) => {
     $(id).disabled = !advanced;
   });
@@ -722,7 +761,7 @@ function readOptionsFromModal() {
   state.options.extractText = $("optExtractText").checked;
   state.options.pages = $("optPages").value.trim();
   state.options.engine = $("optEngine").value;
-  state.options.flavor = $("optFlavor").value;
+  state.options.flavor = normalizeFlavorFromProfile($("optFlavor").value);
   state.options.ocrEngine = $("optOcrEngine").value;
   state.options.transformer = $("optTransformer").value;
   state.options.languages = $("optLanguages").value.trim() || "eng";
@@ -957,7 +996,9 @@ async function runExtractionForItem(item) {
   form.append("file", item.file);
   form.append("mode", state.options.mode);
   form.append("engine", state.options.mode === "advanced" ? state.options.engine : "auto");
-  form.append("flavor", state.options.mode === "advanced" ? state.options.flavor : "auto");
+  form.append("flavor", state.options.mode === "advanced"
+    ? resolveFlavorForApi(state.options.engine, state.options.flavor)
+    : "auto");
   form.append("ocr_engine", state.options.mode === "advanced" ? state.options.ocrEngine : "auto");
   form.append("languages", state.options.languages || "eng");
   form.append("extract_tables", String(state.options.extractTables));

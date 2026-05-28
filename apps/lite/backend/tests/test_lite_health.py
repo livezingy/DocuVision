@@ -59,6 +59,8 @@ def test_engines_lists_pdfplumber_and_camelot():
     engine_ids = {e["id"] for e in data["engines"]}
     assert "pdfplumber" in engine_ids
     assert "camelot" in engine_ids
+    pdfplumber = next(e for e in data["engines"] if e["id"] == "pdfplumber")
+    assert pdfplumber["flavors"] == ["auto", "bordered", "unbordered"]
 
 
 def test_lite_result_schema_keys():

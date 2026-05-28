@@ -9,6 +9,7 @@
   };
 
   function isContentTabEnabled(name) {
+    if (!(name in contentTabs)) return true;
     return !!contentTabs[name];
   }
 

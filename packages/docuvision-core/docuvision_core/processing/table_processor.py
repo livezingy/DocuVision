@@ -408,14 +408,13 @@ class TableProcessor:
         if not all_pdfplumber:
             all_pdfplumber = pdfplumber_extractor.extract_tables(page, feature_analyzer, fallback_params)
         all_pdfplumber = _dedupe_overlapping_tables(all_pdfplumber)
-        
-        # Comment.
-        high_score_bboxes = [r["bbox"] for r in all_pdfplumber if r["score"] > 0.7 and r["bbox"] is not None]
+
         page_num = getattr(page, "page_number", 1)
-        
-        # Comment.
+        fallback_threshold = self.params.get('smart_camelot_fallback_threshold', 0.8)
+        max_pdfplumber_score = max((r["score"] for r in all_pdfplumber), default=0.0)
+
         camelot_results = []
-        if high_score_bboxes:
+        if max_pdfplumber_score < fallback_threshold:
             camelot_params = {
                 'pdf_path': pdf_path,
                 'page_num': page_num,
@@ -424,7 +423,6 @@ class TableProcessor:
                 'camelot_lattice_custom_params': self.params.get('camelot_lattice_custom_params'),
                 'camelot_stream_custom_params': self.params.get('camelot_stream_custom_params'),
                 'score_threshold': 0.0,
-                'table_areas': high_score_bboxes
             }
             camelot_results = camelot_extractor.extract_tables(page, feature_analyzer, camelot_params)
         

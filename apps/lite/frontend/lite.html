@@ -365,10 +365,8 @@
           <label class="field-row">Flavor
             <select id="optFlavor" class="select-input" disabled>
               <option value="auto">Auto</option>
-              <option value="lattice">lattice</option>
-              <option value="stream">stream</option>
-              <option value="lines">lines</option>
-              <option value="text">text</option>
+              <option value="bordered">Bordered</option>
+              <option value="unbordered">Unbordered</option>
             </select>
           </label>
           <label class="field-row">OCR engine
@@ -397,6 +395,7 @@
             <input type="radio" name="paramMode" value="custom" /> Param mode: Custom
           </label>
           <div class="profile-summary" id="modalProfileSummary">Upload a file to see suggested parameters.</div>
+          <p class="modal-hint" id="paramModeHint"></p>
           <details class="param-group">
             <summary>Camelot lattice params</summary>
             <textarea id="paramsCamelotLattice" class="param-textarea" rows="4" disabled></textarea>

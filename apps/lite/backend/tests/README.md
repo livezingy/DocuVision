@@ -11,6 +11,29 @@ Push 至 `main` 或 `feature/docuvision-lite` 且变更路径含 `apps/lite/**`�
 
 ## 2. 云端手动命令
 
+### 2.1 强制同步远程（丢弃云端本地改动）
+
+若云端曾手动改过测试文件（如 `test_lite_ocr_messaging.py` 里的路径），`git pull` 可能冲突或无法覆盖。在仓库根目录执行：
+
+```bash
+cd /workspace/DocuVision   # 按实际路径调整
+git fetch origin
+git checkout feature/docuvision-lite
+git reset --hard origin/feature/docuvision-lite
+git clean -fd   # 可选：删除未跟踪文件；慎用，会删掉未提交的本地新文件
+```
+
+**说明**：`reset --hard` 会永久丢弃该分支上所有未提交修改，与远程完全一致。仅用于测试机同步，勿在有需保留的本地实验时使用。
+
+较温和备选（想保留改动到 stash）：
+
+```bash
+git stash push -u -m "cloud-local"
+git pull origin feature/docuvision-lite
+```
+
+### 2.2 环境与 pytest
+
 ```bash
 cd apps/lite/backend
 python3 -m venv ~/docuvision_lite_env

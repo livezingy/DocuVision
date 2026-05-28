@@ -363,10 +363,10 @@ function updateQueueUI() {
         <div class="queue-item-meta">${formatBytes(item.file.size)} · ${item.status || "pending"}</div>
         <div class="queue-item-status">${escapeHtml(item.statusMessage || "")}</div>
       </div>
-      <button type="button" class="queue-item-action" title="Remove from queue" aria-label="Remove">
+      <button type="button" class="queue-item-action" title="Remove" aria-label="Remove">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
         </svg>
       </button>`;
     row.querySelector(".queue-item-body").addEventListener("click", () => selectQueueItem(index));
@@ -509,59 +509,6 @@ async function addFilesToQueue(files, { replace = false } = {}) {
   updateQueueUI();
   persistSession();
   return addedItems.length;
-}
-
-async function processQueueSequential() {
-  if (state.processing) return;
-  state.processing = true;
-  els.runBtn.disabled = true;
-  const pinnedIndex = state.activeIndex >= 0 ? state.activeIndex : state.queue.length - 1;
-
-  for (let i = 0; i < state.queue.length; i++) {
-    const item = state.queue[i];
-    item.status = "profiling";
-    item.statusMessage = "Analyzing profile…";
-    updateQueueUI();
-
-    try {
-      item.profile = await fetchProfileForItem(item.file);
-    } catch (err) {
-      item.status = "failed";
-      item.statusMessage = err.message || "Profile failed";
-      updateQueueUI();
-      persistSession();
-      continue;
-    }
-
-    item.status = "extracting";
-    item.statusMessage = "Extracting…";
-    updateQueueUI();
-    await runExtractionForItem(item, { silent: true });
-
-    item.status = item.result ? "done" : "failed";
-    item.statusMessage = item.result ? `Done (${item.result.processing_ms || 0} ms)` : "Failed";
-    updateQueueUI();
-    persistSession();
-  }
-
-  state.activeIndex = Math.min(Math.max(pinnedIndex, 0), state.queue.length - 1);
-  syncActiveFromQueue();
-  const active = getActiveItem();
-  if (active?.file) {
-    await renderPreview(active.file);
-  }
-  state.profile = active?.profile || null;
-  renderDocumentProfile();
-  renderResults(active?.result || null);
-  if (active?.result) {
-    setActiveMainTab("content");
-    setActiveContentTab(active.result.tables?.length ? "tables" : "text");
-  }
-
-  state.processing = false;
-  els.runBtn.disabled = !state.queue.length;
-  setStatus("Queue processing complete");
-  persistSession();
 }
 
 function formatBytes(n) {
@@ -1193,24 +1140,53 @@ async function runExtraction() {
     setStatus("Please upload a file first.");
     return;
   }
-  if (state.queue.length > 1) {
-    await processQueueSequential();
+  const item = getActiveItem();
+  if (!item) {
+    setStatus("Select a file in the queue to analyze.");
     return;
   }
-  const item = getActiveItem();
-  if (!item) return;
+  if (state.processing) return;
+
+  state.processing = true;
   els.runBtn.disabled = true;
+
+  if (!item.profile) {
+    item.status = "profiling";
+    item.statusMessage = "Analyzing profile…";
+    updateQueueUI();
+    try {
+      item.profile = await fetchProfileForItem(item.file);
+      state.profile = item.profile;
+    } catch (err) {
+      item.status = "failed";
+      item.statusMessage = err.message || "Profile failed";
+      updateQueueUI();
+      state.processing = false;
+      els.runBtn.disabled = !state.queue.length;
+      setStatus(`Profile failed: ${err.message}`);
+      persistSession();
+      return;
+    }
+  }
+
   item.status = "extracting";
+  item.statusMessage = "Extracting…";
   updateQueueUI();
   setStatus("Extracting…");
   await runExtractionForItem(item);
+
   item.status = item.result ? "done" : "failed";
+  item.statusMessage = item.result ? `Done (${item.result.processing_ms || 0} ms)` : "Failed";
   updateQueueUI();
-  els.runBtn.disabled = false;
+  state.processing = false;
+  els.runBtn.disabled = !state.queue.length;
   persistSession();
+
   if (item.result) {
     setActiveMainTab("content");
     setActiveContentTab(item.result.tables?.length ? "tables" : "text");
+    const routing = formatRoutingSummary(item.result.routing);
+    setStatus(`Done in ${item.result.processing_ms || 0} ms — ${routing}`);
   }
 }
 

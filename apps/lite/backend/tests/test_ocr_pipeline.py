@@ -13,6 +13,7 @@ from app.services.ocr_pipeline import (
     TEXT_PREVIEW_MAX_CHARS,
     _normalize_easyocr_bbox,
     _run_easyocr,
+    _run_tesseract,
     build_text_preview,
     extract_ocr_from_image,
 )
@@ -57,6 +58,37 @@ def test_run_easyocr_maps_bbox_rect(mock_create_engine):
     assert blocks[0]["text"] == "Hello"
     assert blocks[0]["engine"] == "easyocr"
     assert blocks[0]["confidence"] == pytest.approx(0.91)
+
+
+def test_run_tesseract_groups_words_into_paragraphs():
+    import sys
+    from unittest.mock import MagicMock
+
+    mock_pytesseract = MagicMock()
+    mock_pytesseract.Output = MagicMock()
+    mock_pytesseract.Output.DICT = "dict"
+    mock_pytesseract.image_to_data.return_value = {
+        "level": [5, 5, 5, 5],
+        "text": ["Hello", "world.", "Second", "paragraph"],
+        "conf": [90, 88, 92, 91],
+        "page_num": [1, 1, 1, 1],
+        "block_num": [1, 1, 2, 2],
+        "par_num": [1, 1, 1, 1],
+        "line_num": [1, 1, 1, 1],
+        "left": [10, 60, 10, 80],
+        "top": [20, 20, 50, 50],
+        "width": [40, 40, 50, 60],
+        "height": [12, 12, 12, 12],
+    }
+
+    image = Image.new("RGB", (200, 100), "white")
+    with patch.dict(sys.modules, {"pytesseract": mock_pytesseract}):
+        blocks = _run_tesseract(image, min_confidence=0.5)
+
+    assert len(blocks) == 2
+    assert blocks[0]["text"] == "Hello world."
+    assert blocks[1]["text"] == "Second paragraph"
+    assert blocks[0]["engine"] == "tesseract"
 
 
 def test_text_preview_truncates_but_ocr_full():

@@ -156,12 +156,21 @@ def _run_tesseract(image: Image.Image, min_confidence: float) -> List[Dict[str, 
     import pytesseract
 
     data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
-    blocks: List[Dict[str, Any]] = []
+    paragraphs: Dict[tuple, Dict[str, Any]] = {}
     n = len(data.get("text", []))
+
     for i in range(n):
+        try:
+            level = int(data["level"][i])
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+        if level != 5:
+            continue
+
         text = (data["text"][i] or "").strip()
         if not text:
             continue
+
         conf_raw = data.get("conf", [0])[i]
         try:
             confidence = float(conf_raw) / 100.0
@@ -169,16 +178,55 @@ def _run_tesseract(image: Image.Image, min_confidence: float) -> List[Dict[str, 
             confidence = 0.0
         if confidence < min_confidence:
             continue
-        x, y, w, h = data["left"][i], data["top"][i], data["width"][i], data["height"][i]
+
+        page_num = int(data.get("page_num", [1])[i])
+        block_num = int(data.get("block_num", [0])[i])
+        par_num = int(data.get("par_num", [0])[i])
+        line_num = int(data.get("line_num", [0])[i])
+        key = (page_num, block_num, par_num)
+
+        x = float(data["left"][i])
+        y = float(data["top"][i])
+        x2 = x + float(data["width"][i])
+        y2 = y + float(data["height"][i])
+
+        if key not in paragraphs:
+            paragraphs[key] = {
+                "page": page_num,
+                "bbox": [x, y, x2, y2],
+                "lines": {},
+            }
+        entry = paragraphs[key]
+        entry["bbox"] = [
+            min(entry["bbox"][0], x),
+            min(entry["bbox"][1], y),
+            max(entry["bbox"][2], x2),
+            max(entry["bbox"][3], y2),
+        ]
+        line_words = entry["lines"].setdefault(line_num, [])
+        line_words.append((x, text, confidence))
+
+    blocks: List[Dict[str, Any]] = []
+    for _key in sorted(paragraphs.keys()):
+        entry = paragraphs[_key]
+        line_texts: List[str] = []
+        conf_values: List[float] = []
+        for line_num in sorted(entry["lines"].keys()):
+            words = sorted(entry["lines"][line_num], key=lambda item: item[0])
+            line_texts.append(" ".join(word for _, word, _ in words))
+            conf_values.extend(conf for _, _, conf in words)
+
         blocks.append(
             {
-                "page": 1,
-                "bbox": [float(x), float(y), float(x + w), float(y + h)],
-                "text": text,
-                "confidence": confidence,
+                "page": entry["page"],
+                "bbox": entry["bbox"],
+                "text": "\n".join(line_texts),
+                "confidence": sum(conf_values) / len(conf_values) if conf_values else 0.0,
                 "engine": "tesseract",
             }
         )
+
+    blocks.sort(key=lambda item: (item["page"], item["bbox"][1], item["bbox"][0]))
     return blocks
 
 

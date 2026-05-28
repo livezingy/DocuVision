@@ -39,7 +39,7 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 | 3 | Hover queue item | **Remove (×)** button appears |
 | 4 | Remove a completed file | Item deleted; can upload another file |
 | 5 | Remove active file | Preview + results switch to next item or empty state |
-| 6 | Upload 3 files, select file 3, Run Analysis | Preview stays on file 3 while queue processes all; results show file 3 when done |
+| 6 | Upload 3 files, select file 3, Run Analysis | **Only file 3** is profiled/extracted; other queue items unchanged |
 
 ## LITE-UI-005 Export actions (Lite generic)
 

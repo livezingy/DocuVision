@@ -443,9 +443,9 @@ class TableProcessor:
                 'score_threshold': 0.0,
             }
             camelot_results = camelot_extractor.extract_tables(page, feature_analyzer, camelot_params)
-        
-        # Comment.
-        all_results = all_pdfplumber + camelot_results
+
+        substantive_pdfplumber = [r for r in all_pdfplumber if _pdfplumber_result_has_content(r)]
+        all_results = substantive_pdfplumber + camelot_results
         all_results = _dedupe_overlapping_tables(all_results)
         unique_tables = {}
         for item in all_results:

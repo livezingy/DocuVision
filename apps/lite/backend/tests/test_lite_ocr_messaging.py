@@ -54,7 +54,7 @@ def test_empty_ocr_emits_no_text_detected(mock_run, _mock_engine, mock_load):
 @patch("app.services.ocr_pipeline._resolve_ocr_engine", return_value="easyocr")
 @patch("app.services.ocr_pipeline._run_easyocr", side_effect=RuntimeError("EasyOCR failed to initialize"))
 def test_ocr_runtime_error_emits_extraction_failed(mock_run, _mock_engine, mock_load):
-    mock_load.return_value = [(1, Image.new("RGB", (10, 10))]
+    mock_load.return_value = [(1, Image.new("RGB", (10, 10)))]
 
     output = extract_ocr_from_image(Path("scan.png"), mode="smart", engine="auto")
 

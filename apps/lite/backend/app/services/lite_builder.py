@@ -102,6 +102,9 @@ def build_lite_result(
             LiteWarning(code=warning_code, message=w.get("message", ""), severity=Severity.WARNING)
         )
 
+    routing_data = pipeline_output.get("routing", {})
+    quality_data = pipeline_output.get("quality", {})
+
     hints: List[LiteHint] = []
     has_content = bool(tables) or bool(ocr_blocks)
     overall_confidence = float(quality_data.get("overall_confidence") or 0.0)
@@ -121,9 +124,6 @@ def build_lite_result(
                 link="https://github.com/livezingy/DocuVision",
             )
         )
-
-    routing_data = pipeline_output.get("routing", {})
-    quality_data = pipeline_output.get("quality", {})
 
     transactions, mapped_transactions = _enrich_demo_fields(pipeline_output, tables)
 

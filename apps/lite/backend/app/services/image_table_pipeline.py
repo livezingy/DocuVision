@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -73,6 +74,11 @@ async def _run_transformer_parser(image: Image.Image) -> Dict[str, Any]:
     return await parser.parser_image(image)
 
 
+def _run_transformer_in_thread(image: Image.Image) -> Dict[str, Any]:
+    """Run async parser in a worker thread (safe when caller has a running event loop)."""
+    return asyncio.run(_run_transformer_parser(image))
+
+
 def extract_tables_from_image(
     file_path: Path,
     *,
@@ -91,7 +97,8 @@ def extract_tables_from_image(
 
     image = Image.open(file_path).convert("RGB")
     try:
-        parser_result = asyncio.run(_run_transformer_parser(image))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            parser_result = executor.submit(_run_transformer_in_thread, image).result()
     except RuntimeError:
         raise
     except Exception as exc:

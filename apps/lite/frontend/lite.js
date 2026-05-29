@@ -1325,7 +1325,34 @@ function initResultsTabs() {
   });
 
   $("copyJsonBtn").addEventListener("click", () => {
-    if (state.result) navigator.clipboard.writeText(JSON.stringify(state.result, null, 2));
+    if (!state.result) {
+      const msg = "No result data to copy.";
+      DocuVisionNotify.show(msg, "error");
+      setStatus(msg);
+      return;
+    }
+    const text = JSON.stringify(state.result, null, 2);
+    navigator.clipboard.writeText(text).then(() => {
+      DocuVisionNotify.show("JSON copied to clipboard", "success");
+      setStatus("JSON copied to clipboard");
+    }).catch(() => {
+      DocuVisionNotify.show("Failed to copy JSON", "error");
+      setStatus("Failed to copy JSON");
+    });
+  });
+
+  $("downloadJsonBtn")?.addEventListener("click", () => {
+    if (!state.result) {
+      const msg = "No result data to download.";
+      DocuVisionNotify.show(msg, "error");
+      setStatus(msg);
+      return;
+    }
+    const text = JSON.stringify(state.result, null, 2);
+    const jobId = state.result.job_id || "lite_result";
+    DocuVisionExport.downloadText(text, `${jobId}_result.json`, "application/json");
+    DocuVisionNotify.show("JSON downloaded", "success");
+    setStatus("JSON downloaded");
   });
 
   initExportButtons();
@@ -1346,63 +1373,16 @@ function initResultsTabs() {
 }
 
 function downloadBlob(blob, name) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  DocuVisionExport.downloadBlob(blob, name);
 }
 
 function initExportButtons() {
-  document.querySelectorAll(".export-btn[data-format]").forEach((btn) => {
-    btn.addEventListener("click", () => exportLiteResults(btn.dataset.format));
+  DocuVisionExport.init({
+    getJobId: () => state.result?.job_id || null,
+    buildUrl: (jobId, apiFormat) => `${API_BASE}/export/${jobId}.${apiFormat}`,
+    notify: (message, type) => DocuVisionNotify.show(message, type),
+    onStatus: (message) => setStatus(message),
   });
-}
-
-async function exportLiteResults(format) {
-  if (!state.result?.job_id) {
-    setStatus("No completed result to export. Run analysis first.");
-    return;
-  }
-
-  const jobId = state.result.job_id;
-  const apiFormat = (format || "").toLowerCase() === "word" ? "docx" : (format || "").toLowerCase();
-  const url = `${API_BASE}/export/${jobId}.${apiFormat}`;
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      let detail = response.statusText;
-      try {
-        const errBody = await response.json();
-        detail = errBody.detail || errBody?.error?.message || detail;
-      } catch {
-        /* ignore */
-      }
-      setStatus(`Export failed: ${detail}`);
-      return;
-    }
-
-    const contentType = response.headers.get("content-type") || "";
-
-    if (contentType.includes("application/json") && apiFormat === "markdown") {
-      const payload = await response.json();
-      const md = payload.markdown || "";
-      downloadBlob(new Blob([md], { type: "text/markdown" }), `${jobId}_result.md`);
-    } else if (apiFormat === "json") {
-      const text = await response.text();
-      downloadBlob(new Blob([text], { type: "application/json" }), `${jobId}_result.json`);
-    } else {
-      const blob = await response.blob();
-      const disposition = response.headers.get("content-disposition") || "";
-      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
-      const filename = match?.[1] || `${jobId}_result.${apiFormat}`;
-      downloadBlob(blob, filename);
-    }
-    setStatus(`Exported ${apiFormat.toUpperCase()} successfully`);
-  } catch (err) {
-    setStatus(`Export failed: ${err.message}`);
-  }
 }
 
 function initPanelLayout() {

@@ -1,4 +1,6 @@
-/* DocuVision Lite — overrides on top of /shared/layout.css */
+/* DocuVision Lite — overrides on top of /shared/layout.css + /shared/components.css
+ * Do NOT override shared components: .export-*, .result-tool-*, .result-view-toolbar
+ */
 
 .logo-subtitle.lite-subtitle {
     color: var(--accent-400);
@@ -194,17 +196,6 @@
 
 .param-textarea:disabled {
     opacity: 0.5;
-}
-
-/* Lite export buttons */
-.export-buttons {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.export-section .export-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
 }
 
 .quality-panel {

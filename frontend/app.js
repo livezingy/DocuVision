@@ -1072,12 +1072,11 @@ function initAnalysisView() {
  * Initialize export buttons
  */
 function initExportButtons() {
-    const exportBtns = document.querySelectorAll('.export-btn');
-    exportBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const format = btn.dataset.format || btn.textContent.trim();
-            exportResults(format);
-        });
+    DocuVisionExport.init({
+        getJobId: () => currentTaskId,
+        buildUrl: (jobId, apiFormat) => `${API_BASE_URL}/tasks/${jobId}/export/${apiFormat}`,
+        notify: (message, type) => DocuVisionNotify.show(message, type),
+        supportsAzure: true,
     });
 }
 
@@ -3237,62 +3236,12 @@ function updateStatusBar(status = 'default', data = {}) {
  * Export results via backend /tasks/{task_id}/export/{format}
  */
 async function exportResults(format) {
-    if (!currentTaskId) {
-        showNotification('No completed task to export. Run analysis first.', 'error');
-        return;
-    }
-
-    format = (format || '').toLowerCase();
-    const apiFormat = format === 'word' ? 'docx' : format;
-
-    try {
-        const response = await fetch(
-            `${API_BASE_URL}/tasks/${currentTaskId}/export/${apiFormat}`
-        );
-
-        if (!response.ok) {
-            let detail = response.statusText;
-            try {
-                const errBody = await response.json();
-                detail = errBody.detail || detail;
-            } catch (_) { /* ignore */ }
-            showNotification(`Export failed: ${detail}`, 'error');
-            return;
-        }
-
-        const contentType = response.headers.get('content-type') || '';
-
-        if (contentType.includes('application/json') && (apiFormat === 'markdown' || apiFormat === 'md')) {
-            const payload = await response.json();
-            const md = payload.markdown || '';
-            downloadFile(md, `${currentTaskId}_result.md`, 'text/markdown');
-        } else if (contentType.includes('application/json') && apiFormat === 'azure') {
-            const payload = await response.json();
-            downloadFile(
-                JSON.stringify(payload, null, 2),
-                `${currentTaskId}_azure.json`,
-                'application/json'
-            );
-        } else {
-            const blob = await response.blob();
-            const disposition = response.headers.get('content-disposition') || '';
-            const match = disposition.match(/filename="?([^";\n]+)"?/i);
-            const filename = match ? match[1] : `${currentTaskId}_export.${apiFormat}`;
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        showNotification(`Exported ${format.toUpperCase()} successfully`, 'success');
-    } catch (err) {
-        console.error('[Export]', err);
-        showNotification(`Export failed: ${err.message}`, 'error');
-    }
+    return DocuVisionExport.exportResults(format, {
+        getJobId: () => currentTaskId,
+        buildUrl: (jobId, apiFormat) => `${API_BASE_URL}/tasks/${jobId}/export/${apiFormat}`,
+        notify: (message, type) => DocuVisionNotify.show(message, type),
+        supportsAzure: true,
+    });
 }
 
 /**
@@ -3353,74 +3302,52 @@ function downloadFile(content, filename, mimeType) {
  * Show notification
  */
 function showNotification(message, type = 'info') {
-    // Remove existing notifications
+    if (typeof DocuVisionNotify !== 'undefined') {
+        DocuVisionNotify.show(message, type);
+        return;
+    }
+
+    // Fallback if shared script failed to load
     const existing = document.querySelector('.notification');
     if (existing) {
         existing.remove();
     }
 
-    // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <div class="notification-icon">
-            ${getNotificationIcon(type)}
-        </div>
-        <div class="notification-message">${message}</div>
-    `;
-
-    // Add styles
+    notification.textContent = message;
     notification.style.cssText = `
         position: fixed;
         top: 80px;
         right: 20px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
         padding: 14px 20px;
-        background: ${getNotificationColor(type)};
+        background: #6366f1;
         border-radius: 10px;
         color: white;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         z-index: 9999;
-        animation: slideIn 0.3s ease-out;
     `;
-
     document.body.appendChild(notification);
-
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease-out forwards';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    setTimeout(() => notification.remove(), 3000);
 }
 
 /**
  * Get notification icon
  */
 function getNotificationIcon(type) {
-    const icons = {
-        success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
-        error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
-        warning: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
-        info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
-    };
-    return icons[type] || icons.info;
+    if (typeof DocuVisionNotify !== 'undefined') {
+        return DocuVisionNotify.getNotificationIcon(type);
+    }
+    return '';
 }
 
 /**
  * Get notification color
  */
 function getNotificationColor(type) {
-    const colors = {
-        success: 'linear-gradient(135deg, #22c55e, #16a34a)',
-        error: 'linear-gradient(135deg, #f43f5e, #e11d48)',
-        warning: 'linear-gradient(135deg, #f59e0b, #d97706)',
-        info: 'linear-gradient(135deg, #6366f1, #4f46e5)'
-    };
-    return colors[type] || colors.info;
+    if (typeof DocuVisionNotify !== 'undefined') {
+        return DocuVisionNotify.getNotificationColor(type);
+    }
+    return '#6366f1';
 }
 
 // ============================================

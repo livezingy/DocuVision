@@ -47,7 +47,17 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 |------|--------|----------|
 | 1 | Run analysis, open Export Results | Buttons: **JSON**, **CSV**, **Markdown**, **Word** (Pro-style icons) |
 | 2 | Click each export button | Downloads via `/api/v1/lite/export/{job_id}.{format}` |
-| 3 | Validation Dashboard / Save | **Hidden** in generic Lite (enable via `ui-features.js` for custom demos) |
+| 3 | Validation Dashboard / Save | **Hidden** in generic Lite (enable via `ui-features.js` for custom demos); when hidden, not inside 4-column export grid |
+
+## LITE-UI-008 Export parity (shared shell)
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Run analysis, inspect Export Results | **4 equal-width buttons** in one grid row (JSON / CSV / Markdown / Word) |
+| 2 | Inspect button icons | SVG icons **20×20px**, visually matched to Pro |
+| 3 | Click each export | File downloads; **toast** top-right + **status bar** message (both) |
+| 4 | Result tab | **Copy** and **Download** JSON toolbar with icons (Pro-style) |
+| 5 | Image + Text + Tables | Tables extracted when Transformer deps installed; no `coroutine was never awaited` in server log |
 
 ## LITE-UI-006 Bordered PDF tables
 
@@ -71,7 +81,10 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 |------|------|-----|--------|
 | HTML shell | `apps/lite/frontend/lite.html` | `frontend/index.html` | — |
 | App logic | `apps/lite/frontend/lite.js` | `frontend/app.js` | — |
-| Styles | `lite-overrides.css` | `frontend/styles.css` | `frontend/shared/layout.css`, `tokens.css` |
-| Queue/preview JS | Lite IndexedDB + max 3 + remove | Pro DOM queue + server task delete | Pattern only (not shared code) |
+| Styles | `lite-overrides.css` (Lite-only; **no** `.export-*` overrides) | `frontend/styles.css` | `layout.css`, `tokens.css`, **`components.css`** |
+| Queue/preview JS | Lite IndexedDB queue + remove | Pro DOM queue + server task delete | Pattern only (not shared code) |
 | Panel resize | — | — | `frontend/shared/panel-resize.js` |
 | Feature flags | — | — | `frontend/shared/ui-features.js` |
+| Notifications / Export JS | via `lite.js` config | via `app.js` config | **`notifications.js`**, **`export-ui.js`** |
+
+See [`docs/architecture/shared-ui-shell.md`](../../../docs/architecture/shared-ui-shell.md) for shared UI maintenance rules.

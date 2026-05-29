@@ -91,12 +91,19 @@ def _run_pipeline(
         result = _empty_scan_image_result(detected, page_count)
         result["routing"] = {"mode": mode.value if hasattr(mode, "value") else mode}
 
-        if extract_tables and detected.value == "image" and use_transformer:
+        if extract_tables and detected.value in {"image", "pdf_scan"} and use_transformer:
             try:
+                table_ocr_engine = None
+                if mode == ExtractMode.ADVANCED and ocr_engine not in ("auto", ""):
+                    table_ocr_engine = ocr_engine
                 table_output = extract_tables_from_image(
                     file_path,
                     mode=mode,
                     score_threshold=score_threshold,
+                    pages_spec=pages,
+                    max_pages=settings.MAX_PAGES,
+                    table_ocr_engine=table_ocr_engine,
+                    table_ocr_languages=lang_list,
                 )
                 result = merge_pipeline_outputs(result, table_output)
             except RuntimeError as exc:
@@ -114,6 +121,7 @@ def _run_pipeline(
                 engine=ocr_engine if mode == ExtractMode.ADVANCED else engine,
                 languages=lang_list,
                 max_pages=settings.MAX_PAGES,
+                pages_spec=pages,
             )
             result = merge_pipeline_outputs(result, ocr_output)
 

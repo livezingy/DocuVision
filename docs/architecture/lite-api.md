@@ -166,6 +166,14 @@ WarningCode: [scan_detected, low_confidence, engine_fallback, transformer_unavai
 
 返回引擎 metadata，供 Lite 前端 Advanced 面板使用（见实现 `routes_health.py`）。
 
+| Engine | `file_types` | UI section |
+|--------|--------------|------------|
+| `pdfplumber`, `camelot` | `pdf_digital` | Engines — digital table extraction |
+| `tesseract`, `easyocr` | `image`, `pdf_scan` | Engines — text OCR |
+| `transformer` | `image`, `pdf_scan` | Engines — raster table extraction (includes scanned PDF after rasterize) |
+
+模型权重路径与换主机流程见 [packages/docuvision-core/models/README.md](../../packages/docuvision-core/models/README.md)。
+
 ### 7.3 POST /analyze/profile
 
 **Request** `multipart/form-data`：`file`

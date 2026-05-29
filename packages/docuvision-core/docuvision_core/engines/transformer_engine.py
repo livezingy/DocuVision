@@ -3,6 +3,7 @@
 
 import os
 import torch
+from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from PIL import Image
 import numpy as np
@@ -13,6 +14,12 @@ from transformers import (
 )
 from docuvision_core.engines.base import BaseDetectionEngine
 from docuvision_core.utils.logger import AppLogger
+from docuvision_core.utils.model_paths import (
+    is_offline_mode,
+    local_model_ready,
+    table_transformer_detection_dir,
+    table_transformer_structure_dir,
+)
 from docuvision_core.utils.path_utils import get_app_dir
 
 
@@ -135,29 +142,48 @@ class TransformerEngine(BaseDetectionEngine):
                 return True
             return False
         
-        # Comment.
-        normalized_path = _normalize_path(path_or_id) if _is_valid_local_path(path_or_id) else path_or_id
-        
-        # Comment.
-        try:
-            model = TableTransformerForObjectDetection.from_pretrained(
-                normalized_path,
-                local_files_only=True
-            ).to(device)
-            processor = AutoImageProcessor.from_pretrained(
-                normalized_path,
-                local_files_only=True
+        def _local_dir_for_kind(kind: str) -> str:
+            if kind == "detection":
+                return str(table_transformer_detection_dir())
+            return str(table_transformer_structure_dir())
+
+        normalized_path = _normalize_path(path_or_id) if _is_valid_local_path(path_or_id) else _local_dir_for_kind(kind)
+        if not _is_valid_local_path(path_or_id):
+            normalized_path = _local_dir_for_kind(kind)
+
+        if local_model_ready(Path(normalized_path)):
+            try:
+                model = TableTransformerForObjectDetection.from_pretrained(
+                    normalized_path,
+                    local_files_only=True
+                ).to(device)
+                processor = AutoImageProcessor.from_pretrained(
+                    normalized_path,
+                    local_files_only=True
+                )
+                self.logger.info(f"[TransformerEngine] Loaded {kind} from local path: {normalized_path}")
+                return model, processor
+            except Exception as e_local:
+                self.logger.warning(f"[TransformerEngine] Local {kind} at {normalized_path} failed: {e_local}")
+                if is_offline_mode():
+                    raise RuntimeError(
+                        f"Offline mode: failed to load {kind} from {normalized_path}"
+                    ) from e_local
+
+        if is_offline_mode():
+            raise RuntimeError(
+                f"Offline mode: {kind} model not found at {normalized_path}"
             )
-            self.logger.info(f"[TransformerEngine] Loaded {kind} from local path: {normalized_path}")
-            return model, processor
-        except Exception as e_local:
-            self.logger.warning(f"[TransformerEngine] Local {kind} not found, fallback to HuggingFace Hub")
-            # Comment.
-            model_id = _resolve_model_id(path_or_id, kind)
-            model = TableTransformerForObjectDetection.from_pretrained(model_id).to(device)
-            processor = AutoImageProcessor.from_pretrained(model_id)
-            self.logger.info(f"[TransformerEngine] Downloaded {kind} model from HF Hub: {model_id}")
-            return model, processor
+
+        self.logger.warning(f"[TransformerEngine] Local {kind} not found, downloading from Hugging Face Hub")
+        model_id = _resolve_model_id(path_or_id, kind)
+        os.makedirs(normalized_path, exist_ok=True)
+        model = TableTransformerForObjectDetection.from_pretrained(model_id).to(device)
+        processor = AutoImageProcessor.from_pretrained(model_id)
+        model.save_pretrained(normalized_path)
+        processor.save_pretrained(normalized_path)
+        self.logger.info(f"[TransformerEngine] Downloaded {kind} and saved to {normalized_path}")
+        return model, processor
     
     def detect_tables(self, image: Image.Image, **kwargs) -> List[Dict]:
         """Docstring."""

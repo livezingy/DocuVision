@@ -213,6 +213,14 @@ backend/uploads/
 *.h5
 *.pb
 *.ckpt
+*.safetensors
+*.bin
+
+# docuvision-core local model weights (README and .gitkeep only)
+packages/docuvision-core/models/**
+!packages/docuvision-core/models/README.md
+!packages/docuvision-core/models/.gitkeep
+!packages/docuvision-core/models/**/.gitkeep
 
 # Cloud Studio / PaddleX local cache (should never be versioned)
 .paddlex/
@@ -241,6 +249,8 @@ test_data/**/*.tif
 
 # User-requested: never track these folders
 scripts/
+!packages/docuvision-core/scripts/
+!packages/docuvision-core/scripts/**
 !test_data/scripts/
 !test_data/scripts/**
 Azure/AzureDocs/

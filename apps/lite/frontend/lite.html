@@ -396,7 +396,7 @@
             <label class="sub-option-item sub-option-disabled">
               <input type="checkbox" disabled /> Figures <span class="option-badge">Pro</span>
             </label>
-            <label class="field-row">
+            <label class="field-row" id="pagesFieldRow">
               Pages
               <input type="text" id="optPages" placeholder="all" class="text-input" />
             </label>
@@ -405,34 +405,44 @@
 
         <div class="modal-tab-content" id="enginesTab">
           <p class="modal-hint" id="enginesHint">Smart mode uses automatic engine selection.</p>
-          <label class="field-row">Table engine
-            <select id="optEngine" class="select-input" disabled>
-              <option value="auto">Auto</option>
-            </select>
-          </label>
-          <label class="field-row">Flavor
-            <select id="optFlavor" class="select-input" disabled>
-              <option value="auto">Auto</option>
-              <option value="bordered">Bordered</option>
-              <option value="unbordered">Unbordered</option>
-            </select>
-          </label>
-          <label class="field-row">OCR engine
-            <select id="optOcrEngine" class="select-input" disabled>
-              <option value="auto">Auto</option>
-              <option value="tesseract">Tesseract</option>
-              <option value="easyocr">EasyOCR</option>
-            </select>
-          </label>
-          <label class="field-row">Image tables (Transformer)
-            <select id="optTransformer" class="select-input">
-              <option value="off">Off</option>
-              <option value="transformer" selected>Transformer</option>
-            </select>
-          </label>
-          <label class="field-row">Languages
-            <input type="text" id="optLanguages" class="text-input" value="eng" disabled />
-          </label>
+          <div class="engines-group engines-group--digital" id="enginesGroupDigital">
+            <p class="engines-group-title">Digital PDF table extraction</p>
+            <label class="field-row">Table engine
+              <select id="optEngine" class="select-input" disabled>
+                <option value="auto">Auto</option>
+              </select>
+            </label>
+            <label class="field-row">Flavor
+              <select id="optFlavor" class="select-input" disabled>
+                <option value="auto">Auto</option>
+                <option value="bordered">Bordered</option>
+                <option value="unbordered">Unbordered</option>
+              </select>
+            </label>
+          </div>
+          <div class="engines-group engines-group--text" id="enginesGroupText">
+            <p class="engines-group-title">Text OCR (scan / image)</p>
+            <label class="field-row">OCR engine
+              <select id="optOcrEngine" class="select-input" disabled>
+                <option value="auto">Auto</option>
+                <option value="tesseract">Tesseract</option>
+                <option value="easyocr">EasyOCR</option>
+              </select>
+            </label>
+            <label class="field-row">Languages
+              <input type="text" id="optLanguages" class="text-input" value="eng" disabled />
+            </label>
+          </div>
+          <div class="engines-group engines-group--transformer" id="enginesGroupTransformer">
+            <p class="engines-group-title">Image / scan table extraction (Transformer)</p>
+            <label class="field-row">Transformer
+              <select id="optTransformer" class="select-input">
+                <option value="off">Off</option>
+                <option value="transformer" selected>On</option>
+              </select>
+            </label>
+            <p class="modal-hint" id="transformerHint"></p>
+          </div>
         </div>
 
         <div class="modal-tab-content" id="advancedTab">

@@ -1,5 +1,6 @@
 import os
 import torch
+from pathlib import Path
 from typing import Dict, Optional, Tuple, List
 from torchvision import transforms
 from transformers import (
@@ -13,6 +14,12 @@ import easyocr
 from docuvision_core.utils.easyocr_config import get_easyocr_reader
 from tqdm.auto import tqdm
 from docuvision_core.utils.logger import AppLogger
+from docuvision_core.utils.model_paths import (
+    is_offline_mode,
+    local_model_ready,
+    table_transformer_detection_dir,
+    table_transformer_structure_dir,
+)
 from docuvision_core.utils.path_utils import get_app_dir, resolve_tesseract_cmd
 
 #preprocessing for transformer detection and structure recognition
@@ -125,10 +132,17 @@ class TableModels:
                     return True
                 return False
 
+            def _local_dir_for_kind(kind: str) -> str:
+                if kind == "detection":
+                    return str(table_transformer_detection_dir())
+                return str(table_transformer_structure_dir())
+
             def _load_model_and_processor(path_or_id: str, kind: str):
-                # Comment.
-                normalized_path = _normalize_path(path_or_id) if _is_valid_local_path(path_or_id) else path_or_id
-                
+                local_dir = _local_dir_for_kind(kind)
+                normalized_path = _normalize_path(path_or_id) if _is_valid_local_path(path_or_id) else local_dir
+                if not _is_valid_local_path(path_or_id):
+                    normalized_path = local_dir
+
                 # #region agent log
                 from docuvision_core.utils.debug_utils import write_debug_log
                 try:
@@ -147,46 +161,64 @@ class TableModels:
                 except Exception as e:
                     self.logger.warning(f"Debug log write failed: {e}")
                 # #endregion
-                
-                # Comment.
-                try:
-                    # Comment.
-                    model = TableTransformerForObjectDetection.from_pretrained(
-                        normalized_path,
-                        local_files_only=True
-                    ).to(self.device)
-                    processor = AutoImageProcessor.from_pretrained(
-                        normalized_path,
-                        local_files_only=True
-                    )
-                    self.logger.info(f"[TableModels] Loaded {kind} from local path: {normalized_path}")
-                    return model, processor
-                except Exception as e_local:
-                    self.logger.warning(f"[TableModels] Local {kind} not found at {normalized_path}, fallback to Hugging Face Hub. Reason: {e_local}")
-                    # Comment.
-                    model_id = _resolve_model_id(path_or_id, kind)
-                    
-                    # #region agent log
+
+                if local_model_ready(Path(normalized_path)):
                     try:
-                        write_debug_log(
-                            location="table_models.py:114",
-                            message="falling back to HuggingFace Hub",
-                            data={
-                                "kind": kind,
-                                "local_path": normalized_path,
-                                "hf_model_id": model_id,
-                                "local_error": str(e_local)
-                            },
-                            hypothesis_id="L"
+                        model = TableTransformerForObjectDetection.from_pretrained(
+                            normalized_path,
+                            local_files_only=True
+                        ).to(self.device)
+                        processor = AutoImageProcessor.from_pretrained(
+                            normalized_path,
+                            local_files_only=True
                         )
-                    except Exception as e:
-                        self.logger.warning(f"Debug log write failed: {e}")
-                    # #endregion
-                    
-                    model = TableTransformerForObjectDetection.from_pretrained(model_id).to(self.device)
-                    processor = AutoImageProcessor.from_pretrained(model_id)
-                    self.logger.info(f"[TableModels] Downloaded {kind} model from HF Hub: {model_id}")
-                    return model, processor
+                        self.logger.info(f"[TableModels] Loaded {kind} from local path: {normalized_path}")
+                        return model, processor
+                    except Exception as e_local:
+                        self.logger.warning(
+                            f"[TableModels] Local {kind} at {normalized_path} failed to load: {e_local}"
+                        )
+                        if is_offline_mode():
+                            raise RuntimeError(
+                                f"Offline mode: failed to load {kind} from {normalized_path}"
+                            ) from e_local
+
+                if is_offline_mode():
+                    raise RuntimeError(
+                        f"Offline mode: {kind} model not found at {normalized_path}. "
+                        "Run bootstrap_lite_models or copy models/ from another host."
+                    )
+
+                self.logger.warning(
+                    f"[TableModels] Local {kind} not found at {normalized_path}, downloading from Hugging Face Hub"
+                )
+                model_id = _resolve_model_id(path_or_id, kind)
+
+                # #region agent log
+                try:
+                    write_debug_log(
+                        location="table_models.py:114",
+                        message="falling back to HuggingFace Hub",
+                        data={
+                            "kind": kind,
+                            "local_path": normalized_path,
+                            "hf_model_id": model_id,
+                        },
+                        hypothesis_id="L"
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Debug log write failed: {e}")
+                # #endregion
+
+                os.makedirs(normalized_path, exist_ok=True)
+                model = TableTransformerForObjectDetection.from_pretrained(model_id).to(self.device)
+                processor = AutoImageProcessor.from_pretrained(model_id)
+                model.save_pretrained(normalized_path)
+                processor.save_pretrained(normalized_path)
+                self.logger.info(
+                    f"[TableModels] Downloaded {kind} from HF Hub and saved to {normalized_path}"
+                )
+                return model, processor
 
             # Detection model
             det_model, det_proc = _load_model_and_processor(self.detection_model_path, 'detection')

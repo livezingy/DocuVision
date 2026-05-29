@@ -136,6 +136,17 @@ python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
 
 > **本地不跑 Python/pytest**；改 Lite 代码时维护 `apps/lite/backend/tests/` 与 `packages/docuvision-core/tests/processing/`，由 CI 或云端验收。
 
+### 阶段 G0 — Lite 模型 bootstrap（新主机 / 空 models/ 时执行一次）
+
+```bash
+sudo apt-get install -y tesseract-ocr tesseract-ocr-eng ghostscript
+cd packages/docuvision-core
+bash scripts/bootstrap_lite_models.sh
+python scripts/bootstrap_lite_models.py --status-only
+```
+
+模型权重保存在 **`packages/docuvision-core/models/`**（与源码同路径，持久盘随仓库目录保留）。换主机流程见 [models/README.md](../../packages/docuvision-core/models/README.md)。
+
 ### 阶段 G — Lite 契约（GitHub Actions 或 Cloud Studio CPU）
 
 ```bash
@@ -169,4 +180,4 @@ cd apps/lite/backend && python run_lite.py
 - [test_data/acceptance/doc_types.md](../../test_data/acceptance/doc_types.md) — 样例矩阵
 - [lite-api.md](./lite-api.md) — Lite API
 - [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md) — Lite 验收规则
-- [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md) — Lite 验收规则与发版清单
+- [packages/docuvision-core/models/README.md](../../packages/docuvision-core/models/README.md) — Lite 模型目录与换主机流程

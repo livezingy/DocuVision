@@ -361,3 +361,23 @@
         grid-template-columns: 1fr;
     }
 }
+
+.engines-group {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.engines-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.engines-group-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    margin: 0 0 10px;
+}

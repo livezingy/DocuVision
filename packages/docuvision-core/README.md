@@ -14,10 +14,14 @@ pip install -e ".[dev]"         # pytest
 
 ## Model directories (under package root)
 
+Weights live in **`models/`** next to source (not in Git). Full host-migration guide: **[models/README.md](models/README.md)**.
+
 | Directory | Used by |
 |-----------|---------|
-| `models/table-transformer/detection/` | Table Transformer detection (local or HF fallback) |
-| `models/table-transformer/structure/` | Table Transformer structure (local or HF fallback) |
-| `models/EasyOCR/` | EasyOCR weights (auto-download) |
+| `models/table-transformer/detection/` | Table Transformer detection |
+| `models/table-transformer/structure/` | Table Transformer structure |
+| `models/EasyOCR/model/` | EasyOCR weights |
 
-See [apps/lite/backend/README.md](../../apps/lite/backend/README.md) for Hugging Face offline download commands.
+Bootstrap once: `bash scripts/bootstrap_lite_models.sh` from this package root.
+
+See [apps/lite/backend/README.md](../../apps/lite/backend/README.md) for Lite run instructions and Tesseract apt packages.

@@ -4,6 +4,10 @@ import os
 import threading
 from typing import Any, Dict
 
+from docuvision_core.utils.model_paths import (
+    table_transformer_detection_dir,
+    table_transformer_structure_dir,
+)
 from docuvision_core.utils.path_utils import get_app_dir, resolve_tesseract_cmd
 
 
@@ -41,6 +45,9 @@ class Config:
             "structure_border_width": 5,
             "structure_preprocess": True,
             "structure_expand_rowcol": 1,
+            "cell_ocr_enabled": True,
+            "table_ocr_engine": "easyocr",
+            "table_ocr_languages": ["eng"],
         },
         "table_evaluator": {
             "domain_matrix": {
@@ -81,11 +88,11 @@ class Config:
 
         self.config_file = config_file
         self.config: Dict[str, Any] = {}
-        self.DEFAULT_CONFIG["table_models"]["detection_model_path"] = os.path.join(
-            base_dir, "models", "table-transformer", "detection"
+        self.DEFAULT_CONFIG["table_models"]["detection_model_path"] = str(
+            table_transformer_detection_dir()
         )
-        self.DEFAULT_CONFIG["table_models"]["structure_model_path"] = os.path.join(
-            base_dir, "models", "table-transformer", "structure"
+        self.DEFAULT_CONFIG["table_models"]["structure_model_path"] = str(
+            table_transformer_structure_dir()
         )
         self.DEFAULT_CONFIG["table_models"]["ocr_model_path"] = resolve_tesseract_cmd()
 

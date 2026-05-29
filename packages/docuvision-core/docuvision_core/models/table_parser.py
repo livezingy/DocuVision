@@ -55,6 +55,9 @@ class TableParser:
         self.structure_border_width = parser_cfg.get('structure_border_width', 5)
         self.structure_preprocess = parser_cfg.get('structure_preprocess', True)
         self.structure_expand_rowcol = parser_cfg.get('structure_expand_rowcol', 5)
+        self.cell_ocr_enabled = parser_cfg.get('cell_ocr_enabled', True)
+        self.table_ocr_engine = (parser_cfg.get('table_ocr_engine') or 'easyocr').lower()
+        self.table_ocr_languages = parser_cfg.get('table_ocr_languages') or ['eng']
     
 
 
@@ -260,7 +263,11 @@ class TableParser:
                 self.logger.error("Invalid table_image provided to parse_table")
                 return None
             
-            pipeline = TableExtractionPipeline()
+            pipeline = TableExtractionPipeline(
+                cell_ocr_enabled=self.cell_ocr_enabled,
+                table_ocr_engine=self.table_ocr_engine,
+                table_ocr_languages=self.table_ocr_languages,
+            )
             # Use params or fallback to self.config        
             border_width = self.structure_border_width
             preprocess = self.structure_preprocess
@@ -327,74 +334,79 @@ class TableParser:
 
 
 class TableExtractionPipeline():
-    
+
+    def __init__(
+        self,
+        *,
+        cell_ocr_enabled: bool = True,
+        table_ocr_engine: str = "easyocr",
+        table_ocr_languages: Optional[List[str]] = None,
+    ):
+        self.cell_ocr_enabled = cell_ocr_enabled
+        self.table_ocr_engine = (table_ocr_engine or "easyocr").lower()
+        self.table_ocr_languages = table_ocr_languages or ["eng"]
+
+    @staticmethod
+    def _easyocr_language_codes(languages: List[str]) -> List[str]:
+        mapping = {"eng": "en", "en": "en"}
+        return [mapping.get(lang, lang) for lang in languages]
+
     def ocr_whole_table(self, table_image, models, table_data=None):
         """Docstring."""
         try:
-            import pytesseract
             import numpy as np
 
-            # Step 1: Remove table lines if table_data is provided
             processed_image = table_image
-            
-            # Step 2: Use EasyOCR for OCR with local model configuration
-            reader = get_easyocr_reader(['en'])
-            
-            # Convert PIL image to numpy array for EasyOCR
-            img_array = np.array(processed_image)
-            result = reader.readtext(img_array)
-            # Convert EasyOCR result to our format
-            ocr_results = []
-            for item in result:
-                bbox_points = item[0]  # List of 4 corner points
-                text = item[1]         # Text content
-                confidence = item[2]   # Confidence score
-                
-                # Convert bbox from corner points to [x1, y1, x2, y2] format
-                x_coords = [point[0] for point in bbox_points]
-                y_coords = [point[1] for point in bbox_points]
-                x1, x2 = min(x_coords), max(x_coords)
-                y1, y2 = min(y_coords), max(y_coords)
-                
-                ocr_results.append({
-                    'text': text,
-                    'bbox': [x1, y1, x2, y2],
-                    'confidence': confidence
-                })
-            
-            
-            """ # Convert PIL image to numpy array for processing
-            img_array = np.array(processed_image)
-            
-            # Get detailed OCR data with bounding boxes using processed image
-            ocr_data = pytesseract.image_to_data(
-                processed_image,
-                lang='eng',
-                config='--psm 6',  # Uniform block of text
-                output_type=pytesseract.Output.DICT
-            )
-            # Comment.
-            # Extract text with coordinates and confidence
-            ocr_results = []
-            for i in range(len(ocr_data['text'])):
-                text = ocr_data['text'][i].strip()
-                conf = int(ocr_data['conf'][i])
-                
-                if text and conf > 0:  # Only include text with confidence > 0
-                    x = ocr_data['left'][i]
-                    y = ocr_data['top'][i]
-                    w = ocr_data['width'][i]
-                    h = ocr_data['height'][i]
-                    
-                    # Create bounding box [x1, y1, x2, y2]
-                    bbox = [x, y, x + w, y + h]
-                    
-                    ocr_results.append({
-                        'text': text,
-                        'bbox': bbox,
-                        'confidence': conf / 100.0,  # Convert to 0-1 range
-                        'word_id': i
-                    }) """
+            engine = self.table_ocr_engine
+            languages = self.table_ocr_languages
+
+            if engine == "tesseract":
+                import pytesseract
+
+                tess_lang = "+".join(languages) if languages else "eng"
+                ocr_data = pytesseract.image_to_data(
+                    processed_image,
+                    lang=tess_lang,
+                    config="--psm 6",
+                    output_type=pytesseract.Output.DICT,
+                )
+                ocr_results = []
+                for i in range(len(ocr_data["text"])):
+                    text = ocr_data["text"][i].strip()
+                    conf = int(ocr_data["conf"][i])
+                    if text and conf > 0:
+                        x = ocr_data["left"][i]
+                        y = ocr_data["top"][i]
+                        w = ocr_data["width"][i]
+                        h = ocr_data["height"][i]
+                        ocr_results.append(
+                            {
+                                "text": text,
+                                "bbox": [x, y, x + w, y + h],
+                                "confidence": conf / 100.0,
+                                "word_id": i,
+                            }
+                        )
+            else:
+                reader = get_easyocr_reader(self._easyocr_language_codes(languages))
+                img_array = np.array(processed_image)
+                result = reader.readtext(img_array)
+                ocr_results = []
+                for item in result:
+                    bbox_points = item[0]
+                    text = item[1]
+                    confidence = item[2]
+                    x_coords = [point[0] for point in bbox_points]
+                    y_coords = [point[1] for point in bbox_points]
+                    x1, x2 = min(x_coords), max(x_coords)
+                    y1, y2 = min(y_coords), max(y_coords)
+                    ocr_results.append(
+                        {
+                            "text": text,
+                            "bbox": [x1, y1, x2, y2],
+                            "confidence": confidence,
+                        }
+                    )
             
             AppLogger.get_logger().info(f"Whole table OCR found {len(ocr_results)} text elements")
             return ocr_results
@@ -1224,18 +1236,43 @@ class TableExtractionPipeline():
                     original_image, table_data, cell_coordinates, special_labels, table_bbox
                 )
             
-            # Step 4: Use new cell-based OCR with spanning cell support
+            # Step 4: Use cell-based OCR with spanning cell support when enabled
             AppLogger.get_logger().info("Using cell-based OCR with spanning cell support")
-            beCells = False
             cell_ocr_data = []
-            if beCells:
-                cell_ocr_data = self.extract_cells_with_spanning_support(input_Image, cell_coordinates, special_labels, models)
-            
-            
-            if not cell_ocr_data:
-                AppLogger.get_logger().warning("No OCR results from cell-based extraction, falling back to whole table OCR")
-                # Fallback to whole table OCR
-                ocr_results = self.ocr_whole_table(input_Image, models, table_data)
+            if self.cell_ocr_enabled:
+                cell_ocr_data = self.extract_cells_with_spanning_support(
+                    input_Image, cell_coordinates, special_labels, models
+                )
+
+            if cell_ocr_data:
+                AppLogger.get_logger().info("Creating DataFrame from cell-based OCR results")
+                max_cols = max(len(row_data) for row_data in cell_ocr_data.values()) if cell_ocr_data else 0
+                max_rows = len(cell_ocr_data)
+                df_data = []
+                for row_idx in range(max_rows):
+                    if row_idx in cell_ocr_data:
+                        row_data = []
+                        for col_idx in range(max_cols):
+                            if col_idx < len(cell_ocr_data[row_idx]):
+                                cell_text = cell_ocr_data[row_idx][col_idx]
+                                if cell_text == "__MERGED__":
+                                    row_data.append("")
+                                else:
+                                    row_data.append(cell_text)
+                            else:
+                                row_data.append("")
+                        df_data.append(row_data)
+                    else:
+                        df_data.append([""] * max_cols)
+                columns = [f"Column_{i+1}" for i in range(max_cols)]
+                df = pd.DataFrame(df_data, columns=columns)
+                AppLogger.get_logger().info(f"Created DataFrame with shape: {df.shape}")
+                return [df]
+
+            AppLogger.get_logger().warning(
+                "No OCR results from cell-based extraction, falling back to whole table OCR"
+            )
+            ocr_results = self.ocr_whole_table(input_Image, models, table_data)
             if not ocr_results:
                 AppLogger.get_logger().warning("No OCR results from whole table either")
                 return []

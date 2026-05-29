@@ -9,11 +9,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from PIL import Image
 
-try:
-    import fitz  # PyMuPDF
-except ImportError:  # pragma: no cover
-    fitz = None  # type: ignore
-
 from app.schemas.lite_result import ExtractMode, WarningCode
 
 # Short API summary only; full text is in LiteResult.ocr[]
@@ -28,38 +23,8 @@ def build_text_preview(ocr_blocks: List[Dict[str, Any]]) -> Optional[str]:
     return preview or None
 
 
-def _is_pdf(path: Path) -> bool:
-    if path.suffix.lower() == ".pdf":
-        return True
-    if not path.is_file():
-        return False
-    with path.open("rb") as handle:
-        return handle.read(4) == b"%PDF"
-
-
-def _rasterize_pdf_pages(pdf_path: Path, max_pages: int = 10, dpi: int = 200) -> List[Tuple[int, Image.Image]]:
-    """Rasterize PDF pages to PIL images using PyMuPDF."""
-    if fitz is None:
-        raise RuntimeError("PyMuPDF is required for scanned PDF OCR. Install: pip install PyMuPDF")
-
-    images: List[Tuple[int, Image.Image]] = []
-    matrix = fitz.Matrix(dpi / 72, dpi / 72)
-    with fitz.open(pdf_path) as doc:
-        for page_index in range(min(len(doc), max_pages)):
-            page = doc[page_index]
-            pix = page.get_pixmap(matrix=matrix, alpha=False)
-            mode = "RGB" if pix.n < 4 else "RGBA"
-            image = Image.frombytes(mode, (pix.width, pix.height), pix.samples)
-            if mode == "RGBA":
-                image = image.convert("RGB")
-            images.append((page_index + 1, image))
-    return images
-
-
-def _load_images_from_path(file_path: Path, max_pages: int = 10) -> List[Tuple[int, Image.Image]]:
-    if _is_pdf(file_path):
-        return _rasterize_pdf_pages(file_path, max_pages=max_pages)
-    return [(1, Image.open(file_path).convert("RGB"))]
+from app.services.page_utils import is_pdf as _is_pdf
+from app.services.page_utils import load_raster_pages as _load_images_from_path
 
 
 def _engine_available(name: str) -> bool:
@@ -240,9 +205,18 @@ def extract_ocr_from_image(
     languages: Optional[List[str]] = None,
     min_confidence: float = 0.2,
     max_pages: int = 10,
+    pages_spec: Optional[str] = None,
 ) -> Dict[str, Any]:
+    from app.services.file_detector import detect_file_type
+
     engine_used = _resolve_ocr_engine(mode, engine)
-    page_images = _load_images_from_path(file_path, max_pages=max_pages)
+    _, page_count = detect_file_type(file_path)
+    page_images = _load_images_from_path(
+        file_path,
+        page_count=page_count,
+        pages_spec=pages_spec,
+        max_pages=max_pages,
+    )
     ocr_blocks: List[Dict[str, Any]] = []
     extraction_errors: List[str] = []
 

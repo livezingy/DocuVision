@@ -53,7 +53,7 @@ def build_engine_catalog() -> LiteEnginesResponse:
             LiteEngineInfo(
                 id="transformer",
                 label="Transformer",
-                file_types=["image"],
+                file_types=["image", "pdf_scan"],
                 description="High-accuracy table detection; requires local/heavy profile.",
                 profile="heavy",
             ),

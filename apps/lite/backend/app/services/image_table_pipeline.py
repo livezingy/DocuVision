@@ -11,6 +11,7 @@ from PIL import Image
 
 from app.schemas.lite_result import ExtractMode, WarningCode
 from app.services.file_detector import detect_file_type
+from app.services.page_utils import load_raster_pages
 
 
 def _transformer_available() -> bool:
@@ -22,7 +23,12 @@ def _transformer_available() -> bool:
     )
 
 
-def _parser_tables_to_lite(tables: List[Dict[str, Any]], page: int = 1) -> List[Dict[str, Any]]:
+def _parser_tables_to_lite(
+    tables: List[Dict[str, Any]],
+    *,
+    page: int = 1,
+    domain: str = "image",
+) -> List[Dict[str, Any]]:
     lite_tables: List[Dict[str, Any]] = []
     for idx, table in enumerate(tables):
         columns = table.get("columns") or []
@@ -54,7 +60,7 @@ def _parser_tables_to_lite(tables: List[Dict[str, Any]], page: int = 1) -> List[
                 "headers": headers,
                 "rows": rows,
                 "details": {
-                    "domain": "image",
+                    "domain": domain,
                     "empty_cells": 0,
                     "merged_cells_detected": False,
                 },
@@ -63,20 +69,43 @@ def _parser_tables_to_lite(tables: List[Dict[str, Any]], page: int = 1) -> List[
     return lite_tables
 
 
-async def _run_transformer_parser(image: Image.Image) -> Dict[str, Any]:
+async def _run_transformer_parser(
+    image: Image.Image,
+    *,
+    table_ocr_engine: Optional[str] = None,
+    table_ocr_languages: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     from docuvision_core.models.table_parser import TableParser
     from docuvision_core.utils.config import load_config
 
     app_config = load_config()
+    parser_cfg = dict(app_config.get("table_parser") or {})
+    if table_ocr_engine:
+        parser_cfg["table_ocr_engine"] = table_ocr_engine
+    if table_ocr_languages:
+        parser_cfg["table_ocr_languages"] = table_ocr_languages
+    app_config = {**app_config, "table_parser": parser_cfg}
+
     parser = TableParser(app_config)
     if parser.models is None:
         raise RuntimeError("Table Transformer models failed to initialize")
     return await parser.parser_image(image)
 
 
-def _run_transformer_in_thread(image: Image.Image) -> Dict[str, Any]:
+def _run_transformer_in_thread(
+    image: Image.Image,
+    *,
+    table_ocr_engine: Optional[str] = None,
+    table_ocr_languages: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     """Run async parser in a worker thread (safe when caller has a running event loop)."""
-    return asyncio.run(_run_transformer_parser(image))
+    return asyncio.run(
+        _run_transformer_parser(
+            image,
+            table_ocr_engine=table_ocr_engine,
+            table_ocr_languages=table_ocr_languages,
+        )
+    )
 
 
 def extract_tables_from_image(
@@ -84,6 +113,10 @@ def extract_tables_from_image(
     *,
     mode: ExtractMode = ExtractMode.SMART,
     score_threshold: float = 0.5,
+    pages_spec: Optional[str] = None,
+    max_pages: int = 10,
+    table_ocr_engine: Optional[str] = None,
+    table_ocr_languages: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     if not _transformer_available():
         raise RuntimeError(
@@ -95,29 +128,53 @@ def extract_tables_from_image(
     if detected_type.value not in {"image", "pdf_scan"}:
         raise ValueError("Transformer table extraction requires an image or scanned document")
 
-    image = Image.open(file_path).convert("RGB")
+    domain = "scan" if detected_type.value == "pdf_scan" else "image"
+    page_images = load_raster_pages(
+        file_path,
+        page_count=page_count,
+        pages_spec=pages_spec if detected_type.value == "pdf_scan" else None,
+        max_pages=max_pages,
+    )
+
+    all_tables: List[Dict[str, Any]] = []
+    pages_with_tables = 0
+
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            parser_result = executor.submit(_run_transformer_in_thread, image).result()
+            for page_num, image in page_images:
+                parser_result = executor.submit(
+                    _run_transformer_in_thread,
+                    image,
+                    table_ocr_engine=table_ocr_engine,
+                    table_ocr_languages=table_ocr_languages,
+                ).result()
+                if not parser_result.get("success"):
+                    error = parser_result.get("error") or "Transformer table extraction failed"
+                    raise RuntimeError(str(error))
+                raw_tables = parser_result.get("tables") or []
+                page_tables = _parser_tables_to_lite(raw_tables, page=page_num, domain=domain)
+                page_tables = [t for t in page_tables if float(t.get("score") or 0.0) >= score_threshold]
+                if page_tables:
+                    pages_with_tables += 1
+                all_tables.extend(page_tables)
     except RuntimeError:
         raise
     except Exception as exc:
         raise RuntimeError(f"Transformer table extraction failed: {exc}") from exc
-
-    if not parser_result.get("success"):
-        error = parser_result.get("error") or "Transformer table extraction failed"
-        raise RuntimeError(str(error))
-
-    raw_tables = parser_result.get("tables") or []
-    all_tables = _parser_tables_to_lite(raw_tables, page=1)
-    all_tables = [t for t in all_tables if float(t.get("score") or 0.0) >= score_threshold]
 
     warnings: List[Dict[str, Any]] = []
     if not all_tables:
         warnings.append(
             {
                 "code": WarningCode.ENGINE_FALLBACK.value,
-                "message": "No tables detected in the image with Table Transformer.",
+                "message": "No tables detected with Table Transformer.",
+            }
+        )
+    if detected_type.value == "pdf_scan" and len(page_images) >= max_pages:
+        warnings.append(
+            {
+                "code": WarningCode.PAGE_TRUNCATED.value,
+                "message": f"Rasterized at most {max_pages} page(s) for Transformer table extraction.",
             }
         )
 
@@ -133,7 +190,7 @@ def extract_tables_from_image(
             "requested_engine": "transformer",
             "engine_used": "transformer",
             "engine_chain": ["transformer"],
-            "table_type_detected": "image",
+            "table_type_detected": detected_type.value,
             "flavor_used": "detection+structure",
             "param_mode": "auto",
             "profile": "cpu",
@@ -142,8 +199,8 @@ def extract_tables_from_image(
             "overall_confidence": overall,
             "tables_found": len(all_tables),
             "tables_accepted": len(all_tables),
-            "pages_processed": 1,
-            "pages_with_tables": 1 if all_tables else 0,
+            "pages_processed": len(page_images),
+            "pages_with_tables": pages_with_tables,
             "ocr_blocks": 0,
             "processing_profile": "cpu",
         },

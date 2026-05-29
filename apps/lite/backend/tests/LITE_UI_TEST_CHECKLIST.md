@@ -67,13 +67,16 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 | 2 | Run Analysis (Smart) | Tables tab: at least one table with rows/columns |
 | 3 | Export JSON | `tables[]` non-empty in Result tab |
 
-## LITE-UI-007 Analysis Options
+## LITE-UI-007 Analysis Options (dynamic by document type)
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Open Analysis Options | Processing / Engines / Advanced tabs |
-| 2 | Advanced + Auto param mode | Hint: parameters computed at runtime |
-| 3 | Apply Profile to Advanced | Custom JSON prefilled from profile |
+| 1 | Upload **digital PDF**, open Analysis Options | **Pages** visible; **Advanced** tab visible; Engines **Section A** (Table engine + Flavor) when Tables checked |
+| 2 | Upload **scanned PDF**, open Analysis Options | **Pages** visible; **Advanced** tab **hidden**; Engines **Section B** (OCR + Languages) and **Section C** (Transformer) when Text/Tables checked |
+| 3 | Upload **PNG/image**, open Analysis Options | **Pages** **hidden**; **Advanced** tab **hidden**; Engines B + C for Text/Tables |
+| 4 | Scanned PDF + Tables + Transformer On, Run Analysis | Tables in Content with `page` field; server log without `coroutine was never awaited` |
+| 5 | Advanced + Auto param mode (digital PDF only) | Hint: parameters computed at runtime |
+| 6 | Apply Profile to Advanced (digital PDF) | Custom JSON prefilled from profile |
 
 ## Lite vs Pro UI sharing (reference)
 

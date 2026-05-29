@@ -5,7 +5,7 @@ import easyocr
 from pathlib import Path
 from typing import List, Optional
 from docuvision_core.utils.logger import AppLogger
-from docuvision_core.utils.path_utils import get_app_dir
+from docuvision_core.utils.model_paths import easyocr_model_dir
 
 
 class EasyOCRConfig:
@@ -13,8 +13,7 @@ class EasyOCRConfig:
     
     def __init__(self):
         self.logger = AppLogger.get_logger()
-        self.base_dir = get_app_dir()
-        self.model_dir = os.path.join(self.base_dir, 'models', 'EasyOCR', 'model')
+        self.model_dir = str(easyocr_model_dir())
         
         # Comment.
         os.makedirs(self.model_dir, exist_ok=True)

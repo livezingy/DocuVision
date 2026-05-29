@@ -37,21 +37,7 @@ def _build_page_text_preview(pages: List[Any]) -> Optional[str]:
     return preview
 
 
-def _parse_pages_spec(pages_spec: Optional[str], page_count: int) -> List[int]:
-    if not pages_spec or pages_spec.strip().lower() == "all":
-        return list(range(1, page_count + 1))
-    selected: List[int] = []
-    for part in pages_spec.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        if "-" in part:
-            start_s, end_s = part.split("-", 1)
-            start, end = int(start_s), int(end_s)
-            selected.extend(range(start, end + 1))
-        else:
-            selected.append(int(part))
-    return sorted({p for p in selected if 1 <= p <= page_count})
+from app.services.page_utils import parse_pages_spec
 
 
 def _resolve_table_method(mode: ExtractMode, engine: str) -> Tuple[str, str, List[str]]:
@@ -147,7 +133,7 @@ def extract_tables_from_pdf(
         raise ValueError("Table extraction requires a digital PDF with extractable text")
 
     page_count = min(page_count, max_pages)
-    page_numbers = _parse_pages_spec(pages_spec, page_count)
+    page_numbers = parse_pages_spec(pages_spec, page_count)
 
     table_method, resolved_flavor, engine_chain = _resolve_table_method(mode, engine)
     if flavor and flavor != "auto":
@@ -253,7 +239,7 @@ def extract_digital_pdf_text(
         raise ValueError("Text extraction requires a digital PDF with extractable text")
 
     page_count = min(page_count, max_pages)
-    page_numbers = _parse_pages_spec(pages_spec, page_count)
+    page_numbers = parse_pages_spec(pages_spec, page_count)
 
     text_preview: Optional[str] = None
     with pdfplumber.open(str(file_path)) as pdf:

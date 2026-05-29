@@ -309,6 +309,89 @@ function setStatus(msg) {
   els.statusMessage.textContent = msg;
 }
 
+function getDetectedFileType() {
+  const fromProfile = state.profile?.input?.detected_file_type;
+  if (fromProfile) return fromProfile;
+  const name = (state.file?.name || "").toLowerCase();
+  if (/\.(png|jpe?g|tiff?|webp|bmp|gif)$/.test(name)) return "image";
+  if (name.endsWith(".pdf")) {
+    return state.profile?.scan_profile ? "pdf_scan" : "pdf_digital";
+  }
+  return null;
+}
+
+function updateEnginesHint(fileType, extractTables, extractText) {
+  const advanced = state.options.mode === "advanced";
+  const hintEl = $("enginesHint");
+  if (!hintEl) return;
+  if (!fileType) {
+    hintEl.textContent = "Upload a file to see engine options for its document type.";
+    return;
+  }
+  if (!advanced) {
+    hintEl.textContent = "Smart mode uses automatic engine selection.";
+    return;
+  }
+  const parts = [];
+  if (fileType === "pdf_digital" && extractTables) {
+    parts.push("Digital PDF: choose table engine and flavor.");
+  }
+  if ((fileType === "image" || fileType === "pdf_scan") && extractText) {
+    parts.push("Raster documents: choose OCR engine and languages for text.");
+  }
+  if ((fileType === "image" || fileType === "pdf_scan") && extractTables) {
+    parts.push("Raster documents: Transformer extracts tables from photos and scanned PDFs.");
+  }
+  hintEl.textContent = parts.length ? parts.join(" ") : "Override Smart routing with explicit engine settings.";
+}
+
+function updateOptionsVisibility() {
+  const fileType = getDetectedFileType();
+  const isDigitalPdf = fileType === "pdf_digital";
+  const isRaster = fileType === "image" || fileType === "pdf_scan";
+  const extractTables = $("optExtractTables")?.checked ?? state.options.extractTables;
+  const extractText = $("optExtractText")?.checked ?? state.options.extractText;
+
+  const pagesRow = $("pagesFieldRow");
+  if (pagesRow) {
+    pagesRow.hidden = !fileType || fileType === "image";
+  }
+
+  const advancedTabBtn = document.querySelector('.modal-tab[data-tab="advanced"]');
+  const advancedTab = $("advancedTab");
+  if (advancedTabBtn) advancedTabBtn.hidden = !isDigitalPdf;
+  if (advancedTab && !isDigitalPdf && advancedTab.classList.contains("active")) {
+    setActiveModalTab("processing");
+  }
+
+  const digitalGroup = $("enginesGroupDigital");
+  const textGroup = $("enginesGroupText");
+  const transformerGroup = $("enginesGroupTransformer");
+  if (digitalGroup) digitalGroup.hidden = !(isDigitalPdf && extractTables);
+  if (textGroup) textGroup.hidden = !(isRaster && extractText);
+  if (transformerGroup) transformerGroup.hidden = !(isRaster && extractTables);
+
+  const transformerHint = $("transformerHint");
+  const scanProfile = state.profile?.scan_profile;
+  const transformerAvailable = scanProfile?.transformer_available !== false;
+  const optTransformer = $("optTransformer");
+  if (optTransformer && transformerGroup && !transformerGroup.hidden) {
+    if (!transformerAvailable) {
+      optTransformer.disabled = true;
+      if (transformerHint) {
+        transformerHint.textContent =
+          "Table Transformer not installed. pip install docuvision-core[ocr-heavy]";
+      }
+    } else {
+      if (transformerHint) transformerHint.textContent = "";
+    }
+  } else if (transformerHint) {
+    transformerHint.textContent = "";
+  }
+
+  updateEnginesHint(fileType, extractTables, extractText);
+}
+
 function defaultOptions() {
   return { ...DEFAULT_OPTIONS, customParams: null };
 }
@@ -771,6 +854,7 @@ function syncModalFromState() {
 
   updateModalProfileSummary();
   updateAdvancedControls();
+  updateOptionsVisibility();
 }
 
 function updateModalProfileSummary() {
@@ -789,6 +873,7 @@ function updateAdvancedControls() {
   $("enginesHint").textContent = advanced
     ? "Override Smart routing with explicit engine settings."
     : "Smart mode uses automatic engine selection.";
+  updateOptionsVisibility();
   const hintEl = $("paramModeHint");
   if (hintEl) {
     if (!advanced) {
@@ -799,9 +884,23 @@ function updateAdvancedControls() {
       hintEl.textContent = "Auto param mode derives extraction settings from page features at runtime.";
     }
   }
+  const scanProfile = state.profile?.scan_profile;
+  const transformerAvailable = scanProfile?.transformer_available !== false;
   ["optEngine", "optFlavor", "optOcrEngine", "optTransformer", "optLanguages"].forEach((id) => {
-    $(id).disabled = !advanced;
+    const el = $(id);
+    if (!el || el.closest("[hidden]")) return;
+    el.disabled = !advanced;
   });
+  const optTransformer = $("optTransformer");
+  const transformerGroup = $("enginesGroupTransformer");
+  if (
+    optTransformer &&
+    transformerGroup &&
+    !transformerGroup.hidden &&
+    !transformerAvailable
+  ) {
+    optTransformer.disabled = true;
+  }
   ["paramsCamelotLattice", "paramsCamelotStream", "paramsPdfplumberBordered", "paramsPdfplumberUnbordered"].forEach((id) => {
     $(id).disabled = !custom;
   });
@@ -1309,6 +1408,15 @@ function initModal() {
       state.options.paramMode = document.querySelector('input[name="paramMode"]:checked').value;
       updateAdvancedControls();
     });
+  });
+
+  $("optExtractTables")?.addEventListener("change", () => {
+    updateOptionsVisibility();
+    updateAdvancedControls();
+  });
+  $("optExtractText")?.addEventListener("change", () => {
+    updateOptionsVisibility();
+    updateAdvancedControls();
   });
 
   els.modal.addEventListener("click", (e) => {

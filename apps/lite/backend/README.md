@@ -53,26 +53,26 @@ tesseract --version
 
 ### Model and data paths
 
-All paths below are under **`packages/docuvision-core/`** (package root from `get_app_dir()`).
+All ML weights default to **`packages/docuvision-core/models/`** (same directory as source via `get_app_dir()`).  
+See **[models/README.md](../../../packages/docuvision-core/models/README.md)** for host migration and offline scenarios.
 
-| Purpose | Default path | If missing |
-|---------|--------------|------------|
-| Table Transformer **detection** | `models/table-transformer/detection/` | Auto-download from Hugging Face `microsoft/table-transformer-detection` |
-| Table Transformer **structure** | `models/table-transformer/structure/` | Auto-download from Hugging Face `microsoft/table-transformer-structure-recognition` |
-| **EasyOCR** weights | `models/EasyOCR/` | Auto-download on first EasyOCR run |
-| **Tesseract binary** | `PATH` (`tesseract` on Linux) | Required for Text OCR when Tesseract is selected; Windows bundle: `tesseract/tesseract.exe` under package root |
-| **Tesseract languages** | Linux: `/usr/share/tesseract-ocr/*/tessdata` | Install `tesseract-ocr-eng` (or locale packages) via apt |
-
-**Optional offline Transformer weights** (avoid HF Hub on first run):
+**One-time bootstrap** (after pip install):
 
 ```bash
 cd packages/docuvision-core
-pip install huggingface_hub
-huggingface-cli download microsoft/table-transformer-detection --local-dir models/table-transformer/detection
-huggingface-cli download microsoft/table-transformer-structure-recognition --local-dir models/table-transformer/structure
+bash scripts/bootstrap_lite_models.sh
+python scripts/bootstrap_lite_models.py --status-only
 ```
 
-Large model files are **not** committed to Git. First run may download ~100MB+ from Hugging Face (set `HF_TOKEN` for higher rate limits).
+| Purpose | Default path | If missing |
+|---------|--------------|------------|
+| Table Transformer **detection** | `models/table-transformer/detection/` | Bootstrap or first-run Hub download **into this directory** |
+| Table Transformer **structure** | `models/table-transformer/structure/` | Same |
+| **EasyOCR** weights | `models/EasyOCR/model/` | Bootstrap or first EasyOCR run |
+| **Tesseract binary** | `PATH` (`tesseract` on Linux) | Install via apt; Windows: optional `tesseract/tesseract.exe` |
+| **Tesseract languages** | Linux: `/usr/share/tesseract-ocr/*/tessdata` | `tesseract-ocr-eng` via apt |
+
+Optional: `DOCUVISION_MODELS_DIR` overrides the models root; `DOCUVISION_OFFLINE=1` disables Hub fallback.
 
 ### UI engines (Analysis Options)
 

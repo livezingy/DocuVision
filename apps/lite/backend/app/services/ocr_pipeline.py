@@ -154,7 +154,9 @@ def _run_easyocr(image: Image.Image, languages: List[str], min_confidence: float
 
 def _run_tesseract(image: Image.Image, min_confidence: float) -> List[Dict[str, Any]]:
     import pytesseract
+    from docuvision_core.utils.path_utils import resolve_tesseract_cmd
 
+    pytesseract.pytesseract.tesseract_cmd = resolve_tesseract_cmd()
     data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
     paragraphs: Dict[tuple, Dict[str, Any]] = {}
     n = len(data.get("text", []))

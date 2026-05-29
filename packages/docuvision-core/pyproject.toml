@@ -31,6 +31,7 @@ ocr-heavy = [
     "transformers>=4.30.0",
     "torch>=2.0.0",
     "torchvision>=0.15.0",
+    "matplotlib>=3.5.0",
 ]
 pro-table-fallback = [
     "pdfplumber>=0.9.0",

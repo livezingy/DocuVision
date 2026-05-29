@@ -13,7 +13,7 @@ import easyocr
 from docuvision_core.utils.easyocr_config import get_easyocr_reader
 from tqdm.auto import tqdm
 from docuvision_core.utils.logger import AppLogger
-from docuvision_core.utils.path_utils import get_app_dir
+from docuvision_core.utils.path_utils import get_app_dir, resolve_tesseract_cmd
 
 #preprocessing for transformer detection and structure recognition
 class MaxResize(object):
@@ -86,7 +86,7 @@ class TableModels:
         self._init()
         self._initialized = True
         
-        pytesseract.pytesseract.tesseract_cmd = self.ocr_model_path
+        pytesseract.pytesseract.tesseract_cmd = resolve_tesseract_cmd(self.ocr_model_path)
 
     def _init(self):
         try:

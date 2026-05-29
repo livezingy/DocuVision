@@ -49,12 +49,14 @@ source ~/docuvision_lite_env/bin/activate
 pip install -r requirements-lite.txt
 pip install -e '../../../packages/docuvision-core[lite,dev]'
 
-# Lite API 契约
+# Optional: image Table Transformer + matplotlib viz (see apps/lite/backend/README.md)
+# sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+# pip install -r requirements-lite-ocr-heavy.txt
 python -m pytest tests/ -q
 
 # docuvision-core（含 classify 单元测试）
 cd ../../../packages/docuvision-core
-python -m pytest tests/utils/test_pdf_text_utils.py tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py -q
+python -m pytest tests/utils/test_pdf_text_utils.py tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py tests/utils/test_config.py -q
 
 # Transformer image tables (cloud GPU env with ocr-heavy deps):
 # pip install -e '../../../packages/docuvision-core[ocr-heavy]'

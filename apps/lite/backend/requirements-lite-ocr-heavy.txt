@@ -1,0 +1,6 @@
+# Optional: image Table Transformer + cell OCR viz (install after requirements-lite.txt)
+# Linux: also install system Tesseract before use:
+#   sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+#
+# zsh: keep quotes around the editable install path.
+-e ../../../packages/docuvision-core[ocr-heavy]

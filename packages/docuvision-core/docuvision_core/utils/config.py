@@ -4,7 +4,7 @@ import os
 import threading
 from typing import Any, Dict
 
-from docuvision_core.utils.path_utils import get_app_dir
+from docuvision_core.utils.path_utils import get_app_dir, resolve_tesseract_cmd
 
 
 class Config:
@@ -87,9 +87,7 @@ class Config:
         self.DEFAULT_CONFIG["table_models"]["structure_model_path"] = os.path.join(
             base_dir, "models", "table-transformer", "structure"
         )
-        self.DEFAULT_CONFIG["table_models"]["ocr_model_path"] = os.path.join(
-            base_dir, "models", "Tesseract-OCR", "tesseract.exe"
-        )
+        self.DEFAULT_CONFIG["table_models"]["ocr_model_path"] = resolve_tesseract_cmd()
 
         self.load()
         self._initialized = True

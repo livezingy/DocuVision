@@ -37,10 +37,21 @@ def get_app_dir() -> str:
     return os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
 def get_tesseract_bin() -> str:
-    """Docstring."""
+    """Default Tesseract executable path for the current platform."""
     if sys.platform == 'win32':
         return os.path.join(get_app_dir(), 'tesseract', 'tesseract.exe')
     return 'tesseract'
+
+def resolve_tesseract_cmd(configured_path: str | None = None) -> str:
+    """Resolve a usable Tesseract binary (config path, PATH, or platform default)."""
+    import shutil
+
+    if configured_path and os.path.isfile(configured_path):
+        return configured_path
+    which = shutil.which("tesseract")
+    if which:
+        return which
+    return get_tesseract_bin()
 
 def get_tessdata_dir() -> str:
     """Docstring."""

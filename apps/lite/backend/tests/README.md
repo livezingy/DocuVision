@@ -3,6 +3,18 @@
 > **本地职责**：仅修改代码与测试文件，**不在本地执行 Python/pytest**。  
 > **验证职责**：GitHub Actions（`CI Lite` workflow）或 Cloud Studio CPU 环境执行本节命令。
 
+## 0. 测试文件说明（合并前审计）
+
+| 文件 | 保留原因 |
+|------|----------|
+| `test_*.py`（12 个） | 均在 CI 或文档中引用；**无冗余删除** |
+| `test_image_table_pipeline.py` | 覆盖冻结后的 `image_table_pipeline`（含 `RASTER_TABLE_EXTRACTION_ENABLED=true` 时的 mock 路径） |
+| `test_raster_transformer_frozen.py` | 默认冻结下 `/extract/auto` 不调用 Transformer |
+| `fixtures/sample_bordered.pdf` | 数字 PDF 表格/Profile 集成测试 |
+| `LITE_UI_TEST_CHECKLIST.md` | 手工 UI 验收（非 pytest） |
+
+后端 `image_table_pipeline.py` 在默认配置下**运行时不用**，但保留供 `RASTER_TABLE_EXTRACTION_ENABLED=true` 开发/回归，**不是死代码**。
+
 ## 1. 自动化
 
 | 触发方式 | 何时运行 `CI Lite` |

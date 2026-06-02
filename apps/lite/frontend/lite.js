@@ -18,7 +18,6 @@ const DEFAULT_OPTIONS = {
   engine: "auto",
   flavor: "auto",
   ocrEngine: "auto",
-  transformer: "transformer",
   languages: "eng",
   paramMode: "auto",
   customParams: null,
@@ -341,9 +340,6 @@ function updateEnginesHint(fileType, extractTables, extractText) {
   if ((fileType === "image" || fileType === "pdf_scan") && extractText) {
     parts.push("Raster documents: choose OCR engine and languages for text.");
   }
-  if ((fileType === "image" || fileType === "pdf_scan") && extractTables && !RASTER_TABLES_FROZEN) {
-    parts.push("Raster documents: Transformer extracts tables from photos and scanned PDFs.");
-  }
   hintEl.textContent = parts.length ? parts.join(" ") : "Override Smart routing with explicit engine settings.";
 }
 
@@ -380,30 +376,8 @@ function updateOptionsVisibility() {
 
   const digitalGroup = $("enginesGroupDigital");
   const textGroup = $("enginesGroupText");
-  const transformerGroup = $("enginesGroupTransformer");
   if (digitalGroup) digitalGroup.hidden = !(isDigitalPdf && effectiveExtractTables);
   if (textGroup) textGroup.hidden = !(isRaster && extractText);
-  if (transformerGroup) {
-    transformerGroup.hidden = !(isRaster && effectiveExtractTables && !RASTER_TABLES_FROZEN);
-  }
-
-  const transformerHint = $("transformerHint");
-  const scanProfile = state.profile?.scan_profile;
-  const transformerAvailable = scanProfile?.transformer_available !== false;
-  const optTransformer = $("optTransformer");
-  if (optTransformer && transformerGroup && !transformerGroup.hidden) {
-    if (!transformerAvailable) {
-      optTransformer.disabled = true;
-      if (transformerHint) {
-        transformerHint.textContent =
-          "Table Transformer not installed. pip install docuvision-core[ocr-heavy]";
-      }
-    } else {
-      if (transformerHint) transformerHint.textContent = "";
-    }
-  } else if (transformerHint) {
-    transformerHint.textContent = "";
-  }
 
   updateEnginesHint(fileType, effectiveExtractTables, extractText);
 }
@@ -765,7 +739,7 @@ function renderDocumentProfile() {
       <div class="scan-profile-msg">
         <p>${escapeHtml(profile.scan_profile.message)}</p>
         <p style="margin-top:8px">Recommended OCR: <strong>${escapeHtml(profile.scan_profile.recommended_ocr)}</strong></p>
-        <p>Transformer: ${profile.scan_profile.transformer_available ? "available" : "not installed"}</p>
+        <p>Raster table extraction (Transformer): disabled in Lite</p>
       </div>`;
     return;
   }
@@ -857,7 +831,6 @@ function syncModalFromState() {
   $("optEngine").value = state.options.engine;
   $("optFlavor").value = normalizeFlavorFromProfile(state.options.flavor);
   $("optOcrEngine").value = state.options.ocrEngine;
-  $("optTransformer").value = state.options.transformer;
   $("optLanguages").value = state.options.languages;
   $("optScoreThreshold").value = state.options.scoreThreshold;
   document.querySelector(`input[name="paramMode"][value="${state.options.paramMode}"]`).checked = true;
@@ -900,23 +873,11 @@ function updateAdvancedControls() {
       hintEl.textContent = "Auto param mode derives extraction settings from page features at runtime.";
     }
   }
-  const scanProfile = state.profile?.scan_profile;
-  const transformerAvailable = scanProfile?.transformer_available !== false;
-  ["optEngine", "optFlavor", "optOcrEngine", "optTransformer", "optLanguages"].forEach((id) => {
+  ["optEngine", "optFlavor", "optOcrEngine", "optLanguages"].forEach((id) => {
     const el = $(id);
     if (!el || el.closest("[hidden]")) return;
     el.disabled = !advanced;
   });
-  const optTransformer = $("optTransformer");
-  const transformerGroup = $("enginesGroupTransformer");
-  if (
-    optTransformer &&
-    transformerGroup &&
-    !transformerGroup.hidden &&
-    !transformerAvailable
-  ) {
-    optTransformer.disabled = true;
-  }
   ["paramsCamelotLattice", "paramsCamelotStream", "paramsPdfplumberBordered", "paramsPdfplumberUnbordered"].forEach((id) => {
     $(id).disabled = !custom;
   });
@@ -933,7 +894,6 @@ function readOptionsFromModal() {
   state.options.engine = $("optEngine").value;
   state.options.flavor = normalizeFlavorFromProfile($("optFlavor").value);
   state.options.ocrEngine = $("optOcrEngine").value;
-  state.options.transformer = $("optTransformer").value;
   state.options.languages = $("optLanguages").value.trim() || "eng";
   state.options.paramMode = document.querySelector('input[name="paramMode"]:checked').value;
   state.options.scoreThreshold = parseFloat($("optScoreThreshold").value) || 0.5;
@@ -1270,10 +1230,7 @@ async function runExtractionForItem(item, { silent = false } = {}) {
     isRaster && RASTER_TABLES_FROZEN ? false : state.options.extractTables;
   form.append("extract_tables", String(extractTables));
   form.append("extract_text", String(state.options.extractText));
-  form.append(
-    "use_transformer",
-    String(extractTables && state.options.transformer === "transformer"),
-  );
+  form.append("use_transformer", RASTER_TABLES_FROZEN ? "false" : String(extractTables));
   if (state.options.pages) form.append("pages", state.options.pages);
   form.append("score_threshold", String(state.options.scoreThreshold));
   form.append("param_mode", state.options.paramMode);

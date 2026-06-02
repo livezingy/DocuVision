@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.core.config import settings
+from app.core.feature_flags import raster_table_extraction_enabled
 from app.schemas.lite_result import (
     LITE_API_VERSION,
     LiteEngineInfo,
@@ -54,7 +55,11 @@ def build_engine_catalog() -> LiteEnginesResponse:
                 id="transformer",
                 label="Transformer",
                 file_types=["image", "pdf_scan"],
-                description="High-accuracy table detection; requires local/heavy profile.",
+                description=(
+                    "High-accuracy table detection; disabled in Lite (text OCR only for scans)."
+                    if not raster_table_extraction_enabled()
+                    else "High-accuracy table detection; requires local/heavy profile."
+                ),
                 profile="heavy",
             ),
         ]

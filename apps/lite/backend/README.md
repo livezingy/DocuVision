@@ -77,8 +77,10 @@ Optional: `DOCUVISION_MODELS_DIR` overrides the models root; `DOCUVISION_OFFLINE
 ### UI engines (Analysis Options)
 
 - **Text + Tesseract**: needs system `tesseract` on `PATH`.
-- **Tables + Transformer**: needs `pip install -e '...docuvision-core[ocr-heavy]'` (torch + transformers + matplotlib).
-- Transformer table extraction can still use EasyOCR internally for cell text when cell OCR fails; that is separate from the Text (OCR) engine selection.
+- **Text + EasyOCR**: included in `[lite]`; weights under `models/EasyOCR/model/`.
+- **Raster documents (image / scan PDF)**: **text OCR only** (EasyOCR or Tesseract). Table Transformer for photos/scans is **disabled by default** (`RASTER_TABLE_EXTRACTION_ENABLED=false`).
+- **Digital PDF tables**: pdfplumber / camelot (unchanged).
+- To re-enable raster Transformer (dev only): set env `RASTER_TABLE_EXTRACTION_ENABLED=true` and install `[ocr-heavy]`.
 
 ## Local reference docs (PDFDataExtractor)
 

@@ -25,7 +25,8 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Upload scan/image with **Tables** enabled | Transformer runs when torch/transformers installed; tables in Content |
+| 1 | Upload scan/image, open Analysis Options | **Tables** checkbox **hidden**; **Text (OCR)** available; Transformer section **hidden** |
+| 2 | Run Analysis on scan/image | Text OCR only (EasyOCR/Tesseract); **no** TableParser / Transformer in server log |
 | 2 | Low confidence case | Quality panel warns `low_confidence`; text still visible; hint may mention Pro |
 | 3 | True failure (no engine / init error) | Quality panel shows `ocr_extraction_failed`; Text explains failure |
 | 4 | No text detected | Text tab shows `no_text_detected` message, not blank Pro-only state |
@@ -57,7 +58,7 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 | 2 | Inspect button icons | SVG icons **20×20px**, visually matched to Pro |
 | 3 | Click each export | File downloads; **toast** top-right + **status bar** message (both) |
 | 4 | Result tab | **Copy** and **Download** JSON toolbar with icons (Pro-style) |
-| 5 | Image + Text + Tables | Tables extracted when Transformer deps installed; no `coroutine was never awaited` in server log |
+| 5 | Image + Text only | Text OCR runs; **no** Transformer table extraction |
 
 ## LITE-UI-006 Bordered PDF tables
 
@@ -72,9 +73,9 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Upload **digital PDF**, open Analysis Options | **Pages** visible; **Advanced** tab visible; Engines **Section A** (Table engine + Flavor) when Tables checked |
-| 2 | Upload **scanned PDF**, open Analysis Options | **Pages** visible; **Advanced** tab **hidden**; Engines **Section B** (OCR + Languages) and **Section C** (Transformer) when Text/Tables checked |
-| 3 | Upload **PNG/image**, open Analysis Options | **Pages** **hidden**; **Advanced** tab **hidden**; Engines B + C for Text/Tables |
-| 4 | Scanned PDF + Tables + Transformer On, Run Analysis | Tables in Content with `page` field; server log without `coroutine was never awaited` |
+| 2 | Upload **scanned PDF**, open Analysis Options | **Pages** visible; **Advanced** tab **hidden**; **Tables** hidden; Engines **Section B** (OCR + Languages) when Text checked |
+| 3 | Upload **PNG/image**, open Analysis Options | **Pages** **hidden**; **Advanced** tab **hidden**; **Tables** hidden; Engines B for Text |
+| 4 | Scanned PDF + Text, Run Analysis | OCR text in Content; **no** Transformer tables |
 | 5 | Advanced + Auto param mode (digital PDF only) | Hint: parameters computed at runtime |
 | 6 | Apply Profile to Advanced (digital PDF) | Custom JSON prefilled from profile |
 

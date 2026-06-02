@@ -2,6 +2,8 @@ const API_BASE = window.LITE_API_BASE || "/api/v1/lite";
 const LITE_SESSION_KEY = "docuvision.lite.session.v1";
 const LITE_FILE_DB = "docuvision-lite-files";
 const LITE_FILE_STORE = "files";
+/** When true, image/scan PDF table extraction (Transformer) is disabled; text OCR only. */
+const RASTER_TABLES_FROZEN = true;
 
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -339,7 +341,7 @@ function updateEnginesHint(fileType, extractTables, extractText) {
   if ((fileType === "image" || fileType === "pdf_scan") && extractText) {
     parts.push("Raster documents: choose OCR engine and languages for text.");
   }
-  if ((fileType === "image" || fileType === "pdf_scan") && extractTables) {
+  if ((fileType === "image" || fileType === "pdf_scan") && extractTables && !RASTER_TABLES_FROZEN) {
     parts.push("Raster documents: Transformer extracts tables from photos and scanned PDFs.");
   }
   hintEl.textContent = parts.length ? parts.join(" ") : "Override Smart routing with explicit engine settings.";
@@ -351,6 +353,18 @@ function updateOptionsVisibility() {
   const isRaster = fileType === "image" || fileType === "pdf_scan";
   const extractTables = $("optExtractTables")?.checked ?? state.options.extractTables;
   const extractText = $("optExtractText")?.checked ?? state.options.extractText;
+
+  const extractTablesRow = $("extractTablesRow");
+  if (isRaster && RASTER_TABLES_FROZEN) {
+    if (extractTablesRow) extractTablesRow.hidden = true;
+    state.options.extractTables = false;
+    const optExtractTables = $("optExtractTables");
+    if (optExtractTables) optExtractTables.checked = false;
+  } else if (extractTablesRow) {
+    extractTablesRow.hidden = false;
+  }
+
+  const effectiveExtractTables = isRaster && RASTER_TABLES_FROZEN ? false : extractTables;
 
   const pagesRow = $("pagesFieldRow");
   if (pagesRow) {
@@ -367,9 +381,11 @@ function updateOptionsVisibility() {
   const digitalGroup = $("enginesGroupDigital");
   const textGroup = $("enginesGroupText");
   const transformerGroup = $("enginesGroupTransformer");
-  if (digitalGroup) digitalGroup.hidden = !(isDigitalPdf && extractTables);
+  if (digitalGroup) digitalGroup.hidden = !(isDigitalPdf && effectiveExtractTables);
   if (textGroup) textGroup.hidden = !(isRaster && extractText);
-  if (transformerGroup) transformerGroup.hidden = !(isRaster && extractTables);
+  if (transformerGroup) {
+    transformerGroup.hidden = !(isRaster && effectiveExtractTables && !RASTER_TABLES_FROZEN);
+  }
 
   const transformerHint = $("transformerHint");
   const scanProfile = state.profile?.scan_profile;
@@ -389,7 +405,7 @@ function updateOptionsVisibility() {
     transformerHint.textContent = "";
   }
 
-  updateEnginesHint(fileType, extractTables, extractText);
+  updateEnginesHint(fileType, effectiveExtractTables, extractText);
 }
 
 function defaultOptions() {
@@ -908,7 +924,10 @@ function updateAdvancedControls() {
 
 function readOptionsFromModal() {
   state.options.mode = document.querySelector('input[name="extractMode"]:checked').value;
-  state.options.extractTables = $("optExtractTables").checked;
+  const fileType = getDetectedFileType();
+  const isRaster = fileType === "image" || fileType === "pdf_scan";
+  state.options.extractTables =
+    isRaster && RASTER_TABLES_FROZEN ? false : $("optExtractTables").checked;
   state.options.extractText = $("optExtractText").checked;
   state.options.pages = $("optPages").value.trim();
   state.options.engine = $("optEngine").value;
@@ -1194,11 +1213,15 @@ async function runExtractionForItem(item, { silent = false } = {}) {
     : "auto");
   form.append("ocr_engine", state.options.mode === "advanced" ? state.options.ocrEngine : "auto");
   form.append("languages", state.options.languages || "eng");
-  form.append("extract_tables", String(state.options.extractTables));
+  const fileType = getDetectedFileType();
+  const isRaster = fileType === "image" || fileType === "pdf_scan";
+  const extractTables =
+    isRaster && RASTER_TABLES_FROZEN ? false : state.options.extractTables;
+  form.append("extract_tables", String(extractTables));
   form.append("extract_text", String(state.options.extractText));
   form.append(
     "use_transformer",
-    String(state.options.extractTables && state.options.transformer === "transformer"),
+    String(extractTables && state.options.transformer === "transformer"),
   );
   if (state.options.pages) form.append("pages", state.options.pages);
   form.append("score_threshold", String(state.options.scoreThreshold));

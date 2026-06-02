@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from PIL import Image
 
 from app.schemas.lite_result import ExtractMode, WarningCode
+from app.core.feature_flags import raster_table_extraction_enabled
 from app.services.file_detector import detect_file_type
 from app.services.page_utils import load_raster_pages
 
@@ -118,6 +119,9 @@ def extract_tables_from_image(
     table_ocr_engine: Optional[str] = None,
     table_ocr_languages: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
+    if not raster_table_extraction_enabled():
+        raise RuntimeError("Raster table extraction is disabled in Lite")
+
     if not _transformer_available():
         raise RuntimeError(
             "Table Transformer requires torch and transformers. "

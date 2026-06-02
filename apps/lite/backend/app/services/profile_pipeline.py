@@ -11,6 +11,7 @@ import pdfplumber
 
 from app.services.engine_probe import probe_engine_availability
 from app.core.config import settings
+from app.core.feature_flags import raster_table_extraction_enabled
 from app.schemas.lite_result import (
     DetectedFileType,
     LiteClassificationDetail,
@@ -110,7 +111,11 @@ def _build_scan_profile(detected: DetectedFileType) -> LiteScanProfile:
     engines = probe_engine_availability()
     tesseract_ok = engines.get("tesseract") and engines["tesseract"].available
     easyocr_ok = engines.get("easyocr") and engines["easyocr"].available
-    transformer_ok = engines.get("transformer") and engines["transformer"].available
+    transformer_ok = (
+        raster_table_extraction_enabled()
+        and engines.get("transformer")
+        and engines["transformer"].available
+    )
 
     if easyocr_ok:
         recommended = "easyocr"
@@ -120,9 +125,9 @@ def _build_scan_profile(detected: DetectedFileType) -> LiteScanProfile:
         recommended = "tesseract"
 
     if detected == DetectedFileType.PDF_SCAN:
-        message = "Scan PDF detected. OCR recommended for text; use Transformer for table structure if available."
+        message = "Scan PDF detected. Use EasyOCR or Tesseract for text extraction."
     else:
-        message = "Image file detected. OCR recommended for text extraction."
+        message = "Image file detected. Use EasyOCR or Tesseract for text extraction."
 
     return LiteScanProfile(
         recommended_ocr=recommended,

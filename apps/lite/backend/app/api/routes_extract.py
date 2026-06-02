@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Uploa
 
 from app.api.upload_utils import validate_upload
 from app.core.config import settings
+from app.core.feature_flags import raster_table_extraction_enabled
 from app.schemas.lite_result import (
     ExtractMode,
     JobStatus,
@@ -27,6 +28,10 @@ from app.services.pipeline_merge import _empty_scan_image_result, merge_pipeline
 from app.services.table_pipeline import extract_digital_pdf_text, extract_tables_from_pdf
 
 router = APIRouter(tags=["extract"])
+
+_RASTER_TABLE_FROZEN_MESSAGE = (
+    "Raster table extraction (Transformer) is disabled in Lite; text OCR only."
+)
 
 
 def _run_pipeline(
@@ -91,7 +96,19 @@ def _run_pipeline(
         result = _empty_scan_image_result(detected, page_count)
         result["routing"] = {"mode": mode.value if hasattr(mode, "value") else mode}
 
-        if extract_tables and detected.value in {"image", "pdf_scan"} and use_transformer:
+        raster_tables_requested = (
+            extract_tables
+            and detected.value in {"image", "pdf_scan"}
+            and use_transformer
+        )
+        if raster_tables_requested and not raster_table_extraction_enabled():
+            result["warnings"].append(
+                {
+                    "code": WarningCode.RASTER_TABLE_FROZEN.value,
+                    "message": _RASTER_TABLE_FROZEN_MESSAGE,
+                }
+            )
+        elif raster_tables_requested and raster_table_extraction_enabled():
             try:
                 table_ocr_engine = None
                 if mode == ExtractMode.ADVANCED and ocr_engine not in ("auto", ""):
@@ -284,6 +301,9 @@ async def extract_auto(
 def _background_extract(job_id: str, upload_path: Path, mime_type: str, form: dict) -> None:
     job_store.update(job_id, status=JobStatus.RUNNING.value)
     try:
+        extract_tables_raw = form.get("extract_tables", True)
+        extract_text_raw = form.get("extract_text", True)
+        use_transformer_raw = form.get("use_transformer", True)
         pipeline_output, elapsed = timed_pipeline(
             _run_pipeline,
             upload_path,
@@ -295,6 +315,11 @@ def _background_extract(job_id: str, upload_path: Path, mime_type: str, form: di
             float(form.get("score_threshold", 0.5)),
             form.get("param_mode", "auto"),
             form.get("custom_params"),
+            form.get("ocr_engine", "auto"),
+            form.get("languages"),
+            extract_tables_raw if isinstance(extract_tables_raw, bool) else str(extract_tables_raw).lower() == "true",
+            extract_text_raw if isinstance(extract_text_raw, bool) else str(extract_text_raw).lower() == "true",
+            use_transformer_raw if isinstance(use_transformer_raw, bool) else str(use_transformer_raw).lower() == "true",
         )
         result = build_lite_result(
             job_id=job_id,
@@ -319,6 +344,11 @@ async def create_job(
     score_threshold: float = Form(0.5),
     param_mode: str = Form("auto"),
     custom_params: Optional[str] = Form(None),
+    ocr_engine: str = Form("auto"),
+    languages: Optional[str] = Form(None),
+    extract_tables: bool = Form(True),
+    extract_text: bool = Form(True),
+    use_transformer: bool = Form(True),
 ):
     raw = await file.read()
     validate_upload(file, raw)
@@ -332,6 +362,11 @@ async def create_job(
         "score_threshold": score_threshold,
         "param_mode": param_mode,
         "custom_params": custom_params,
+        "ocr_engine": ocr_engine,
+        "languages": languages,
+        "extract_tables": extract_tables,
+        "extract_text": extract_text,
+        "use_transformer": use_transformer,
     }
     background_tasks.add_task(_background_extract, job_id, upload_path, file.content_type or "", form)
     return LiteJobAccepted(

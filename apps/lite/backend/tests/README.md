@@ -59,7 +59,9 @@ cd ../../../packages/docuvision-core
 python -m pytest tests/utils/test_pdf_text_utils.py tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py tests/utils/test_config.py -q
 
 # Transformer image tables (cloud GPU env with ocr-heavy deps):
+# Disabled by default in Lite (RASTER_TABLE_EXTRACTION_ENABLED=false).
 # pip install -e '../../../packages/docuvision-core[ocr-heavy]'
+# RASTER_TABLE_EXTRACTION_ENABLED=true python -m pytest tests/test_image_table_pipeline.py -q
 ```
 
 ## 3. Document Profile + 三栏 UI 验收标准

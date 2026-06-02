@@ -41,6 +41,9 @@ async def test_extract_tables_from_image_under_running_loop(tmp_path: Path) -> N
         return mock_result
 
     with patch(
+        "app.services.image_table_pipeline.raster_table_extraction_enabled",
+        return_value=True,
+    ), patch(
         "app.services.image_table_pipeline._transformer_available",
         return_value=True,
     ), patch(
@@ -86,6 +89,9 @@ def test_extract_tables_from_pdf_scan_multi_page(tmp_path: Path) -> None:
         }
 
     with patch(
+        "app.services.image_table_pipeline.raster_table_extraction_enabled",
+        return_value=True,
+    ), patch(
         "app.services.image_table_pipeline._transformer_available",
         return_value=True,
     ), patch(
@@ -110,6 +116,18 @@ def test_extract_tables_from_image_transformer_unavailable() -> None:
     with patch(
         "app.services.image_table_pipeline._transformer_available",
         return_value=False,
+    ), patch(
+        "app.services.image_table_pipeline.raster_table_extraction_enabled",
+        return_value=True,
     ):
         with pytest.raises(RuntimeError, match="ocr-heavy"):
+            extract_tables_from_image(Path("dummy.png"))
+
+
+def test_extract_tables_from_image_raises_when_frozen() -> None:
+    with patch(
+        "app.services.image_table_pipeline.raster_table_extraction_enabled",
+        return_value=False,
+    ):
+        with pytest.raises(RuntimeError, match="disabled in Lite"):
             extract_tables_from_image(Path("dummy.png"))

@@ -53,6 +53,7 @@ class WarningCode(str, Enum):
     OCR_EXTRACTION_FAILED = "ocr_extraction_failed"
     ENGINE_FALLBACK = "engine_fallback"
     TRANSFORMER_UNAVAILABLE = "transformer_unavailable"
+    RASTER_TABLE_FROZEN = "raster_table_frozen"
     PAGE_TRUNCATED = "page_truncated"
     PRO_RECOMMENDED = "pro_recommended"
 

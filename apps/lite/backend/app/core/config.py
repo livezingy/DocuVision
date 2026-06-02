@@ -23,6 +23,9 @@ class LiteSettings(BaseSettings):
 
     JOB_DATA_DIR: str = "data/lite_jobs"
 
+    # Raster (image / scan PDF) Table Transformer extraction; default off in Lite.
+    RASTER_TABLE_EXTRACTION_ENABLED: bool = False
+
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     DEMO_VALIDATION_DIR: str = "data/demo_validation"

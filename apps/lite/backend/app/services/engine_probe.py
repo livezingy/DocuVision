@@ -8,6 +8,7 @@ from importlib import metadata as importlib_metadata
 from typing import Dict
 
 from app.schemas.lite_result import LiteEngineAvailability
+from app.core.feature_flags import raster_table_extraction_enabled
 
 
 def _package_version(dist_names: list[str]) -> str | None:
@@ -28,6 +29,8 @@ def probe_engine_availability() -> Dict[str, LiteEngineAvailability]:
     camelot_version = _package_version(["camelot-py", "camelot"])
     easyocr_version = _package_version(["easyocr"])
     transformer_version = _package_version(["transformers"])
+    transformer_installed = transformer_version is not None and _is_importable("torch")
+    transformer_available = transformer_installed and raster_table_extraction_enabled()
 
     tesseract_available = shutil.which("tesseract") is not None
 
@@ -53,10 +56,14 @@ def probe_engine_availability() -> Dict[str, LiteEngineAvailability]:
             reason=None if easyocr_version else "not installed",
         ),
         "transformer": LiteEngineAvailability(
-            available=transformer_version is not None and _is_importable("torch"),
+            available=transformer_available,
             version=transformer_version,
             reason=None
-            if transformer_version and _is_importable("torch")
-            else "heavy profile not installed",
+            if transformer_available
+            else (
+                "disabled in Lite"
+                if transformer_installed and not raster_table_extraction_enabled()
+                else "heavy profile not installed"
+            ),
         ),
     }

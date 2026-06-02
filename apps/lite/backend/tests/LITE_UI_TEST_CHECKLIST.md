@@ -27,6 +27,7 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 |------|--------|----------|
 | 1 | Upload scan/image, open Analysis Options | **Tables** checkbox **hidden**; **Text (OCR)** available; Transformer section **hidden** |
 | 2 | Run Analysis on scan/image | Text OCR only (EasyOCR/Tesseract); **no** TableParser / Transformer in server log |
+| 2b | EasyOCR image with multiple words per line | Content → **Text**: words on same line joined with spaces; lines separated by newlines (not one word per line) |
 | 2 | Low confidence case | Quality panel warns `low_confidence`; text still visible; hint may mention Pro |
 | 3 | True failure (no engine / init error) | Quality panel shows `ocr_extraction_failed`; Text explains failure |
 | 4 | No text detected | Text tab shows `no_text_detected` message, not blank Pro-only state |

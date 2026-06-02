@@ -1032,16 +1032,67 @@ function decodeCidPlaceholders(text) {
     .replace(/\(cid:\d+\)/g, "");
 }
 
+/** Max vertical distance (px) to treat OCR boxes as the same text line (EasyOCR word boxes). */
+const OCR_LINE_Y_TOLERANCE_PX = 8;
+
+function ocrBlockCenterY(block) {
+  const bbox = block?.bbox;
+  if (!bbox || bbox.length < 4) return 0;
+  return (Number(bbox[1]) + Number(bbox[3])) / 2;
+}
+
+function sortOcrBlocksForReading(blocks) {
+  return [...blocks].sort((a, b) => {
+    if ((a.page ?? 1) !== (b.page ?? 1)) return (a.page ?? 1) - (b.page ?? 1);
+    const ay = ocrBlockCenterY(a);
+    const by = ocrBlockCenterY(b);
+    if (Math.abs(ay - by) > OCR_LINE_Y_TOLERANCE_PX) return ay - by;
+    return (a.bbox?.[0] ?? 0) - (b.bbox?.[0] ?? 0);
+  });
+}
+
+function groupOcrBlocksIntoLines(blocks) {
+  const sorted = sortOcrBlocksForReading(blocks);
+  const lines = [];
+  let currentLine = [];
+  let lineRefY = null;
+  let currentPage = null;
+
+  for (const block of sorted) {
+    const page = block.page ?? 1;
+    const centerY = ocrBlockCenterY(block);
+    const startNewLine =
+      !currentLine.length ||
+      page !== currentPage ||
+      lineRefY === null ||
+      Math.abs(centerY - lineRefY) > OCR_LINE_Y_TOLERANCE_PX;
+
+    if (startNewLine && currentLine.length) {
+      lines.push(currentLine);
+      currentLine = [];
+    }
+    if (startNewLine || !currentLine.length) {
+      lineRefY = centerY;
+      currentPage = page;
+    }
+    currentLine.push(block);
+  }
+  if (currentLine.length) lines.push(currentLine);
+  return lines;
+}
+
 function buildFullText(data) {
   if (data.ocr?.length) {
-    const blocks = [...data.ocr].sort((a, b) => {
-      if (a.page !== b.page) return a.page - b.page;
-      const ay = a.bbox?.[1] ?? 0;
-      const by = b.bbox?.[1] ?? 0;
-      if (Math.abs(ay - by) > 8) return ay - by;
-      return (a.bbox?.[0] ?? 0) - (b.bbox?.[0] ?? 0);
-    });
-    return blocks.map((b) => decodeCidPlaceholders(b.text)).join("\n");
+    const lines = groupOcrBlocksIntoLines(data.ocr);
+    return lines
+      .map((lineBlocks) =>
+        lineBlocks
+          .map((b) => decodeCidPlaceholders((b.text || "").trim()))
+          .filter(Boolean)
+          .join(" "),
+      )
+      .filter((line) => line.length > 0)
+      .join("\n");
   }
   if (data.text_preview) {
     return decodeCidPlaceholders(data.text_preview);

@@ -37,7 +37,7 @@ async def test_extract_tables_from_image_under_running_loop(tmp_path: Path) -> N
     }
     detected = SimpleNamespace(value="image")
 
-    async def fake_parser(_image: Image.Image) -> dict:
+    async def fake_parser(_image: Image.Image, **kwargs) -> dict:
         return mock_result
 
     with patch(
@@ -74,7 +74,7 @@ def test_extract_tables_from_pdf_scan_multi_page(tmp_path: Path) -> None:
 
     call_pages: list[int] = []
 
-    async def fake_parser(image: Image.Image) -> dict:
+    async def fake_parser(image: Image.Image, **kwargs) -> dict:
         call_pages.append(1 if image.getpixel((0, 0)) == (255, 255, 255) else 2)
         return {
             "success": True,

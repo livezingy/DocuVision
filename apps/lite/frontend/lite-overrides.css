@@ -381,3 +381,8 @@
     color: var(--text-secondary);
     margin: 0 0 10px;
 }
+
+/* Analysis Options: raster docs hide Tables row (backup for [hidden]) */
+#extractTablesRow[hidden] {
+    display: none !important;
+}

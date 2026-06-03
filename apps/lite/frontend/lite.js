@@ -311,14 +311,29 @@ function setStatus(msg) {
 }
 
 function getDetectedFileType() {
+  if (state.profile?.scan_profile) {
+    const fromProfile = state.profile?.input?.detected_file_type;
+    if (fromProfile === "pdf_scan" || fromProfile === "image") return fromProfile;
+    const name = (state.file?.name || "").toLowerCase();
+    return name.endsWith(".pdf") ? "pdf_scan" : "image";
+  }
   const fromProfile = state.profile?.input?.detected_file_type;
   if (fromProfile) return fromProfile;
   const name = (state.file?.name || "").toLowerCase();
   if (/\.(png|jpe?g|tiff?|webp|bmp|gif)$/.test(name)) return "image";
-  if (name.endsWith(".pdf")) {
-    return state.profile?.scan_profile ? "pdf_scan" : "pdf_digital";
-  }
+  if (name.endsWith(".pdf")) return null;
   return null;
+}
+
+function isRasterDocument() {
+  if (state.profile?.scan_profile) return true;
+  const fileType = getDetectedFileType();
+  return fileType === "image" || fileType === "pdf_scan";
+}
+
+function isDigitalPdfDocument() {
+  if (isRasterDocument()) return false;
+  return getDetectedFileType() === "pdf_digital";
 }
 
 function updateEnginesHint(fileType, extractTables, extractText) {
@@ -334,10 +349,10 @@ function updateEnginesHint(fileType, extractTables, extractText) {
     return;
   }
   const parts = [];
-  if (fileType === "pdf_digital" && extractTables) {
+  if (isDigitalPdfDocument() && extractTables) {
     parts.push("Digital PDF: choose table engine and flavor.");
   }
-  if ((fileType === "image" || fileType === "pdf_scan") && extractText) {
+  if (isRasterDocument() && extractText) {
     parts.push("Raster documents: choose OCR engine and languages for text.");
   }
   hintEl.textContent = parts.length ? parts.join(" ") : "Override Smart routing with explicit engine settings.";
@@ -345,22 +360,26 @@ function updateEnginesHint(fileType, extractTables, extractText) {
 
 function updateOptionsVisibility() {
   const fileType = getDetectedFileType();
-  const isDigitalPdf = fileType === "pdf_digital";
-  const isRaster = fileType === "image" || fileType === "pdf_scan";
+  const isRaster = isRasterDocument();
+  const isDigitalPdf = isDigitalPdfDocument();
   const extractTables = $("optExtractTables")?.checked ?? state.options.extractTables;
   const extractText = $("optExtractText")?.checked ?? state.options.extractText;
 
   const extractTablesRow = $("extractTablesRow");
-  if (isRaster && RASTER_TABLES_FROZEN) {
-    if (extractTablesRow) extractTablesRow.hidden = true;
-    state.options.extractTables = false;
-    const optExtractTables = $("optExtractTables");
-    if (optExtractTables) optExtractTables.checked = false;
-  } else if (extractTablesRow) {
-    extractTablesRow.hidden = false;
+  const optExtractTables = $("optExtractTables");
+  const showTables = isDigitalPdf && !(isRaster && RASTER_TABLES_FROZEN);
+
+  if (extractTablesRow) {
+    extractTablesRow.hidden = !showTables;
+    extractTablesRow.classList.toggle("sub-option-disabled", !showTables);
+    if (optExtractTables) {
+      optExtractTables.disabled = !showTables;
+      if (!showTables) optExtractTables.checked = false;
+    }
+    if (!showTables) state.options.extractTables = false;
   }
 
-  const effectiveExtractTables = isRaster && RASTER_TABLES_FROZEN ? false : extractTables;
+  const effectiveExtractTables = showTables ? extractTables : false;
 
   const pagesRow = $("pagesFieldRow");
   if (pagesRow) {
@@ -493,6 +512,7 @@ async function removeQueueItem(index) {
     } else {
       await fetchProfile(state.file);
     }
+    updateOptionsVisibility();
     renderResults(state.result);
   }
   persistSession();
@@ -514,6 +534,7 @@ async function selectQueueItem(index) {
     } else {
       await fetchProfile(state.file);
     }
+    updateOptionsVisibility();
     renderResults(state.result);
   }
 }
@@ -577,6 +598,7 @@ async function addFilesToQueue(files, { replace = false } = {}) {
   item.profile = state.profile;
   item.status = "ready";
   item.statusMessage = "Profile ready";
+  updateOptionsVisibility();
   updateQueueUI();
   persistSession();
   return addedItems.length;
@@ -886,10 +908,8 @@ function updateAdvancedControls() {
 
 function readOptionsFromModal() {
   state.options.mode = document.querySelector('input[name="extractMode"]:checked').value;
-  const fileType = getDetectedFileType();
-  const isRaster = fileType === "image" || fileType === "pdf_scan";
-  state.options.extractTables =
-    isRaster && RASTER_TABLES_FROZEN ? false : $("optExtractTables").checked;
+  const showTables = isDigitalPdfDocument() && !(isRasterDocument() && RASTER_TABLES_FROZEN);
+  state.options.extractTables = showTables ? $("optExtractTables").checked : false;
   state.options.extractText = $("optExtractText").checked;
   state.options.pages = $("optPages").value.trim();
   state.options.engine = $("optEngine").value;
@@ -915,7 +935,16 @@ function readOptionsFromModal() {
   }
 }
 
-function openModal() {
+async function openModal() {
+  const item = getActiveItem();
+  if (item?.file && !item.profile) {
+    try {
+      item.profile = await fetchProfileForItem(item.file);
+      state.profile = item.profile;
+    } catch {
+      /* visibility falls back to filename heuristics */
+    }
+  }
   syncModalFromState();
   els.modal.classList.add("active");
 }
@@ -1225,8 +1254,7 @@ async function runExtractionForItem(item, { silent = false } = {}) {
     : "auto");
   form.append("ocr_engine", state.options.mode === "advanced" ? state.options.ocrEngine : "auto");
   form.append("languages", state.options.languages || "eng");
-  const fileType = getDetectedFileType();
-  const isRaster = fileType === "image" || fileType === "pdf_scan";
+  const isRaster = isRasterDocument();
   const extractTables =
     isRaster && RASTER_TABLES_FROZEN ? false : state.options.extractTables;
   form.append("extract_tables", String(extractTables));
@@ -1594,6 +1622,7 @@ async function init() {
     } else {
       await fetchProfile(state.file);
     }
+    updateOptionsVisibility();
     renderResults(state.result);
     setStatus(`Restored ${state.queue.length} file(s) from session`);
   } else {

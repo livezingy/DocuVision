@@ -22,14 +22,6 @@ def _lazy_register() -> None:
     except ImportError:
         pass
 
-    try:
-        from docuvision_core.engines.paddleocr_engine import PaddleOCREngine
-
-        EngineFactory.register_ocr("paddleocr", PaddleOCREngine)
-        EngineFactory.register_detection("paddleocr", PaddleOCREngine)
-    except ImportError:
-        pass
-
     _engines_loaded = True
 
 

@@ -23,23 +23,45 @@ The web UI is a static single-page app under `frontend/` (no Node build). Layout
 ![DocuVision process receipt](docs/architecture/media/DocVision_receipt.gif)
 
 ![DocuVision process invoice](docs/architecture/media/DocVision_Invoice.gif)
+
+### Lite (CPU) — demo GIFs
+
+Record after Cloud CPU setup; see [docs/architecture/media/README.md](docs/architecture/media/README.md) for `DocVision_Lite_table.gif` and `DocVision_Lite_ocr.gif` targets.
 ---
 
 ## Repository layout
 
 ```
 DocuVision/
-├── backend/           # FastAPI app, orchestrator, PaddleX services, tests
-├── frontend/          # Static SPA + README_FRONTEND.md
+├── backend/           # FastAPI Pro app (:8000), orchestrator, PaddleX, KIE
+├── frontend/          # Pro static SPA
+├── apps/lite/         # DocuVision Lite CPU app (:8001) + lite.html UI
+├── packages/docuvision-core/  # Shared Lite table/OCR core library
 ├── docs/architecture/ # Design specs and trackers
 └── test_data/         # acceptance, testfiles, Azure refs; TestResult excluded
 ```
 
 ---
 
+## DocuVision Pro vs Lite
+
+| | **Pro** | **Lite** |
+|---|---------|----------|
+| Port | `:8000` | `:8001` |
+| Stack | PP-StructureV3 + optional Qwen KIE | pdfplumber / Camelot + EasyOCR / Tesseract |
+| Best for | Layout, 5-type KIE, GPU throughput | CPU, born-digital PDF tables, scan OCR |
+| Run | `cd backend && python run.py` | `cd apps/lite/backend && python run_lite.py` |
+| UI | `frontend/index.html` | `http://localhost:8001/lite/lite.html` |
+
+Lite API: [docs/architecture/lite-api.md](docs/architecture/lite-api.md). Limitations: [Known limitations](docs/release/KNOWN_LIMITATIONS.md).
+
+---
+
 ## Getting started (outline)
 
-1. **Environment**: GPU recommended for production-like latency; CPU may suffice for smoke tests depending on models.
+### Pro (GPU recommended)
+
+1. **Environment**: GPU recommended for production-like latency.
 2. **Python dependencies**: `cd backend && pip install -r requirements.txt` — follow the header comments for Paddle / torch vs. preinstalled images.
 3. **Configuration**: use `backend/.env` (you may copy from `backend/.env.cloud` where provided). Do not commit secrets.
 4. **Run the API** (from `backend/`):
@@ -52,7 +74,15 @@ DocuVision/
 5. **Open the UI**: open or serve `frontend/index.html`.
 6. **Cloud / KIE regression** (optional): see [docs/architecture/CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) and [docs/architecture/kie.md](docs/architecture/kie.md).
 
-7. **Release notes**: [CHANGELOG.md](CHANGELOG.md) · [Known limitations (1.0)](docs/release/KNOWN_LIMITATIONS.md)
+### Lite (CPU)
+
+1. Install Lite deps: see [apps/lite/backend/README.md](apps/lite/backend/README.md).
+2. Bootstrap models once: [packages/docuvision-core/models/README.md](packages/docuvision-core/models/README.md).
+3. Run: `cd apps/lite/backend && python run_lite.py`
+4. Open: `http://localhost:8001/lite/lite.html`
+5. Cloud validation: [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) sections G0–H.
+
+7. **Release notes**: [CHANGELOG.md](CHANGELOG.md) · [Known limitations](docs/release/KNOWN_LIMITATIONS.md) · [1.0.1 notes](docs/release/RELEASE_1.0.1_NOTES.md)
 
 ---
 

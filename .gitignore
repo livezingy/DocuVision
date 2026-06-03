@@ -171,6 +171,8 @@ docs/*
 !docs/architecture/media/**
 !docs/demo/
 !docs/demo/**
+!docs/release/
+!docs/release/**
 docs/R&D/**
 
 # Intentionally not versioned / removed from repo (maintainer-local or retired paths)

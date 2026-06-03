@@ -134,6 +134,7 @@ python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
 
 ## 4. DocuVision Lite（CPU，无 Paddle）
 
+> **Since Release 1.0.1**, Lite ships on `main` (not a separate long-lived feature branch).  
 > **本地不跑 Python/pytest**；改 Lite 代码时维护 `apps/lite/backend/tests/` 与 `packages/docuvision-core/tests/processing/`，由 CI 或云端验收。
 
 ### 阶段 G0 — Lite 模型 bootstrap（新主机 / 空 models/ 时执行一次）

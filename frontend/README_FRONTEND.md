@@ -27,7 +27,6 @@ frontend/
 ├── index.html          # 主 HTML 页面（484 行）
 ├── app.js              # 主应用逻辑（4287+ 行）
 ├── styles.css          # 样式表和主题
-├── test-canvas-display.html  # Canvas 测试页面（新增）
 └── tests/              # 前端测试
     ├── e2e/            # 端到端测试
     │   └── example.spec.js

@@ -5,6 +5,39 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — 2026-06-02
+
+Maintenance release: **DocuVision Lite** on `main`, dead-code cleanup, CI/docs alignment. Pro KIE scope unchanged from 1.0.
+
+### Added
+
+- **DocuVision Lite** (CPU): [`apps/lite/`](apps/lite/), [`packages/docuvision-core/`](packages/docuvision-core/), [`docs/architecture/lite-api.md`](docs/architecture/lite-api.md).
+- Lite: digital PDF tables (Camelot / pdfplumber), Document Profile, scan/image Text OCR (EasyOCR / Tesseract), JSON / CSV / Markdown / Word export.
+- Shared UI shell [`frontend/shared/`](frontend/shared/); GitHub Actions **CI Lite**.
+- Pro: `install_pro_gpu.sh`, `gpu_lib_path`, live API tests skip when `:8000` is down.
+
+### Fixed
+
+- Lite EasyOCR Reader process cache and multi-page reuse.
+- Lite Analysis Options: hide Tables for raster documents.
+- Phase A CI: lazy-import `requests` in `conftest.py`.
+
+### Removed
+
+- Dead code: `page_processor`, `base_processor`, broken `file_utils`, `paddleocr_model_preloader`, core `paddleocr_engine`, `generate_kie_card_samples.py`, `test-canvas-display.html`.
+
+### Pro vs Lite (summary)
+
+| Area | Pro (`:8000`) | Lite (`:8001`) |
+|------|---------------|----------------|
+| Engines | PP-StructureV3 + Qwen KIE | pdfplumber / Camelot + EasyOCR / Tesseract |
+| KIE | 5 fixed document types | None |
+| GPU | Recommended | CPU |
+| Tables | Layout + complex PDF | Born-digital PDF; raster tables frozen by default |
+| Batch | Backend API | Not available |
+
+See [Known limitations](docs/release/KNOWN_LIMITATIONS.md) and [RELEASE_1.0.1_NOTES.md](docs/release/RELEASE_1.0.1_NOTES.md).
+
 ## [1.0.0] — 2026-05-21
 
 First self-hosted release: Azure Layout–style analysis (PP-StructureV3) plus optional Qwen2.5-VL KIE for five fixed document types.
@@ -59,4 +92,5 @@ See [docs/release/KNOWN_LIMITATIONS.md](docs/release/KNOWN_LIMITATIONS.md). Summ
 | 2026-05-20 | Cloud 7-sample KIE baseline; PDF KIE fix (`e7dc4ab`). |
 | 2026-05-21 | id_card samples 02–04, ACCEPT-003, Phase A CI, Release 1.0 prep (`2c9c58b`). |
 
+[1.0.1]: https://github.com/livezingy/DocuVision/releases/tag/v1.0.1
 [1.0.0]: https://github.com/livezingy/DocuVision/releases/tag/v1.0.0

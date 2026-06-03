@@ -702,6 +702,7 @@ async function fetchProfile(file, { silent = false } = {}) {
     state.profile = data;
     const item = getActiveItem();
     if (item) item.profile = data;
+    updateOptionsVisibility();
     if (!silent) {
       renderDocumentProfile();
       setActiveMainTab("profile");

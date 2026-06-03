@@ -99,12 +99,12 @@ def _create_easyocr_engine(languages: List[str], gpu: bool = False):
     return EasyOCREngine(languages=languages, gpu=gpu)
 
 
-def _run_easyocr(image: Image.Image, languages: List[str], min_confidence: float) -> List[Dict[str, Any]]:
-    lang_list = _normalize_easyocr_languages(languages)
-    ocr = _create_easyocr_engine(lang_list, gpu=False)
-    if not ocr.initialize():
-        raise RuntimeError("EasyOCR failed to initialize; check language packs and installation.")
-    blocks = ocr.recognize_text(image, min_confidence=min_confidence)
+def _easyocr_blocks_from_image(
+    ocr_engine: Any,
+    image: Image.Image,
+    min_confidence: float,
+) -> List[Dict[str, Any]]:
+    blocks = ocr_engine.recognize_text(image, min_confidence=min_confidence)
     return [
         {
             "page": 1,
@@ -115,6 +115,19 @@ def _run_easyocr(image: Image.Image, languages: List[str], min_confidence: float
         }
         for b in blocks
     ]
+
+
+def _get_easyocr_engine(languages: Optional[List[str]]) -> Any:
+    lang_list = _normalize_easyocr_languages(languages)
+    ocr = _create_easyocr_engine(lang_list, gpu=False)
+    if not ocr.initialize():
+        raise RuntimeError("EasyOCR failed to initialize; check language packs and installation.")
+    return ocr
+
+
+def _run_easyocr(image: Image.Image, languages: List[str], min_confidence: float) -> List[Dict[str, Any]]:
+    ocr = _get_easyocr_engine(languages)
+    return _easyocr_blocks_from_image(ocr, image, min_confidence)
 
 
 def _run_tesseract(image: Image.Image, min_confidence: float) -> List[Dict[str, Any]]:
@@ -219,11 +232,22 @@ def extract_ocr_from_image(
     )
     ocr_blocks: List[Dict[str, Any]] = []
     extraction_errors: List[str] = []
+    easyocr_engine = None
+    if engine_used == "easyocr":
+        try:
+            easyocr_engine = _get_easyocr_engine(languages)
+        except Exception as exc:
+            extraction_errors.append(str(exc))
 
     for page_num, image in page_images:
         try:
             if engine_used == "easyocr":
-                page_blocks = _run_easyocr(image, languages, min_confidence)
+                if easyocr_engine is None:
+                    page_blocks = []
+                else:
+                    page_blocks = _easyocr_blocks_from_image(
+                        easyocr_engine, image, min_confidence
+                    )
             elif engine_used == "tesseract":
                 page_blocks = _run_tesseract(image, min_confidence)
             else:

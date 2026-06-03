@@ -168,6 +168,8 @@ class EasyOCRConfig:
 
 # Comment.
 _easyocr_config = None
+_reader_cache: dict[tuple[tuple[str, ...], bool], "easyocr.Reader"] = {}
+
 
 def get_easyocr_config() -> EasyOCRConfig:
     """Docstring."""
@@ -177,6 +179,13 @@ def get_easyocr_config() -> EasyOCRConfig:
     return _easyocr_config
 
 def get_easyocr_reader(languages: List[str] = ['en'], gpu: bool = False) -> easyocr.Reader:
-    """Docstring."""
+    """Return a cached EasyOCR reader for the same language list and GPU flag."""
+    lang_key = tuple(sorted(languages))
+    cache_key = (lang_key, gpu)
+    cached = _reader_cache.get(cache_key)
+    if cached is not None:
+        return cached
     config = get_easyocr_config()
-    return config.get_reader(languages, gpu)
+    reader = config.get_reader(list(lang_key), gpu)
+    _reader_cache[cache_key] = reader
+    return reader

@@ -1,9 +1,8 @@
 """
-端到端自动化测试 - 模拟用户完整工作流
-从用户使用角度测试系统功能
+End-to-end workflow tests (require python run.py on :8000).
 
-需要先启动服务: python run.py
-需要准备测试文件: test_data/ 目录
+When the server is not running, tests in this module are skipped automatically
+(see tests/conftest.py require_live_api). Test files live under test_data/.
 """
 
 import pytest
@@ -85,18 +84,7 @@ def _poll_task_status(
 
 
 class TestUserScenarios:
-    """用户场景测试 - 模拟真实用户使用流程"""
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        """测试前检查"""
-        # 检查服务器是否运行
-        try:
-            response = requests.get(f"{BASE_URL}/health", timeout=5)
-            if response.status_code != 200:
-                pytest.skip("Server not running")
-        except:
-            pytest.skip("Server not running")
+    """User scenario tests — simulate real usage flows."""
 
     def test_scenario_1_quick_ocr(self):
         """
@@ -392,11 +380,11 @@ class TestEndToEndWorkflow:
 
 
 def check_server_running():
-    """检查服务器是否运行"""
+    """Return True when the live API health endpoint responds."""
     try:
-        response = requests.get(f"{BASE_URL}/health", timeout=5)
+        response = requests.get(f"{BASE_URL}/health", timeout=3)
         return response.status_code == 200
-    except:
+    except requests.exceptions.RequestException:
         return False
 
 

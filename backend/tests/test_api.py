@@ -1,6 +1,8 @@
 """
-自动化测试 - API 端点测试
-需要先启动服务: python run.py
+Live API endpoint tests (require python run.py on :8000).
+
+When the server is not running, tests in this module are skipped automatically
+(see tests/conftest.py require_live_api).
 """
 
 import pytest
@@ -78,11 +80,11 @@ class TestBatchAPI:
 
 
 def check_server_running():
-    """检查服务器是否运行"""
+    """Return True when the live API health endpoint responds."""
     try:
-        response = requests.get("http://localhost:8000/health", timeout=2)
+        response = requests.get("http://localhost:8000/health", timeout=3)
         return response.status_code == 200
-    except:
+    except requests.exceptions.RequestException:
         return False
 
 

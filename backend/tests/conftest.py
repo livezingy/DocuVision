@@ -1,7 +1,6 @@
 """Pytest hooks for Pro GPU backend tests."""
 
 import pytest
-import requests
 
 from app.core.gpu_lib_path import ensure_pro_gpu_lib_path
 
@@ -12,6 +11,11 @@ _LIVE_API_TEST_MODULES = frozenset({"test_api.py", "test_e2e.py"})
 
 
 def live_api_reachable() -> bool:
+    try:
+        import requests
+    except ImportError:
+        return False
+
     try:
         response = requests.get(LIVE_API_HEALTH_URL, timeout=3)
         return response.status_code == 200

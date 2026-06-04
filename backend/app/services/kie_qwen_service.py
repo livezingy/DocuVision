@@ -130,10 +130,23 @@ class QwenDocumentKIEService:
         assert self._manager is not None
         return self._manager
 
-    def _sync_extract(self, image_path: str, document_type: str) -> Dict[str, Any]:
+    def _sync_extract(
+        self,
+        image_path: str,
+        document_type: str,
+        *,
+        query_fields: Optional[List[Dict[str, str]]] = None,
+        merged_schema: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         mgr = self._get_manager()
         t0 = time.time()
-        out = mgr.extract(image_path, document_type, lang=None)
+        out = mgr.extract(
+            image_path,
+            document_type,
+            lang=None,
+            query_fields=query_fields,
+            merged_schema=merged_schema,
+        )
         infer_ms = int((time.time() - t0) * 1000)
         if not isinstance(out, dict):
             out = {"type": document_type, "fields": {}}
@@ -149,6 +162,8 @@ class QwenDocumentKIEService:
         layout: Optional[Dict[str, Any]] = None,
         table_meta: Optional[Dict[str, Any]] = None,
         tables: Optional[List[Dict[str, Any]]] = None,
+        query_fields: Optional[List[Dict[str, str]]] = None,
+        merged_schema: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Orchestrator-compatible KIE contract (fields + metadata + debug_input)."""
 
@@ -182,7 +197,12 @@ class QwenDocumentKIEService:
             async with self._infer_lock:
                 raw = await loop.run_in_executor(
                     None,
-                    lambda: self._sync_extract(image_path, document_type),
+                    lambda: self._sync_extract(
+                        image_path,
+                        document_type,
+                        query_fields=query_fields,
+                        merged_schema=merged_schema,
+                    ),
                 )
         finally:
             if temp_path and os.path.isfile(temp_path):
@@ -197,6 +217,7 @@ class QwenDocumentKIEService:
         items_count = _items_count_from_fields(fields)
         confidence_avg = compute_fill_confidence(fields, resolved_type)
 
+        query_count = len(query_fields) if query_fields else 0
         return {
             "fields": fields,
             "confidence_avg": confidence_avg,
@@ -207,6 +228,7 @@ class QwenDocumentKIEService:
                 "items_source": "n/a",
                 "kie_model_load_ms": self._init_wall_ms + infer_ms,
                 "infer_ms": infer_ms,
+                "kie_query_fields_count": query_count,
             },
             "debug_input": debug_input,
         }

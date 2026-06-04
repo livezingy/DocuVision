@@ -52,7 +52,13 @@ flowchart LR
 
 - VL 的 schema 与 prompt 模板按类型定义于：`backend/app/services/kie/kie_configs/`（`_registry.yaml` 登记类型）。
 
-`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`。`auto` 仍跳过 KIE（`skipped_doc_type`）。
+`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`、`financial_report`。`auto` 仍跳过 KIE（`skipped_doc_type`）。
+
+### 4.1 自定义字段（v1.1 Query Fields）
+
+- 请求参数：`kie_query_fields`（JSON 数组，最多 20 项，**仅追加**内置 YAML 顶层键）。
+- 实现：[`query_fields.py`](../../backend/app/services/kie/query_fields.py)、设计说明 [kie-custom-fields.md](./kie-custom-fields.md)。
+- **KIE-ACCEPT-002 不检查** query 字段是否填充；观察性指标见 `quality.kie_query_fields_requested` / `kie_query_fields_filled`。
 
 ## 5. 对外契约（稳定）
 
@@ -73,6 +79,10 @@ flowchart LR
 - `kie_production_hit` / `kie_production_reason` / `kie_production_keys`：**KIE-ACCEPT-002** 生产验收，见 [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md)。
 - `kie_confidence_avg`：关键字段填充率启发值（`compute_fill_confidence`），非模型原生置信度。
 - `kie_error_message`：失败路径摘要（与 `kie_meta.error_message` 一致）。
+
+增量（v1.11）：
+
+- `kie_query_fields_requested` / `kie_query_fields_filled`：运行时追加字段名与命中名（v1.1）。
 
 ### 5.3 任务结果中的 `kie_meta` / `kie_fields` / `kie_input`
 

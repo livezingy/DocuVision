@@ -1804,6 +1804,40 @@ body.show-analysis .analyzed-region {
     color: var(--text-primary);
 }
 
+.kie-field-card-query {
+    border-color: rgba(6, 182, 212, 0.45);
+}
+
+.kie-field-query-badge {
+    margin-left: auto;
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #0891b2;
+    background: rgba(6, 182, 212, 0.12);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.kie-query-fields-input {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8125rem;
+    padding: 8px 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    resize: vertical;
+}
+
+.kie-query-fields-disabled .kie-query-fields-input {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .kie-meta-line {
     font-size: 0.8rem;
     color: var(--text-tertiary);

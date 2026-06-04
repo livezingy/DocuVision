@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v1.1.0 (Pro custom KIE fields)
+
+### Added
+
+- **Pro KIE query fields** (`kie_query_fields`): extend built-in YAML schema at runtime (Azure Query Fields aligned, max 20 fields). API: `POST /api/v1/analyze`, `POST /api/v1/documents:analyze`, batch `options`. See [kie-custom-fields.md](docs/architecture/kie-custom-fields.md).
+- Pro UI: Analysis Options → Advanced → Additional KIE fields (comma-separated or JSON).
+- `quality.kie_query_fields_requested` / `kie_query_fields_filled`.
+
+### Changed
+
+- `KieManager` / `QwenDocumentKIEService` accept merged schema for VL prompts.
+
 ## [1.0.1] — 2026-06-02
 
 Maintenance release: **DocuVision Lite** on `main`, dead-code cleanup, CI/docs alignment. Pro KIE scope unchanged from 1.0.

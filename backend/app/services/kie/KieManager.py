@@ -42,10 +42,17 @@ class KieManager:
             })
         return type_list
 
-    def get_prompt(self, type_id):
-        """根据类型 id 生成最终的 prompt 字符串"""
+    def get_prompt(self, type_id, query_fields=None, merged_schema=None):
+        """Build final prompt; optional query_fields extend schema (validated upstream)."""
         config = self._load_config(type_id)
-        schema = config["schema"]
+        if merged_schema is not None:
+            schema = merged_schema
+        elif query_fields:
+            from app.services.kie.query_fields import build_merged_schema
+
+            schema = build_merged_schema(config["schema"], query_fields)
+        else:
+            schema = config["schema"]
         schema_json = json.dumps(schema, ensure_ascii=False, indent=2)
         prompt = config["prompt_template"].replace("{{ schema_json }}", schema_json)
         return prompt
@@ -123,17 +130,18 @@ class KieManager:
         t = re.sub(r",\s*]", "]", t)
         return t
 
-    def extract(self, image_path, option_type, lang=None):
+    def extract(self, image_path, option_type, lang=None, query_fields=None, merged_schema=None):
         """
-        根据选项类型进行提取。
-        option_type: 如 "invoice", "receipt", "id_card", "passport", "bank_card"
-        lang: 预留参数，当前未使用（所有 prompt 为中文）
-        返回: dict，包含 "type" 字段与 "fields" 字段（提取结果）
+        Extract fields for option_type using optional runtime query field extensions.
+        Returns dict with "type" and "fields".
         """
         actual_type = option_type
 
-        # 生成 prompt 并提取
-        prompt = self.get_prompt(actual_type)
+        prompt = self.get_prompt(
+            actual_type,
+            query_fields=query_fields,
+            merged_schema=merged_schema,
+        )
         messages = [
             {"role": "user", "content": [
                 {"type": "image", "image": image_path},

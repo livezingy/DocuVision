@@ -62,6 +62,24 @@ Release 1.0 发版清单：[docs/release/RELEASE_1.0_CHECKLIST.md](../release/RE
 
 **E 汇总**：1/1
 
+### 阶段 F — Query fields（v1.1，可选 Cloud 抽检）
+
+在 **阶段 C 任一样例** 上追加 `kie_query_fields`，确认 001/002 仍通过且 query 字段可观测。
+
+| sample_path | document_type | kie_query_fields | 001 | 002 | query filled |
+|---|---|---|---|---|---|
+| testfiles/invoices/invoice_sample_01.pdf | invoice | `OurReference`, `BookingDate` | pass | hit | manual check `quality.kie_query_fields_filled` |
+
+**请求示例**（`POST /api/v1/analyze`）：
+
+```text
+enable_kie=1
+document_type=invoice
+kie_query_fields=[{"name":"OurReference","description":"Customer or PO reference"},{"name":"BookingDate"}]
+```
+
+**F 汇总**：契约 001/002 不因 query 字段失败；query 填充率 **不** 纳入 002。
+
 ### Release 1.0 KIE 总览
 
 | 维度 | 结果 |

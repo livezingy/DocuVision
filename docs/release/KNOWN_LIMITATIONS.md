@@ -43,7 +43,7 @@
 
 | 限制 | 说明 |
 |------|------|
-| 自定义 fields | **未实现**；仅固定 5 类 YAML schema（**v1.1** 规划）。 |
+| 自定义 fields | **v1.1**：`kie_query_fields` 仅**追加**内置 schema（最多 20 字段）；无模板库、无 `document_type=custom` 全量 schema。 |
 | Batch Processing UI | 前端 placeholder，与后端 batch API 未完整产品化。 |
 | 字段 bbox | KIE 字段与画布标注框 **未** 联动。 |
 | 翻译 / 长文档 VL 问答 | 明确不在 1.0 / 1.0.1 范围。 |
@@ -65,5 +65,5 @@
 ## 后续版本方向（非 1.0.1 承诺）
 
 - v1.0.x：Lite polish, id_card sample / precision tweaks.
-- **v1.1**：自定义 fields MVP（见总纲 §10） — **not** Lite-only releases.
+- **v1.1.x**：模板持久化、`document_type=custom`、query 字段 bbox（见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)）— **not** Lite-only releases.
 - 并行低优：Batch UI、字段 bbox、多页 PDF KIE.

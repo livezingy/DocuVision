@@ -486,6 +486,37 @@ async def kie_step(ctx: PipelineContext) -> None:
 
     document_type = str(options.get("document_type", "auto") or "auto").strip().lower()
     supported_doc_types = {"invoice", "id_card", "receipt", "passport", "bank_card", "financial_report"}
+
+    query_fields: List[Dict[str, str]] = list(options.get("kie_query_fields") or [])
+    merged_schema = options.get("kie_merged_schema")
+    if query_fields and merged_schema is None:
+        from app.services.kie.query_fields import QueryFieldsError, validate_and_prepare_query_fields
+
+        try:
+            query_fields, merged_schema = validate_and_prepare_query_fields(
+                document_type,
+                query_fields,
+            )
+            options["kie_query_field_names"] = [s["name"] for s in query_fields]
+            options["kie_merged_schema"] = merged_schema
+        except QueryFieldsError as exc:
+            ctx["result"]["kie_fields"] = {}
+            ctx["result"]["kie_meta"] = {
+                "attempted": True,
+                "succeeded": False,
+                "stage": "invalid_query_fields",
+                "error_code": exc.error_code,
+                "error_message": str(exc),
+            }
+            logger.warning(
+                "KIE step skipped | task_id={} | stage=invalid_query_fields | error_code={} | error={}",
+                ctx.get("task_id", ""),
+                exc.error_code,
+                exc,
+            )
+            await orchestrator.update_progress(ctx, 80, "KIE skipped | invalid_query_fields")
+            return
+
     if document_type not in supported_doc_types:
         ctx["result"]["kie_fields"] = {}
         ctx["result"]["kie_meta"] = {
@@ -568,6 +599,8 @@ async def kie_step(ctx: PipelineContext) -> None:
             layout=layout,
             table_meta=table_meta,
             tables=tables,
+            query_fields=query_fields or None,
+            merged_schema=merged_schema,
         )
     except TypeError:
         # Fallback to legacy signature if the service doesn't accept new kwargs.
@@ -651,6 +684,8 @@ async def kie_step(ctx: PipelineContext) -> None:
             if isinstance(kie_result, dict) else 0
         ),
         "engine": str(metadata.get("engine", "") or "qwen2.5-vl"),
+        "kie_query_fields_requested": list(options.get("kie_query_field_names") or []),
+        "kie_query_fields_count": int(metadata.get("kie_query_fields_count", 0) or 0),
     }
     logger.info(
         "KIE step completed | task_id={} | document_type={} | fields_count={} | items_count={} | "
@@ -903,6 +938,15 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
         except (TypeError, ValueError):
             quality["kie_model_load_ms"] = 0
         quality["kie_items_source"] = str(kie_meta.get("items_source", "n/a"))
+
+        from app.services.kie.query_fields import list_filled_query_fields
+
+        opts = ctx.get("options", {}) if isinstance(ctx.get("options"), dict) else {}
+        requested_qf = list(opts.get("kie_query_field_names") or [])
+        if not requested_qf and isinstance(kie_meta.get("kie_query_fields_requested"), list):
+            requested_qf = [str(x) for x in kie_meta["kie_query_fields_requested"]]
+        quality["kie_query_fields_requested"] = requested_qf
+        quality["kie_query_fields_filled"] = list_filled_query_fields(view_fields, requested_qf)
 
         ctx["phase1_quality"] = quality
 

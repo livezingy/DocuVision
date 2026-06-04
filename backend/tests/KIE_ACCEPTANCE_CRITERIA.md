@@ -50,6 +50,12 @@ When stage is `completed` **and** KIE was attempted for a supported `document_ty
 
 Implementation: `app.services.kie.kie_field_metrics.evaluate_kie_production_hit`
 
+### Query fields (v1.1, `kie_query_fields`)
+
+- **Not in 002**: User-defined query field names are excluded from `evaluate_kie_production_hit` required-key checks.
+- Track fill rate via `quality.kie_query_fields_requested` and `quality.kie_query_fields_filled` only.
+- Cloud spot-check (optional): see Tracker phase F in [KIE_TEST_RUN_TRACKER.md](../../docs/architecture/KIE_TEST_RUN_TRACKER.md).
+
 ## Rule KIE-ACCEPT-003（id_card 字段精度，专项）
 
 在 **002 通过** 的前提下，对 `document_type=id_card` 额外要求：

@@ -518,7 +518,19 @@
 
                 <!-- Advanced Tab -->
                 <div class="modal-tab-content" id="advancedTab">
-                    <p class="upload-hint" style="margin: 0;">No additional options in this build.</p>
+                    <div class="kie-query-fields-block" id="kieQueryFieldsBlock">
+                        <label class="engine-label" for="optKieQueryFields">Additional KIE fields</label>
+                        <p class="upload-hint" style="margin: 0 0 8px 0;">
+                            Comma-separated names or JSON array. Max 20. Only when a KIE document type is selected.
+                        </p>
+                        <textarea
+                            class="kie-query-fields-input"
+                            id="optKieQueryFields"
+                            rows="3"
+                            placeholder="OurReference, BookingDate"
+                            spellcheck="false"
+                        ></textarea>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">

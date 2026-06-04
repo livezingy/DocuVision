@@ -14,10 +14,14 @@ class _FakeKieManager:
     def __init__(self) -> None:
         self.last_image: str = ""
         self.last_type: str = ""
+        self.last_query_fields = None
+        self.last_merged_schema = None
 
-    def extract(self, image_path: str, option_type: str, lang=None):
+    def extract(self, image_path, option_type, lang=None, query_fields=None, merged_schema=None):
         self.last_image = image_path
         self.last_type = option_type
+        self.last_query_fields = query_fields
+        self.last_merged_schema = merged_schema
         return {
             "type": option_type,
             "fields": {
@@ -62,6 +66,30 @@ def test_extract_fields_returns_kie_step_compatible_dict(monkeypatch, tmp_path: 
         assert res["metadata"]["resolved_document_type"] == "invoice"
         assert res["metadata"]["items_source"] == "n/a"
         assert res["debug_input"]["vl_image_path"] == str(img_path)
+
+    asyncio.run(run_test())
+
+
+def test_extract_fields_passes_query_fields_to_manager(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeKieManager()
+    monkeypatch.setattr(QwenDocumentKIEService, "_init_manager", _patch_init_manager(fake))
+
+    img_path = tmp_path / "one.png"
+    Image.new("RGB", (4, 4), color="white").save(img_path)
+    qf = [{"name": "OurReference", "description": "Reference"}]
+    merged = {"invoice_number": "n", "OurReference": "Reference"}
+
+    async def run_test():
+        svc = QwenDocumentKIEService()
+        await svc.extract_fields(
+            str(img_path),
+            "invoice",
+            preprocessed_image_path=str(img_path),
+            query_fields=qf,
+            merged_schema=merged,
+        )
+        assert fake.last_query_fields == qf
+        assert fake.last_merged_schema == merged
 
     asyncio.run(run_test())
 

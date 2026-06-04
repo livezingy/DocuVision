@@ -742,9 +742,11 @@ function initResultTabs() {
                 optEnableSeal ? optEnableSeal.checked : false
             );
         }
+        updateKieQueryFieldsAvailability();
     };
 
     processingModeRadios.forEach(radio => radio.addEventListener('change', syncModeUI));
+    updateKieQueryFieldsAvailability();
 
     if (optEnableFormula) {
         optEnableFormula.addEventListener('change', () => {
@@ -1178,8 +1180,54 @@ function resetAnalysisOptions() {
     }
     const kieNote = document.getElementById('kieNote');
     if (kieNote) kieNote.classList.add('hidden');
+    const kieQueryInput = document.getElementById('optKieQueryFields');
+    if (kieQueryInput) kieQueryInput.value = '';
+    updateKieQueryFieldsAvailability();
     updateEnhancementTabs(false, false);
     showNotification('Options reset to defaults', 'info');
+}
+
+const KIE_DOC_TYPES = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card', 'financial_report']);
+
+/**
+ * Enable/disable additional KIE fields input based on processing mode.
+ */
+function updateKieQueryFieldsAvailability() {
+    const block = document.getElementById('kieQueryFieldsBlock');
+    const input = document.getElementById('optKieQueryFields');
+    if (!block || !input) return;
+    const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
+    const enabled = KIE_DOC_TYPES.has(String(selectedMode).toLowerCase());
+    input.disabled = !enabled;
+    block.classList.toggle('kie-query-fields-disabled', !enabled);
+}
+
+/**
+ * Parse Additional KIE fields textarea into API payload (JSON string of array).
+ */
+function buildKieQueryFieldsPayload() {
+    const el = document.getElementById('optKieQueryFields');
+    if (!el || el.disabled) return '[]';
+    const raw = String(el.value || '').trim();
+    if (!raw) return '[]';
+
+    if (raw.startsWith('[')) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                throw new Error('JSON must be an array');
+            }
+            return JSON.stringify(parsed);
+        } catch (e) {
+            throw new Error('Invalid JSON for additional KIE fields: ' + e.message);
+        }
+    }
+
+    const names = raw
+        .split(/[,;\n]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    return JSON.stringify(names);
 }
 
 /**
@@ -1201,9 +1249,9 @@ function getProcessingOptions() {
         // Auto-enable KIE when user selects invoice/receipt/id_card processing mode
         enable_kie: (function() {
             const dt = isLayout ? 'auto' : selectedMode;
-            const kieTypes = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card']);
-            return kieTypes.has(String(dt).toLowerCase());
+            return KIE_DOC_TYPES.has(String(dt).toLowerCase());
         })(),
+        kie_query_fields: buildKieQueryFieldsPayload(),
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
         layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure'
     };
@@ -1265,7 +1313,13 @@ async function startProcessing() {
     // Clear previous results, but keep document preview visible during processing
     clearResultsDisplay(true);
 
-    const options = getProcessingOptions();
+    let options;
+    try {
+        options = getProcessingOptions();
+    } catch (err) {
+        showNotification(err.message || String(err), 'error');
+        return;
+    }
     if (
         options.enable_kie &&
         lastHealthPayload &&
@@ -3015,13 +3069,24 @@ function updateContentFields(result) {
     }
     fieldsMeta.textContent = metaBits.join(' · ');
 
+    const querySet = new Set(
+        (result.quality && result.quality.kie_query_fields_requested) ||
+        (meta.kie_query_fields_requested) ||
+        []
+    );
+
     let html = '';
     Object.entries(kieFields).forEach(([key, value]) => {
-        html += '<div class="kie-field-card">';
+        const isQuery = querySet.has(key);
+        html += '<div class="kie-field-card' + (isQuery ? ' kie-field-card-query' : '') + '">';
         html += '<div class="kie-field-card-header">';
         html +=
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M16 3v4"></path><path d="M8 3v4"></path><path d="M3 10h18"></path></svg>';
-        html += '<span>' + escapeHtml(key) + '</span></div>';
+        html += '<span>' + escapeHtml(key) + '</span>';
+        if (isQuery) {
+            html += '<span class="kie-field-query-badge">Query</span>';
+        }
+        html += '</div>';
         html += '<div class="kie-field-card-value">' + formatKieFieldForExtract(value, 0) + '</div>';
         html += '</div>';
     });

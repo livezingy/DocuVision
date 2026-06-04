@@ -308,6 +308,26 @@ async def _kie_optional_warmup_background() -> None:
     asyncio.create_task(_run())
 export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
+
+
+def _raise_query_fields_http(exc: Exception) -> None:
+    from app.services.kie.query_fields import QueryFieldsError
+
+    if not isinstance(exc, QueryFieldsError):
+        raise exc
+    raise HTTPException(
+        status_code=400,
+        detail={"error_code": exc.error_code, "message": str(exc)},
+    )
+
+
+def _resolve_kie_query_fields_in_options(options: Dict[str, Any]) -> None:
+    from app.services.kie.query_fields import QueryFieldsError, attach_kie_query_fields_to_options
+
+    try:
+        attach_kie_query_fields_to_options(options)
+    except QueryFieldsError as exc:
+        _raise_query_fields_http(exc)
 unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服
 # Task Storage
 tasks: Dict[str, Dict[str, Any]] = {}
@@ -740,6 +760,7 @@ async def analyze_document(
     formula_layout_threshold: Optional[float] = Form(None),
     pipeline_formula_batch_size: int = Form(1),
     return_raw: bool = Form(False),
+    kie_query_fields: Optional[str] = Form(None),
 ):
     """Upload and analyze a single document"""
     # Validate file
@@ -806,7 +827,10 @@ async def analyze_document(
         "formula_layout_threshold": formula_layout_threshold,
         "pipeline_formula_batch_size": pipeline_formula_batch_size,
         "return_raw": return_raw,
+        "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
     }
+
+    _resolve_kie_query_fields_in_options(options)
 
     # Backward-compatible fallback: if user selected a document_type that typically
     # requires KIE (invoice/receipt/id_card) but did not explicitly enable KIE,
@@ -967,6 +991,7 @@ async def analyze_document_v1(
     enable_kie: bool = Form(False),
     document_type: str = Form("auto"),
     return_raw: bool = Form(False),
+    kie_query_fields: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """
@@ -1003,7 +1028,10 @@ async def analyze_document_v1(
         "use_doc_unwarping": settings.USE_DOC_UNWARPING,
         "debug_mode": settings.DEBUG_MODE,
         "return_raw": return_raw,
+        "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
     }
+
+    _resolve_kie_query_fields_in_options(options)
 
     task = {
         "task_id": job_id,
@@ -1681,8 +1709,12 @@ async def create_batch(
 
     try:
         opts = json.loads(options)
-    except:
+    except Exception:
         opts = {}
+
+    if not isinstance(opts, dict):
+        opts = {}
+    _resolve_kie_query_fields_in_options(opts)
 
     # Save files and create file list
     batch_dir = os.path.join(settings.UPLOAD_DIR, "batch_" + str(uuid.uuid4())[:8])

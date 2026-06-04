@@ -14,6 +14,7 @@
 | `KIE_TEST_RUN_TRACKER.md` Release 1.1 baseline | ☑ | 阶段 F |
 | `KNOWN_LIMITATIONS.md` | ☑ | 适用范围至 v1.1.0 |
 | `APP_VERSION` = `1.1.0` | ☑ | `backend/app/core/config.py` |
+| Git tag `v1.1.0` on `main` | ☑ | `e79db9a` |
 
 ## 2. Cloud 验收（GPU 环境）
 
@@ -22,7 +23,7 @@
 | **A** | 契约 pytest（含 query fields） | ☑ feature 分支 / PR → main 后 CI |
 | **B** | `kie_query_fields` 400 用例 | ☑ 2026-06-04 |
 | **F** | 阶段 C 样例 + query；001/002 仍通过 | ☑ `sample-invoice.png` 1/1 |
-| **C + E 回归**（建议 tag 前） | 固定矩阵未因 v1.1 退步 | ☐ 维护者 Cloud 同 commit 复跑 |
+| **C + E 回归**（建议 tag 前） | 固定矩阵未因 v1.1 退步 | ☐ 维护者 Cloud 同 commit 复跑（tag 已打，仍可补跑） |
 
 **阶段 F 可选**：`invoice_sample_01.pdf` + `OurReference`/`BookingDate`（见 Tracker「待补」）。
 
@@ -92,6 +93,7 @@ gh release create v1.1.0 --title "v1.1.0 — Pro KIE query fields" --notes-file 
 
 ## 7. 发版后检查
 
-- [ ] Tracker「Release 1.1 baseline」`branch` 更新为 `main`、`tag` 为 `v1.1.0`
+- [x] Tracker「Release 1.1 baseline」`branch` = `main`、`tag` = `v1.1.0`
 - [ ] Cloud 可选：阶段 C+E 同 commit 复跑写入 Tracker
+- [ ] GitHub Release 页面（无 `gh` 时可网页 Draft release，粘贴 [RELEASE_1.1_NOTES.md](./RELEASE_1.1_NOTES.md)）
 - [ ] 删除或归档远端已合并的 `feature/pro-v1.1-custom-fields`（可选）

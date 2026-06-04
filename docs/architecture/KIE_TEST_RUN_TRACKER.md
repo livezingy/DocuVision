@@ -24,9 +24,9 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 
 ## Release 1.1 baseline — 2026-06-04
 
-- **tag target**: `v1.1.0`（合并 `feature/pro-v1.1-custom-fields` → `main` 后打 tag）
-- **branch（验收时）**: `feature/pro-v1.1-custom-fields` → **`main`**
-- **commits**: `7eb3f3a`（feat query fields）→ `555f10f`（UI 字段名规范化）
+- **tag**: `v1.1.0`（2026-06-04，已推送 `origin`）
+- **branch**: `main`
+- **commit**: `e79db9a`（含 `7eb3f3a` feat、`555f10f` UI、`9d78b03` 发版文档）
 - **base_url**: `http://127.0.0.1:8000`
 - **Phase A / B**: passed（契约 + `kie_query_fields` 400）
 - **阶段 F**: **1/1** — 见下「阶段 F — Query fields」

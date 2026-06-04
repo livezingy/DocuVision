@@ -5,7 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v1.1.0 (Pro custom KIE fields)
+## [Unreleased]
+
+_No changes yet._
+
+## [1.1.0] — 2026-06-04
+
+Pro **KIE query fields** (extend-only runtime schema). Cloud Phase F accepted; see [RELEASE_1.1_NOTES.md](docs/release/RELEASE_1.1_NOTES.md) and [KIE_TEST_RUN_TRACKER.md](docs/architecture/KIE_TEST_RUN_TRACKER.md).
 
 ### Added
 
@@ -16,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `KieManager` / `QwenDocumentKIEService` accept merged schema for VL prompts.
+- `APP_VERSION` default `1.1.0`.
 
 ## [1.0.1] — 2026-06-02
 
@@ -104,5 +111,7 @@ See [docs/release/KNOWN_LIMITATIONS.md](docs/release/KNOWN_LIMITATIONS.md). Summ
 | 2026-05-20 | Cloud 7-sample KIE baseline; PDF KIE fix (`e7dc4ab`). |
 | 2026-05-21 | id_card samples 02–04, ACCEPT-003, Phase A CI, Release 1.0 prep (`2c9c58b`). |
 
+[Unreleased]: https://github.com/livezingy/DocuVision/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/livezingy/DocuVision/releases/tag/v1.1.0
 [1.0.1]: https://github.com/livezingy/DocuVision/releases/tag/v1.0.1
 [1.0.0]: https://github.com/livezingy/DocuVision/releases/tag/v1.0.0

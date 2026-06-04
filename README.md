@@ -48,8 +48,8 @@ DocuVision/
 | | **Pro** | **Lite** |
 |---|---------|----------|
 | Port | `:8000` | `:8001` |
-| Stack | PP-StructureV3 + optional Qwen KIE | pdfplumber / Camelot + EasyOCR / Tesseract |
-| Best for | Layout, 5-type KIE, GPU throughput | CPU, born-digital PDF tables, scan OCR |
+| Stack | PP-StructureV3 + optional Qwen KIE (+ **v1.1** runtime query fields) | pdfplumber / Camelot + EasyOCR / Tesseract |
+| Best for | Layout, 5-type KIE + optional custom field names, GPU throughput | CPU, born-digital PDF tables, scan OCR |
 | Run | `cd backend && python run.py` | `cd apps/lite/backend && python run_lite.py` |
 | UI | `frontend/index.html` | `http://localhost:8001/lite/lite.html` |
 
@@ -82,7 +82,7 @@ Lite API: [docs/architecture/lite-api.md](docs/architecture/lite-api.md). Limita
 4. Open: `http://localhost:8001/lite/lite.html`
 5. Cloud validation: [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) sections G0–H.
 
-7. **Release notes**: [CHANGELOG.md](CHANGELOG.md) · [Known limitations](docs/release/KNOWN_LIMITATIONS.md) · [1.0.1 notes](docs/release/RELEASE_1.0.1_NOTES.md)
+7. **Release notes**: [CHANGELOG.md](CHANGELOG.md) · [v1.1.0](docs/release/RELEASE_1.1_NOTES.md) · [Known limitations](docs/release/KNOWN_LIMITATIONS.md) · KIE regression: [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md)
 
 ---
 

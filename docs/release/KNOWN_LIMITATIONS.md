@@ -1,7 +1,8 @@
-# Release 1.0 — Known limitations
+# Known limitations
 
-> Applies through tag **`v1.0.1`** (`v1.0.0` Pro baseline + Lite on `main`).  
-> For acceptance rules see [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
+> Applies through tag **`v1.1.0`** (Pro KIE query fields on `main`; Lite since `v1.0.1`).  
+> Release notes: [RELEASE_1.1_NOTES.md](./RELEASE_1.1_NOTES.md) · Tracker: [KIE_TEST_RUN_TRACKER.md](../architecture/KIE_TEST_RUN_TRACKER.md)  
+> Acceptance rules: [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
 
 ## DocuVision Lite (since 1.0.1)
 
@@ -43,7 +44,7 @@
 
 | 限制 | 说明 |
 |------|------|
-| 自定义 fields | **v1.1**：`kie_query_fields` 仅**追加**内置 schema（最多 20 字段）；无模板库、无 `document_type=custom` 全量 schema。 |
+| KIE query fields（v1.1） | `kie_query_fields` **仅追加**内置 schema（最多 20 字段）；**002 不含 query 命中**；空 query 值非契约失败。无模板库、无 `document_type=custom` 全量 schema。见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)。 |
 | Batch Processing UI | 前端 placeholder，与后端 batch API 未完整产品化。 |
 | 字段 bbox | KIE 字段与画布标注框 **未** 联动。 |
 | 翻译 / 长文档 VL 问答 | 明确不在 1.0 / 1.0.1 范围。 |
@@ -62,8 +63,10 @@
 - `test_data/TestResult/` 为本地/云端导出目录（gitignore），**不**随仓库分发。
 - 部分 `test_data/testfiles/` 样例仅供验收，使用时注意版权与隐私（勿提交真实证件）。
 
-## 后续版本方向（非 1.0.1 承诺）
+## 后续版本方向（非 v1.1.0 承诺）
 
-- v1.0.x：Lite polish, id_card sample / precision tweaks.
-- **v1.1.x**：模板持久化、`document_type=custom`、query 字段 bbox（见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)）— **not** Lite-only releases.
-- 并行低优：Batch UI、字段 bbox、多页 PDF KIE.
+- **v1.1.x**：id_card 样例/提示词小修；query 字段 Cloud 抽检扩展（可选 PDF 样例）。
+- **v1.2+**（建议独立 `feature/*`）：Batch 产品化 UI、通用字段校验、`document_type=custom` / 模板持久化、多页 PDF KIE、字段 bbox。
+- **Lite**：无 KIE/query fields；Batch 仍仅 Pro。
+
+路线图：[RELEASE_1.1_CHECKLIST.md](./RELEASE_1.1_CHECKLIST.md) §6。

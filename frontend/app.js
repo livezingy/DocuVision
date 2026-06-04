@@ -1188,6 +1188,30 @@ function resetAnalysisOptions() {
 }
 
 const KIE_DOC_TYPES = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card', 'financial_report']);
+const KIE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
+
+/**
+ * Normalize user-facing labels to API field ids (spaces -> underscores).
+ */
+function normalizeKieFieldName(raw) {
+    let name = String(raw || '').trim();
+    if (!name) return name;
+    name = name.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_]/g, '');
+    if (/^[0-9]/.test(name)) {
+        name = 'Field_' + name;
+    }
+    return name;
+}
+
+function assertValidKieFieldName(name, sourceLabel) {
+    if (!KIE_FIELD_NAME_RE.test(name)) {
+        throw new Error(
+            'Invalid KIE field name "' +
+                sourceLabel +
+                '". Use letters, digits, underscore only; must start with a letter (e.g. CustomerName or CUSTOMER_NAME).'
+        );
+    }
+}
 
 /**
  * Enable/disable additional KIE fields input based on processing mode.
@@ -1217,7 +1241,25 @@ function buildKieQueryFieldsPayload() {
             if (!Array.isArray(parsed)) {
                 throw new Error('JSON must be an array');
             }
-            return JSON.stringify(parsed);
+            const out = parsed.map((entry, index) => {
+                if (typeof entry === 'string') {
+                    const name = normalizeKieFieldName(entry);
+                    assertValidKieFieldName(name, entry);
+                    return name;
+                }
+                if (entry && typeof entry === 'object' && entry.name) {
+                    const label = String(entry.name);
+                    const name = normalizeKieFieldName(label);
+                    assertValidKieFieldName(name, label);
+                    const item = { name };
+                    if (entry.description) {
+                        item.description = String(entry.description);
+                    }
+                    return item;
+                }
+                throw new Error('JSON entry at index ' + index + ' must be a string or {name, description?}');
+            });
+            return JSON.stringify(out);
         } catch (e) {
             throw new Error('Invalid JSON for additional KIE fields: ' + e.message);
         }
@@ -1226,7 +1268,12 @@ function buildKieQueryFieldsPayload() {
     const names = raw
         .split(/[,;\n]+/)
         .map((s) => s.trim())
-        .filter(Boolean);
+        .filter(Boolean)
+        .map((label) => {
+            const name = normalizeKieFieldName(label);
+            assertValidKieFieldName(name, label);
+            return name;
+        });
     return JSON.stringify(names);
 }
 

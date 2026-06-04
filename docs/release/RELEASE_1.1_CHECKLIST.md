@@ -23,7 +23,7 @@
 | **A** | 契约 pytest（含 query fields） | ☑ feature 分支 / PR → main 后 CI |
 | **B** | `kie_query_fields` 400 用例 | ☑ 2026-06-04 |
 | **F** | 阶段 C 样例 + query；001/002 仍通过 | ☑ `sample-invoice.png` 1/1 |
-| **C + E 回归**（建议 tag 前） | 固定矩阵未因 v1.1 退步 | ☐ 维护者 Cloud 同 commit 复跑（tag 已打，仍可补跑） |
+| **C + E 回归** | 固定矩阵未因 v1.1 退步 | ☑ 发版后 Cloud 已复跑（2026-06-04） |
 
 **阶段 F 可选**：`invoice_sample_01.pdf` + `OurReference`/`BookingDate`（见 Tracker「待补」）。
 
@@ -94,6 +94,21 @@ gh release create v1.1.0 --title "v1.1.0 — Pro KIE query fields" --notes-file 
 ## 7. 发版后检查
 
 - [x] Tracker「Release 1.1 baseline」`branch` = `main`、`tag` = `v1.1.0`
-- [ ] Cloud 可选：阶段 C+E 同 commit 复跑写入 Tracker
-- [ ] GitHub Release 页面（无 `gh` 时可网页 Draft release，粘贴 [RELEASE_1.1_NOTES.md](./RELEASE_1.1_NOTES.md)）
-- [ ] 删除或归档远端已合并的 `feature/pro-v1.1-custom-fields`（可选）
+- [x] Cloud 阶段 C+E 发版后复跑
+- [x] GitHub Release `v1.1.0`（网页已发布）
+- [ ] 删除远端已合并的 `feature/pro-v1.1-custom-fields`（见下文 §8）
+
+## 8. GitHub Actions 与 `v1.1.0` tag（为何显示 Skipped）
+
+本仓库 **不会** 因打 tag / 发布 Release 自动跑 CI：
+
+| 原因 | 说明 |
+|------|------|
+| **无 tag 触发器** | `kie-phase-a.yml` / `ci-lite.yml` 的 `on.push` 仅 `branches: [main]`（及 Lite 的 `feature/docuvision-lite`），**不含** `tags: v*` 或 `release:` 事件。 |
+| **push 默认不跑 job** | 即使 push 到 `main`，job 带 `if: … \|\| contains(github.event.head_commit.message, '[run ci]')`；合并提交 `docs: …` / `merge: …` **无** `[run ci]` → workflow 可能 **出现一次 run**，但 job 状态为 **Skipped**。 |
+| **未走 PR** | v1.1 为本地 fast-forward 合并到 `main`，无 `pull_request` 事件 → 未触发 PR 门禁。 |
+
+**若要验证 v1.1.0 契约**：GitHub → **Actions** → 选 **KIE Phase A** → **Run workflow** → Branch `main`；或新开 PR（改 `backend/**`）到 `main` 会自动跑 Phase A。  
+发版 push 若需 CI，须在 commit message 加 **`[run ci]`**（见 `.cursor/rules/003-git.mdc`）。
+
+**注意**：当前 `kie-phase-a.yml` 的 pytest 列表**未包含** `test_kie_query_fields.py`；v1.1 query 字段契约以 Cloud Phase B + 本地/Cloud pytest 为准，后续可在 workflow 中补测项（改 workflow 需维护者同意）。

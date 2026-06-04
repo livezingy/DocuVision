@@ -31,7 +31,7 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 - **Phase A / B**: passed（契约 + `kie_query_fields` 400）
 - **阶段 F**: **1/1** — 见下「阶段 F — Query fields」
 - **阻塞项**: 无
-- **发 tag 前建议**: 同 commit 重跑 **阶段 C + E**（固定矩阵 10 样例 001/002）
+- **阶段 C + E 回归**（发版后）: ☑ 2026-06-04 已复跑，001/002 无回归（与 Release 1.0 矩阵一致）
 
 ### Release 1.1 KIE 总览
 

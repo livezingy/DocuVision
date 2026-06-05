@@ -46,7 +46,15 @@ def test_kie_called_after_table(tmp_path):
 
     orch = make_orchestrator(services)
 
-    task = {"file_path": str(tmp_path / "doc.pdf"), "file_name": "doc.pdf", "options": {"enable_table": True, "enable_kie": True, "document_type": "invoice"}}
+    preproc = tmp_path / "preproc.jpg"
+    preproc.write_bytes(b"\xff\xd8\xff\xd9")
+
+    task = {
+        "file_path": str(tmp_path / "doc.pdf"),
+        "file_name": "doc.pdf",
+        "options": {"enable_table": True, "enable_kie": True, "document_type": "invoice"},
+        "preprocessed_image_path": str(preproc),
+    }
     result = {"document_info": {"page_image_meta": {}}}
 
     ctx = {
@@ -59,9 +67,6 @@ def test_kie_called_after_table(tmp_path):
         "start_time": None,
     }
 
-    # ensure preprocessed_image_path present
-    ctx["task"]["preprocessed_image_path"] = "/tmp/preproc.jpg"
-
     # Run table_step then kie_step
     asyncio.run(table_step(ctx))
     asyncio.run(kie_step(ctx))
@@ -72,4 +77,4 @@ def test_kie_called_after_table(tmp_path):
     assert kie_called.get('args') is not None
     # The kwargs passed to kie should include preprocessed_image_path
     _, _, kwargs = kie_called['args']
-    assert kwargs.get('preprocessed_image_path') == "/tmp/preproc.jpg"
+    assert kwargs.get('preprocessed_image_path') == str(preproc)

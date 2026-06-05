@@ -44,10 +44,15 @@ def test_kie_step_populates_placeholder_meta() -> None:
 
 def test_kie_step_calls_service_and_sets_fields() -> None:
     class _MockKieService:
-        async def extract_fields(self, file_path: str, document_type: str):
+        async def extract_fields(self, file_path: str, document_type: str, **kwargs):
             assert file_path == "dummy.png"
             assert document_type == "invoice"
-            return {"document_type": document_type, "fields": {"invoice_no": {"value": "INV-001"}}}
+            return {
+                "fields": {"invoice_no": {"value": "INV-001"}},
+                "confidence_avg": 0.5,
+                "items_count": 0,
+                "metadata": {"engine": "mock"},
+            }
 
     async def call_maybe_async(func, *args, **kwargs):
         if asyncio.iscoroutinefunction(func):

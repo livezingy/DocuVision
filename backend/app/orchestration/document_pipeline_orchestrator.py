@@ -639,8 +639,9 @@ async def kie_step(ctx: PipelineContext) -> None:
                 if page_num == 1 and _pp_ok and preprocessed_image_path:
                     vl_path = None
                 else:
-                    vl_path, temp_path = rasterize_pdf_page(file_path, page_num, matrix_scale=2.0)
+                    raster_path, temp_path = rasterize_pdf_page(file_path, page_num, matrix_scale=2.0)
                     if temp_path:
+                        vl_path = raster_path
                         temp_rasters.append(temp_path)
             kie_result = await _extract_one_page(page_num, vl_path)
             page_fields = {}

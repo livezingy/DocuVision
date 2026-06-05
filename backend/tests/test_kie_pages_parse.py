@@ -30,3 +30,4 @@ def test_validate_kie_pages_non_pdf() -> None:
     assert validate_kie_pages_for_non_pdf(None, False) is None
     assert validate_kie_pages_for_non_pdf("all", False) is not None
     assert validate_kie_pages_for_non_pdf("all", True) is None
+    assert validate_kie_pages_for_non_pdf("all", False, enable_kie=False) is None

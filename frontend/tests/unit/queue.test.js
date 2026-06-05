@@ -75,15 +75,15 @@ describe('findNextQueueItem', () => {
         expect(findNextQueueItem([pending, queued])).toBe(queued);
     });
 
-    it('returns pending when nothing is processing', () => {
+    it('returns null when only pending items remain', () => {
         const completed = makeQueueItem('completed');
         const pending = makeQueueItem('pending');
-        expect(findNextQueueItem([completed, pending])).toBe(pending);
+        expect(findNextQueueItem([completed, pending])).toBeNull();
     });
 
-    it('returns null while another item is processing', () => {
+    it('returns null while another item is processing even if queued exists', () => {
         const processing = makeQueueItem('processing');
-        const pending = makeQueueItem('pending');
-        expect(findNextQueueItem([processing, pending])).toBeNull();
+        const queued = makeQueueItem('queued');
+        expect(findNextQueueItem([processing, queued])).toBe(queued);
     });
 });

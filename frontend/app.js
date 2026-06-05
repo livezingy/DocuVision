@@ -1452,6 +1452,11 @@ function getProcessingOptions() {
     const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
     const isLayout = selectedMode === 'layout';
 
+    const enableKie = (function() {
+        const dt = isLayout ? 'auto' : selectedMode;
+        return KIE_DOC_TYPES.has(String(dt).toLowerCase());
+    })();
+
     const options = {
         document_type: isLayout ? 'auto' : selectedMode,
         enable_layout: true,
@@ -1462,12 +1467,12 @@ function getProcessingOptions() {
         enable_chart: isLayout ? (document.getElementById('optEnableChart')?.checked || false) : false,
         enable_seal: isLayout ? (document.getElementById('optEnableSeal')?.checked || false) : false,
         // Auto-enable KIE when user selects invoice/receipt/id_card processing mode
-        enable_kie: (function() {
-            const dt = isLayout ? 'auto' : selectedMode;
-            return KIE_DOC_TYPES.has(String(dt).toLowerCase());
-        })(),
+        enable_kie: enableKie,
         kie_query_fields: buildKieQueryFieldsPayload(),
-        kie_pages: (document.getElementById('optKiePages')?.value || '').trim() || '1',
+        // Ignore stale PDF page specs when KIE is off (layout-only runs on images).
+        kie_pages: enableKie
+            ? ((document.getElementById('optKiePages')?.value || '').trim() || '1')
+            : '1',
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
         layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure'
     };

@@ -55,9 +55,11 @@ def resolve_kie_pages(
 def validate_kie_pages_for_non_pdf(
     pages_spec: Optional[str],
     is_pdf: bool,
+    *,
+    enable_kie: bool = True,
 ) -> Optional[str]:
     """Return error message if invalid; None if OK."""
-    if is_pdf:
+    if is_pdf or not enable_kie:
         return None
     spec = (pages_spec or "").strip()
     if not spec or spec.lower() in {"1", "first", "page1"}:

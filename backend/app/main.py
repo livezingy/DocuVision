@@ -789,7 +789,7 @@ async def analyze_document(
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
     is_pdf = ext == ".pdf"
-    pages_err = validate_kie_pages_for_non_pdf(kie_pages, is_pdf)
+    pages_err = validate_kie_pages_for_non_pdf(kie_pages, is_pdf, enable_kie=enable_kie)
     if pages_err:
         raise HTTPException(status_code=400, detail=pages_err)
 
@@ -1035,7 +1035,7 @@ async def analyze_document_v1(
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
     is_pdf = ext == ".pdf"
-    pages_err = validate_kie_pages_for_non_pdf(kie_pages, is_pdf)
+    pages_err = validate_kie_pages_for_non_pdf(kie_pages, is_pdf, enable_kie=enable_kie)
     if pages_err:
         raise HTTPException(status_code=400, detail=pages_err)
 

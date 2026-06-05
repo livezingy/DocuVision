@@ -79,18 +79,12 @@ export function formatCompletedStatus(pageCount) {
 
 /**
  * Find next queue item to auto-start after one job finishes.
+ * Only explicitly queued items (blocked by single-processing limit) are auto-started;
+ * other pending uploads wait for the user to click Run Analysis.
  * @param {HTMLElement[]} items - all .queue-item elements
  * @returns {HTMLElement|null}
  */
 export function findNextQueueItem(items) {
     const list = Array.isArray(items) ? items : [];
-    const queued = list.find((el) => el.classList && el.classList.contains('queued'));
-    if (queued) {
-        return queued;
-    }
-    const processing = list.some((el) => el.classList && el.classList.contains('processing'));
-    if (processing) {
-        return null;
-    }
-    return list.find((el) => el.classList && el.classList.contains('pending')) || null;
+    return list.find((el) => el.classList && el.classList.contains('queued')) || null;
 }

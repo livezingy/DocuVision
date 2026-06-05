@@ -1,23 +1,24 @@
 # Batch Processing UI — feature/batch-ui
 
-> Branch: `feature/batch-ui` (from `main` @ v1.1.0)  
-> Priority: P0 post-1.1 — see [RELEASE_1.1_CHECKLIST.md](../release/RELEASE_1.1_CHECKLIST.md) §6
+> Delivered in v1.2 on `main` (post-v1.1.0). See [CHANGELOG.md](../../CHANGELOG.md) Unreleased.
 
 ## Goal
 
 Productize Pro batch API in the static SPA (`frontend/`): job list, progress, failure retry, aggregated CSV/Excel export.
 
-## Backend (existing)
+## Backend (v1.2)
 
-- `POST /api/v1/batch`, `POST .../start`, `GET .../status`, `GET .../results`
-- Batch `options` may include `kie_query_fields` (v1.1)
+- Full pipeline via `run_single_file_pipeline` / `_batch_process_file`
+- `GET /api/v1/batch/{id}/export.csv?mode=kie|summary|failures`
+- `GET /api/v1/batch/{id}/export.json`
+- Batch `options`: `enable_kie`, `kie_query_fields`, `kie_pages` (v1.1 + v1.2)
 
-## MVP scope (draft)
+## MVP scope (shipped)
 
-1. Enable **Batch Processing** nav tab (replace disabled placeholder).
-2. Upload multiple files + options mirror Analysis Options (layout/table/kie).
-3. Poll batch status; per-file success/fail table.
-4. Download merged results (CSV or JSON bundle).
+1. **Batch Processing** nav tab enabled (`frontend/index.html`, `app.js`).
+2. Upload multiple files + `getProcessingOptions()` (layout/kie/query/kie_pages).
+3. Poll batch status; per-file table with KIE hit / error.
+4. Download CSV (KIE) and JSON bundle; retry failed + resume.
 5. English UI copy only (`007-code-language.mdc`).
 
 ## Out of scope (this feature)

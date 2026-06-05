@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     # 应用基础配置
     APP_NAME: str = "DocuVision"
-    APP_VERSION: str = "1.1.0"
+    APP_VERSION: str = "1.2.0"
     DEBUG: bool = True
 
     # 服务器配置
@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     )
     KIE_QWEN_DEVICE_MAP: str = Field(default="auto", alias="DOCUVISION_KIE_QWEN_DEVICE_MAP")
     KIE_QWEN_TORCH_DTYPE: str = Field(default="bfloat16", alias="DOCUVISION_KIE_QWEN_TORCH_DTYPE")
+    KIE_MAX_PAGES: int = Field(default=5, alias="DOCUVISION_KIE_MAX_PAGES")
+    BATCH_MAX_CONCURRENT_KIE: int = Field(default=1, alias="DOCUVISION_BATCH_MAX_CONCURRENT_KIE")
 
     class Config:
         env_file = ".env"

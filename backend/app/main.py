@@ -208,6 +208,15 @@ from app.services.seal_service import SealService
 from app.services.kie_qwen_service import QwenDocumentKIEService
 from app.services.export_service import ExportService
 from app.services.batch_service import BatchService, BatchStatus
+from app.services.batch_export_service import (
+    build_failure_csv_rows,
+    build_json_bundle,
+    build_kie_csv_rows,
+    build_summary_csv_rows,
+    render_csv,
+)
+from app.services.single_file_pipeline import run_single_file_pipeline
+from app.services.kie.kie_pages import validate_kie_pages_for_non_pdf
 from app.services.unified_layout_service import UnifiedLayoutService
 from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
 from app.core.config import settings
@@ -761,12 +770,18 @@ async def analyze_document(
     pipeline_formula_batch_size: int = Form(1),
     return_raw: bool = Form(False),
     kie_query_fields: Optional[str] = Form(None),
+    kie_pages: Optional[str] = Form(None),
 ):
     """Upload and analyze a single document"""
     # Validate file
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif']:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+
+    is_pdf = ext == ".pdf"
+    pages_err = validate_kie_pages_for_non_pdf(kie_pages, is_pdf)
+    if pages_err:
+        raise HTTPException(status_code=400, detail=pages_err)
 
     # CRITICAL FIX: FastAPI parses "1"/"0" as True/False for bool Form fields
     # "true"/"false" strings will cause validation errors
@@ -828,6 +843,7 @@ async def analyze_document(
         "pipeline_formula_batch_size": pipeline_formula_batch_size,
         "return_raw": return_raw,
         "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
+        "kie_pages": (kie_pages or "").strip() or "1",
     }
 
     _resolve_kie_query_fields_in_options(options)
@@ -992,6 +1008,7 @@ async def analyze_document_v1(
     document_type: str = Form("auto"),
     return_raw: bool = Form(False),
     kie_query_fields: Optional[str] = Form(None),
+    kie_pages: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """
@@ -1006,6 +1023,11 @@ async def analyze_document_v1(
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif']:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+
+    is_pdf = ext == ".pdf"
+    pages_err = validate_kie_pages_for_non_pdf(kie_pages, is_pdf)
+    if pages_err:
+        raise HTTPException(status_code=400, detail=pages_err)
 
     job_id = str(uuid.uuid4())
     upload_dir = os.path.join(settings.UPLOAD_DIR, job_id)
@@ -1029,6 +1051,7 @@ async def analyze_document_v1(
         "debug_mode": settings.DEBUG_MODE,
         "return_raw": return_raw,
         "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
+        "kie_pages": (kie_pages or "").strip() or "1",
     }
 
     _resolve_kie_query_fields_in_options(options)
@@ -1698,6 +1721,46 @@ async def delete_task(task_id: str):
 # API Routes - Batch Processing (P2)
 # ============================================
 
+_PIPELINE_SERVICES = None
+
+
+def _pipeline_services() -> Dict[str, Any]:
+    global _PIPELINE_SERVICES
+    if _PIPELINE_SERVICES is None:
+        _PIPELINE_SERVICES = {
+            "ocr_service": ocr_service,
+            "layout_service": layout_service,
+            "table_service": table_service,
+            "formula_service": formula_service,
+            "chart_service": chart_service,
+            "seal_service": seal_service,
+            "kie_service": kie_service,
+        }
+    return _PIPELINE_SERVICES
+
+
+async def _batch_process_file(file_path: str, options: Dict[str, Any]) -> Dict[str, Any]:
+    """Full orchestrator pipeline for one batch file."""
+    opts = dict(options)
+    _resolve_kie_query_fields_in_options(opts)
+    doc_type_norm = str(opts.get("document_type", "auto") or "auto").strip().lower()
+    if doc_type_norm in {"invoice", "receipt", "id_card"} and not opts.get("enable_kie", False):
+        opts["enable_kie"] = True
+
+    async def _noop_event(*_args, **_kwargs):
+        return None
+
+    return await run_single_file_pipeline(
+        file_path,
+        opts,
+        services=_pipeline_services(),
+        call_maybe_async=call_maybe_async,
+        send_event=_noop_event,
+        build_page_image_meta=_build_page_image_meta,
+        save_debug_overlay=save_debug_overlay_image if settings.ENABLE_DEBUG_OVERLAYS else None,
+    )
+
+
 @app.post("/api/v1/batch")
 async def create_batch(
     name: str = Form(...),
@@ -1739,6 +1802,12 @@ async def create_batch(
     if not file_list:
         raise HTTPException(status_code=400, detail="No valid files provided")
 
+    doc_type_norm = str(opts.get("document_type", "auto") or "auto").strip().lower()
+    if doc_type_norm in {"invoice", "receipt", "id_card"} and not opts.get("enable_kie", False):
+        opts["enable_kie"] = True
+    if "kie_pages" not in opts:
+        opts["kie_pages"] = "1"
+
     batch = batch_service.create_batch(name, file_list, opts)
     return batch.to_dict()
 
@@ -1771,70 +1840,8 @@ async def start_batch(batch_id: str, background_tasks: BackgroundTasks):
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
 
-    async def process_file(file_path: str, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Process a single file in the batch"""
-        # Create a temporary task-like structure
-        temp_task = {
-            "file_path": file_path,
-            "file_name": os.path.basename(file_path),
-            "options": options
-        }
-
-        result = {
-            "document_info": {
-                "file_name": temp_task["file_name"],
-                "pages": 0,
-                "processed_at": datetime.now().isoformat(),
-                "page_image_meta": _build_page_image_meta(file_path, page_num=1),
-            }
-        }
-
-        # OCR
-        if options.get("enable_ocr", False):
-            ocr_result = await call_maybe_async(
-                ocr_service.recognize,
-                file_path,
-                language=options.get("language", "en"),
-                engine=options.get("ocr_engine"),
-                fallback=True
-            )
-            result["text_blocks"] = ocr_result["text_blocks"]
-            result["document_info"]["pages"] = ocr_result["page_count"]
-            result["full_text"] = ocr_result.get("full_text", "")
-
-        # Layout
-        if options.get("enable_layout", True):
-            layout_result = await call_maybe_async(
-                layout_service.analyze,
-                file_path,
-                engine=options.get("layout_engine"),
-                fallback=True
-            )
-            result["layout"] = layout_result
-
-        # Tables
-        if options.get("enable_table", True):
-            layout_elements = result.get("layout", {}).get("elements", []) if result.get("layout") else None
-            ocr_text_blocks = result.get("text_blocks") if isinstance(result.get("text_blocks"), list) else None
-            table_result = await call_maybe_async(
-                table_service.extract_with_meta,
-                file_path,
-                engine=options.get("table_engine"),
-                fallback=True,
-                layout_elements=layout_elements,
-                ocr_text_blocks=ocr_text_blocks,
-                allow_fullpage_fallback=bool(options.get("table_allow_fullpage_fallback", settings.TABLE_ALLOW_FULLPAGE_FALLBACK)),
-            )
-            if isinstance(table_result, dict):
-                result["tables"] = table_result.get("tables", [])
-                result["table_extraction_meta"] = table_result.get("meta", {})
-            else:
-                result["tables"] = table_result
-
-        return result
-
     try:
-        await batch_service.start_batch(batch_id, process_file)
+        await batch_service.start_batch(batch_id, _batch_process_file)
         return {"message": "Batch started", "batch_id": batch_id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1854,7 +1861,7 @@ async def pause_batch(batch_id: str):
 async def resume_batch(batch_id: str):
     """Resume a paused batch"""
     try:
-        success = await batch_service.resume_batch(batch_id)
+        success = await batch_service.resume_batch(batch_id, process_func=_batch_process_file)
         return {"message": "Batch resumed" if success else "Cannot resume", "batch_id": batch_id}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -1910,6 +1917,41 @@ async def retry_batch_failed(batch_id: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/v1/batch/{batch_id}/export.csv")
+async def export_batch_csv(batch_id: str, mode: str = "kie"):
+    """Download aggregated batch results as CSV (mode: kie, summary, failures)."""
+    batch = batch_service.get_batch(batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    mode_norm = (mode or "kie").strip().lower()
+    if mode_norm == "summary":
+        header, rows = build_summary_csv_rows(batch)
+    elif mode_norm in ("failures", "failure"):
+        header, rows = build_failure_csv_rows(batch)
+    else:
+        header, rows = build_kie_csv_rows(batch)
+
+    csv_text = render_csv(header, rows)
+    filename = f"batch_{batch_id}_{mode_norm}.csv"
+    return Response(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/api/v1/batch/{batch_id}/export.json")
+async def export_batch_json(batch_id: str):
+    """Download full batch results as JSON bundle."""
+    from fastapi.responses import JSONResponse
+
+    batch = batch_service.get_batch(batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return JSONResponse(build_json_bundle(batch))
+
+
 # ============================================
 # Application Startup
 # ============================================
@@ -1917,7 +1959,7 @@ async def retry_batch_failed(batch_id: str):
 @app.on_event("startup")
 async def startup_event():
     logger.info("=" * 60)
-    logger.info("DocuVision - Intelligent Document Processing System v1.1")
+    logger.info(f"DocuVision - Intelligent Document Processing System v{settings.APP_VERSION}")
     logger.info("=" * 60)
     try:
         logger.info(

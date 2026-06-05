@@ -14,6 +14,7 @@ from app.services.kie.kie_field_metrics import (
     compute_fill_confidence,
     count_meaningful_kie_fields,
 )
+from app.services.pdf_raster import rasterize_pdf_page
 
 logger = logging.getLogger(__name__)
 
@@ -45,28 +46,7 @@ def _resolve_kie_image_path(
 
     ext = os.path.splitext(file_path or "")[1].lower()
     if ext == ".pdf":
-        import fitz  # PyMuPDF
-        from PIL import Image
-
-        try:
-            doc = fitz.open(file_path)
-        except Exception:
-            logger.warning("KIE Qwen: cannot open PDF for raster (missing or invalid): %s", file_path)
-            return file_path, None
-        try:
-            page = doc[0]
-            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-            if pix.alpha:
-                img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
-                img = img.convert("RGB")
-            else:
-                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            fd, tmp_path = tempfile.mkstemp(suffix=".png", prefix="kie_pdf_page1_")
-            os.close(fd)
-            img.save(tmp_path, format="PNG")
-            return tmp_path, tmp_path
-        finally:
-            doc.close()
+        return rasterize_pdf_page(file_path, 1, matrix_scale=2.0)
 
     return file_path, None
 
@@ -164,15 +144,22 @@ class QwenDocumentKIEService:
         tables: Optional[List[Dict[str, Any]]] = None,
         query_fields: Optional[List[Dict[str, str]]] = None,
         merged_schema: Optional[Dict[str, Any]] = None,
+        vl_image_path: Optional[str] = None,
+        page_number: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Orchestrator-compatible KIE contract (fields + metadata + debug_input)."""
 
-        image_path, temp_path = _resolve_kie_image_path(file_path, preprocessed_image_path)
+        temp_path: Optional[str] = None
+        if vl_image_path and os.path.isfile(vl_image_path):
+            image_path = vl_image_path
+        else:
+            image_path, temp_path = _resolve_kie_image_path(file_path, preprocessed_image_path)
         debug_input: Dict[str, Any] = {
             "file_path": file_path,
             "preprocessed_image_path": preprocessed_image_path,
             "vl_image_path": image_path,
             "temp_raster_path": temp_path,
+            "page_number": page_number,
             "layout_present": bool(layout),
             "table_meta": table_meta or {},
             "tables_count": len(tables) if isinstance(tables, list) else 0,

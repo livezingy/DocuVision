@@ -633,6 +633,8 @@ function updateQueueCount() {
  */
 function initTabs() {
     const navTabs = document.querySelectorAll('.nav-tab');
+    const processView = document.getElementById('processMainView');
+    const batchView = document.getElementById('batchMainView');
     navTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             if (tab.disabled) return;
@@ -642,7 +644,15 @@ function initTabs() {
             tab.classList.add('active');
 
             const tabName = tab.dataset.tab;
-            showNotification(`Switched to ${tab.textContent.trim()} view`, 'info');
+            if (processView && batchView) {
+                if (tabName === 'batch') {
+                    processView.classList.add('hidden');
+                    batchView.classList.remove('hidden');
+                } else {
+                    batchView.classList.add('hidden');
+                    processView.classList.remove('hidden');
+                }
+            }
         });
     });
 }
@@ -1299,6 +1309,7 @@ function getProcessingOptions() {
             return KIE_DOC_TYPES.has(String(dt).toLowerCase());
         })(),
         kie_query_fields: buildKieQueryFieldsPayload(),
+        kie_pages: (document.getElementById('optKiePages')?.value || '').trim() || '1',
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
         layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure'
     };
@@ -3470,11 +3481,101 @@ function getNotificationColor(type) {
  * Initialize batch processing features
  */
 function initBatchProcessing() {
-    // Batch processing state
     window.batchState = {
         batches: [],
-        currentBatch: null
+        currentBatch: null,
+        selectedFiles: [],
+        pollTimer: null
     };
+
+    const fileInput = document.getElementById('batchFileInput');
+    const selectBtn = document.getElementById('batchSelectFilesBtn');
+    const fileCount = document.getElementById('batchFileCount');
+
+    if (selectBtn && fileInput) {
+        selectBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+            window.batchState.selectedFiles = Array.from(fileInput.files || []);
+            if (fileCount) {
+                fileCount.textContent = window.batchState.selectedFiles.length
+                    ? `${window.batchState.selectedFiles.length} file(s) selected`
+                    : '';
+            }
+        });
+    }
+
+    document.getElementById('batchCreateBtn')?.addEventListener('click', async () => {
+        const name = document.getElementById('batchNameInput')?.value || 'Batch job';
+        const files = window.batchState.selectedFiles || [];
+        if (!files.length) {
+            showNotification('Select files first', 'warning');
+            return;
+        }
+        const batch = await createBatch(name, files);
+        if (batch) {
+            window.batchState.currentBatch = batch;
+            setBatchControlsForBatch(batch);
+            updateBatchUI(batch);
+        }
+    });
+
+    document.getElementById('batchStartBtn')?.addEventListener('click', async () => {
+        const id = window.batchState.currentBatch?.batch_id;
+        if (id) await startBatch(id);
+    });
+    document.getElementById('batchPauseBtn')?.addEventListener('click', async () => {
+        const id = window.batchState.currentBatch?.batch_id;
+        if (id) await pauseBatch(id);
+    });
+    document.getElementById('batchResumeBtn')?.addEventListener('click', async () => {
+        const id = window.batchState.currentBatch?.batch_id;
+        if (id) await resumeBatch(id);
+    });
+    document.getElementById('batchCancelBtn')?.addEventListener('click', async () => {
+        const id = window.batchState.currentBatch?.batch_id;
+        if (id) await cancelBatch(id);
+    });
+    document.getElementById('batchRetryBtn')?.addEventListener('click', async () => {
+        const id = window.batchState.currentBatch?.batch_id;
+        if (!id) return;
+        try {
+            const r = await fetch(`${API_BASE_URL}/batch/${id}/retry`, { method: 'POST' });
+            if (r.ok) {
+                showNotification('Failed tasks reset; click Start to retry', 'info');
+                await startBatch(id);
+            }
+        } catch (e) {
+            showNotification(`Retry failed: ${e.message}`, 'error');
+        }
+    });
+    document.getElementById('batchDownloadCsvBtn')?.addEventListener('click', () => {
+        const id = window.batchState.currentBatch?.batch_id;
+        if (id) window.open(`${API_BASE_URL}/batch/${id}/export.csv?mode=kie`, '_blank');
+    });
+    document.getElementById('batchDownloadJsonBtn')?.addEventListener('click', () => {
+        const id = window.batchState.currentBatch?.batch_id;
+        if (id) window.open(`${API_BASE_URL}/batch/${id}/export.json`, '_blank');
+    });
+}
+
+function setBatchControlsForBatch(batch) {
+    const hasBatch = Boolean(batch?.batch_id);
+    const terminal = ['completed', 'failed', 'cancelled'].includes(batch?.status);
+    const processing = batch?.status === 'processing';
+    const paused = batch?.status === 'paused';
+    const hasPending = Array.isArray(batch.tasks) && batch.tasks.some(t => t.status === 'pending');
+
+    const set = (id, on) => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !on;
+    };
+    set('batchStartBtn', hasBatch && !processing && (batch.status === 'pending' || hasPending));
+    set('batchPauseBtn', hasBatch && processing);
+    set('batchResumeBtn', hasBatch && paused);
+    set('batchCancelBtn', hasBatch && !terminal);
+    set('batchRetryBtn', hasBatch && terminal);
+    set('batchDownloadCsvBtn', hasBatch && (terminal || processing));
+    set('batchDownloadJsonBtn', hasBatch && (terminal || processing));
 }
 
 /**
@@ -3498,6 +3599,8 @@ async function createBatch(name, files) {
 
         if (response.ok) {
             const batch = await response.json();
+            window.batchState.currentBatch = batch;
+            setBatchControlsForBatch(batch);
             showNotification(`Batch "${name}" created with ${batch.total_tasks} files`, 'success');
             return batch;
         } else {
@@ -3556,8 +3659,34 @@ async function pollBatchStatus(batchId) {
  * Update batch UI
  */
 function updateBatchUI(batch) {
-    // Update progress display if on batch tab
-    console.log('Batch status:', batch.status, 'Progress:', batch.progress);
+    if (!batch) return;
+    window.batchState.currentBatch = batch;
+    setBatchControlsForBatch(batch);
+
+    const statusText = document.getElementById('batchStatusText');
+    const progressText = document.getElementById('batchProgressText');
+    if (statusText) {
+        statusText.textContent = `Status: ${batch.status} | ${batch.completed_tasks}/${batch.total_tasks} done`;
+    }
+    if (progressText) {
+        progressText.textContent = batch.progress != null ? `Progress: ${batch.progress}%` : '';
+    }
+
+    const tbody = document.getElementById('batchTaskTableBody');
+    if (!tbody || !Array.isArray(batch.tasks)) return;
+    tbody.innerHTML = '';
+    batch.tasks.forEach(task => {
+        const tr = document.createElement('tr');
+        const kieHit = task.result?.quality?.kie_production_hit ?? '';
+        const err = task.error || task.result?.kie_meta?.error_message || '';
+        tr.innerHTML = `
+            <td style="padding:8px;">${escapeHtml(task.file_name || '')}</td>
+            <td style="padding:8px;">${escapeHtml(task.status || '')}</td>
+            <td style="padding:8px;">${kieHit === true ? 'yes' : kieHit === false ? 'no' : ''}</td>
+            <td style="padding:8px;">${escapeHtml(String(err).slice(0, 120))}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 /**
@@ -3586,6 +3715,7 @@ async function resumeBatch(batchId) {
         });
         if (response.ok) {
             showNotification('Batch resumed', 'success');
+            pollBatchStatus(batchId);
         }
     } catch (error) {
         showNotification(`Failed to resume: ${error.message}`, 'error');

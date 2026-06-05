@@ -38,6 +38,11 @@ document_type=invoice
 kie_query_fields=[{"name":"OurReference","description":"Customer reference line"},{"name":"BookingDate"}]
 ```
 
+### 3.2 多页 PDF（v1.2，`kie_pages`）
+
+- 与 query fields 正交：先按页跑 VL，再 `merge_kie_fields`；query 字段在**合并后**的 `view.fields` 上统计 `kie_query_fields_filled`。
+- 默认 `kie_pages=1`（仅首页），与 v1.1 行为一致。见 [kie.md](./kie.md)、[multipage_kie.md](../../test_data/acceptance/multipage_kie.md)。
+
 **JSON Job options 示例**（batch `options` 字符串内）：
 
 ```json

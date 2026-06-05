@@ -40,7 +40,31 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 | 固定矩阵（继承 1.0 C+D+E） | 10 样例；001/002 基线见 Release 1.0 |
 | **阶段 F**（query fields） | **1/1** `sample-invoice.png`；001/002 pass |
 | 可选待补 F | `invoice_sample_01.pdf` + query（非阻塞） |
-| 下一产品优先级 | Batch UI、字段校验、多页 KIE — 见 [RELEASE_1.1_CHECKLIST.md](../release/RELEASE_1.1_CHECKLIST.md) §6 |
+| 下一产品优先级 | 字段校验 — 见 [RELEASE_1.1_CHECKLIST.md](../release/RELEASE_1.1_CHECKLIST.md) §6；Batch UI + 多页 KIE 见 v1.2 阶段 MP / H-Batch |
+
+---
+
+## Release 1.2 — multipage KIE + batch (code baseline)
+
+- **branch**: `main` (post-v1.1.0)
+- **features**: `kie_pages`, `kie_fields_by_page`, batch orchestrator + `export.csv` / `export.json`, Pro Batch UI tab
+- **fixtures**: `test_data/scripts/build_multipage_kie_fixtures.py` → `invoices/multipage/*.pdf`
+- **Cloud**: 阶段 MP + H-Batch — [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)
+
+### 阶段 MP — 多页 PDF KIE（待 Cloud 填写）
+
+| sample_path | kie_pages | 001 | 002 | pages_processed | note |
+|---|---|---:|---:|---|---|
+| testfiles/invoices/invoice_sample_01.pdf | `1` | — | — | `[1]` | 回归阶段 C |
+| testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf | `all` | — | — | `>=2` | 需先生成 PDF |
+
+### 阶段 Batch-KIE — `kie_invoice_6`（待 Cloud 填写）
+
+| metric | target |
+|---|---|
+| completed | 6/6 |
+| export.csv | `file_name`, `kie_production_hit` columns |
+| script | `test_data/scripts/run_batch_kie_acceptance.ps1` |
 
 ---
 

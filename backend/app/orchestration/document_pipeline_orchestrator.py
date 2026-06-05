@@ -13,11 +13,15 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from loguru import logger
 
+from app.core.config import settings
+from app.services.kie.field_merge import merge_kie_fields, sum_items_count
 from app.services.kie.kie_field_metrics import (
     count_meaningful_kie_fields,
     evaluate_kie_id_card_precision,
     evaluate_kie_production_hit,
 )
+from app.services.kie.kie_pages import resolve_kie_pages
+from app.services.pdf_raster import pdf_page_count, rasterize_pdf_page
 
 
 PipelineContext = Dict[str, Any]
@@ -586,50 +590,84 @@ async def kie_step(ctx: PipelineContext) -> None:
         len(tables) if isinstance(tables, list) else 0,
     )
 
+    file_path = str(ctx.get("file_path") or "")
+    is_pdf = os.path.splitext(file_path)[1].lower() == ".pdf"
+    page_count = pdf_page_count(file_path) if is_pdf else 1
+    pages_spec = options.get("kie_pages")
+    selected_pages, pages_truncated = resolve_kie_pages(
+        pages_spec,
+        page_count,
+        settings.KIE_MAX_PAGES,
+    )
+    multipage = is_pdf and len(selected_pages) > 1
+
     await orchestrator.update_progress(ctx, 79, "KIE: preparing model and inputs...")
     t_kie0 = time.perf_counter()
-    try:
-        await orchestrator.update_progress(ctx, 79, "KIE: inference running...")
-        # Try calling the extended signature first (backwards-compatible).
-        kie_result = await orchestrator.call_maybe_async(
+    fields_by_page: Dict[str, Dict[str, Any]] = {}
+    confidence_values: List[float] = []
+    total_infer_ms = 0
+    total_model_load_ms = 0
+    last_metadata: Dict[str, Any] = {}
+    temp_rasters: List[str] = []
+
+    async def _extract_one_page(page_num: int, vl_image_path: Optional[str]) -> Dict[str, Any]:
+        prep = preprocessed_image_path if page_num == 1 else None
+        if vl_image_path:
+            prep = None
+        return await orchestrator.call_maybe_async(
             kie_service.extract_fields,
-            ctx["file_path"],
+            file_path,
             document_type,
-            preprocessed_image_path=preprocessed_image_path,
+            preprocessed_image_path=prep,
             layout=layout,
             table_meta=table_meta,
             tables=tables,
             query_fields=query_fields or None,
             merged_schema=merged_schema,
+            vl_image_path=vl_image_path,
+            page_number=page_num,
         )
-    except TypeError:
-        # Fallback to legacy signature if the service doesn't accept new kwargs.
-        try:
-            kie_result = await orchestrator.call_maybe_async(
-                kie_service.extract_fields,
-                ctx["file_path"],
-                document_type,
+
+    try:
+        for page_num in selected_pages:
+            await orchestrator.update_progress(
+                ctx, 79, f"KIE: inference running (page {page_num}/{selected_pages[-1]})..."
             )
-        except Exception as exc:
-            logger.warning(
-                "KIE extraction failed | task_id={} | document_type={} | stage=runtime_error | error_code=runtime_error | error={}",
-                ctx.get("task_id", ""),
-                document_type,
-                exc,
-            )
-            ctx["result"]["kie_fields"] = {}
-            ctx["result"]["kie_meta"] = {
-                "attempted": True,
-                "succeeded": False,
-                "stage": "runtime_error",
-                "error_code": "runtime_error",
-                "error_message": str(exc),
-            }
-            await orchestrator.update_progress(ctx, 80, "KIE extraction failed")
-            return
+            vl_path: Optional[str] = None
+            temp_path: Optional[str] = None
+            if is_pdf:
+                if page_num == 1 and _pp_ok and preprocessed_image_path:
+                    vl_path = None
+                else:
+                    vl_path, temp_path = rasterize_pdf_page(file_path, page_num, matrix_scale=2.0)
+                    if temp_path:
+                        temp_rasters.append(temp_path)
+            kie_result = await _extract_one_page(page_num, vl_path)
+            page_fields = {}
+            if isinstance(kie_result, dict):
+                page_fields = kie_result.get("fields", {}) if isinstance(kie_result.get("fields", {}), dict) else {}
+                try:
+                    confidence_values.append(float(kie_result.get("confidence_avg", 0.0) or 0.0))
+                except (TypeError, ValueError):
+                    pass
+                if isinstance(kie_result.get("metadata"), dict):
+                    meta = kie_result["metadata"]
+                    last_metadata = meta
+                    total_infer_ms += int(meta.get("infer_ms", 0) or 0)
+                    total_model_load_ms = max(
+                        total_model_load_ms,
+                        int(meta.get("kie_model_load_ms", 0) or 0),
+                    )
+            fields_by_page[str(page_num)] = page_fields
     except Exception as exc:
+        for tmp in temp_rasters:
+            try:
+                if os.path.isfile(tmp):
+                    os.remove(tmp)
+            except OSError:
+                pass
         logger.warning(
-            "KIE extraction failed | task_id={} | document_type={} | stage=runtime_error | error_code=runtime_error | error={}",
+            "KIE extraction failed | task_id={} | document_type={} | stage=runtime_error | error={}",
             ctx.get("task_id", ""),
             document_type,
             exc,
@@ -644,27 +682,31 @@ async def kie_step(ctx: PipelineContext) -> None:
         }
         await orchestrator.update_progress(ctx, 80, "KIE extraction failed")
         return
+    finally:
+        for tmp in temp_rasters:
+            try:
+                if os.path.isfile(tmp):
+                    os.remove(tmp)
+            except OSError:
+                pass
 
-    # Normalize result shape defensively
-    fields = {}
-    confidence_avg = 0.0
-    items_count = 0
-    metadata: Dict[str, Any] = {}
-    if isinstance(kie_result, dict):
-        fields = kie_result.get("fields", {}) if isinstance(kie_result.get("fields", {}), dict) else {}
-        try:
-            confidence_avg = float(kie_result.get("confidence_avg", 0.0) or 0.0)
-        except (TypeError, ValueError):
-            confidence_avg = 0.0
-        try:
-            items_count = int(kie_result.get("items_count", 0) or 0)
-        except (TypeError, ValueError):
-            items_count = 0
-        if isinstance(kie_result.get("metadata"), dict):
-            metadata = kie_result.get("metadata") or {}
+    if multipage:
+        fields = merge_kie_fields(fields_by_page)
+        ctx["result"]["kie_fields_by_page"] = fields_by_page
+    else:
+        fields = fields_by_page.get(str(selected_pages[0]), {}) if fields_by_page else {}
 
-    kie_infer_ms = int(metadata.get("infer_ms", 0) or 0)
+    items_count = sum_items_count(fields) if multipage else int(
+        last_metadata.get("items_count", 0) or 0
+    )
+    if not items_count:
+        items_count = sum_items_count(fields)
+
+    confidence_avg = (
+        sum(confidence_values) / len(confidence_values) if confidence_values else 0.0
+    )
     kie_wall_ms = int((time.perf_counter() - t_kie0) * 1000)
+    pages_requested = str(pages_spec or "1").strip() or "1"
 
     ctx["result"]["kie_fields"] = fields
     ctx["result"]["kie_meta"] = {
@@ -675,32 +717,31 @@ async def kie_step(ctx: PipelineContext) -> None:
         "error_message": "",
         "confidence_avg": confidence_avg,
         "items_count": items_count,
-        "items_source": str(metadata.get("items_source", "n/a")),
-        "kie_model_load_ms": int(metadata.get("kie_model_load_ms", 0) or 0),
-        "kie_infer_ms": kie_infer_ms,
+        "items_source": str(last_metadata.get("items_source", "n/a")),
+        "kie_model_load_ms": total_model_load_ms,
+        "kie_infer_ms": total_infer_ms,
         "kie_wall_ms": kie_wall_ms,
-        "ocr_text_length": int(
-            (kie_result.get("debug_input", {}) or {}).get("ocr_text_length", 0)
-            if isinstance(kie_result, dict) else 0
-        ),
-        "engine": str(metadata.get("engine", "") or "qwen2.5-vl"),
+        "ocr_text_length": 0,
+        "engine": str(last_metadata.get("engine", "") or "qwen2.5-vl"),
         "kie_query_fields_requested": list(options.get("kie_query_field_names") or []),
-        "kie_query_fields_count": int(metadata.get("kie_query_fields_count", 0) or 0),
+        "kie_query_fields_count": int(last_metadata.get("kie_query_fields_count", 0) or 0),
+        "kie_pages_requested": pages_requested,
+        "kie_pages_processed": selected_pages,
+        "kie_pages_truncated": pages_truncated,
+        "kie_multipage_merge": multipage,
+        "resolved_document_type": document_type,
     }
     logger.info(
-        "KIE step completed | task_id={} | document_type={} | fields_count={} | items_count={} | "
-        "confidence_avg={} | engine={} | kie_model_load_ms={} | kie_infer_ms={} | kie_wall_ms={}",
+        "KIE step completed | task_id={} | document_type={} | fields_count={} | pages={} | multipage={}",
         str(ctx.get("task_id", "") or ""),
         document_type,
         len(fields),
-        items_count,
-        confidence_avg,
-        ctx["result"]["kie_meta"]["engine"],
-        ctx["result"]["kie_meta"]["kie_model_load_ms"],
-        kie_infer_ms,
-        kie_wall_ms,
+        selected_pages,
+        multipage,
     )
-    await orchestrator.update_progress(ctx, 80, f"KIE extraction completed | fields={len(fields)} | items={items_count}")
+    await orchestrator.update_progress(
+        ctx, 80, f"KIE extraction completed | fields={len(fields)} | pages={len(selected_pages)}"
+    )
 
 
 async def finalize_step(ctx: PipelineContext) -> None:
@@ -947,6 +988,15 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
             requested_qf = [str(x) for x in kie_meta["kie_query_fields_requested"]]
         quality["kie_query_fields_requested"] = requested_qf
         quality["kie_query_fields_filled"] = list_filled_query_fields(view_fields, requested_qf)
+
+        if isinstance(kie_meta.get("kie_pages_requested"), str):
+            quality["kie_pages_requested"] = kie_meta["kie_pages_requested"]
+        if isinstance(kie_meta.get("kie_pages_processed"), list):
+            quality["kie_pages_processed"] = kie_meta["kie_pages_processed"]
+        if kie_meta.get("kie_pages_truncated") is True:
+            quality["kie_pages_truncated"] = True
+        if kie_meta.get("kie_multipage_merge") is True:
+            quality["kie_multipage_merge"] = True
 
         ctx["phase1_quality"] = quality
 

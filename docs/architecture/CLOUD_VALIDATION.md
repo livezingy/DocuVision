@@ -99,6 +99,50 @@ DOCUVISION_RUN_KIE_ACCEPTANCE=1 pytest tests/test_kie_acceptance_baseline.py -q
 
 `test_data/testfiles/receipts/receipt-with-tips.png`，`document_type=receipt`。
 
+### 阶段 MP — 多页 PDF KIE（v1.2+）
+
+生成样例（一次性）：
+
+```powershell
+cd <REPO_ROOT>
+py -3 test_data/scripts/build_multipage_kie_fixtures.py
+```
+
+| 样例 | 请求 | 通过标准 |
+|------|------|----------|
+| `invoices/invoice_sample_01.pdf` | `kie_pages=1`（默认） | 阶段 C 基线无回归；001 + 002 |
+| `invoices/multipage/invoice_multipage_2p_header_detail.pdf` | `kie_pages=all` | 001 + 002；`quality.kie_pages_processed` 长度 ≥ 2；`kie_multipage_merge=true` |
+
+PowerShell（`POST /api/v1/analyze`，与 Phase B 相同进程内 poll）：
+
+```powershell
+$API_ROOT = "http://127.0.0.1:8000"
+$SAMPLE = "<REPO_ROOT>/test_data/testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf"
+# Form: enable_kie=1, document_type=invoice, kie_pages=all
+```
+
+契约单测（无 GPU）：
+
+```bash
+cd backend
+pytest tests/test_kie_pages_parse.py tests/test_kie_field_merge.py -q
+```
+
+记录写入 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md) 阶段 MP。
+
+### 阶段 H-Batch — Batch KIE + 汇总导出（v1.2+）
+
+`python run.py` 已启动；`DEBUG=false` 推荐（避免 reload 丢 batch）。
+
+```powershell
+cd <REPO_ROOT>
+pwsh -File test_data/scripts/run_batch_kie_acceptance.ps1
+```
+
+或手动：按 `test_data/testfiles/batch/manifest.json` 中 `kie_invoice_6` 上传 6 文件 → `POST .../start` → poll → `GET .../export.csv?mode=kie`。
+
+**通过标准**：6/6 `completed`；CSV 含 `file_name`、`kie_production_hit`（见 [batch_kie.md](../../test_data/acceptance/batch_kie.md)）。
+
 ### 阶段 F — 全量回归（时间允许）
 
 ```bash

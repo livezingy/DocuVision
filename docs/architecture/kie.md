@@ -33,18 +33,20 @@
 
 ```mermaid
 flowchart LR
-  img[preprocessed_image or PDF page1 raster]
+  img[preprocessed or per-page PDF raster]
   km[KieManager + YAML prompts]
+  merge[merge_kie_fields optional]
   fields[kie_fields dict]
   view[view.fields]
 
-  img --> km --> fields --> view
+  img --> km --> merge --> fields --> view
 ```
 
 - **输入图像**：
   - 优先 **栅格图** 形式的 `preprocessed_image_path`（layout 预处理输出，扩展名 `.png`/`.jpg` 等）。
   - 编排器 **不会** 再用原始 `file_path` 回填 `preprocessed_image_path`（避免 PDF 被 PIL 直接打开）。
-  - 若无有效栅格预处理图且上传为 **PDF**，`kie_qwen_service._resolve_kie_image_path` 用 PyMuPDF 将 **第 1 页** 栅格化为临时 PNG，推理结束后删除。
+  - 若无有效栅格预处理图且上传为 **PDF**，按 `kie_pages` 栅格化所选页（默认 **仅第 1 页**，与 v1.1 一致）；见 `pdf_raster.rasterize_pdf_page`。
+- **`kie_pages`**（v1.2，PDF only）：`1`（默认）、`all`、`2-4`、逗号列表；上限 `DOCUVISION_KIE_MAX_PAGES`（默认 5）。多页时多次 VL → `merge_kie_fields` → 顶层 `kie_fields`，明细在 `kie_fields_by_page`。
 - **文本类 layout/tables**：传入 `extract_fields` 仅用于 `debug_input` 溯源；**VL 推理不依赖**版面全文拼接。
 - **输出**：`extract_fields` 返回 `fields`（纯 JSON 兼容 dict，可能含 `raw_output` 键表示模型未产出合法 JSON）、`confidence_avg`（关键字段填充率启发值）、`items_count`、`metadata`（含 `engine: qwen2.5-vl` 等）、`debug_input`。
 
@@ -84,6 +86,11 @@ flowchart LR
 
 - `kie_query_fields_requested` / `kie_query_fields_filled`：运行时追加字段名与命中名（v1.1）。
 
+增量（v1.2）：
+
+- `kie_pages_requested` / `kie_pages_processed` / `kie_pages_truncated` / `kie_multipage_merge`。
+- 任务结果可选 `kie_fields_by_page`：`{"1": {...}, "2": {...}}`（多页 PDF 且 `kie_pages` 选中多页时）。
+
 ### 5.3 任务结果中的 `kie_meta` / `kie_fields` / `kie_input`
 
 - `kie_meta`：`attempted`、`succeeded`、`stage`、`error_code`、`error_message`、成功时的 `confidence_avg`、`items_count`、`items_source`、`kie_model_load_ms`、**`kie_infer_ms`**（服务内纯推理毫秒）、**`kie_wall_ms`**（编排器包裹 `extract_fields` 的墙钟毫秒）、`ocr_text_length`（Qwen 路径下 `ocr_text_length` 可能为 0）。
@@ -92,7 +99,8 @@ flowchart LR
 
 ## 6. 已知局限（当前架构）
 
-- **整页图像 + VL**：长文档多页仅消费首页栅格（与当前 PDF 策略一致）；多页票据需产品层扩展。
+- **多页成本**：`kie_pages=all` 线性增加 GPU 时间；合并策略为后页非空覆盖（`items` 列表拼接），无 `kie_merge_policy`。
+- **非 PDF**：`kie_pages` 仅支持默认第 1 页语义；其他 spec 返回 400。
 - **解析鲁棒性**：模型若输出非严格 JSON，字段区会退化为 `raw_output` 文本块。
 - **字段精度**：基线样本已通过 Cloud 验收；身份证等场景可能仅命中部分关键键（如 `name` 无 `id_number`），需按样例继续调 prompt/schema。
 

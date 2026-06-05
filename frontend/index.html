@@ -37,7 +37,7 @@
                         </svg>
                         Document Processing
                     </button>
-                    <button type="button" class="nav-tab nav-tab--disabled" data-tab="batch" disabled title="即将推出">
+                    <button type="button" class="nav-tab" data-tab="batch" title="Server-side batch jobs">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
                             <line x1="8" y1="21" x2="16" y2="21"></line>
@@ -65,7 +65,7 @@
         </header>
 
         <!-- Main Content Area -->
-        <main class="main-content">
+        <main class="main-content" id="processMainView">
             <!-- Left Panel - File Management -->
             <aside class="left-panel">
                 <div class="panel-section upload-section">
@@ -371,6 +371,46 @@
             </aside>
         </main>
 
+        <main class="main-content batch-main-view hidden" id="batchMainView">
+            <section class="batch-panel" style="padding: 24px; flex: 1; overflow: auto;">
+                <h2 class="section-title">Batch Processing</h2>
+                <p class="upload-hint">Server-side batch jobs. Options mirror Analysis Options (KIE, layout, query fields, kie_pages).</p>
+                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;">
+                    <input type="text" id="batchNameInput" class="batch-name-input" placeholder="Batch name" value="Batch job" style="min-width: 160px;">
+                    <input type="file" id="batchFileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif" hidden>
+                    <button type="button" class="action-btn secondary" id="batchSelectFilesBtn">Select files</button>
+                    <span id="batchFileCount" class="upload-hint"></span>
+                    <button type="button" class="action-btn primary" id="batchCreateBtn">Create batch</button>
+                    <button type="button" class="action-btn primary" id="batchStartBtn" disabled>Start</button>
+                </div>
+                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+                    <button type="button" class="action-btn secondary" id="batchPauseBtn" disabled>Pause</button>
+                    <button type="button" class="action-btn secondary" id="batchResumeBtn" disabled>Resume</button>
+                    <button type="button" class="action-btn secondary" id="batchCancelBtn" disabled>Cancel</button>
+                    <button type="button" class="action-btn secondary" id="batchRetryBtn" disabled>Retry failed</button>
+                    <button type="button" class="action-btn secondary" id="batchDownloadCsvBtn" disabled>Download CSV</button>
+                    <button type="button" class="action-btn secondary" id="batchDownloadJsonBtn" disabled>Download JSON</button>
+                </div>
+                <div class="batch-status-bar" id="batchStatusBar" style="margin-bottom: 12px;">
+                    <span id="batchStatusText">No active batch</span>
+                    <span id="batchProgressText"></span>
+                </div>
+                <div class="batch-file-list" id="batchTaskTable" style="overflow: auto;">
+                    <table class="batch-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding: 8px;">File</th>
+                                <th style="text-align: left; padding: 8px;">Status</th>
+                                <th style="text-align: left; padding: 8px;">KIE hit</th>
+                                <th style="text-align: left; padding: 8px;">Error</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batchTaskTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
         <!-- Bottom Status Bar -->
         <footer class="status-bar">
             <div class="status-left">
@@ -530,6 +570,13 @@
                             placeholder="CustomerName, OurReference (not spaces in API id)"
                             spellcheck="false"
                         ></textarea>
+                    </div>
+                    <div class="kie-query-fields-block" style="margin-top: 16px;">
+                        <label class="engine-label" for="optKiePages">KIE pages (PDF only)</label>
+                        <p class="upload-hint" style="margin: 0 0 8px 0;">
+                            Empty or 1 = first page only. Use <code>all</code>, <code>1-3</code>, or comma list. Max 5 pages.
+                        </p>
+                        <input type="text" class="kie-query-fields-input" id="optKiePages" placeholder="1" spellcheck="false">
                     </div>
                 </div>
             </div>

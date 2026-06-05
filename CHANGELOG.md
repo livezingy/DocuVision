@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No changes yet._
+### Added
+
+- **Multipage PDF KIE**: `kie_pages` on analyze / jobs (`1`, `1-3`, `all`; max 5 pages). Per-page VL + document-level field merge; `kie_fields_by_page` + `quality.kie_pages_*`.
+- **Batch productization**: batch jobs use full document orchestrator (KIE + envelope); `GET /batch/{id}/export.csv` (kie/summary/failures) and `export.json`; Pro UI Batch tab wired.
+- Test fixtures script `test_data/scripts/build_multipage_kie_fixtures.py`; batch manifest `test_data/testfiles/batch/manifest.json`; acceptance `multipage_kie.md`, `batch_kie.md`.
+
+### Changed
+
+- `APP_VERSION` default `1.2.0`; batch KIE concurrency defaults to 1 (`BATCH_MAX_CONCURRENT_KIE`).
+- Batch `resume` re-schedules pending tasks when `process_func` is provided.
 
 ## [1.1.0] — 2026-06-04
 

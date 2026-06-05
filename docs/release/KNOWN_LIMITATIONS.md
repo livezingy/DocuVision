@@ -1,6 +1,6 @@
 # Known limitations
 
-> Applies through tag **`v1.1.0`** (Pro KIE query fields on `main`; Lite since `v1.0.1`).  
+> Applies through **`main` @ v1.2.0** (multipage KIE + batch UI; Lite since `v1.0.1`).  
 > Release notes: [RELEASE_1.1_NOTES.md](./RELEASE_1.1_NOTES.md) · Tracker: [KIE_TEST_RUN_TRACKER.md](../architecture/KIE_TEST_RUN_TRACKER.md)  
 > Acceptance rules: [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
 
@@ -33,7 +33,9 @@
 
 ### 多页 PDF
 
-- KIE 对 PDF 默认 **栅格化第 1 页**；多页票据/证件策略未产品化（见 [kie.md](../architecture/kie.md) §6）。
+- **v1.2+**：可选 `kie_pages`（默认第 1 页，与 v1.1 一致）；`all` / 范围对 PDF 按页推理后合并字段（见 [kie.md](../architecture/kie.md)）。
+- 单图/raster 上传不支持 `kie_pages` 非 `1`；页数上限 `KIE_MAX_PAGES`（默认 5）。
+- 跨页同名字段冲突：**后页优先**；无 `kie_merge_policy` 配置项。
 
 ### 字段精度
 
@@ -45,7 +47,7 @@
 | 限制 | 说明 |
 |------|------|
 | KIE query fields（v1.1） | `kie_query_fields` **仅追加**内置 schema（最多 20 字段）；**002 不含 query 命中**；空 query 值非契约失败。无模板库、无 `document_type=custom` 全量 schema。见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)。 |
-| Batch Processing UI | 前端 placeholder，与后端 batch API 未完整产品化。 |
+| Batch Processing UI | v1.2+ Batch 标签页与汇总 CSV/JSON；仍为内存 batch，重启丢失。 |
 | 字段 bbox | KIE 字段与画布标注框 **未** 联动。 |
 | 翻译 / 长文档 VL 问答 | 明确不在 1.0 / 1.0.1 范围。 |
 

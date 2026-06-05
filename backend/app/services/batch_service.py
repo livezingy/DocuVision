@@ -183,6 +183,12 @@ class BatchService:
         
         return [b.to_dict() for b in batches]
     
+    def _effective_concurrency(self, batch: BatchJob) -> int:
+        if batch.options.get("enable_kie"):
+            from app.core.config import settings
+            return max(1, int(settings.BATCH_MAX_CONCURRENT_KIE))
+        return self.max_concurrent
+
     async def start_batch(
         self,
         batch_id: str,
@@ -218,9 +224,9 @@ class BatchService:
         batch.status = BatchStatus.PROCESSING
         batch.started_at = datetime.now()
         
-        # Start processing in background
+        max_conc = self._effective_concurrency(batch)
         task = asyncio.create_task(
-            self._process_batch(batch_id, process_func, on_progress)
+            self._process_batch(batch_id, process_func, on_progress, max_concurrent=max_conc)
         )
         self._active_batches[batch_id] = task
         
@@ -231,7 +237,8 @@ class BatchService:
         self,
         batch_id: str,
         process_func: Callable[[str, Dict[str, Any]], Awaitable[Dict[str, Any]]],
-        on_progress: Callable[[str, str, float, str], None] = None
+        on_progress: Callable[[str, str, float, str], None] = None,
+        max_concurrent: Optional[int] = None,
     ):
         """Internal batch processing logic"""
         batch = self.batches.get(batch_id)
@@ -239,8 +246,8 @@ class BatchService:
             return
         
         try:
-            # Create semaphore for concurrent limit
-            semaphore = asyncio.Semaphore(self.max_concurrent)
+            limit = max_concurrent if max_concurrent is not None else self.max_concurrent
+            semaphore = asyncio.Semaphore(max(1, limit))
             
             async def process_task(task: BatchTask):
                 # Check for cancellation or pause
@@ -345,6 +352,13 @@ class BatchService:
         
         self._paused_batches.discard(batch_id)
         batch.status = BatchStatus.PROCESSING
+        pending = [t for t in batch.tasks if t.status == TaskStatus.PENDING]
+        if process_func is not None and pending and batch_id not in self._active_batches:
+            max_conc = self._effective_concurrency(batch)
+            task = asyncio.create_task(
+                self._process_batch(batch_id, process_func, on_progress, max_concurrent=max_conc)
+            )
+            self._active_batches[batch_id] = task
         logger.info(f"Resumed batch: {batch_id}")
         return True
     

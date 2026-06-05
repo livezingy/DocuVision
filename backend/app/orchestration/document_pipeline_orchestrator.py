@@ -21,6 +21,7 @@ from app.services.kie.kie_field_metrics import (
     evaluate_kie_production_hit,
 )
 from app.services.kie.kie_pages import resolve_kie_pages
+from app.services.document_info_utils import resolve_document_page_count
 from app.services.pdf_raster import pdf_page_count, rasterize_pdf_page
 
 
@@ -757,7 +758,10 @@ async def finalize_step(ctx: PipelineContext) -> None:
     task["completed_at"] = datetime.now()
 
     result = ctx["result"]
-    # 将 Phase1 envelope 的 view/quality 并入 result，便于 GET /tasks/.../result 一次返回
+    doc_info = result.setdefault("document_info", {})
+    if isinstance(doc_info, dict):
+        doc_info["pages"] = resolve_document_page_count(ctx["file_path"], result)
+    # Merge Phase1 envelope view/quality into result for GET /tasks/.../result
     # （含 view.fields 与 formulas/seals；前端 updateExtractView / Formulas 等统一读 result.view）
     envelope = task.get("envelope")
     if isinstance(envelope, dict):

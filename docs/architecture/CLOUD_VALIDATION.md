@@ -34,11 +34,31 @@ cp -n .env.cloud .env   # 按需改模型路径，勿提交 .env
 
 ## 2. 验证顺序（按阶段执行）
 
+**v1.2 发版最小集**（2026-06-05 Cloud 已跑通）：**阶段 A（33 项）** → **B** → **MP**（2p `kie_pages=all`）→ **H-Batch**（`kie_invoice_6`）。阶段 C/D/E/F 继承 v1.1 基线，发版前可选复跑。
+
+| 阶段 | v1.2 状态 |
+|------|-----------|
+| A（契约） | 33/33 pass |
+| MP（多页 KIE） | 1/1 pass |
+| H-Batch | 6/6 pass |
+
 ### 阶段 A — 契约单测（不加载 Qwen 权重）
+
+**v1.1 基线**（4 文件）：
 
 ```bash
 cd backend
 pytest tests/test_kie_field_metrics.py tests/test_kie_service.py \
+  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+```
+
+**v1.2 扩展**（含多页 KIE + batch 导出，**33 项**，2026-06-05 Cloud 已绿）：
+
+```bash
+cd backend
+pytest tests/test_kie_pages_parse.py tests/test_kie_field_merge.py \
+  tests/test_batch_export_service.py \
+  tests/test_kie_field_metrics.py tests/test_kie_service.py \
   tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
 ```
 
@@ -108,20 +128,52 @@ cd <REPO_ROOT>
 py -3 test_data/scripts/build_multipage_kie_fixtures.py
 ```
 
-| 样例 | 请求 | 通过标准 |
-|------|------|----------|
-| `invoices/invoice_sample_01.pdf` | `kie_pages=1`（默认） | 阶段 C 基线无回归；001 + 002 |
-| `invoices/multipage/invoice_multipage_2p_header_detail.pdf` | `kie_pages=all` | 001 + 002；`quality.kie_pages_processed` 长度 ≥ 2；`kie_multipage_merge=true` |
+| 样例 | 请求 | 通过标准 | 基线（2026-06-05） |
+|------|------|----------|-------------------|
+| `invoices/invoice_sample_01.pdf` | `kie_pages=1`（默认） | 阶段 C 无回归；001 + 002 | layout 单页回归 pass |
+| `invoices/multipage/invoice_multipage_2p_header_detail.pdf` | `kie_pages=all` | 001 + 002；`kie_pages_processed` ≥ 2；`kie_multipage_merge=true` | **pass**（`TASK_ID=d2844524-...`，`[1,2]`，14 字段） |
 
-PowerShell（`POST /api/v1/analyze`，与 Phase B 相同进程内 poll）：
+**推荐请求**（KIE-only，避免合成多页 PDF 与 PP-Structure layout 冲突）：
 
 ```powershell
 $API_ROOT = "http://127.0.0.1:8000"
-$SAMPLE = "<REPO_ROOT>/test_data/testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf"
-# Form: enable_kie=1, document_type=invoice, kie_pages=all
+$REPO_ROOT = "<REPO_ROOT>"
+$SAMPLE = "$REPO_ROOT/test_data/testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf"
+
+$resp = Invoke-RestMethod -Method Post -Uri "$API_ROOT/api/v1/analyze" -Form @{
+  file = Get-Item -LiteralPath $SAMPLE
+  enable_layout = "0"
+  enable_table = "0"
+  enable_kie = "1"
+  document_type = "invoice"
+  kie_pages = "all"
+}
+$TASK_ID = $resp.task_id
 ```
 
-契约单测（无 GPU）：
+**轮询与验收**（与 Phase B **同一** `python run.py` 进程；勿 restart/reload）：
+
+```powershell
+# Poll status — use strict=False if full JSON has control chars from KIE raw_output
+for ($i = 1; $i -le 120; $i++) {
+  $body = (Invoke-WebRequest -Uri "$API_ROOT/api/v1/tasks/$TASK_ID" -UseBasicParsing).Content
+  $status = python -c "import sys,json; print(json.loads(sys.argv[1], strict=False).get('status',''))" $body
+  Write-Host "[$i] status=$status"
+  if ($status -in @("completed","succeeded")) { break }
+  if ($status -in @("failed","cancelled")) { throw "task failed" }
+  Start-Sleep -Seconds 3
+}
+
+# Acceptance — always fetch /result (not embedded in status during processing)
+Invoke-WebRequest -Uri "$API_ROOT/api/v1/tasks/$TASK_ID/result" -OutFile "$env:TEMP/mp002_result.json"
+python -c "import json; d=json.load(open(r'$env:TEMP/mp002_result.json')); q=d.get('quality',{}); print('kie_stage',q.get('kie_stage')); print('kie_production_hit',q.get('kie_production_hit')); print('kie_pages_processed',q.get('kie_pages_processed')); print('kie_multipage_merge',q.get('kie_multipage_merge'))"
+```
+
+**MP-002 通过判据**：`kie_stage=completed`，`kie_production_hit=true`，`kie_pages_processed=[1,2]`（或长度 ≥ 2），`kie_multipage_merge=true`，`kie_fields_by_page` 含 `"1"`、`"2"`。
+
+> **轮询陷阱**：`GET /tasks/{id}` 在任务接近完成时可能内嵌含控制字符的 `result`，`json.load(strict=True)` 会报 `Invalid control character`；**不代表任务失败**。处理：轮询用 `strict=False`，或只读 `status`；验收只看 `GET .../result`。
+
+契约单测（无 GPU，已并入阶段 A v1.2 命令）：
 
 ```bash
 cd backend
@@ -134,14 +186,46 @@ pytest tests/test_kie_pages_parse.py tests/test_kie_field_merge.py -q
 
 `python run.py` 已启动；`DEBUG=false` 推荐（避免 reload 丢 batch）。
 
+**基线（2026-06-05 Cloud）**：`BATCH_ID=52ce6aed-...`，**6/6 completed**，`kie_production_hit` **6/6**，耗时 ~108s。详见 tracker。
+
+**方式一 — 脚本（推荐）**：
+
 ```powershell
 cd <REPO_ROOT>
 pwsh -File test_data/scripts/run_batch_kie_acceptance.ps1
 ```
 
-或手动：按 `test_data/testfiles/batch/manifest.json` 中 `kie_invoice_6` 上传 6 文件 → `POST .../start` → poll → `GET .../export.csv?mode=kie`。
+**方式二 — 手动**（多文件上传须 multipart 重复 `files` 字段；可复制 `test_data/scripts/run_batch_kie_acceptance.ps1` 的建批逻辑，或 zsh/curl 等价命令）：
 
-**通过标准**：6/6 `completed`；CSV 含 `file_name`、`kie_production_hit`（见 [batch_kie.md](../../test_data/acceptance/batch_kie.md)）。
+创建 batch 后，**轮询与导出**（与方式一相同判据）：
+
+```powershell
+$API_ROOT = "http://127.0.0.1:8000"
+$BATCH_ID = "<batch_id_from_create>"
+
+# Poll — use /summary (no embedded task results; avoids JSON control-char parse errors)
+for ($i = 1; $i -le 360; $i++) {
+  $s = Invoke-RestMethod -Uri "$API_ROOT/api/v1/batch/$BATCH_ID/summary"
+  Write-Host "[$i] status=$($s.status) counts=$($s.status_counts | ConvertTo-Json -Compress)"
+  if ($s.status -in @("completed","failed","cancelled")) { break }
+  Start-Sleep -Seconds 5
+}
+
+Invoke-WebRequest -Uri "$API_ROOT/api/v1/batch/$BATCH_ID/export.csv?mode=kie" -OutFile "$env:TEMP/batch_$BATCH_ID.csv"
+Get-Content "$env:TEMP/batch_$BATCH_ID.csv" -TotalCount 3
+```
+
+`kie_invoice_6` 文件列表见 `test_data/testfiles/batch/manifest.json`；options 建议 KIE-only：`enable_layout=false`，`enable_table=false`，`enable_kie=true`，`kie_pages=1`。
+
+**通过标准**（[batch_kie.md](../../test_data/acceptance/batch_kie.md)）：
+
+| Rule | 判据 |
+|------|------|
+| BATCH-001 | `summary.status=completed`，`status_counts.completed=6` |
+| BATCH-002 | CSV 每行 `kie_production_hit=true`（invoice 类） |
+| BATCH-003 | CSV 表头含 `file_name`、`status`、`kie_production_hit` |
+
+> **轮询陷阱**：勿用 `GET /batch/{id}` 轮询（内嵌 `tasks[].result` 易触发 JSON 控制字符错误）；改用 **`GET /batch/{id}/summary`**。验收导出用 **`/export.csv?mode=kie`**（CSV 无此问题）。
 
 ### 阶段 F — 全量回归（时间允许）
 
@@ -175,6 +259,10 @@ python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
 | `kie_confidence_avg` | 关键字段填充率启发值（0～1） |
 | `kie_error_message` | 失败时异常摘要（如历史 PDF 路径 bug） |
 | `kie_meta.error_message` | 与上同源，在完整 Envelope/任务结果中 |
+| `kie_pages_requested` | v1.2+：请求页规格（如 `1`、`all`、`1-3`） |
+| `kie_pages_processed` | v1.2+：实际处理页列表（如 `[1, 2]`） |
+| `kie_multipage_merge` | v1.2+：多页字段是否文档级合并 |
+| `kie_fields_by_page` | v1.2+：按页 KIE 字段（键为页码字符串） |
 
 ## 4. DocuVision Lite（CPU，无 Paddle）
 

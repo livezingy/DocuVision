@@ -260,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAnalysisView();
     initExportButtons();
     initBatchProcessing();
+    initPreviewPagination();
 
     // Insert a lightweight skeleton placeholder to avoid initial flash
     if (typeof insertInitialSkeleton === 'function') {
@@ -799,6 +800,148 @@ function initActionButtons() {
 let currentOriginalFileUrl = null;
 let currentTaskId = null;
 let currentQueueItem = null; // Track currently selected queue item
+let currentPreviewPage = 1;
+let currentPageImageUrl = null;
+let previewPaginationInitialized = false;
+
+function previewHelpers() {
+    return window.DocuVisionPreview || {};
+}
+
+function resolveResultPageCount(result, queueItem = null) {
+    const previewCount = queueItem && queueItem.previewPageCount ? Number(queueItem.previewPageCount) : 0;
+    const fn = previewHelpers().resolveDocumentPageCount;
+    if (typeof fn === 'function') {
+        return fn(result, previewCount);
+    }
+    const pages = Number((result && result.document_info && result.document_info.pages) || previewCount || 1);
+    return pages > 0 ? pages : 1;
+}
+
+function syncPreviewPaginationControls(totalPages, pageNum = currentPreviewPage) {
+    const total = Math.max(1, Number(totalPages) || 1);
+    const normalize = previewHelpers().normalizePreviewPage;
+    const page = typeof normalize === 'function' ? normalize(pageNum, total) : Math.min(Math.max(1, pageNum), total);
+    currentPreviewPage = page;
+
+    const pageInput = document.querySelector('.page-input');
+    const pageTotal = document.querySelector('.page-total');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+
+    if (pageInput) {
+        pageInput.min = 1;
+        pageInput.max = total;
+        pageInput.value = page;
+    }
+    if (pageTotal) {
+        pageTotal.textContent = ` / ${total}`;
+    }
+    if (prevBtn) {
+        prevBtn.disabled = page <= 1;
+    }
+    if (nextBtn) {
+        nextBtn.disabled = page >= total;
+    }
+}
+
+function revokeCurrentPageImageUrl() {
+    if (currentPageImageUrl) {
+        URL.revokeObjectURL(currentPageImageUrl);
+        currentPageImageUrl = null;
+    }
+}
+
+async function goToPreviewPage(pageNum) {
+    const documentPage = document.getElementById('documentPage');
+    if (!documentPage) return;
+
+    let totalPages = 1;
+    const resultJson = documentPage.dataset.currentResult;
+    if (resultJson) {
+        try {
+            const result = JSON.parse(resultJson);
+            totalPages = resolveResultPageCount(result, currentQueueItem);
+        } catch (e) {
+            totalPages = resolveResultPageCount(null, currentQueueItem);
+        }
+    } else {
+        totalPages = resolveResultPageCount(null, currentQueueItem);
+    }
+
+    const normalize = previewHelpers().normalizePreviewPage;
+    const page = typeof normalize === 'function'
+        ? normalize(pageNum, totalPages)
+        : Math.min(Math.max(1, pageNum), totalPages);
+
+    syncPreviewPaginationControls(totalPages, page);
+
+    const fileName = documentPage.dataset.currentFileName
+        || (currentQueueItem && currentQueueItem.dataset.fileName)
+        || '';
+    const fileExt = fileName.toLowerCase().split('.').pop();
+    const isPdf = fileExt === 'pdf';
+
+    if (resultJson && currentTaskId) {
+        try {
+            const result = JSON.parse(resultJson);
+            await renderDocumentWithAnnotations(result, page);
+            return;
+        } catch (e) {
+            console.warn('[Preview] Failed to parse stored result for page switch:', e);
+        }
+    }
+
+    if (isPdf && currentTaskId) {
+        const documentImage = document.getElementById('documentImage');
+        try {
+            revokeCurrentPageImageUrl();
+            currentPageImageUrl = await getPdfPageImage(currentTaskId, page);
+            if (documentImage) {
+                documentImage.src = currentPageImageUrl;
+            } else {
+                let html = '<div class="document-preview-content">';
+                html += `<img id="documentImage" src="${currentPageImageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()">`;
+                html += '</div>';
+                documentPage.innerHTML = html;
+            }
+            setTimeout(() => adjustDocumentSize(), 100);
+        } catch (error) {
+            console.error('Failed to load PDF page:', error);
+            showNotification('Failed to load PDF page preview', 'warning');
+        }
+        return;
+    }
+
+    if (!isPdf && currentOriginalFileUrl) {
+        syncPreviewPaginationControls(1, 1);
+    }
+}
+
+function initPreviewPagination() {
+    if (previewPaginationInitialized) return;
+    previewPaginationInitialized = true;
+
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const pageInput = document.querySelector('.page-input');
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            void goToPreviewPage(currentPreviewPage - 1);
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            void goToPreviewPage(currentPreviewPage + 1);
+        });
+    }
+    if (pageInput) {
+        pageInput.addEventListener('change', () => {
+            void goToPreviewPage(Number(pageInput.value) || 1);
+        });
+    }
+}
 
 /**
  * Upload file to backend for preview (PDF only)
@@ -821,11 +964,16 @@ async function uploadFileForPreview(file, queueItem) {
 
         const result = await response.json();
         const taskId = result.task_id;
+        const pageCount = Number(result.page_count) || 0;
 
         // Store taskId
         currentTaskId = taskId;
         if (queueItem) {
             queueItem.dataset.taskId = taskId;
+            if (pageCount > 0) {
+                queueItem.previewPageCount = pageCount;
+                syncPreviewPaginationControls(pageCount, 1);
+            }
         }
 
         return taskId;
@@ -866,6 +1014,8 @@ async function switchToQueueItem(queueItem) {
     }
     currentOriginalFileUrl = URL.createObjectURL(file);
     currentTaskId = taskId || null;
+    currentPreviewPage = 1;
+    lastFetchedBlocks = null;
 
     // Update document page
     const documentPage = document.getElementById('documentPage');
@@ -895,8 +1045,11 @@ async function switchToQueueItem(queueItem) {
         });
     } else if (queueItem.result) {
         // Completed item: render once (avoids racing updatePreviewView vs renderDocumentWithAnnotations on PDF page-image).
+        syncPreviewPaginationControls(resolveResultPageCount(queueItem.result, queueItem), 1);
         await updateResultsDisplay(queueItem.result);
     } else {
+        const previewPages = resolveResultPageCount(null, queueItem);
+        syncPreviewPaginationControls(previewPages, 1);
         await updatePreviewView('original');
     }
 }
@@ -967,9 +1120,13 @@ async function updatePreviewView(viewType) {
                         // Show loading state while fetching image
                         documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;"><div class="spinner" style="margin: 0 auto 16px; width: 32px; height: 32px; border: 3px solid rgba(99, 102, 241, 0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;"></div><p style="margin-top: 16px; font-size: 0.875rem;">Loading PDF page...</p></div>';
 
+                        const previewPages = resolveResultPageCount(null, currentQueueItem);
+                        syncPreviewPaginationControls(previewPages, currentPreviewPage);
+
                         let html = '<div class="document-preview-content">';
-                        const imageUrl = await getPdfPageImage(currentTaskId, 1);
-                        html += `<img id="documentImage" src="${imageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()" onerror="this.parentElement.innerHTML=\'<div class=\\\'empty-state\\\' style=\\\'padding: 40px; text-align: center; color: #f43f5e;\\\'>Failed to load PDF image. Please try again.</div>\'">`;
+                        revokeCurrentPageImageUrl();
+                        currentPageImageUrl = await getPdfPageImage(currentTaskId, currentPreviewPage);
+                        html += `<img id="documentImage" src="${currentPageImageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()" onerror="this.parentElement.innerHTML=\'<div class=\\\'empty-state\\\' style=\\\'padding: 40px; text-align: center; color: #f43f5e;\\\'>Failed to load PDF image. Please try again.</div>\'">`;
                         html += '</div>';
                         documentPage.innerHTML = html;
 
@@ -983,6 +1140,7 @@ async function updatePreviewView(viewType) {
                     }
                 } else {
                     // For image files, display directly
+                    syncPreviewPaginationControls(1, 1);
                     let html = '<div class="document-preview-content">';
                     html += `<img id="documentImage" src="${currentOriginalFileUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()">`;
                     html += '</div>';
@@ -1387,8 +1545,14 @@ async function startProcessing() {
         showNotification('首次 KIE 将加载 Qwen 模型，可能需数十秒，请耐心等待进度。', 'info');
     }
 
-    // Process first pending file
-    const firstPending = queueItems[0];
+    const pickTarget = previewHelpers().pickProcessingTarget;
+    const firstPending = typeof pickTarget === 'function'
+        ? pickTarget(Array.from(queueItems), currentQueueItem)
+        : queueItems[0];
+    if (!firstPending) {
+        showNotification('No files waiting to be processed', 'warning');
+        return;
+    }
     // If another item is already processing, queue this one instead of starting
     const activeProcessing = document.querySelector('.queue-item.processing');
     if (activeProcessing) {
@@ -1786,9 +1950,9 @@ async function fetchTaskResult(taskId, item) {
 /**
  * Fetch flat blocks from the /blocks endpoint for SVG overlay rendering.
  */
-async function fetchTaskBlocks(taskId) {
+async function fetchTaskBlocks(taskId, pageNumber = 1) {
     try {
-        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/blocks`);
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/blocks?page_number=${pageNumber}`);
         if (!response.ok) return null;
         return await response.json();
     } catch (e) {
@@ -1861,8 +2025,12 @@ async function completeProcessing(item, result = null) {
     `;
 
     const status = item.querySelector('.queue-item-status');
-    const pageCount = result?.document_info?.pages || 0;
-    status.textContent = `Completed · ${pageCount} page${pageCount !== 1 ? 's' : ''}`;
+    const pageCount = resolveResultPageCount(result, item);
+    item.previewPageCount = pageCount;
+    const formatStatus = previewHelpers().formatCompletedStatus;
+    status.textContent = typeof formatStatus === 'function'
+        ? formatStatus(pageCount)
+        : `Completed · ${pageCount} page${pageCount !== 1 ? 's' : ''}`;
 
     // Store result on item
     if (result) {
@@ -1932,8 +2100,8 @@ async function completeProcessing(item, result = null) {
     // Don't reset status bar here - let it show the completed status from updateStatusBar('completed')
     // The status bar will be reset to default after 5 seconds (already handled above)
 
-    // After finishing, promote any queued item to pending and start it
-    promoteNextQueued();
+    // After finishing, start the next queued or pending item
+    processNextInQueue();
 }
 
 /**
@@ -1961,21 +2129,28 @@ function clearResultsDisplay(keepDocumentPreview = false) {
 }
 
 /**
- * Promote the next queued item (if any) to pending and start processing it.
+ * Start the next queued or pending queue item after the current job finishes.
  */
-function promoteNextQueued() {
-    const nextQueued = document.querySelector('.queue-item.queued');
-    if (!nextQueued) return;
+function processNextInQueue() {
+    const allItems = Array.from(document.querySelectorAll('.queue-item'));
+    const findNext = previewHelpers().findNextQueueItem;
+    const nextItem = typeof findNext === 'function'
+        ? findNext(allItems)
+        : document.querySelector('.queue-item.queued, .queue-item.pending');
 
-    // Convert queued -> pending
-    nextQueued.classList.remove('queued');
-    nextQueued.classList.add('pending');
-    const statusEl = nextQueued.querySelector('.queue-item-status');
-    if (statusEl) statusEl.textContent = 'Waiting';
+    if (!nextItem) return;
+    if (nextItem.classList.contains('processing')) return;
 
-    showNotification('Queued document is ready; starting processing...', 'info');
+    if (nextItem.classList.contains('queued')) {
+        nextItem.classList.remove('queued');
+        nextItem.classList.add('pending');
+        const statusEl = nextItem.querySelector('.queue-item-status');
+        if (statusEl) statusEl.textContent = 'Waiting';
+        showNotification('Queued document is ready; starting processing...', 'info');
+    } else {
+        showNotification('Starting next document in queue...', 'info');
+    }
 
-    // Slight delay to allow UI updates, then trigger processing
     setTimeout(() => {
         startProcessing();
     }, 200);
@@ -2177,18 +2352,9 @@ async function updateDocumentPreview(result) {
 
     const docInfo = result.document_info || {};
     const fileName = docInfo.file_name || 'Document';
-    const pages = docInfo.pages || result.layout?.total_pages || result.page_count || 1;
+    const pages = resolveResultPageCount(result, currentQueueItem);
 
-    // Update pagination controls with actual page count
-    const pageInput = document.querySelector('.page-input');
-    const pageTotal = document.querySelector('.page-total');
-    if (pageInput) {
-        pageInput.max = pages;
-        pageInput.value = 1;
-    }
-    if (pageTotal) {
-        pageTotal.textContent = ` / ${pages}`;
-    }
+    syncPreviewPaginationControls(pages, currentPreviewPage);
 
     // Store current result for preview switching
     documentPage.dataset.currentResult = JSON.stringify(result);
@@ -2197,7 +2363,7 @@ async function updateDocumentPreview(result) {
     // Always prioritize showing source image when available.
     // Annotation data may come from layout, OCR, or table-only paths.
     if (currentOriginalFileUrl) {
-        await renderDocumentWithAnnotations(result);
+        await renderDocumentWithAnnotations(result, currentPreviewPage);
     } else {
         // Fallback to text preview only when source image is unavailable.
         renderTextPreview(result);
@@ -2423,7 +2589,7 @@ function shouldRenderOverlayType(type) {
 /**
  * Render document with annotations overlay
  */
-async function renderDocumentWithAnnotations(result) {
+async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPage) {
     const documentPage = document.getElementById('documentPage');
     if (!documentPage) return;
 
@@ -2431,16 +2597,25 @@ async function renderDocumentWithAnnotations(result) {
 
     const docInfo = result.document_info || {};
     const fileName = docInfo.file_name || 'Document';
+    const totalPages = resolveResultPageCount(result, currentQueueItem);
+    const page = previewHelpers().normalizePreviewPage
+        ? previewHelpers().normalizePreviewPage(pageNum, totalPages)
+        : Math.min(Math.max(1, pageNum), totalPages);
+    currentPreviewPage = page;
+    syncPreviewPaginationControls(totalPages, page);
+    lastFetchedBlocks = null;
 
     let imageUrl = currentOriginalFileUrl;
     if (currentTaskId) {
         try {
             // Always use backend page-image endpoint after analysis so the displayed
             // image stays in the same coordinate space as /blocks bboxes.
-            imageUrl = await getPdfPageImage(currentTaskId, 1);
+            revokeCurrentPageImageUrl();
+            currentPageImageUrl = await getPdfPageImage(currentTaskId, page);
+            imageUrl = currentPageImageUrl;
         } catch (error) {
             console.error('Failed to get backend page image:', error);
-            imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/1`;
+            imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/${page}`;
         }
     }
 
@@ -2465,7 +2640,7 @@ async function renderDocumentWithAnnotations(result) {
         adjustDocumentSize();
         if (!currentTaskId) return;
 
-        const blocks = lastFetchedBlocks || await fetchTaskBlocks(currentTaskId);
+        const blocks = await fetchTaskBlocks(currentTaskId, page);
         if (!blocks || !Array.isArray(blocks.blocks) || blocks.blocks.length === 0) return;
         lastFetchedBlocks = blocks;
 
@@ -3286,8 +3461,8 @@ function failProcessing(item, message) {
 
     // Update status bar
     updateStatusBar();
-    // Promote next queued item if any
-    promoteNextQueued();
+    // Start next queued or pending item if any
+    processNextInQueue();
 }
 
 /**

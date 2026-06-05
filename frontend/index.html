@@ -624,6 +624,10 @@
     <script src="shared/demo-postprocess.js"></script>
     <script src="shared/notifications.js"></script>
     <script src="shared/export-ui.js"></script>
-    <script src="app.js"></script>
+    <script type="module">
+        import * as DocuVisionPreview from './shared/queue_preview.js';
+        window.DocuVisionPreview = DocuVisionPreview;
+    </script>
+    <script defer src="app.js"></script>
 </body>
 </html>

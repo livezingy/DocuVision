@@ -736,11 +736,21 @@ async def upload_file(file: UploadFile = File(...)):
     }
     tasks[task_id] = task
 
+    page_count = 1
+    if ext == ".pdf":
+        try:
+            from app.services.pdf_raster import pdf_page_count
+
+            page_count = max(1, pdf_page_count(file_path))
+        except Exception:
+            page_count = 1
+
     return {
         "task_id": task_id,
         "file_name": file.filename,
         "status": "uploaded",
-        "message": "File uploaded successfully"
+        "message": "File uploaded successfully",
+        "page_count": page_count,
     }
 
 

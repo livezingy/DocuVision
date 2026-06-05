@@ -1,6 +1,6 @@
 # KIE Test Run Tracker
 
-Last updated: 2026-06-04  
+Last updated: 2026-06-05  
 Scope: Cloud verification for invoice + card + receipt KIE (contract + production + id_card precision); **v1.1 `kie_query_fields`** (Phase F)
 
 验证步骤见 [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)（**长期保留**：发版/改 KIE 后按同流程回归）。  
@@ -40,31 +40,86 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 | 固定矩阵（继承 1.0 C+D+E） | 10 样例；001/002 基线见 Release 1.0 |
 | **阶段 F**（query fields） | **1/1** `sample-invoice.png`；001/002 pass |
 | 可选待补 F | `invoice_sample_01.pdf` + query（非阻塞） |
-| 下一产品优先级 | 字段校验 — 见 [RELEASE_1.1_CHECKLIST.md](../release/RELEASE_1.1_CHECKLIST.md) §6；Batch UI + 多页 KIE 见 v1.2 阶段 MP / H-Batch |
+| 下一产品优先级 | v1.2 MP + H-Batch Cloud 已通过（见 [Release 1.2](#release-12--multipage-kie--batch)）；字段校验见 [RELEASE_1.1_CHECKLIST.md](../release/RELEASE_1.1_CHECKLIST.md) §6 |
 
 ---
 
-## Release 1.2 — multipage KIE + batch (code baseline)
+## Release 1.2 — multipage KIE + batch
 
-- **branch**: `main` (post-v1.1.0)
+- **branch**: `feature/batch-ui`（待合入 `main`）
+- **commits**: `116ac47`（feat: multipage KIE + batch v1.2）、`e64b335`（fix: kie_step raster fallback + Phase A contract tests）
+- **tag target**: `v1.2.0`
 - **features**: `kie_pages`, `kie_fields_by_page`, batch orchestrator + `export.csv` / `export.json`, Pro Batch UI tab
 - **fixtures**: `test_data/scripts/build_multipage_kie_fixtures.py` → `invoices/multipage/*.pdf`
 - **Cloud**: 阶段 MP + H-Batch — [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)
 
-### 阶段 MP — 多页 PDF KIE（待 Cloud 填写）
+### Release 1.2 baseline — 2026-06-05（Cloud Studio GPU）
+
+- **base_url**: `http://127.0.0.1:8000`
+- **env**: `docuvision_env`（Python 3.11）；终端 1 `python run.py`，终端 2 手动 API
+- **Phase A**: **33/33 passed**（`test_kie_pages_parse.py`、`test_kie_field_merge.py`、`test_batch_export_service.py`、`test_kie_field_metrics.py`、`test_kie_service.py`、`test_kie_return_raw_contract.py`、`test_orchestrator_order.py`）
+- **Layout 回归**（单页 PDF）: `invoice_sample_01.pdf` + `enable_layout=1` — pass（UI / API）
+- **阶段 MP**: **1/1** — 见下表
+- **阶段 H-Batch**: **6/6** — 见下「阶段 Batch-KIE」
+- **阻塞项**: 无（发版前建议合 PR + tag）
+- **已知非阻塞**: 轮询 `GET /tasks/{id}` / `GET /batch/{id}` 含 KIE `raw_output` 控制字符时 `json.load(strict=True)` 可能失败；验收用 `/summary` + `/export.csv` 或 `strict=False`
+
+### 阶段 MP — 多页 PDF KIE（2026-06-05 Cloud）
+
+| sample_path | kie_pages | task_id (ref) | 001 | 002 | pages_processed | merge | fields | note |
+|---|---|---|---:|---:|---|---|---|---|
+| testfiles/invoices/invoice_sample_01.pdf | `1` | — | — | — | `[1]` | — | — | 单页 layout 回归已确认；KIE 矩阵继承阶段 C |
+| testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf | `all` | `d2844524-7f2a-4565-9c2c-eeb858079ed6` | pass | hit | `[1, 2]` | true | 14 | `enable_layout=0` `enable_table=0` `enable_kie=1` |
+
+**MP-002 结果摘要**（`GET /api/v1/tasks/{task_id}/result`）：
+
+- `kie_stage`: `completed`
+- `kie_production_hit`: `true`（`kie_production_reason`: `production_hit`）
+- `kie_pages_requested`: `all`
+- `kie_pages_processed`: `[1, 2]`
+- `kie_multipage_merge`: `true`
+- `kie_fields_by_page`: keys `1`, `2`
+- merged `kie_fields` 含 `invoice_number`, `invoice_date`, `total`, `items` 等
+
+**MP 汇总（2026-06-05）**：**1/1** 多页样例；001 + 002 通过；双页 VL + 文档级合并可观测。
+
+#### 阶段 MP — 待补（可选）
 
 | sample_path | kie_pages | 001 | 002 | pages_processed | note |
 |---|---|---:|---:|---|---|
-| testfiles/invoices/invoice_sample_01.pdf | `1` | — | — | `[1]` | 回归阶段 C |
-| testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf | `all` | — | — | `>=2` | 需先生成 PDF |
+| testfiles/invoices/multipage/invoice_multipage_3p_items.pdf | `all` | — | — | `[1,2,3]` | batch 内已覆盖；独立 MP 用例可选 |
+| testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf | `1` | — | — | `[1]` | 默认仅第 1 页向后兼容 |
 
-### 阶段 Batch-KIE — `kie_invoice_6`（待 Cloud 填写）
+### 阶段 Batch-KIE — `kie_invoice_6`（2026-06-05 Cloud）
 
-| metric | target |
-|---|---|
-| completed | 6/6 |
-| export.csv | `file_name`, `kie_production_hit` columns |
-| script | `test_data/scripts/run_batch_kie_acceptance.ps1` |
+| metric | target | actual | note |
+|---|---|---|---|
+| batch_id | — | `52ce6aed-0635-4a0a-a72b-4743f9199bf8` | name: `Cloud kie_invoice_6` |
+| completed | 6/6 | **6/6** | `success_rate=100%`，~108s |
+| kie_production_hit | 6/6 true | **6/6** | 含 2 个多页 PDF |
+| export.csv | `file_name`, `kie_production_hit` | pass | `GET .../export.csv?mode=kie` |
+| options | KIE only | `enable_layout=false` `enable_table=false` `enable_kie=true` `kie_pages=1` | 避免合成多页 PDF layout 与 PP-Structure 冲突 |
+
+**Batch 文件清单**（6）：
+
+1. `testfiles/invoices/sample-invoice.png`
+2. `testfiles/invoices/receipt-invoice-like.png`
+3. `testfiles/invoices/invoice_sample_01.pdf`
+4. `testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf`
+5. `testfiles/invoices/multipage/invoice_multipage_3p_items.pdf`
+6. `testfiles/invoices/sample-invoice.png`（重复项，与 manifest 一致）
+
+**H-Batch 汇总（2026-06-05）**：BATCH-001 ~ BATCH-003 pass；脚本等价 `test_data/scripts/run_batch_kie_acceptance.ps1`（本次为 zsh/curl 手动）。
+
+### Release 1.2 KIE 总览
+
+| 维度 | 结果 |
+|------|------|
+| Phase A（契约单测） | **33/33** |
+| 阶段 MP（多页 KIE） | **1/1**（2p `all`） |
+| 阶段 H-Batch | **6/6** completed，`kie_hit=6/6` |
+| 阻塞项 | 无 |
+| 下一项 | PR `feature/batch-ui` → `main`，tag `v1.2.0` |
 
 ---
 

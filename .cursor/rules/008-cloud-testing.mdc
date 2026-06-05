@@ -1,0 +1,124 @@
+---
+description: Cloud Studio GPU manual API/E2E test commands (zsh/bash)
+globs:
+alwaysApply: true
+---
+
+# Cloud manual testing (Cloud Studio zsh/bash)
+
+## Shell convention
+
+- **Tencent Cloud Studio GPU** default terminal is **zsh** (`➜` prompt). Assistant-facing copy-paste commands use **bash/zsh** syntax.
+- **Do not** paste PowerShell (`$VAR = "..."`, `Invoke-WebRequest`, `Join-Path`) into Cloud Studio zsh — causes `command not found: =`.
+- **Windows local** (PowerShell): same logical steps; translate paths (`D:\...` vs `/workspace/DocuVision`) and use `Invoke-WebRequest` / `Test-Path` if the user is on Windows.
+- Optional: run `pwsh` in Cloud Studio only when the user explicitly wants PowerShell.
+
+## Prerequisites (before Phase B or E2E)
+
+1. Pro venv active (`docuvision_env`), deps installed per [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md).
+2. **Pro server** in a **separate** terminal:
+
+```bash
+cd /workspace/DocuVision/backend
+source ~/docuvision_env/bin/activate
+python run.py
+```
+
+3. Health check must return **HTTP 200** before any analyze test:
+
+```bash
+export REPO_ROOT="/workspace/DocuVision"
+export API_ROOT="http://127.0.0.1:8000"
+curl -s -o /dev/null -w "HTTP %{http_code}\n" "$API_ROOT/health"
+curl -s "$API_ROOT/health" | python3 -m json.tool | head -20
+```
+
+If `curl` shows **`HTTP_CODE:000`**, the server is **not reachable**. Fix: start `python run.py`, confirm port `8000`, retry health.
+
+## Frontend unit tests (Vitest)
+
+Vitest is a **devDependency**; run `npm install` once per frontend checkout:
+
+```bash
+cd "$REPO_ROOT/frontend"
+npm install
+npm run test:unit -- tests/unit/queue.test.js
+```
+
+`vitest: not found` → run `npm install` in `frontend/` first.
+
+## Backend unit tests
+
+```bash
+cd "$REPO_ROOT/backend"
+source ~/docuvision_env/bin/activate
+python -m pytest tests/test_kie_pages_parse.py -q
+```
+
+## `Task not found` while `TASK_ID` looks correct
+
+Tasks live in an **in-memory** `tasks` dict (see `backend/app/main.py`). **404 Task not found** after a valid analyze usually means:
+
+1. **Server restarted** or **uvicorn reload** (`run.py` uses `reload=settings.DEBUG`; default `DEBUG=True`) — the old `task_id` is gone.
+2. **Analyze and poll hit different processes** (rare multi-worker); use one stable `python run.py` instance.
+3. **Stale** response JSON from an earlier run after the server was restarted.
+
+**Mitigation**: disable reload for the test window (`DEBUG=false` in `backend/.env`, restart `run.py`), or submit analyze and poll immediately. **Sanity check**:
+
+```bash
+test -d "$REPO_ROOT/backend/uploads/<TASK_ID>" && echo "upload dir exists"
+```
+
+If the folder exists but GET task returns 404 → memory was cleared. Re-run analyze on the **current** server.
+
+## Path placeholders
+
+| Placeholder | Cloud Studio |
+|-------------|--------------|
+| `<REPO_ROOT>` | `/workspace/DocuVision` |
+| `$SAMPLE` | `$REPO_ROOT/test_data/testfiles/invoices/sample-invoice.png` |
+
+## Common variables (zsh/bash)
+
+```bash
+export REPO_ROOT="/workspace/DocuVision"
+export API_ROOT="http://127.0.0.1:8000"
+export ANALYZE="$API_ROOT/api/v1/analyze"
+export SAMPLE="$REPO_ROOT/test_data/testfiles/invoices/sample-invoice.png"
+test -f "$SAMPLE" && echo "sample ok"
+```
+
+## Form booleans for FastAPI
+
+Use **`1` / `0`** for `enable_kie` and other bool Form fields (not `true`/`false` strings).
+
+## KIE query field names
+
+API ids: `[A-Za-z][A-Za-z0-9_]*` only (no spaces). UI normalizes spaces to `_` (e.g. `CUSTOMER NAME` → `CUSTOMER_NAME`). See [kie-custom-fields.md](../docs/architecture/kie-custom-fields.md).
+
+## Batch API quick reference
+
+```bash
+export BATCH_API="$API_ROOT/api/v1/batch"
+
+# Create (curl -F for multipart)
+curl -s -X POST "$BATCH_API" \
+  -F "name=My batch" \
+  -F 'options={"document_type":"id_card","enable_kie":true,"enable_layout":true,"kie_pages":"1"}' \
+  -F "files=@$SAMPLE"
+
+# Poll summary (prefer over GET /batch/{id} for large results)
+curl -s "$BATCH_API/<BATCH_ID>/summary" | python3 -m json.tool
+
+# Export
+curl -s -o batch_kie.csv "$BATCH_API/<BATCH_ID>/export.csv?mode=kie"
+curl -s -o batch.json "$BATCH_API/<BATCH_ID>/export.json"
+```
+
+Full checklist: [BATCH_E2E_CHECKLIST.md](../test_data/acceptance/BATCH_E2E_CHECKLIST.md).
+
+## Related docs
+
+- [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md) — Phase A–G order
+- [KIE_TEST_RUN_TRACKER.md](../docs/architecture/KIE_TEST_RUN_TRACKER.md) — batch records
+- `004-project.mdc` — pytest on cloud only; manual API tests follow this file

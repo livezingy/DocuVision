@@ -3730,12 +3730,52 @@ function initBatchProcessing() {
     });
     document.getElementById('batchDownloadCsvBtn')?.addEventListener('click', () => {
         const id = window.batchState.currentBatch?.batch_id;
-        if (id) window.open(`${API_BASE_URL}/batch/${id}/export.csv?mode=kie`, '_blank');
+        if (id) downloadBatchExport(id, 'csv');
     });
     document.getElementById('batchDownloadJsonBtn')?.addEventListener('click', () => {
         const id = window.batchState.currentBatch?.batch_id;
-        if (id) window.open(`${API_BASE_URL}/batch/${id}/export.json`, '_blank');
+        if (id) downloadBatchExport(id, 'json');
     });
+}
+
+/**
+ * Fetch batch export and trigger a file download (not an in-browser tab).
+ */
+async function downloadBatchExport(batchId, kind) {
+    const paths = {
+        csv: `/batch/${batchId}/export.csv?mode=kie`,
+        json: `/batch/${batchId}/export.json`,
+    };
+    const filenames = {
+        csv: `batch_${batchId}_kie.csv`,
+        json: `batch_${batchId}.json`,
+    };
+    const mimeTypes = {
+        csv: 'text/csv;charset=utf-8',
+        json: 'application/json',
+    };
+    const path = paths[kind];
+    if (!path) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}${path}`);
+        if (!response.ok) {
+            const detail = await response.text().catch(() => '');
+            throw new Error(detail || `HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = filenames[kind];
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(objectUrl);
+        showNotification(`${kind.toUpperCase()} downloaded`, 'success');
+    } catch (error) {
+        showNotification(`Download failed: ${error.message}`, 'error');
+    }
 }
 
 function setBatchControlsForBatch(batch) {

@@ -1954,12 +1954,18 @@ async def export_batch_csv(batch_id: str, mode: str = "kie"):
 @app.get("/api/v1/batch/{batch_id}/export.json")
 async def export_batch_json(batch_id: str):
     """Download full batch results as JSON bundle."""
-    from fastapi.responses import JSONResponse
+    import json
 
     batch = batch_service.get_batch(batch_id)
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
-    return JSONResponse(build_json_bundle(batch))
+    payload = json.dumps(build_json_bundle(batch), ensure_ascii=False, indent=2)
+    filename = f"batch_{batch_id}.json"
+    return Response(
+        content=payload,
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ============================================

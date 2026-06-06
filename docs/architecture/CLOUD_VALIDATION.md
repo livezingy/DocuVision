@@ -215,7 +215,7 @@ Invoke-WebRequest -Uri "$API_ROOT/api/v1/batch/$BATCH_ID/export.csv?mode=kie" -O
 Get-Content "$env:TEMP/batch_$BATCH_ID.csv" -TotalCount 3
 ```
 
-`kie_invoice_6` 文件列表见 `test_data/testfiles/batch/manifest.json`；options 建议 KIE-only：`enable_layout=false`，`enable_table=false`，`enable_kie=true`，`kie_pages=1`。
+`kie_invoice_6` 文件列表见 `test_data/testfiles/batch/manifest.json`；options **必须**含 `document_type=invoice`（缺则 KIE 为 `skipped_doc_type`）。建议：`enable_kie=true`，`kie_pages=1`；layout 可与 manifest 一致（`enable_layout=true`）。验收脚本 `run_batch_kie_acceptance.ps1` 会合并 manifest 顶层 `document_type` 并校验 CSV `kie_production_hit`。
 
 **通过标准**（[batch_kie.md](../../test_data/acceptance/batch_kie.md)）：
 

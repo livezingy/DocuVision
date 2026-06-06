@@ -141,16 +141,28 @@ wc -c "$OUT_DIR/batch_${BATCH_ID}.json"
 cd "$REPO_ROOT"
 pwsh ./test_data/scripts/run_batch_kie_acceptance.ps1 \
   -RepoRoot "$REPO_ROOT" -ApiRoot "$API_ROOT" -SetName "kie_invoice_6"
+# Script prints: options: {...}  batch_id: ...  export BATCH_ID=...
+# Exit 0 only when kie_production_hit count equals row count (BATCH-002).
 ```
 
-若无 `pwsh`，用 §1 的 `curl -F` 模式上传 `test_data/testfiles/batch/manifest.json` 中 `kie_invoice_6` 所列文件，options 设为 `enable_kie=true`、`document_type=invoice`、`kie_pages=1`。
+脚本输出 `export BATCH_ID=...` 后，可在同一会话执行 §3 控制流（需**另建** processing 中批次；已 completed 批次不能 pause）。
+
+若无 `pwsh`，用 §1 的 `curl -F` 模式上传 `kie_invoice_6` 文件，**options 必须含** `"document_type":"invoice"`（仅 `enable_kie=true` 不够）。
 
 ### 2.2 手动核对 CSV
 
 ```bash
 ls -lt "$OUT_DIR"/batch_*_kie.csv | head -1
 head -3 "$(ls -t "$OUT_DIR"/batch_*_kie.csv | head -1)"
+# Expect: kie_production_hit=True (not skipped_doc_type) for invoice batch
 ```
+
+### 2.2.1 已知踩坑（2026-06-06，已修）
+
+| 现象 | 原因 |
+|------|------|
+| 6/6 completed 但 `kie_production_hit=False` | `options` 缺 `document_type` → 管道用 `auto` → `skipped_doc_type` |
+| §3 curl 全 404 | 未 `export BATCH_ID` 或批次已结束 |
 
 ### 2.3 失败任务导出（可选）
 

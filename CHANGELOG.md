@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `APP_VERSION` default `1.2.0`; batch KIE concurrency defaults to 1 (`BATCH_MAX_CONCURRENT_KIE`).
 - Batch `resume` re-schedules pending tasks when `process_func` is provided.
 
+### Fixed
+
+- Batch KIE acceptance script: merge manifest set-level `document_type` into `options` before `POST /batch` (fixes `skipped_doc_type` / 0/6 `kie_production_hit`).
+- Batch manifest: duplicate `document_type` inside each set `options` for API clarity.
+- Acceptance script: print `export BATCH_ID=...`, validate CSV `kie_production_hit`, exit non-zero on BATCH-002 failure.
+
 ## [1.1.0] — 2026-06-04
 
 Pro **KIE query fields** (extend-only runtime schema). Cloud Phase F accepted; see [RELEASE_1.1_NOTES.md](docs/release/RELEASE_1.1_NOTES.md) and [KIE_TEST_RUN_TRACKER.md](docs/architecture/KIE_TEST_RUN_TRACKER.md).

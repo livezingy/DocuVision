@@ -35,8 +35,22 @@ function Add-FormField([string]$name, [string]$value) {
     $script:bodyLines.Add($value)
 }
 
+# Merge set-level document_type into options (API only reads options JSON).
+$opts = @{}
+if ($set.options) {
+    $set.options.PSObject.Properties | ForEach-Object { $opts[$_.Name] = $_.Value }
+}
+if ($set.document_type -and -not $opts.ContainsKey("document_type")) {
+    $opts["document_type"] = $set.document_type
+}
+if (-not $opts.ContainsKey("enable_kie")) {
+    $opts["enable_kie"] = $true
+}
+$optionsJson = $opts | ConvertTo-Json -Compress
+Write-Host "options:" $optionsJson
+
 Add-FormField "name" "Cloud batch $SetName"
-Add-FormField "options" ($set.options | ConvertTo-Json -Compress)
+Add-FormField "options" $optionsJson
 
 foreach ($rel in $set.files) {
     $path = Join-Path $testfilesRoot ($rel -replace "/", "\")
@@ -62,6 +76,7 @@ $createResp = Invoke-WebRequest -Uri "$ApiRoot/api/v1/batch" -Method POST -Conte
 $batch = $createResp.Content | ConvertFrom-Json
 $batchId = $batch.batch_id
 Write-Host "batch_id:" $batchId
+Write-Host "export BATCH_ID=$batchId"
 
 Invoke-WebRequest -Uri "$ApiRoot/api/v1/batch/$batchId/start" -Method POST -UseBasicParsing | Out-Null
 
@@ -83,3 +98,15 @@ $resultsPath = Join-Path $outDir "batch_${batchId}_results.json"
 $results = Invoke-WebRequest -Uri "$ApiRoot/api/v1/batch/$batchId/results" -UseBasicParsing
 $results.Content | Set-Content -Path $resultsPath -Encoding UTF8
 Write-Host "Wrote" $resultsPath
+
+$csvRows = Import-Csv $csvPath
+$hitCount = @($csvRows | Where-Object { $_.kie_production_hit -eq "True" }).Count
+$totalRows = $csvRows.Count
+Write-Host "kie_production_hit:" "$hitCount/$totalRows"
+if ($hitCount -lt $totalRows) {
+    $skipped = @($csvRows | Where-Object { $_.kie_stage -eq "skipped_doc_type" }).Count
+    if ($skipped -gt 0) {
+        Write-Error "BATCH-002 failed: $skipped task(s) skipped_doc_type (check options.document_type in manifest/script)"
+    }
+    Write-Error "BATCH-002 failed: kie_production_hit $hitCount/$totalRows"
+}

@@ -111,15 +111,33 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 
 **H-Batch 汇总（2026-06-05）**：BATCH-001 ~ BATCH-003 pass；脚本等价 `test_data/scripts/run_batch_kie_acceptance.ps1`（本次为 zsh/curl 手动）。
 
+### 阶段 Batch-KIE — `kie_invoice_6` 复测（2026-06-06 Cloud）— **FAIL → 已修脚本**
+
+| metric | target | actual | note |
+|---|---|---|---|
+| batch_id | — | `6397b4ef-31e5-44da-992a-5e1bedd0db14` | `pwsh run_batch_kie_acceptance.ps1` |
+| completed | 6/6 | **6/6** | BATCH-001 pass |
+| kie_production_hit | 6/6 true | **0/6** | BATCH-002 **fail** |
+| kie_stage | `completed` | **`skipped_doc_type` ×6** | `document_type` 实际为 `auto` |
+| export.csv | 表头 + hit | 表头 pass，hit 全 False | BATCH-003 pass，BATCH-002 fail |
+| layout JPG `kie_pages=all` | HTTP 200 | **pass** | `enable_kie=0` 回归 |
+| §3 控制流 | pause/resume | **未测** | `$BATCH_ID` 未 export；批次已 completed |
+
+**根因**：`manifest.json` 的 `document_type` 在 set 顶层，脚本仅提交 `set.options`（无 `document_type`）→ API 默认 `auto` → KIE 跳过。  
+**修复**（2026-06-06）：脚本合并 set 级 `document_type` 入 options；manifest `options` 内补 `document_type`；脚本末尾校验 `kie_production_hit` 并 non-zero 退出。
+
+**待复测**：Cloud 上 `git pull` 后重跑 `run_batch_kie_acceptance.ps1`，期望 `kie_production_hit: 6/6`。
+
 ### Release 1.2 KIE 总览
 
 | 维度 | 结果 |
 |------|------|
 | Phase A（契约单测） | **33/33** |
 | 阶段 MP（多页 KIE） | **1/1**（2p `all`） |
-| 阶段 H-Batch | **6/6** completed，`kie_hit=6/6` |
-| 阻塞项 | 无 |
-| 下一项 | PR `feature/batch-ui` → `main`，tag `v1.2.0` |
+| 阶段 H-Batch（2026-06-05） | **6/6** completed，`kie_hit=6/6` |
+| 阶段 H-Batch（2026-06-06 复测） | 6/6 completed，`kie_hit=0/6`（脚本 bug，已修，**待复测**） |
+| 阻塞项 | Batch 验收脚本 `document_type` 遗漏（已修） |
+| 下一项 | 复测 H-Batch → PR `feature/batch-ui` → `main` |
 
 ---
 

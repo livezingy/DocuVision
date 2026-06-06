@@ -4,6 +4,7 @@
       "name": "kie_invoice_6",
       "document_type": "invoice",
       "options": {
+        "document_type": "invoice",
         "enable_layout": true,
         "enable_table": false,
         "enable_kie": true,
@@ -22,6 +23,7 @@
       "name": "kie_receipt_4",
       "document_type": "receipt",
       "options": {
+        "document_type": "receipt",
         "enable_layout": true,
         "enable_table": false,
         "enable_kie": true,
@@ -38,9 +40,11 @@
       "name": "kie_mixed_8",
       "document_type": "invoice",
       "options": {
+        "document_type": "invoice",
         "enable_layout": true,
         "enable_table": false,
-        "enable_kie": true
+        "enable_kie": true,
+        "kie_pages": "1"
       },
       "files": [
         "invoices/sample-invoice.png",

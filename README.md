@@ -26,7 +26,8 @@ The web UI is a static single-page app under `frontend/` (no Node build). Layout
 
 ### Lite (CPU) — demo GIFs
 
-Record after Cloud CPU setup; see [docs/architecture/media/README.md](docs/architecture/media/README.md) for `DocVision_Lite_table.gif` and `DocVision_Lite_ocr.gif` targets.
+CPU-friendly table extraction(For text-based PDF with Camelot or PDFPlumber) and OCR API(For scanned PDF with Tesseract or EasyOCR). 
+![DocuVision Lite](docs/architecture/media/DocVision_Lite.gif)
 ---
 
 ## Repository layout

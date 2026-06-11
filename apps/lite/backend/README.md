@@ -107,7 +107,6 @@ git check-ignore -v apps/lite/backend/docs/
 git ls-files apps/lite/backend/docs/   # should print nothing
 ```
 
-Maintain the canonical docs in the **PDFDataExtractor** repository; this copy is for Lite development reference only.
 
 ## Tests
 

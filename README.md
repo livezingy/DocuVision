@@ -28,7 +28,6 @@ The web UI is a static single-page app under `frontend/` (no Node build). Layout
 
 CPU-friendly table extraction(For text-based PDF with Camelot or PDFPlumber) and OCR API(For scanned PDF with Tesseract or EasyOCR). 
 ![DocuVision Lite](docs/architecture/media/DocVision_Lite.gif)
----
 
 ## Repository layout
 

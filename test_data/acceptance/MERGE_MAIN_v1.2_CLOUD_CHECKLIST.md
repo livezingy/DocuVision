@@ -23,24 +23,21 @@ Shell: **zsh/bash only**（Cloud Studio 默认 `➜` 提示符）
 
 全部通过后：更新 Tracker「Release 1.2」→ 开 PR → 合并 → tag `v1.2.0`。
 
-### 验收记录（2026-06-12 Cloud Studio）
+### 验收记录（2026-06-12 Cloud Studio）— **全部通过**
 
 | 阶段 | 状态 | 证据 |
 |------|:----:|------|
 | §0 | pass | health HTTP 200 |
-| §1 pytest | **待复测** | 36/37（`test_document_page_count`）；见 `fix: pdf_page_count` commit |
+| §1 pytest | pass | **37/37**（`edac3a5` 后复测） |
 | §1 Vitest | pass | 11/11 |
 | §2 MP-002 | pass | `TASK_ID=3826fbf2-4edd-4353-98e5-1c586aaf6d59` |
 | §3 H-Batch | pass | `BATCH_ID=2a74ad5c-e263-4b03-b4d5-989fc0b6968f`，6/6 hit |
 | §4 Layout | pass | `LAYOUT_BATCH_ID=1f70fb58-7d26-45df-a47a-35548060e1d4` |
-| §5 控制流 | **待复测** | 勿复用 §4 已完成批次；见 §5 独立脚本 |
+| §5 控制流 | pass | `CTRL_BATCH_ID=96bdfbfd-6e8c-4ae1-a7fc-32069c0caf60`；pause→`paused`→resume→`completed` |
 | §6 | pass | HTTP 200 |
 | §7 UI | pass | BATCH-U + FIX-Q，与预期相符 |
 
-### 合 PR 前复测（本 commit 之后）
-
-1. **Phase A**：`git pull` 后 `pytest` 全绿 **37/37**（`pdf_page_count` 打开失败返回 `0`，`view.pages` 回退可测）。
-2. **§5 控制流**：新建 layout 批次 → `start` 后**立刻** `pause` → `resume`+`start` → `completed`。
+**§5 说明**：`resume` 后再次 `start` 可能返回 `Batch is already processing`（调度已由 resume 触发），终态 `completed` 即通过。
 
 ---
 
@@ -315,6 +312,7 @@ curl -s -X POST "$BATCH_API/$CTRL_BATCH_ID/pause" | python3 -m json.tool
 curl -s "$BATCH_API/$CTRL_BATCH_ID/summary" | python3 -c "import sys,json; print('status', json.load(sys.stdin)['status'])"
 
 curl -s -X POST "$BATCH_API/$CTRL_BATCH_ID/resume" | python3 -m json.tool
+# Optional: start may return "already processing" if resume already scheduled work
 curl -s -X POST "$BATCH_API/$CTRL_BATCH_ID/start" | python3 -m json.tool
 
 for i in $(seq 1 60); do

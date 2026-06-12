@@ -135,28 +135,29 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 | 阶段 | 状态 | 通过判据 / 备注 |
 |------|:----:|-----------------|
 | §0 健康检查 | pass | HTTP 200（`api_version` 需重启 T1 后应为 `1.2.0`） |
-| §1 Phase A | **待复测** | 2026-06-12：**36/37**（`test_resolve_document_page_count_from_view_pages` fail）；`pdf_page_count` 打开失败改返 `0` 后须 **37/37** |
+| §1 Phase A | pass | **37/37**（2026-06-12 复测，`edac3a5` `pdf_page_count` 修复后） |
 | §1 Vitest | pass | `queue.test.js` **11/11** |
 | §2 MP-002 | pass | `TASK_ID=3826fbf2-...`，轮询 → `completed` |
 | §3 H-Batch | pass | `BATCH_ID=2a74ad5c-...`，`kie_production_hit` **6/6**（方式 A 脚本） |
 | §4 Layout batch | pass | `1f70fb58-...`，2/2 `completed`，`export.json` 合法 |
-| §5 控制流 | **待复测** | 误用已 completed 批次 → `Cannot pause`；按清单 §5 新建批 **start 后立刻 pause** |
+| §5 控制流 | pass | `CTRL_BATCH_ID=96bdfbfd-...`：pause → `paused` → resume → `completed`（`resume` 后 `start` 返回 already processing 为预期） |
 | §6 Layout 回归 | pass | JPG + `kie_pages=all` → HTTP 200 |
 | §7 UI 冒烟 | pass | BATCH-U-01～07 + FIX-Q 队列回归，与预期相符（2026-06-12 手工） |
 
-**合 main 前剩余**：`git pull` 含 `pdf_page_count` 修复 → Phase A **37/37** → §5 控制流复测 → 开 PR。
+**合 main 门禁**：**全部通过**（2026-06-12）。下一项：开 PR `feature/batch-ui` → `main` → tag `v1.2.0`。
 
 ### Release 1.2 KIE 总览
 
 | 维度 | 结果 |
 |------|------|
-| Phase A（契约单测） | **36/37**（2026-06-12）；修复后目标 **37/37** |
+| Phase A（契约单测） | **37/37**（2026-06-12 复测） |
 | 阶段 MP（多页 KIE） | **1/1**（2p `all`；2026-06-12 复测 `3826fbf2-...`） |
 | 阶段 H-Batch（2026-06-05） | **6/6** completed，`kie_hit=6/6` |
 | 阶段 H-Batch（2026-06-12 复测） | **6/6** completed，`kie_hit=6/6`（`2a74ad5c-...`） |
+| Batch 控制流（§5） | **pass**（`96bdfbfd-...` pause/resume） |
 | UI 冒烟（§7） | **pass**（2026-06-12） |
-| 阻塞项 | 无（§5 控制流、Phase A 1 项为合 PR 前复测，非功能阻塞） |
-| 下一项 | Phase A + §5 复测 → PR `feature/batch-ui` → `main` |
+| 合 main 门禁 | **全部通过** |
+| 下一项 | PR `feature/batch-ui` → `main` → tag `v1.2.0` |
 
 ---
 

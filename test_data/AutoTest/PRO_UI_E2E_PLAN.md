@@ -189,7 +189,7 @@ timeout: 120_000,  // KIE 路径
 | 路径 | 说明 |
 |------|------|
 | [frontend/playwright.config.js](../../frontend/playwright.config.js) | 当前仅 list reporter |
-| [frontend/tests/e2e/queue.e2e.js](../../frontend/tests/e2e/queue.e2e.js) | 脚手架，待替换为真实用例 |
+| `frontend/tests/e2e/` | 目录保留；旧脚手架 `queue.e2e.js` 已移除，落地时新增真实 spec |
 | [frontend/tests/unit/queue.test.js](../../frontend/tests/unit/queue.test.js) | 队列/页数纯函数单测 |
 | [frontend/shared/queue_preview.js](../../frontend/shared/queue_preview.js) | 可复用逻辑（Vitest 已覆盖） |
 | [test_data/acceptance/batch_kie.md](../acceptance/batch_kie.md) | Batch 验收规则 |

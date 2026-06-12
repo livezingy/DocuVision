@@ -81,13 +81,13 @@ gh release create v1.1.0 --title "v1.1.0 — Pro KIE query fields" --notes-file 
 
 ## 6. 发版后路线图（优先级）
 
-| 优先级 | 能力 | 建议分支 |
-|--------|------|----------|
-| **P0** | Batch UI + 汇总 CSV/失败报告 | `feature/batch-ui` |
-| **P0** | 字段校验与 `quality` 扩展 | `feature/kie-field-validation` |
-| **P0** | 多页 PDF KIE 策略 | `feature/multipage-kie` |
+| 优先级 | 能力 | 状态 / 分支 |
+|--------|------|-------------|
+| **P0** | Batch UI + 汇总 CSV/失败报告 | ☑ **v1.2.0**（`feature/batch-ui` 已合并） |
+| **P0** | 多页 PDF KIE 策略 | ☑ **v1.2.0** |
+| **P0** | 字段校验与 `quality` 扩展 | ☐ `feature/kie-field-validation` |
 | **P1** | 文档类型自动分类、HITL、可搜索 PDF | 独立 feature |
-| **维护** | id_card 精度 / 样例 | `bugfix/*` 或 `v1.1.x` patch |
+| **维护** | id_card 精度 / 样例 | `bugfix/*` 或 patch |
 
 产品对照（本地，不进 Git）：`test_data/TestResult/PLAN/Upwork文档处理需求与DocuVision能力分析.md`。
 

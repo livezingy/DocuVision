@@ -96,9 +96,12 @@ kie_query_fields=[{"name":"OurReference","description":"Customer reference line"
 - **Phase A**：`backend/tests/test_kie_query_fields.py`（合并/校验，无 GPU）
 - **Cloud 阶段 F**（可选）：invoice 样例 + `OurReference`、`BookingDate` — 见 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)
 
-## 7. 后续（v1.2+）
+## 7. 后续（post-v1.2）
 
-- `document_type=custom` 全量用户 schema
+v1.2.0 已交付多页 KIE（`kie_pages`）与 Batch UI；与本节相关的下一优先级：
+
+- `document_type=custom` 全量用户 schema（超越 extend-only `kie_query_fields`）
 - 模板库持久化
+- 通用字段校验引擎（date/currency/regex）— `feature/kie-field-validation`
 - `ValueTyper` / `BaseField` 与 Azure 导出对齐
 - 字段 bbox 与画布联动

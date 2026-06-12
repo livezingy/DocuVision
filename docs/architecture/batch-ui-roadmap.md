@@ -1,6 +1,6 @@
 # Batch Processing UI — feature/batch-ui
 
-> Delivered in v1.2 on `main` (post-v1.1.0). See [CHANGELOG.md](../../CHANGELOG.md) Unreleased.
+> Delivered in **v1.2.0** on `main` (2026-06-12). See [CHANGELOG.md](../../CHANGELOG.md) `[1.2.0]` and [RELEASE_1.2_NOTES.md](../release/RELEASE_1.2_NOTES.md).
 
 ## Goal
 

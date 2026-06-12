@@ -65,10 +65,11 @@
 - `test_data/TestResult/` 为本地/云端导出目录（gitignore），**不**随仓库分发。
 - 部分 `test_data/testfiles/` 样例仅供验收，使用时注意版权与隐私（勿提交真实证件）。
 
-## 后续版本方向（非 v1.1.0 承诺）
+## 后续版本方向（post-v1.2.0）
 
-- **v1.1.x**：id_card 样例/提示词小修；query 字段 Cloud 抽检扩展（可选 PDF 样例）。
-- **v1.2+**（建议独立 `feature/*`）：Batch 产品化 UI、通用字段校验、`document_type=custom` / 模板持久化、多页 PDF KIE、字段 bbox。
-- **Lite**：无 KIE/query fields；Batch 仍仅 Pro。
+- **v1.2.x / 维护**：Batch Excel 导出、Playwright E2E P0、CI Phase A 纳入 v1.2 pytest 列表（workflow 变更需维护者同意）。
+- **v1.3 主线（P0）**：通用字段校验、`document_type=custom` / 模板持久化 — 见 [RELEASE_1.2_NOTES.md](./RELEASE_1.2_NOTES.md)。
+- **P1**：自动 `document_type`、HITL、可搜索 PDF、邮件/webhook。
+- **Lite**：无 KIE/query fields/Batch；仍仅 Pro。
 
-路线图：[RELEASE_1.1_CHECKLIST.md](./RELEASE_1.1_CHECKLIST.md) §6。
+路线图：[RELEASE_1.1_CHECKLIST.md](./RELEASE_1.1_CHECKLIST.md) §6、[RELEASE_1.2_CHECKLIST.md](./RELEASE_1.2_CHECKLIST.md)。

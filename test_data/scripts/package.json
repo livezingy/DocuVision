@@ -1,8 +1,0 @@
-{
-  "name": "docuvision-test-generators",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "pdfkit": "^0.15.0"
-  }
-}

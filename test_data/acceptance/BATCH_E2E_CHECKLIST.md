@@ -1,7 +1,7 @@
 # Batch Processing 端到端测试清单（Pro）
 
 Last updated: 2026-06-05  
-关联：[batch_kie.md](batch_kie.md)、[CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)、[batch-ui-roadmap.md](../../docs/architecture/batch-ui-roadmap.md)
+关联：[batch_kie.md](batch_kie.md)、[CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)、[batch-ui-roadmap.md](../../docs/architecture/batch-ui-roadmap.md)、[MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md](MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md)（合 `main` 最小集）
 
 > **Shell**：Tencent Cloud Studio 默认 **zsh/bash**（`➜` 提示符）。本文命令均为 bash/zsh；勿粘贴 PowerShell（`$VAR = ...`）。Windows 本地请对照 [008-cloud-testing.mdc](../../.cursor/rules/008-cloud-testing.mdc) 自行转换。
 

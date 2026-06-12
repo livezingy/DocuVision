@@ -1,6 +1,6 @@
 # KIE Test Run Tracker
 
-Last updated: 2026-06-05  
+Last updated: 2026-06-12  
 Scope: Cloud verification for invoice + card + receipt KIE (contract + production + id_card precision); **v1.1 `kie_query_fields`** (Phase F)
 
 验证步骤见 [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)（**长期保留**：发版/改 KIE 后按同流程回归）。  
@@ -126,18 +126,37 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 **根因**：`manifest.json` 的 `document_type` 在 set 顶层，脚本仅提交 `set.options`（无 `document_type`）→ API 默认 `auto` → KIE 跳过。  
 **修复**（2026-06-06）：脚本合并 set 级 `document_type` 入 options；manifest `options` 内补 `document_type`；脚本末尾校验 `kie_production_hit` 并 non-zero 退出。
 
-**待复测**：Cloud 上 `git pull` 后重跑 `run_batch_kie_acceptance.ps1`，期望 `kie_production_hit: 6/6`。
+**复测（2026-06-12 Cloud）**：脚本修复后 **6/6** `kie_production_hit` — 见下「合 main 门禁」。
+
+### 合 main 门禁 — 2026-06-12（Cloud Studio GPU）
+
+清单：[MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md)
+
+| 阶段 | 状态 | 通过判据 / 备注 |
+|------|:----:|-----------------|
+| §0 健康检查 | pass | HTTP 200（`api_version` 需重启 T1 后应为 `1.2.0`） |
+| §1 Phase A | **待复测** | 2026-06-12：**36/37**（`test_resolve_document_page_count_from_view_pages` fail）；`pdf_page_count` 打开失败改返 `0` 后须 **37/37** |
+| §1 Vitest | pass | `queue.test.js` **11/11** |
+| §2 MP-002 | pass | `TASK_ID=3826fbf2-...`，轮询 → `completed` |
+| §3 H-Batch | pass | `BATCH_ID=2a74ad5c-...`，`kie_production_hit` **6/6**（方式 A 脚本） |
+| §4 Layout batch | pass | `1f70fb58-...`，2/2 `completed`，`export.json` 合法 |
+| §5 控制流 | **待复测** | 误用已 completed 批次 → `Cannot pause`；按清单 §5 新建批 **start 后立刻 pause** |
+| §6 Layout 回归 | pass | JPG + `kie_pages=all` → HTTP 200 |
+| §7 UI 冒烟 | pass | BATCH-U-01～07 + FIX-Q 队列回归，与预期相符（2026-06-12 手工） |
+
+**合 main 前剩余**：`git pull` 含 `pdf_page_count` 修复 → Phase A **37/37** → §5 控制流复测 → 开 PR。
 
 ### Release 1.2 KIE 总览
 
 | 维度 | 结果 |
 |------|------|
-| Phase A（契约单测） | **33/33** |
-| 阶段 MP（多页 KIE） | **1/1**（2p `all`） |
+| Phase A（契约单测） | **36/37**（2026-06-12）；修复后目标 **37/37** |
+| 阶段 MP（多页 KIE） | **1/1**（2p `all`；2026-06-12 复测 `3826fbf2-...`） |
 | 阶段 H-Batch（2026-06-05） | **6/6** completed，`kie_hit=6/6` |
-| 阶段 H-Batch（2026-06-06 复测） | 6/6 completed，`kie_hit=0/6`（脚本 bug，已修，**待复测**） |
-| 阻塞项 | Batch 验收脚本 `document_type` 遗漏（已修） |
-| 下一项 | 复测 H-Batch → PR `feature/batch-ui` → `main` |
+| 阶段 H-Batch（2026-06-12 复测） | **6/6** completed，`kie_hit=6/6`（`2a74ad5c-...`） |
+| UI 冒烟（§7） | **pass**（2026-06-12） |
+| 阻塞项 | 无（§5 控制流、Phase A 1 项为合 PR 前复测，非功能阻塞） |
+| 下一项 | Phase A + §5 复测 → PR `feature/batch-ui` → `main` |
 
 ---
 

@@ -23,7 +23,7 @@ def pdf_page_count(file_path: str) -> int:
             return len(doc)
     except Exception:
         logger.warning("pdf_page_count: cannot open %s", file_path)
-        return 1
+        return 0
 
 
 def rasterize_pdf_page(

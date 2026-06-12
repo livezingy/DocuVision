@@ -15,7 +15,8 @@
 | `RELEASE_1.2_NOTES.md` | ☑ | GitHub Release notes |
 | `KIE_TEST_RUN_TRACKER.md` Release 1.2 | ☑ | 合 main 门禁 2026-06-12 |
 | `APP_VERSION` = `1.2.0` | ☑ | `backend/app/core/config.py` |
-| Git tag `v1.2.0` on `main` | ☐ | 推送后打 tag |
+| Git tag `v1.2.0` on `main` | ☑ | `433eeef` + tag pushed |
+| GitHub Release `v1.2.0` | ☐ | 本地 `gh` 未登录；见 §3 或网页创建 |
 
 ## 2. Cloud 验收（GPU 环境）
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-06-12
+
+Pro **multipage PDF KIE** (`kie_pages`) and **Batch Processing** productization (API export + UI tab). Cloud merge gate passed; see [RELEASE_1.2_NOTES.md](docs/release/RELEASE_1.2_NOTES.md) and [KIE_TEST_RUN_TRACKER.md](docs/architecture/KIE_TEST_RUN_TRACKER.md).
+
 ### Added
 
 - **Multipage PDF KIE**: `kie_pages` on analyze / jobs (`1`, `1-3`, `all`; max 5 pages). Per-page VL + document-level field merge; `kie_fields_by_page` + `quality.kie_pages_*`.
@@ -25,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Batch manifest: duplicate `document_type` inside each set `options` for API clarity.
 - Acceptance script: print `export BATCH_ID=...`, validate CSV `kie_production_hit`, exit non-zero on BATCH-002 failure.
 - `pdf_page_count`: return `0` when PDF cannot be opened so `resolve_document_page_count` can fall back to `view.pages` / layout (fixes Phase A `test_document_page_count_from_view_pages`).
+- Pro UI: queue processes selected item only (no auto-run of other pending); multipage preview page count; batch JSON download as file.
 
 ## [1.1.0] — 2026-06-04
 

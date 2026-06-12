@@ -46,9 +46,9 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 
 ## Release 1.2 — multipage KIE + batch
 
-- **branch**: `feature/batch-ui`（待合入 `main`）
-- **commits**: `116ac47`（feat: multipage KIE + batch v1.2）、`e64b335`（fix: kie_step raster fallback + Phase A contract tests）
-- **tag target**: `v1.2.0`
+- **tag**: `v1.2.0`（2026-06-12，已合并 `main`）
+- **branch**: `main`
+- **commits**: `116ac47`（feat）、`edfecfe`（merge gate docs）
 - **features**: `kie_pages`, `kie_fields_by_page`, batch orchestrator + `export.csv` / `export.json`, Pro Batch UI tab
 - **fixtures**: `test_data/scripts/build_multipage_kie_fixtures.py` → `invoices/multipage/*.pdf`
 - **Cloud**: 阶段 MP + H-Batch — [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)
@@ -144,7 +144,7 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 | §6 Layout 回归 | pass | JPG + `kie_pages=all` → HTTP 200 |
 | §7 UI 冒烟 | pass | BATCH-U-01～07 + FIX-Q 队列回归，与预期相符（2026-06-12 手工） |
 
-**合 main 门禁**：**全部通过**（2026-06-12）。下一项：开 PR `feature/batch-ui` → `main` → tag `v1.2.0`。
+**合 main 门禁**：**全部通过**（2026-06-12）。已合并 `main`，tag **`v1.2.0`**。
 
 ### Release 1.2 KIE 总览
 
@@ -157,7 +157,7 @@ Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) ·
 | Batch 控制流（§5） | **pass**（`96bdfbfd-...` pause/resume） |
 | UI 冒烟（§7） | **pass**（2026-06-12） |
 | 合 main 门禁 | **全部通过** |
-| 下一项 | PR `feature/batch-ui` → `main` → tag `v1.2.0` |
+| 下一项 | 发版后维护 / `feature/kie-field-validation` 等 |
 
 ---
 

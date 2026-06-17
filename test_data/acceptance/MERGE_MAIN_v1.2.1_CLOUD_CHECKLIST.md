@@ -87,7 +87,22 @@ pwsh ./test_data/scripts/run_batch_kie_acceptance.ps1 \
 
 脚本 exit **0** 且 `kie_production_hit: 6/6` 后，**复制执行**脚本输出的 `export BATCH_ID=...`（仅 `echo` 不会写入 shell）。
 
-**§4 前置**：同一会话须已 `export BATCH_ID=<uuid>`，**勿**使用字面量 `<BATCH_ID>`。
+**§4 前置**：同一会话须已 `export BATCH_ID=<uuid>`，**勿**使用字面量 `<BATCH_ID>`。脚本在 BATCH-002 失败时仍会写出 CSV/results；可复制 `export BATCH_ID=...` 继续 §4 xlsx 验收。
+
+**H-Batch 失败排查**（`kie_production_hit 0/6` 且 batch 已 `completed`）：
+
+```bash
+# 1) KIE 模型是否就绪（GPU 环境）
+curl -s "$API_ROOT/health" | python3 -c "import sys,json; k=json.load(sys.stdin).get('kie',{}); print(k)"
+
+# 2) 查看 CSV 每行 kie_stage / kie_fields_count（脚本失败时也会打印）
+head -3 "$OUT_DIR"/batch_*_kie.csv
+
+# 3) 常见根因
+# - kie_stage=skipped_doc_type → options 缺 document_type（本脚本已合并，不应再出现）
+# - kie_stage=completed 但 hit=False → KIE 未抽出 invoice 关键字段；查 T1 日志、显存、首次冷启动
+# - kie_stage=runtime_error / failed → 查 quality.kie_error_message
+```
 
 ---
 

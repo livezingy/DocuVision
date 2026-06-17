@@ -12,6 +12,17 @@ function jsonResponse(body, status = 200) {
   };
 }
 
+function mockResult(pageCount) {
+  return {
+    document_info: { pages: pageCount, file_name: 'sample.pdf' },
+    layout: { total_pages: pageCount },
+    text_blocks: [{ content: 'Hello world', page: 1 }],
+    tables: [],
+    view: { fields: {} },
+    quality: { kie_stage: 'skipped' },
+  };
+}
+
 /**
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
@@ -46,24 +57,25 @@ async function installProApiMocks(page, options = {}) {
 
   await page.route(`${API_PREFIX}/analyze`, async (route) => {
     const taskId = `analyze-${Date.now()}`;
-    tasks.set(taskId, { status: 'processing' });
-    setTimeout(() => tasks.set(taskId, { status: 'completed' }), 50);
+    tasks.set(taskId, { status: 'completed' });
     await route.fulfill(jsonResponse({ task_id: taskId, status: 'processing' }));
+  });
+
+  await page.routeWebSocket(`${API_PREFIX}/tasks/**/ws**`, (ws) => {
+    ws.onConnection((socket) => {
+      socket.send(JSON.stringify({ type: 'completed', message: 'Processing completed', progress: 100 }));
+      socket.close();
+    });
   });
 
   await page.route(`${API_PREFIX}/tasks/*`, async (route) => {
     const url = route.request().url();
     if (url.includes('/result')) {
-      await route.fulfill(
-        jsonResponse({
-          document_info: { pages: pageCount, file_name: 'sample.pdf' },
-          layout: { total_pages: pageCount },
-          text_blocks: [{ content: 'Hello world', page: 1 }],
-          tables: [],
-          view: { fields: {} },
-          quality: { kie_stage: 'skipped' },
-        }),
-      );
+      await route.fulfill(jsonResponse(mockResult(pageCount)));
+      return;
+    }
+    if (url.includes('/blocks')) {
+      await route.fulfill(jsonResponse({ blocks: [] }));
       return;
     }
     if (url.includes('/page-image/')) {
@@ -87,7 +99,7 @@ async function installProApiMocks(page, options = {}) {
     await route.fulfill(
       jsonResponse({
         task_id: taskId,
-        status: state.status === 'processing' ? 'completed' : state.status,
+        status: state.status,
         progress: 100,
         message: 'Done',
       }),

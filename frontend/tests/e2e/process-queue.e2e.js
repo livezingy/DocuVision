@@ -63,14 +63,14 @@ test.describe('UI-Q Queue and preview', () => {
 
   test('UI-Q-04 multipage pagination controls update', async ({ page }) => {
     await page.locator('#fileInput').setInputFiles(SAMPLE_PNG);
-    await page.evaluate(() => {
-      const item = document.querySelector('#queueList .queue-item');
-      if (item) item.previewPageCount = 3;
-      if (typeof window.syncPreviewPaginationControls === 'function') {
-        window.syncPreviewPaginationControls(3, 1);
-      }
-    });
+    await page.locator('#runAnalysisBtn').click();
+
+    const item = page.locator('#queueList .queue-item').first();
+    await expect(item).toHaveClass(/completed/, { timeout: 30000 });
+    await expect(item.locator('.queue-item-status')).toContainText('3 pages');
+
     const pageInput = page.locator('.page-input');
+    await expect(pageInput).toHaveAttribute('max', '3');
     await expect(pageInput).toHaveValue('1');
     await page.locator('#nextPage').click();
     await expect(pageInput).toHaveValue('2');

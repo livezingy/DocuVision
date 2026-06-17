@@ -104,9 +104,28 @@ $hitCount = @($csvRows | Where-Object { $_.kie_production_hit -eq "True" }).Coun
 $totalRows = $csvRows.Count
 Write-Host "kie_production_hit:" "$hitCount/$totalRows"
 if ($hitCount -lt $totalRows) {
+    Write-Host "Per-task CSV summary:"
+    foreach ($row in $csvRows) {
+        Write-Host ("  {0}: status={1} kie_stage={2} hit={3} fields={4}" -f `
+            $row.file_name, $row.status, $row.kie_stage, $row.kie_production_hit, $row.kie_fields_count)
+    }
+    if (Test-Path $resultsPath) {
+        try {
+            $parsed = Get-Content $resultsPath -Raw | ConvertFrom-Json
+            foreach ($task in @($parsed.results)) {
+                $q = $task.result.quality
+                if ($q) {
+                    Write-Host ("  result {0}: reason={1}" -f $task.file_name, $q.kie_production_reason)
+                }
+            }
+        } catch {
+            Write-Warning "Could not parse results JSON for kie_production_reason"
+        }
+    }
     $skipped = @($csvRows | Where-Object { $_.kie_stage -eq "skipped_doc_type" }).Count
     if ($skipped -gt 0) {
         Write-Error "BATCH-002 failed: $skipped task(s) skipped_doc_type (check options.document_type in manifest/script)"
     }
+    Write-Host "Hint: curl -s $ApiRoot/health | python3 -m json.tool | grep -A5 kie"
     Write-Error "BATCH-002 failed: kie_production_hit $hitCount/$totalRows"
 }

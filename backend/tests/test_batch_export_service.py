@@ -37,3 +37,16 @@ def test_build_kie_csv_has_core_columns() -> None:
     csv_text = render_csv(header, rows)
     assert "INV-1" in csv_text
     assert "boom" in csv_text
+
+
+def test_build_batch_xlsx_bytes() -> None:
+    from app.services.batch_export_service import build_batch_xlsx_bytes
+
+    batch = _sample_batch()
+    batch.tasks[0].result["tables"] = [
+        {"data": [["ColA", "ColB"], ["1", "2"]]},
+    ]
+    payload = build_batch_xlsx_bytes(batch, mode="all")
+    assert isinstance(payload, bytes)
+    assert len(payload) > 100
+    assert payload[:2] == b"PK"

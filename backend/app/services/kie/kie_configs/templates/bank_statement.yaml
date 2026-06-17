@@ -1,0 +1,16 @@
+document_type: custom
+name: bank_statement
+description: Bank statement column mapping template
+fields:
+  - name: transaction_date
+    type: date
+    description: Transaction date
+  - name: description
+    type: string
+    description: Transaction description
+  - name: amount
+    type: currency
+    description: Debit or credit amount
+  - name: balance
+    type: currency
+    description: Running balance

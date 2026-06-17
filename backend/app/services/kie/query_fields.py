@@ -27,7 +27,7 @@ _INJECTION_PATTERNS = (
 _DEFAULT_KIE_CONFIG_DIR = Path(__file__).resolve().parent / "kie_configs"
 
 KIE_SUPPORTED_DOC_TYPES = frozenset(
-    {"invoice", "receipt", "id_card", "passport", "bank_card", "financial_report"}
+    {"invoice", "receipt", "id_card", "passport", "bank_card", "financial_report", "custom"}
 )
 
 

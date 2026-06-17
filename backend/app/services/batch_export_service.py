@@ -1,10 +1,12 @@
-"""Aggregate batch task results into CSV / JSON exports."""
+"""Aggregate batch task results into CSV / JSON / Excel exports."""
 
 from __future__ import annotations
 
 import csv
 import io
 import json
+import os
+import re
 from typing import Any, Dict, List, Optional, Set
 
 from app.services.batch_service import BatchJob, BatchTask, TaskStatus
@@ -17,6 +19,8 @@ _CORE_COLUMNS = [
     "kie_stage",
     "kie_production_hit",
     "kie_fields_count",
+    "validation_passed",
+    "validation_fields_failed",
     "error",
 ]
 
@@ -81,6 +85,11 @@ def build_kie_csv_rows(batch: BatchJob, options: Optional[Dict[str, Any]] = None
         quality = _task_quality(task)
         fields = _task_kie_fields(task)
         flat = _flatten_value(fields)
+        validation = {}
+        if isinstance(task.result, dict):
+            validation = task.result.get("kie_validation") or {}
+        if not isinstance(validation, dict):
+            validation = {}
         row: Dict[str, str] = {
             "file_name": task.file_name,
             "status": task.status.value,
@@ -92,6 +101,8 @@ def build_kie_csv_rows(batch: BatchJob, options: Optional[Dict[str, Any]] = None
             "kie_stage": str(quality.get("kie_stage", "") or ""),
             "kie_production_hit": str(quality.get("kie_production_hit", "")),
             "kie_fields_count": str(quality.get("kie_fields_count", "")),
+            "validation_passed": str(validation.get("validation_passed", "")),
+            "validation_fields_failed": str(validation.get("validation_fields_failed", "")),
             "error": task.error or "",
         }
         for k in sorted_dynamic:
@@ -140,6 +151,92 @@ def build_summary_csv_rows(batch: BatchJob) -> tuple[List[str], List[Dict[str, s
         {"metric": "progress_percent", "value": str(batch.get_progress())},
     ]
     return header, rows
+
+
+def _sanitize_sheet_name(name: str, used: Set[str]) -> str:
+    base = re.sub(r"[\[\]:*?/\\]", "_", name)[:28] or "Sheet"
+    candidate = base
+    idx = 1
+    while candidate in used:
+        suffix = f"_{idx}"
+        candidate = f"{base[: 31 - len(suffix)]}{suffix}"
+        idx += 1
+    used.add(candidate)
+    return candidate
+
+
+def _task_tables(task: BatchTask) -> List[Dict[str, Any]]:
+    if task.status != TaskStatus.COMPLETED or not isinstance(task.result, dict):
+        return []
+    tables = task.result.get("tables")
+    return tables if isinstance(tables, list) else []
+
+
+def _table_dataframe(table: Dict[str, Any]):
+    import pandas as pd
+
+    data = table.get("data")
+    if not isinstance(data, list) or not data:
+        return pd.DataFrame()
+    if len(data) > 1 and isinstance(data[0], list):
+        header = data[0]
+        num_cols = len(header)
+        normalized = [(row + [""] * num_cols)[:num_cols] for row in data[1:]]
+        return pd.DataFrame(normalized, columns=header)
+    return pd.DataFrame(data)
+
+
+def build_batch_xlsx_bytes(batch: BatchJob, mode: str = "all") -> bytes:
+    """Build aggregated batch workbook (summary, optional KIE sheet, per-file table sheets)."""
+    import pandas as pd
+
+    mode_norm = (mode or "all").strip().lower()
+    include_kie = mode_norm in {"all", "kie", "summary"}
+    include_tables = mode_norm in {"all", "tables", "summary"}
+
+    buf = io.BytesIO()
+    used_names: Set[str] = set()
+
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        summary_rows = [
+            {"metric": "batch_id", "value": batch.batch_id},
+            {"metric": "name", "value": batch.name},
+            {"metric": "status", "value": batch.status.value},
+            {"metric": "total_tasks", "value": str(batch.total_tasks)},
+            {"metric": "completed_tasks", "value": str(batch.completed_tasks)},
+            {"metric": "failed_tasks", "value": str(batch.failed_tasks)},
+            {"metric": "progress_percent", "value": str(batch.get_progress())},
+        ]
+        pd.DataFrame(summary_rows).to_excel(writer, sheet_name="Summary", index=False)
+        used_names.add("Summary")
+
+        if include_kie:
+            header, rows = build_kie_csv_rows(batch)
+            pd.DataFrame(rows, columns=header).to_excel(writer, sheet_name="KIE", index=False)
+            used_names.add("KIE")
+
+        if include_tables:
+            for task in batch.tasks:
+                tables = _task_tables(task)
+                if not tables:
+                    continue
+                sheet_base = _sanitize_sheet_name(
+                    os.path.splitext(task.file_name)[0],
+                    used_names,
+                )
+                if len(tables) == 1:
+                    df = _table_dataframe(tables[0])
+                    if not df.empty:
+                        df.to_excel(writer, sheet_name=sheet_base, index=False)
+                else:
+                    for idx, table in enumerate(tables):
+                        df = _table_dataframe(table)
+                        if df.empty:
+                            continue
+                        sheet = _sanitize_sheet_name(f"{sheet_base}_T{idx + 1}", used_names)
+                        df.to_excel(writer, sheet_name=sheet, index=False)
+
+    return buf.getvalue()
 
 
 def build_json_bundle(batch: BatchJob) -> Dict[str, Any]:

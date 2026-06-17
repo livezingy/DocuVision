@@ -11,7 +11,7 @@ Lite 与 Pro 共用三栏文档处理界面。本文定义**共享层边界**与
 | **L2 Components** | [`frontend/shared/components.css`](../../frontend/shared/components.css) | Export 四按钮、Result JSON 工具栏、toast 动画 |
 | **L3 Product-only** | `apps/lite/frontend/lite-overrides.css` / 未来 `frontend/pro-only.css` | Lite Profile、品牌；Pro KIE/公式等 |
 
-### 共享 JS
+### 共享 JS   
 
 | 模块 | 路径 | 用途 |
 |------|------|------|
@@ -39,7 +39,7 @@ styles.css（仍含完整样式，视觉不变）
 → notifications.js, export-ui.js, app.js
 ```
 
-**Pro**（计划 PR2）：`styles.css` 改为 `@import` shared 层 + `pro-only.css`，合并前需 **PRO-UI-EXPORT** 目视回归。
+**Pro**（PR2 已落地）：`index.html` 加载 `shared/components.css` + `pro-only.css`；Export 样式与 Lite 共用 [components.css](../../frontend/shared/components.css)。
 
 ## 3. 禁止事项
 

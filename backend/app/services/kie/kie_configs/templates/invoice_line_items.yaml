@@ -1,0 +1,12 @@
+document_type: custom
+name: invoice_line_items
+description: Invoice line item table fields
+fields:
+  - name: line_description
+    type: string
+  - name: quantity
+    type: string
+  - name: unit_price
+    type: currency
+  - name: line_total
+    type: currency

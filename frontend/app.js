@@ -3736,6 +3736,10 @@ function initBatchProcessing() {
         const id = window.batchState.currentBatch?.batch_id;
         if (id) downloadBatchExport(id, 'json');
     });
+    document.getElementById('batchDownloadXlsxBtn')?.addEventListener('click', () => {
+        const id = window.batchState.currentBatch?.batch_id;
+        if (id) downloadBatchExport(id, 'xlsx');
+    });
 }
 
 /**
@@ -3745,14 +3749,17 @@ async function downloadBatchExport(batchId, kind) {
     const paths = {
         csv: `/batch/${batchId}/export.csv?mode=kie`,
         json: `/batch/${batchId}/export.json`,
+        xlsx: `/batch/${batchId}/export.xlsx?mode=all`,
     };
     const filenames = {
         csv: `batch_${batchId}_kie.csv`,
         json: `batch_${batchId}.json`,
+        xlsx: `batch_${batchId}.xlsx`,
     };
     const mimeTypes = {
         csv: 'text/csv;charset=utf-8',
         json: 'application/json',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     };
     const path = paths[kind];
     if (!path) return;
@@ -3796,6 +3803,7 @@ function setBatchControlsForBatch(batch) {
     set('batchRetryBtn', hasBatch && terminal);
     set('batchDownloadCsvBtn', hasBatch && (terminal || processing));
     set('batchDownloadJsonBtn', hasBatch && (terminal || processing));
+    set('batchDownloadXlsxBtn', hasBatch && (terminal || processing));
 }
 
 /**

@@ -22,6 +22,7 @@ from app.services.kie.kie_field_metrics import (
 )
 from app.services.kie.kie_pages import resolve_kie_pages
 from app.services.document_info_utils import resolve_document_page_count
+from app.services.file_type_detector import detect_file_type
 from app.services.pdf_raster import pdf_page_count, rasterize_pdf_page
 
 
@@ -711,6 +712,19 @@ async def kie_step(ctx: PipelineContext) -> None:
     pages_requested = str(pages_spec or "1").strip() or "1"
 
     ctx["result"]["kie_fields"] = fields
+    from app.services.kie.field_validation import default_rules_for_document_type, validate_kie_fields
+
+    validation = validate_kie_fields(fields, default_rules_for_document_type(document_type))
+    ctx["result"]["kie_validation"] = validation
+    if not validation.get("validation_passed") and options.get("enable_hitl", True):
+        from app.services.hitl_queue import hitl_queue
+
+        hitl_queue.enqueue(
+            str(ctx.get("task_id", "")),
+            str(ctx["task"].get("file_name", "")),
+            "kie_validation_failed",
+            {"validation": validation, "fields": fields},
+        )
     ctx["result"]["kie_meta"] = {
         "attempted": True,
         "succeeded": True,
@@ -1081,11 +1095,13 @@ class DocumentPipelineOrchestrator:
         task["message"] = "Processing document..."
         await self.send_event(task_id, "status", "Processing document...", 0)
 
+        detected_type, _detect_pages = detect_file_type(task["file_path"])
         result: Dict[str, Any] = {
             "document_info": {
                 "file_name": task["file_name"],
                 "pages": 0,
                 "processed_at": datetime.now().isoformat(),
+                "detected_file_type": detected_type.value,
                 "page_image_meta": self.build_page_image_meta(task["file_path"], task_id=task_id, page_num=1),
                 "debug_artifacts": [],
             }

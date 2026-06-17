@@ -84,6 +84,13 @@ opencv-python>=4.8.0
 transformers>=4.45.0
 
 # ============================================
+# Digital PDF tables (Pro pdf_digital -> docuvision-core)
+# ============================================
+-e ../packages/docuvision-core[lite]
+pdfplumber>=0.11.0
+pymupdf>=1.24.0
+
+# ============================================
 # Data Processing & Export
 # ============================================
 pandas==2.1.4

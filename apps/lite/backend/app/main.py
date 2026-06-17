@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.api.routes_batch import router as batch_router
 from app.api.routes_analyze import router as analyze_router
 from app.api.routes_demo import router as demo_router
 from app.api.routes_extract import router as extract_router
@@ -42,6 +43,7 @@ app.include_router(health_router, prefix="/api/v1/lite")
 app.include_router(analyze_router, prefix="/api/v1/lite")
 app.include_router(extract_router, prefix="/api/v1/lite")
 app.include_router(jobs_router, prefix="/api/v1/lite")
+app.include_router(batch_router, prefix="/api/v1/lite")
 app.include_router(demo_router, prefix="/api/v1/lite")
 
 _frontend_dir = Path(__file__).resolve().parents[2] / "frontend"

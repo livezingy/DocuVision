@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     # 应用基础配置
     APP_NAME: str = "DocuVision"
-    APP_VERSION: str = "1.2.0"
+    APP_VERSION: str = "1.3.0"
     DEBUG: bool = True
 
     # 服务器配置

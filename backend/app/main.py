@@ -209,6 +209,7 @@ from app.services.kie_qwen_service import QwenDocumentKIEService
 from app.services.export_service import ExportService
 from app.services.batch_service import BatchService, BatchStatus
 from app.services.batch_export_service import (
+    build_batch_xlsx_bytes,
     build_failure_csv_rows,
     build_json_bundle,
     build_kie_csv_rows,
@@ -1951,6 +1952,31 @@ async def export_batch_csv(batch_id: str, mode: str = "kie"):
     )
 
 
+@app.get("/api/v1/batch/{batch_id}/export.xlsx")
+async def export_batch_xlsx(batch_id: str, mode: str = "all"):
+    """Download aggregated batch results as Excel (mode: all, kie, tables, summary)."""
+    batch = batch_service.get_batch(batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    mode_norm = (mode or "all").strip().lower()
+    if mode_norm not in {"all", "kie", "tables", "summary"}:
+        raise HTTPException(status_code=400, detail="Invalid mode; use all, kie, tables, or summary")
+
+    try:
+        payload = build_batch_xlsx_bytes(batch, mode=mode_norm)
+    except Exception as exc:
+        logger.error(f"Batch Excel export failed: {exc}")
+        raise HTTPException(status_code=500, detail="Batch Excel export failed") from exc
+
+    filename = f"batch_{batch_id}_{mode_norm}.xlsx"
+    return Response(
+        content=payload,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @app.get("/api/v1/batch/{batch_id}/export.json")
 async def export_batch_json(batch_id: str):
     """Download full batch results as JSON bundle."""
@@ -1966,6 +1992,240 @@ async def export_batch_json(batch_id: str):
         media_type="application/json; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ============================================
+# Roadmap APIs (v1.3–v1.5 MVP)
+# ============================================
+
+@app.post("/api/v1/classify")
+async def classify_uploaded_document(file: UploadFile = File(...)):
+    """Auto-detect document_type from uploaded file (heuristic MVP)."""
+    import tempfile
+
+    suffix = os.path.splitext(file.filename or "")[1] or ".bin"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+    try:
+        from app.services.document_type_classifier import classify_document
+
+        return classify_document(tmp_path)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+@app.post("/api/v1/document/profile")
+async def document_profile_scan(file: UploadFile = File(...)):
+    """Pre-scan upload and suggest routing options (Pro Document Profile)."""
+    import tempfile
+
+    suffix = os.path.splitext(file.filename or "")[1] or ".bin"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+    try:
+        from app.services.document_profile import build_document_profile
+
+        return build_document_profile(tmp_path)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+@app.get("/api/v1/kie/templates")
+async def list_kie_templates():
+    from app.services.kie.schema_templates import list_templates
+
+    return {"templates": list_templates()}
+
+
+@app.get("/api/v1/kie/templates/{template_id}")
+async def get_kie_template(template_id: str):
+    from app.services.kie.schema_templates import load_template
+
+    schema = load_template(template_id)
+    if not schema:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return schema
+
+
+@app.post("/api/v1/kie/templates/{template_id}")
+async def save_kie_template(template_id: str, body: Dict[str, Any]):
+    from app.services.kie.schema_templates import save_template
+
+    try:
+        save_template(template_id, body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"template_id": template_id, "saved": True}
+
+
+@app.get("/api/v1/hitl/reviews")
+async def list_hitl_reviews(limit: int = 50):
+    from app.services.hitl_queue import hitl_queue
+
+    return {"reviews": hitl_queue.list_pending(limit=limit)}
+
+
+@app.post("/api/v1/hitl/reviews/{review_id}/resolve")
+async def resolve_hitl_review(review_id: str, status: str = "approved"):
+    from app.services.hitl_queue import hitl_queue
+
+    item = hitl_queue.resolve(review_id, status=status)
+    if not item:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return {"review_id": review_id, "status": item.status}
+
+
+@app.get("/api/v1/webhooks")
+async def list_webhooks():
+    from app.services.webhook_service import webhook_registry
+
+    return {"subscriptions": webhook_registry.list_subscriptions()}
+
+
+@app.post("/api/v1/webhooks")
+async def register_webhook(url: str = Form(...), events: str = Form("task.completed,batch.completed")):
+    from app.services.webhook_service import webhook_registry
+
+    event_list = [e.strip() for e in events.split(",") if e.strip()]
+    sub = webhook_registry.register(url, event_list)
+    return {
+        "subscription_id": sub.subscription_id,
+        "url": sub.url,
+        "events": sub.events,
+    }
+
+
+@app.post("/api/v1/pdf-tools/split")
+async def pdf_tools_split(file: UploadFile = File(...), pages: str = Form("")):
+    import json
+    import tempfile
+
+    from app.services.pdf_tools_service import split_pdf
+
+    page_list = None
+    if pages.strip():
+        try:
+            page_list = json.loads(pages)
+        except Exception:
+            page_list = [int(p.strip()) for p in pages.split(",") if p.strip().isdigit()]
+
+    suffix = os.path.splitext(file.filename or "")[1] or ".pdf"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await file.read())
+        in_path = tmp.name
+    out_dir = os.path.join(tempfile.gettempdir(), f"split_{uuid.uuid4().hex[:8]}")
+    try:
+        outputs = split_pdf(in_path, out_dir, pages=page_list)
+        return {"pages": outputs, "count": len(outputs)}
+    finally:
+        try:
+            os.unlink(in_path)
+        except OSError:
+            pass
+
+
+@app.post("/api/v1/pdf-tools/merge")
+async def pdf_tools_merge(files: List[UploadFile] = File(...)):
+    import tempfile
+
+    from app.services.pdf_tools_service import merge_pdfs
+
+    paths = []
+    try:
+        for upload in files:
+            suffix = os.path.splitext(upload.filename or "")[1] or ".pdf"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(await upload.read())
+                paths.append(tmp.name)
+        out_path = os.path.join(tempfile.gettempdir(), f"merged_{uuid.uuid4().hex[:8]}.pdf")
+        merge_pdfs(paths, out_path)
+        return FileResponse(out_path, filename="merged.pdf", media_type="application/pdf")
+    finally:
+        for path in paths:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
+@app.post("/api/v1/pdf-tools/metadata")
+async def pdf_tools_metadata(file: UploadFile = File(...)):
+    import tempfile
+
+    from app.services.pdf_tools_service import read_pdf_metadata
+
+    suffix = os.path.splitext(file.filename or "")[1] or ".pdf"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+    try:
+        return read_pdf_metadata(tmp_path)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+@app.post("/api/v1/pdf-tools/searchable")
+async def pdf_tools_searchable(file: UploadFile = File(...), text: str = Form("")):
+    import tempfile
+
+    from app.services.pdf_tools_service import make_searchable_pdf
+
+    suffix = os.path.splitext(file.filename or "")[1] or ".pdf"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await file.read())
+        in_path = tmp.name
+    out_path = os.path.join(tempfile.gettempdir(), f"searchable_{uuid.uuid4().hex[:8]}.pdf")
+    try:
+        make_searchable_pdf(in_path, out_path, text=text)
+        return FileResponse(out_path, filename="searchable.pdf", media_type="application/pdf")
+    finally:
+        try:
+            os.unlink(in_path)
+        except OSError:
+            pass
+
+
+@app.post("/api/v1/pdf-tools/form-fill")
+async def pdf_tools_form_fill(
+    file: UploadFile = File(...),
+    field_values: str = Form("{}"),
+):
+    import json
+    import tempfile
+
+    from app.services.pdf_tools_service import fill_acroform
+
+    try:
+        values = json.loads(field_values)
+    except Exception:
+        values = {}
+    if not isinstance(values, dict):
+        raise HTTPException(status_code=400, detail="field_values must be a JSON object")
+
+    suffix = os.path.splitext(file.filename or "")[1] or ".pdf"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await file.read())
+        in_path = tmp.name
+    out_path = os.path.join(tempfile.gettempdir(), f"filled_{uuid.uuid4().hex[:8]}.pdf")
+    try:
+        fill_acroform(in_path, out_path, {str(k): str(v) for k, v in values.items()})
+        return FileResponse(out_path, filename="filled.pdf", media_type="application/pdf")
+    finally:
+        try:
+            os.unlink(in_path)
+        except OSError:
+            pass
 
 
 # ============================================

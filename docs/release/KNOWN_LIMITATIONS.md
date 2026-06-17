@@ -1,7 +1,7 @@
 # Known limitations
 
-> Applies through **`main` @ v1.2.0** (multipage KIE + batch UI; Lite since `v1.0.1`).  
-> Release notes: [RELEASE_1.1_NOTES.md](./RELEASE_1.1_NOTES.md) · Tracker: [KIE_TEST_RUN_TRACKER.md](../architecture/KIE_TEST_RUN_TRACKER.md)  
+> Applies through **`main` @ v1.3.0** (v1.2.1 maintenance + v1.3 P0 on same release train).  
+> Release notes: [RELEASE_1.3.0_NOTES.md](./RELEASE_1.3.0_NOTES.md) · [RELEASE_1.2.1_NOTES.md](./RELEASE_1.2.1_NOTES.md)  
 > Acceptance rules: [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
 
 ## DocuVision Lite (since 1.0.1)
@@ -12,7 +12,7 @@
 | Raster tables | Image and scan PDF **Table Transformer** extraction is **frozen** by default (`RASTER_TABLES_FROZEN`); text OCR only on raster docs. |
 | Born-digital PDF | Table extraction via pdfplumber / Camelot; see [lite-api.md](../architecture/lite-api.md). |
 | Models | EasyOCR / optional Transformer weights under `packages/docuvision-core/models/` — bootstrap required on new hosts ([models/README.md](../../packages/docuvision-core/models/README.md)). |
-| Batch | No batch API on Lite (`:8001`); use Pro batch API on `:8000` if needed. |
+| Batch | Lite batch API at `/api/v1/lite/batch` (table-only PDF, in-memory). Pro batch adds **Excel** export (v1.2.1+). |
 | GPU | Lite targets CPU; Pro remains GPU-recommended for layout + KIE latency. |
 
 ## KIE / 证件票据 (Pro)
@@ -46,8 +46,9 @@
 
 | 限制 | 说明 |
 |------|------|
-| KIE query fields（v1.1） | `kie_query_fields` **仅追加**内置 schema（最多 20 字段）；**002 不含 query 命中**；空 query 值非契约失败。无模板库、无 `document_type=custom` 全量 schema。见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)。 |
-| Batch Processing UI | v1.2+ Batch 标签页与汇总 CSV/JSON；仍为内存 batch，重启丢失。 |
+| KIE query fields（v1.1） | `kie_query_fields` **仅追加**内置 schema（最多 20 字段）。**v1.3** 起支持 `document_type=custom` 与 YAML 模板库（MVP）；无字段 bbox 联动。见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)。 |
+| KIE validation（v1.3） | 启发式 date/currency 规则 + `kie_validation`；非 ground-truth 逐字校验；HITL 队列为内存 MVP。 |
+| Batch Processing UI | v1.2+ Batch tab with aggregated CSV/JSON/**Excel**; in-memory batch, lost on restart. |
 | 字段 bbox | KIE 字段与画布标注框 **未** 联动。 |
 | 翻译 / 长文档 VL 问答 | 明确不在 1.0 / 1.0.1 范围。 |
 
@@ -65,11 +66,12 @@
 - `test_data/TestResult/` 为本地/云端导出目录（gitignore），**不**随仓库分发。
 - 部分 `test_data/testfiles/` 样例仅供验收，使用时注意版权与隐私（勿提交真实证件）。
 
-## 后续版本方向（post-v1.2.0）
+## 后续版本方向（post-v1.3.0）
 
-- **v1.2.x / 维护**：Batch Excel 导出、Playwright E2E P0、CI Phase A 纳入 v1.2 pytest 列表（workflow 变更需维护者同意）。
-- **v1.3 主线（P0）**：通用字段校验、`document_type=custom` / 模板持久化 — 见 [RELEASE_1.2_NOTES.md](./RELEASE_1.2_NOTES.md)。
-- **P1**：自动 `document_type`、HITL、可搜索 PDF、邮件/webhook。
-- **Lite**：无 KIE/query fields/Batch；仍仅 Pro。
+- **v1.4（P1）**：table_areas ROI UI、完整 HITL 工作流、邮件/IMAP、垂直列映射模板。
+- **v1.5+**：PDF 工具箱产品化、可搜索 PDF 质量、Batch 持久化。
+- **维护**：Playwright E2E P1/P2（Batch tab）；CI Phase A 扩展测项（workflow 变更需维护者同意）。
 
-路线图：[RELEASE_1.1_CHECKLIST.md](./RELEASE_1.1_CHECKLIST.md) §6、[RELEASE_1.2_CHECKLIST.md](./RELEASE_1.2_CHECKLIST.md)。
+Cloud 验收：[MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md)。
+
+路线图：[RELEASE_1.3.0_NOTES.md](./RELEASE_1.3.0_NOTES.md)。

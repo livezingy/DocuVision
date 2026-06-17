@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-06-17
+
+Roadmap **P0** (PDF core routing + IDP validation + Lite batch). See [RELEASE_1.3.0_NOTES.md](docs/release/RELEASE_1.3.0_NOTES.md) and [MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md).
+
+### Added
+
+- Pro **pdf_digital** → `docuvision-core` TableProcessor; **table stitch** MVP; PyMuPDF `find_tables` fallback.
+- **KIE field validation** (`kie_validation`); batch CSV validation columns; custom templates API.
+- Lite **Batch API** (`/api/v1/lite/batch`) with CSV/XLSX export.
+- Pro MVP APIs: classify, document profile, HITL, webhooks, PDF tools.
+- Cloud checklist [MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md).
+
+### Changed
+
+- `APP_VERSION` default `1.3.0`; Pro `requirements.txt` adds `docuvision-core[lite]`, `pdfplumber`, `pymupdf`.
+
+## [1.2.1] — 2026-06-17
+
+Maintenance patch (deferred from v1.2.0). See [RELEASE_1.2.1_NOTES.md](docs/release/RELEASE_1.2.1_NOTES.md).
+
+### Added
+
+- Batch **Excel** export: `GET /batch/{id}/export.xlsx` + UI **Download Excel**.
+- Playwright E2E P0 (UI-S + UI-Q); Shared UI Shell PR2 (`shared/components.css`, `pro-only.css`).
+
+### Changed
+
+- [KNOWN_LIMITATIONS.md](docs/release/KNOWN_LIMITATIONS.md): Batch Excel delivered; Playwright P0 spec added.
+
 ## [1.2.0] — 2026-06-12
 
 Pro **multipage PDF KIE** (`kie_pages`) and **Batch Processing** productization (API export + UI tab). Cloud merge gate passed; see [RELEASE_1.2_NOTES.md](docs/release/RELEASE_1.2_NOTES.md) and [KIE_TEST_RUN_TRACKER.md](docs/architecture/KIE_TEST_RUN_TRACKER.md).

@@ -1360,6 +1360,30 @@ class TableService:
             effective_allow_fullpage_fallback,
         )
 
+        ext = os.path.splitext(file_path)[1].lower()
+        use_core = engine in (None, "auto", "docuvision_core", "core", "mixed")
+        if ext == ".pdf" and use_core:
+            try:
+                from app.services.file_type_detector import DetectedFileType, detect_file_type
+                from app.services.core_table_extractor import extract_digital_pdf_tables
+
+                detected, _page_count = detect_file_type(file_path)
+                if detected == DetectedFileType.PDF_DIGITAL:
+                    logger.info("Routing born-digital PDF to docuvision-core TableProcessor")
+                    core_tables = extract_digital_pdf_tables(file_path)
+                    meta.update(
+                        {
+                            "strategy": "pdf_digital_core",
+                            "path": "docuvision_core",
+                            "reason": "born_digital_pdf",
+                            "engine_used": "docuvision_core",
+                            "tables_returned": len(core_tables),
+                        }
+                    )
+                    return core_tables, meta
+            except Exception as core_exc:
+                logger.warning(f"docuvision-core table path failed, falling back to layout: {core_exc}")
+
         # If layout elements are provided and using PP-Structure, extract from layout (preferred method)
         if layout_elements and (not engine or engine == "ppstructure"):
             if "ppstructure" in self.engines:

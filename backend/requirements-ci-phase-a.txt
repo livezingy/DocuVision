@@ -9,6 +9,6 @@ pydantic-settings==2.1.0
 python-dotenv==1.0.0
 PyYAML==6.0.2
 Pillow==10.2.0
-PyMuPDF==1.23.8
+PyMuPDF>=1.24.0,<1.26.0
 numpy>=1.24.0,<2.0
 loguru==0.7.2

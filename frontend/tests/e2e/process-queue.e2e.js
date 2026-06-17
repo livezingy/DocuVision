@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { installProApiMocks } = require('./helpers/mock-pro-api');
 
-const INDEX_URL = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/';
+const INDEX_URL = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/frontend/index.html';
 
 function sampleImagePath() {
   const candidate = path.join(__dirname, '..', '..', '..', 'test_data', 'testfiles', 'invoices', 'sample-invoice.png');
@@ -51,7 +51,7 @@ test.describe('UI-Q Queue and preview', () => {
   test('UI-Q-03 completed status shows page count', async ({ page }) => {
     await page.locator('#fileInput').setInputFiles(SAMPLE_PNG);
     const item = page.locator('#queueList .queue-item').first();
-    item.evaluate((el) => {
+    await item.evaluate((el) => {
       el.classList.remove('pending');
       el.classList.add('completed');
       el.previewPageCount = 3;

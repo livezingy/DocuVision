@@ -133,7 +133,14 @@ curl -s -X POST "$API_ROOT/api/v1/analyze" \
   -F "document_type=invoice" | tee "$OUT_DIR/kie_val.json"
 
 TASK_ID=$(python3 -c "import json; print(json.load(open('$OUT_DIR/kie_val.json'))['task_id'])")
-# poll + result
+
+for i in $(seq 1 60); do
+  ST=$(curl -s "$API_ROOT/api/v1/tasks/$TASK_ID" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))")
+  echo "status=$ST"
+  [ "$ST" = "completed" ] && break
+  sleep 2
+done
+
 curl -s "$API_ROOT/api/v1/tasks/$TASK_ID/result" | python3 - <<'PY'
 import json, sys
 r = json.load(sys.stdin)

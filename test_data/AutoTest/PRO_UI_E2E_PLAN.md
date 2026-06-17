@@ -1,7 +1,7 @@
 # Pro UI Playwright E2E 规划（讨论稿）
 
 Last updated: 2026-06-05  
-Status: **规划 / 待落地**（本文档仅整理分析与方案，不含已实现用例）  
+Status: **P0 已落地**（`process-smoke.e2e.js`、`process-queue.e2e.js` + mock API）；P1+ 仍待扩展  
 关联：`frontend/tests/e2e/`、`frontend/playwright.config.js`、[CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)
 
 ---
@@ -135,7 +135,7 @@ test_data/TestResult/PhaseUI/
 与 [CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md) 一致：
 
 1. **终端 1**：`cd backend && python run.py`（`DEBUG=false` 避免 reload 丢任务）  
-2. **终端 2**：Playwright 指向 `http://127.0.0.1:8000` 或静态 `frontend/index.html` + API 同源  
+2. **终端 2**：Playwright `baseURL` / `PW_INDEX_URL` 指向 **`http://127.0.0.1:8000/frontend`**（`run.py` 挂载；根 `/` 为 API JSON）  
 3. **样例**：`test_data/testfiles/invoices/`、`multipage/`、`batch/manifest.json`  
 4. **GPU**：完整 KIE E2E 需在 Cloud Studio；本地可 **mock `/api/v1/analyze`** 返回固定 `task_id` + 轮询 stub（Smoke 层）
 
@@ -177,7 +177,7 @@ timeout: 120_000,  // KIE 路径
 ## 7. 落地前待决问题（后续讨论）
 
 1. **运行位置**：仅 Cloud Studio 手动？还是 GitHub Actions（无 GPU 时是否 mock）？  
-2. **静态资源**：Playwright `baseURL` 用 `file://` 还是通过 `run.py` 挂载 `frontend/`？  
+2. **静态资源**：已通过 `run.py` 挂载；`PW_BASE_URL=http://127.0.0.1:8000/frontend`（见 v1.2.1 Cloud 清单 §6）  
 3. **超时与并行**：KIE 用例是否串行、`workers: 1`？  
 4. **结果入库**：`TestResult/PhaseUI/` 是否 gitignore（建议 yes）？Tracker 是否增加「阶段 UI-E2E」表？  
 5. **与 Lite 关系**：Pro 与 Lite 分离 spec 目录，避免混跑。
@@ -188,8 +188,9 @@ timeout: 120_000,  // KIE 路径
 
 | 路径 | 说明 |
 |------|------|
-| [frontend/playwright.config.js](../../frontend/playwright.config.js) | 当前仅 list reporter |
-| `frontend/tests/e2e/` | 目录保留；旧脚手架 `queue.e2e.js` 已移除，落地时新增真实 spec |
+| [frontend/playwright.config.js](../../frontend/playwright.config.js) | `baseURL` → `/frontend`；html/json/junit reporter |
+| `frontend/tests/e2e/process-smoke.e2e.js` | UI-S P0 smoke |
+| `frontend/tests/e2e/process-queue.e2e.js` | UI-Q P0 queue/preview |
 | [frontend/tests/unit/queue.test.js](../../frontend/tests/unit/queue.test.js) | 队列/页数纯函数单测 |
 | [frontend/shared/queue_preview.js](../../frontend/shared/queue_preview.js) | 可复用逻辑（Vitest 已覆盖） |
 | [test_data/acceptance/batch_kie.md](../acceptance/batch_kie.md) | Batch 验收规则 |

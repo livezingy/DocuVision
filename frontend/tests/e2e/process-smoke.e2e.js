@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { installProApiMocks } = require('./helpers/mock-pro-api');
 
-const INDEX_URL = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/';
+const INDEX_URL = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/frontend/index.html';
 
 function sampleImagePath() {
   const candidate = path.join(__dirname, '..', '..', '..', 'test_data', 'testfiles', 'invoices', 'sample-invoice.png');
@@ -46,9 +46,9 @@ test.describe('UI-S Smoke', () => {
   });
 
   test('UI-S-04 Content and Result tabs switch', async ({ page }) => {
-    await page.locator('[data-view="content"]').click();
+    await page.locator('[data-main-tab="content"]').click();
     await expect(page.locator('#contentView')).toHaveClass(/active/);
-    await page.locator('[data-view="result"]').click();
+    await page.locator('[data-main-tab="result"]').click();
     await expect(page.locator('#resultView')).toHaveClass(/active/);
   });
 });

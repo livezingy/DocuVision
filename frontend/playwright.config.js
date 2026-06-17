@@ -11,7 +11,7 @@ module.exports = defineConfig({
   use: {
     headless: true,
     viewport: { width: 1280, height: 720 },
-    baseURL: process.env.PW_BASE_URL || 'http://127.0.0.1:8000',
+    baseURL: process.env.PW_BASE_URL || 'http://127.0.0.1:8000/frontend',
   },
   reporter: [
     ['list'],

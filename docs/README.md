@@ -29,6 +29,7 @@ Read in this order when onboarding to the codebase:
 | [architecture/CLOUD_VALIDATION.md](architecture/CLOUD_VALIDATION.md) | Cloud Studio GPU phases A–G |
 | [architecture/KIE_TEST_RUN_TRACKER.md](architecture/KIE_TEST_RUN_TRACKER.md) | KIE batch run log (append-only) |
 | [../test_data/acceptance/README.md](../test_data/acceptance/README.md) | Acceptance matrix index |
+| [../test_data/acceptance/UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) | UI E2E vs manual scope; assistant manual-test reminders |
 | [../test_data/AutoTest/PRO_UI_E2E_PLAN.md](../test_data/AutoTest/PRO_UI_E2E_PLAN.md) | Playwright E2E plan |
 | [../backend/tests/KIE_ACCEPTANCE_CRITERIA.md](../backend/tests/KIE_ACCEPTANCE_CRITERIA.md) | KIE acceptance criteria |
 
@@ -66,12 +67,14 @@ Exploratory drafts: [R&D/README.md](R&D/README.md) — not authoritative; promot
 |------|------|------------------|
 | Pro contract (mock) | `backend/tests/test_kie_*.py`, Phase A list in `CLOUD_VALIDATION.md` | PR / Cloud Phase A |
 | Pro live GPU | `backend/tests/test_live_api.py` | Cloud only, server on `:8000`; ignore in full `pytest` |
-| Pro manual script | `backend/tests/test_api_pipeline.py` | Cloud REPL, optional |
+| Pro manual script | `backend/tests/test_api_contract_smoke.py`（契约快检）、`test_api_pipeline.py`（含 analyze 轮询） | Cloud REPL, optional |
 | Lite | `apps/lite/backend/tests/` | GitHub `CI Lite` on PR |
 | Core lib | `packages/docuvision-core/tests/` | CI Lite subset + Cloud |
 | E2E UI (planned) | `frontend/tests/e2e/` | Local/Cloud with mock API |
 
 New features: add **contract tests** first; extend `MERGE_MAIN_v*.md` only at release — do not duplicate scenarios across `test_live_api` and Phase A mocks.
+
+**UI manual vs automated**: [UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) — E2E green **reduces** manual scope only for mapped cases; assistants must list remaining manual checks after each UI/API change (`004-project.mdc` §手工测试提醒).
 
 ## Demo
 

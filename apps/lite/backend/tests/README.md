@@ -11,7 +11,7 @@
 | `test_image_table_pipeline.py` | 覆盖冻结后的 `image_table_pipeline`（含 `RASTER_TABLE_EXTRACTION_ENABLED=true` 时的 mock 路径） |
 | `test_raster_transformer_frozen.py` | 默认冻结下 `/extract/auto` 不调用 Transformer |
 | `fixtures/sample_bordered.pdf` | 数字 PDF 表格/Profile 集成测试 |
-| `LITE_UI_TEST_CHECKLIST.md` | 手工 UI 验收（非 pytest） |
+| `LITE_UI_TEST_CHECKLIST.md` | 手工 UI 验收（非 pytest）；对照 [UI_VERIFICATION_MATRIX.md](../../../../test_data/acceptance/UI_VERIFICATION_MATRIX.md) §3 |
 
 后端 `image_table_pipeline.py` 在默认配置下**运行时不用**，但保留供 `RASTER_TABLE_EXTRACTION_ENABLED=true` 开发/回归，**不是死代码**。
 

@@ -22,6 +22,9 @@ import sys
 import time
 from pathlib import Path
 
+from _sample_paths import find_default_test_file
+
+
 # ---------------------------------------------------------------------------
 # Locate a default test image (scanned page preferred)
 # ---------------------------------------------------------------------------
@@ -29,25 +32,9 @@ _SCRIPT_DIR = Path(__file__).resolve().parent          # backend/tests/
 _BACKEND_DIR = _SCRIPT_DIR.parent                      # backend/
 _PROJECT_ROOT = _BACKEND_DIR.parent                    # project root
 
-_DEFAULT_TEST_FILE_CANDIDATES = [
-    _PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "id_card_sample_01.jpg",
-    _PROJECT_ROOT / "test_data" / "testfiles" / "invoices" / "sample-invoice.png",
-    _PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie",
-    _PROJECT_ROOT / "test_data" / "testfiles" / "pdf",
-    _PROJECT_ROOT / "test_data" / "testfiles" / "invoices",
-]
-
 
 def _find_default_test_file() -> Path | None:
-    for candidate in _DEFAULT_TEST_FILE_CANDIDATES:
-        if candidate.is_file():
-            return candidate
-        if candidate.is_dir():
-            for ext in ("*.jpg", "*.jpeg", "*.png", "*.pdf"):
-                files = sorted(candidate.glob(ext))
-                if files:
-                    return files[0]
-    return None
+    return find_default_test_file()
 
 
 # ---------------------------------------------------------------------------

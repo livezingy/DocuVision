@@ -1,0 +1,40 @@
+---
+description: Dead code hygiene and pre-delivery cleanup (report-first; no silent deletes)
+alwaysApply: true
+---
+
+# Dead Code Hygiene
+
+## Scope
+
+Apply when creating or editing source under `backend/`, `apps/`, `packages/`, `frontend/`.
+
+## Before finishing a code change
+
+1. **Touched files only**: scan for unused imports, unreachable branches, commented-out legacy blocks, and symbols removed from callers but left defined.
+2. **Before removing a symbol or file**: run a repo search (`code + tests + docs + .github/workflows`). List every reference in the delivery note.
+3. **Do not delete files** unless the user explicitly authorizes deletion in this session (see `004-project.mdc` red lines). Default: **report candidates with evidence**, not delete.
+4. **Intentionally retained** (not dead — do not flag for removal without user ask):
+   - Legacy Task API (`/api/v1/analyze`, `/api/v1/tasks/*`) while Pro SPA uses it
+   - Feature-flagged paths (e.g. Lite `image_table_pipeline` when `RASTER_TABLE_EXTRACTION_ENABLED=false`)
+   - Cloud manual scripts under `backend/tests/` (not pytest): `test_api_pipeline.py`, `test_api_contract_smoke.py`, `kie/_smoke_check.py`, `tools/`
+
+## Local static checks (when available)
+
+```bash
+ruff check backend/ apps/lite/ packages/docuvision-core/ --select F401,F841
+rg "SymbolOrModuleName" backend/ apps/ packages/ docs/ .github/
+```
+
+Pro/Lite full pytest: Cloud/CI only (`004-project.mdc`, `008-cloud-testing.mdc`).
+
+## Delivery footer (code tasks)
+
+Include when the diff touches application logic:
+
+- **Dead code check**: none found | N candidates (path + reason + references)
+- **Test placement**: extended `<file>` | new `<file>` (why not merged)
+
+Include when the diff touches application logic, UI, or user-visible API behavior:
+
+- **Manual test scope**: per `004-project.mdc` §手工测试提醒 and [UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) §4

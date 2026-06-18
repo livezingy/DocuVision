@@ -128,6 +128,18 @@ test_data/TestResult/PhaseUI/
 - 首次 KIE 冷启动 60s+（单独用例 + `test.setTimeout`）  
 - Help 外链、Templates/History（未实现或外链）
 
+### 4.7 E2E 绿则缩小手工范围（已落地用例）
+
+**权威对照表**：[UI_VERIFICATION_MATRIX.md](../acceptance/UI_VERIFICATION_MATRIX.md) §2.
+
+| 条件 | 可减手工（本次未改动相关代码） | 仍须手工 |
+|------|-------------------------------|----------|
+| `npm run test:unit` + `npm run test:e2e` 全绿 | UI-S-01/02/04，UI-Q-01/03/04，Vitest 队列逻辑 | 真实 GPU KIE、Analysis Options、Export、Batch、三栏 resize、视觉 |
+| 仅改 `shared/queue_preview.js` | UI-Q-03/04 + Vitest 相关用例 | 真 API 轮询、KIE Fields 展示 |
+| 发版 / 合 `main` | 重复点击已映射 smoke/queue 用例 | §5 最小手工集（矩阵 §5） |
+
+助手每次改 Pro/Lite/共享 UI 后，须在交付中附 **Manual test scope**（`004-project.mdc`）。
+
 ---
 
 ## 5. 推荐环境与前置条件

@@ -5,6 +5,18 @@ Open: `http://{host}:8001/lite/lite.html`
 
 Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging.py tests/test_lite_bordered_tables.py -q`
 
+**Automation vs manual**: See [UI_VERIFICATION_MATRIX.md](../../../test_data/acceptance/UI_VERIFICATION_MATRIX.md) §3. Lite has **no** Playwright E2E; pytest green does **not** replace browser checklist rows marked **manual** or **partial**.
+
+| Rule | pytest / API | Browser manual required |
+|------|----------------|-------------------------|
+| LITE-UI-001 | partial (`test_lite_analyze_profile`) | **Yes** — tab switch, page sync |
+| LITE-UI-002 | partial | **Yes** — tab grid / Figures empty state |
+| LITE-UI-003 | `test_lite_ocr_messaging` | **Partial** — Quality panel + Text tab UI |
+| LITE-UI-004 | — | **Yes** — queue remove, selected-item analyze |
+| LITE-UI-005 / 008 | `test_lite_export` | **Partial** — toast, 4-button layout |
+| LITE-UI-006 | `test_lite_bordered_tables` | **Partial** — Tables tab display |
+| LITE-UI-007 | — | **Yes** — Options visibility by doc type |
+
 ## LITE-UI-001 Upload and Profile
 
 | Step | Action | Expected |

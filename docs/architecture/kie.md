@@ -107,7 +107,7 @@ flowchart LR
 ## 7. 参考与测试
 
 - 契约单测：`backend/tests/test_kie_return_raw_contract.py`、`backend/tests/test_kie_service.py`（mock `KieManager`，不下载权重）。
-- 轻量脚本：`python -m tests.kie._smoke_check`（仅 `value_typer`，无模型）。
+- 轻量脚本：`python -m tests.kie._smoke_check`（委托 `tests/kie/test_value_typer.py` pytest，无模型）。
 
 ### 7.1 云端 GPU-environment 针对性 pytest（本阶段）
 

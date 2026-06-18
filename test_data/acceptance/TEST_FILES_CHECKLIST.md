@@ -8,27 +8,33 @@
 
 ### PDF 测试文件
 
-#### 文本型 PDF (`test_data/testfiles/pdf/text_based/`)
-- [ ] `sample_report.pdf` - 包含文本和表格的报告文档
+#### 已跟踪样例 (`test_data/testfiles/pdf/`)
+- [x] `sample_report.pdf` - 报告文档（仓库内已有）
+- [ ] `financial_report.pdf` 等 — 见目录内其他 PDF
+
+#### 可本地补充（非 Git 必需）
 - [ ] `sample_article.pdf` - 纯文本文章
 - [ ] `sample_form.pdf` - 表单文档
-
-#### 图像型 PDF (`test_data/testfiles/pdf/image_based/`)
 - [ ] `scanned_document.pdf` - 扫描的文档
 - [ ] `scanned_invoice.pdf` - 扫描的发票
 - [ ] `scanned_receipt.pdf` - 扫描的收据
-
-#### 混合型 PDF (`test_data/testfiles/pdf/mixed/`)
-- [ ] `mixed_document.pdf` - 包含文本和图像的混合文档
+- [ ] `mixed_document.pdf` - 混合文档
 
 ### 图片测试文件
 
-#### 扫描图片 (`test_data/testfiles/images/scanned/`)
+#### 已跟踪样例（验收矩阵默认）
+- [x] `test_data/testfiles/invoices/sample-invoice.png`
+- [x] `test_data/testfiles/images/kie/id_card_sample_01.jpg`
+
+#### 扫描图片（可选 `test_data/testfiles/images/scanned/`，非 Git 必需）
+
+> 矩阵与 `test_api_*` 手动脚本默认用 `sample-invoice.png`；下列供自行扫描补充。
+
 - [ ] `scanned_page_01.jpg` - 扫描页面（JPG格式）
 - [ ] `scanned_invoice.png` - 扫描发票（PNG格式）
 - [ ] `scanned_receipt.tiff` - 扫描收据（TIFF格式）
 
-#### 照片 (`test_data/testfiles/images/photos/`)
+#### 照片 (`test_data/testfiles/images/photos/`) — 可本地补充
 - [ ] `document_photo.jpg` - 文档照片
 - [ ] `id_card_photo.png` - 证件照片
 

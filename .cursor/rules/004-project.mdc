@@ -77,6 +77,7 @@ DocuVision/
 | Lite API / UI | [lite-api.md](../docs/architecture/lite-api.md) → `apps/lite/backend/tests/README.md` |
 | 发版 / 合 main | [docs/release/README.md](../docs/release/README.md) → 对应 `MERGE_MAIN_v*.md` |
 | 样例路径 / Batch | [test_data/acceptance/README.md](../test_data/acceptance/README.md) |
+| UI 自动化 vs 手工 | [test_data/acceptance/UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) |
 | Trial 演示 | [docs/demo/TRIAL_DEMO.md](../docs/demo/TRIAL_DEMO.md) |
 | 文档索引 | [docs/README.md](../docs/README.md) |
 
@@ -109,6 +110,36 @@ DocuVision/
 - 安装新的全局依赖或修改系统配置
 - 公开发布（npm publish、部署到生产、发文章等）
 
+## 测试落点（新建或扩展测试前）
+
+1. **先搜后建**：在对应 `tests/` 目录搜索同模块/同契约是否已有 `test_*.py` 或 Cloud 文档点名的文件。
+2. **优先扩展**同一域文件（同一 fixture、同一 Phase）；**新建文件**当：新契约域、独立 env gate（如 `DOCUVISION_RUN_KIE_ACCEPTANCE`）、或 CI/文档已按文件名登记（改文件名需用户同意改 workflow）。
+3. **分层**（详见 [docs/README.md](../docs/README.md) §Test layout）：
+   - **契约 mock**：`backend/tests/test_kie_*.py` 等 — Phase A / PR
+   - **Live GPU**：`test_live_api.py` — Cloud + `:8000`，勿与 Phase A 重复场景
+   - **手动 in-process 脚本**：`test_api_contract_smoke.py`（契约快检）、`test_api_pipeline.py`（含 analyze 轮询）— 不并入 pytest 除非用户要求
+   - **Lite**：`apps/lite/backend/tests/README.md` §0 审计表
+   - **Core**：`packages/docuvision-core/tests/`
+4. **Canonical 单测真源**：逻辑断言以 pytest 为准；`kie/_smoke_check.py` 仅作薄封装，不重复断言（见 `009-dead-code.mdc`）。
+5. 交付附 **建议 pytest 范围**（Cloud 命令）；不得声称本地 Pro/Lite pytest 已通过。
+
+## 死代码检查
+
+- 每次改动应用代码后执行 `009-dead-code.mdc` 检查项；交付附 **Dead code check** 小节。
+- 删除文件/目录仍属红线，须用户明确授权。
+
+## 手工测试提醒
+
+每次交付**改动应用代码或 UI** 时，须附 **Manual test scope** 小节（用户未明确「免手工说明」时不得省略）：
+
+1. **查矩阵**：按改动路径对照 [UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) §4，列出仍需手工的项。
+2. **写清三项**：**建议先跑的自动化**（含命令）、**仍需你手工测什么**、**验收标准**（规则 ID 或 checklist 章节，如 `LITE-UI-004`、`UI-Q-01`、`KIE-ACCEPT-001`）。
+3. **E2E 绿缩小范围**：若 Pro `npm run test:e2e` + `test:unit` 已绿，明确写出**可跳过**的 Pro 手工项（仅限矩阵 §2.2 已映射且本次未改动的行）；未映射、Lite UI、真实 GPU/KIE **不得**因 E2E 绿而省略提醒。
+4. **Lite**：无 Playwright E2E；`pytest tests/` 绿仅缩小 API 契约重复验证，**不**免除 `LITE_UI_TEST_CHECKLIST` 中标记为「否/部分」的浏览器项。
+5. **发版/合 main**：提醒 §5 最小手工集，即使用户本次为小改动。
+
+交付 footer 与 `009-dead-code.mdc` 并列：**Dead code check** | **Test placement** | **Manual test scope**。
+
 ## 通用工程纪律
 
 - 改完主动跑验证，不要只改不验（Pro/Lite 验证在 Cloud/CI；助手给出 Cloud 命令与期望）
@@ -118,6 +149,10 @@ DocuVision/
 
 ## 文档同步
 
-- **Living**：改代码时同步 `docs/architecture/` 中相关契约文档
+- **Living**：改代码时同步 `docs/architecture/` 中相关契约文档；新增/重命名 `docs/` 文档时更新 [docs/README.md](../docs/README.md) 索引
 - **Frozen**：不修改已发布版本的 `RELEASE_*`、`MERGE_MAIN_v*`
-- **Local only**：`docs/R&D/`、`test_data/TestResult/`、`*Upwork*` 不进 Git
+- **Append-only**：`KIE_TEST_RUN_TRACKER.md` 只追加批次记录
+- **Local only**：`docs/R&D/`（除 `R&D/README.md`）、`test_data/TestResult/`、`*Upwork*` 不进 Git
+- **验收路径**：固定样例以 `test_data/testfiles/` 为准；acceptance 文档勿引用仓库内不存在的 fixture
+- **冲突**：与 [main-tracked-issues.md](../docs/architecture/main-tracked-issues.md) 不一致时以代码与 living architecture 为准
+- 细则见 `005-document.mdc`

@@ -206,9 +206,22 @@ Manifest: `test_data/testfiles/batch/manifest.json` → set `kie_invoice_6`.
 
 Full checklist: [BATCH_E2E_CHECKLIST.md](../test_data/acceptance/BATCH_E2E_CHECKLIST.md).
 
+## Frontend unit + Pro UI E2E (no GPU)
+
+```bash
+cd "$REPO_ROOT/frontend"
+npm install
+npm run test:unit
+npm run test:e2e
+```
+
+- E2E uses **mock API** (`frontend/tests/e2e/helpers/mock-pro-api.js`); green does **not** replace Cloud KIE or full manual UI matrix.
+- **Manual scope after UI changes**: [UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md); assistant lists remaining checks per `004-project.mdc` §手工测试提醒.
+
 ## Related docs
 
 - [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md) — full Phase A–G
+- [UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) — E2E vs manual
 - [KIE_TEST_RUN_TRACKER.md](../docs/architecture/KIE_TEST_RUN_TRACKER.md) — batch records
 - [docs/README.md](../docs/README.md) — doc + test layout index
 - `004-project.mdc` — Pro pytest cloud-only; task-based doc reading

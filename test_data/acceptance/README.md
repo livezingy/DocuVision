@@ -26,6 +26,8 @@ test_data/
 
 样例文件的**物理路径**形如：`test_data/testfiles/pdf/sample_report.pdf`（原 `test_data/pdf/...` 已迁入 `testfiles/`）。
 
+**UI 自动化 vs 手工验收**（E2E 绿缩小手工范围、助手交付提醒）：[UI_VERIFICATION_MATRIX.md](UI_VERIFICATION_MATRIX.md)
+
 ## 云端与旧目录（Git 之外）
 
 - **代码已更新后**：在云端工作区执行一次 `git pull`，已从 Git 删除的路径会随提交消失；若磁盘上仍有**未跟踪**的旧目录（例如历史 `test_data/pdf`），可手动删除：`rm -rf test_data/pdf test_data/images ...`（仅删除你确认不再需要的目录）。
@@ -36,35 +38,37 @@ test_data/
 
 ### 1. PDF 测试文件
 
-#### 文本型 PDF (`testfiles/pdf/text_based/`)
+#### 文本型 PDF (`testfiles/pdf/`)
 - **用途**：测试文本提取和表格识别
-- **建议文件**：
-  - `sample_report.pdf` - 包含文本和表格的报告
+- **仓库内样例**：`sample_report.pdf`、`financial_report.pdf` 等（见 `testfiles/pdf/`）
+- **可本地补充**（非 Git 必需）：
   - `sample_article.pdf` - 纯文本文章
   - `sample_form.pdf` - 表单文档
 
-#### 图像型 PDF (`testfiles/pdf/image_based/`)
+#### 图像型 PDF (`testfiles/pdf/` 或本地 `image_based/`)
 - **用途**：测试 OCR 功能
-- **建议文件**：
+- **可本地补充**（非 Git 必需）：
   - `scanned_document.pdf` - 扫描的文档
   - `scanned_invoice.pdf` - 扫描的发票
   - `scanned_receipt.pdf` - 扫描的收据
 
-#### 混合型 PDF (`testfiles/pdf/mixed/`)
-- **用途**：测试综合处理能力
-- **建议文件**：
+#### 混合型 PDF
+- **可本地补充**（非 Git 必需）：
   - `mixed_document.pdf` - 包含文本和图像的混合文档
 
 ### 2. 图片测试文件
 
-#### 扫描图片 (`testfiles/images/scanned/`)
+#### 扫描图片（可选本地目录 `testfiles/images/scanned/`）
+
+> **Git 内默认样例**：矩阵与手动脚本使用 `testfiles/invoices/sample-invoice.png` 或 `testfiles/images/kie/id_card_sample_01.jpg`。下列文件名供自行扫描补充，**不要求进仓库**。
+
 - **格式**：JPG, PNG, TIFF
-- **建议文件**：
+- **可本地补充**：
   - `scanned_page_01.jpg` - 扫描页面
   - `scanned_invoice.png` - 扫描发票
   - `scanned_receipt.tiff` - 扫描收据
 
-#### 照片 (`testfiles/images/photos/`)
+#### 照片 (`testfiles/images/photos/`) — 可本地补充
 - **格式**：JPG, PNG
 - **建议文件**：
   - `document_photo.jpg` - 文档照片
@@ -181,6 +185,7 @@ test_data/
 
 - 云测步骤：[docs/architecture/CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)
 - 快速开始：[QUICK_START.md](QUICK_START.md)
+- UI 自动化 vs 手工：[UI_VERIFICATION_MATRIX.md](UI_VERIFICATION_MATRIX.md)
 - 文档索引：[docs/README.md](../../docs/README.md)
 - API 文档：`http://localhost:8000/docs`
 

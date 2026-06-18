@@ -41,3 +41,5 @@ alwaysApply: true
 - 005-document.mdc：文档规范
 - 006-model-routing.mdc：模型路由策略
 - 007-code-language.mdc：代码/UI 英文与 UTF-8 编码规范
+- 008-cloud-testing.mdc：Cloud 手动验证命令
+- 009-dead-code.mdc：死代码检查、测试落点与手工测试范围交付

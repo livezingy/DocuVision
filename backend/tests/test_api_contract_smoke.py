@@ -8,7 +8,7 @@ Purpose:
 Usage:
     cd /workspace/DocuVision/backend
     python tests/test_api_contract_smoke.py
-    python tests/test_api_contract_smoke.py --file /workspace/DocuVision/test_data/testfiles/images/scanned/scanned_page_02.jpg
+    python tests/test_api_contract_smoke.py --file /workspace/DocuVision/test_data/testfiles/invoices/sample-invoice.png
 
 Notes:
 - This script runs in-process with httpx.ASGITransport (no external server required).
@@ -26,16 +26,12 @@ import uuid
 from pathlib import Path
 
 
+from _sample_paths import find_default_test_file
+
+
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _BACKEND_DIR = _SCRIPT_DIR.parent
 _PROJECT_ROOT = _BACKEND_DIR.parent
-
-_DEFAULT_TEST_FILE_CANDIDATES = [
-    _PROJECT_ROOT / "test_data" / "images" / "scanned" / "scanned_page_02.jpg",
-    _PROJECT_ROOT / "test_data" / "images" / "scanned" / "scanned_page_01.jpg",
-    _PROJECT_ROOT / "test_data" / "images" / "photos",
-    _PROJECT_ROOT / "test_data" / "pdf" / "image_based",
-]
 
 
 _GREEN = "\033[32m"
@@ -62,15 +58,7 @@ def _info(msg: str) -> str:
 
 
 def _find_default_test_file() -> Path | None:
-    for candidate in _DEFAULT_TEST_FILE_CANDIDATES:
-        if candidate.is_file():
-            return candidate
-        if candidate.is_dir():
-            for ext in ("*.jpg", "*.jpeg", "*.png", "*.pdf"):
-                files = sorted(candidate.glob(ext))
-                if files:
-                    return files[0]
-    return None
+    return find_default_test_file()
 
 
 class Results:

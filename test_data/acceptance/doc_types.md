@@ -6,7 +6,7 @@
 
 | 场景 | document_type | enable_kie | 固定样例（1～2 张） | 自动化 | 人工检查 |
 |------|----------------|------------|-------------------|--------|----------|
-| 通用 PDF / 扫描 | `auto` 或 `layout` | false | `test_data/testfiles/pdf/text_based/sample_report.pdf`；`test_data/testfiles/images/scanned/scanned_page_02.jpg` | `POST /api/v1/analyze` 后轮询 `GET /api/v1/tasks/{id}/result`：`layout` 或 `view.pages`、`tables` 为列表；可选 `GET .../export/json` | 导出 JSON 结构可读；版面与表格与目测一致 |
+| 通用 PDF / 扫描 | `auto` 或 `layout` | false | `test_data/testfiles/pdf/sample_report.pdf`；`test_data/testfiles/invoices/sample-invoice.png`（扫描图可本地补至 `testfiles/images/scanned/`，非 Git 必需） | `POST /api/v1/analyze` 后轮询 `GET /api/v1/tasks/{id}/result`：`layout` 或 `view.pages`、`tables` 为列表；可选 `GET .../export/json` | 导出 JSON 结构可读；版面与表格与目测一致 |
 | 发票 | `invoice` | true | `test_data/testfiles/invoices/invoice_sample_01.pdf`；`test_data/testfiles/invoices/sample-invoice.png` | 阶段 C / `pytest tests/test_kie_service.py -k pdf` | `kie_production_hit`；PDF 须 `completed`（非 `cannot identify image file ...pdf`） |
 | 发票多页 | `invoice` | true | `test_data/testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf`（需 `build_multipage_kie_fixtures.py`） | 阶段 MP | `kie_pages=1` 回归；`kie_pages=all` → `kie_pages_processed>=2` |
 | Batch KIE | `invoice` / `receipt` | true | `test_data/testfiles/batch/manifest.json` → `kie_invoice_6` | `run_batch_kie_acceptance.ps1` / 阶段 H-Batch | BATCH-001～003（见 [batch_kie.md](batch_kie.md)） |

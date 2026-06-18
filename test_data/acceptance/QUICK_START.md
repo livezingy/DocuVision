@@ -35,7 +35,7 @@ Copy-Item "您的证件.jpg" "test_data\testfiles\templates\id_document\id_card_
 
 ## 📋 最小测试文件集
 
-为了快速开始测试，至少需要：
+仓库内**已跟踪**的起步样例（可直接用于 Cloud 验收）：
 
 ```
 test_data/
@@ -43,17 +43,16 @@ test_data/
 ├── Azure/               # Azure 参考 JSON
 ├── TestResult/          # 本地/云端临时输出（不提交 Git）
 └── testfiles/
-    ├── templates/
-    │   ├── invoice/
-    │   │   └── invoice_sample_01.pdf  (或 .jpg)
-    │   ├── receipt/
-    │   │   └── receipt_sample_01.jpg
-    │   └── id_document/
-    │       └── id_card_sample_01.jpg
-    └── images/
-        └── scanned/
-            └── scanned_page_01.jpg
+    ├── invoices/
+    │   ├── sample-invoice.png
+    │   └── invoice_sample_01.pdf
+    ├── images/kie/
+    │   └── id_card_sample_01.jpg
+    └── pdf/
+        └── sample_report.pdf
 ```
+
+可选：自行添加扫描页至 `testfiles/images/scanned/`（如 `scanned_page_01.jpg`），**不纳入 Git 也可**；矩阵默认用 `sample-invoice.png` 代替。
 
 ---
 
@@ -62,9 +61,10 @@ test_data/
 运行以下命令验证：
 
 ```powershell
-Test-Path test_data\testfiles\templates\invoice\invoice_sample_01.pdf
-Test-Path test_data\testfiles\templates\receipt\receipt_sample_01.jpg
-Test-Path test_data\testfiles\templates\id_document\id_card_sample_01.jpg
+Test-Path test_data\testfiles\invoices\sample-invoice.png
+Test-Path test_data\testfiles\invoices\invoice_sample_01.pdf
+Test-Path test_data\testfiles\images\kie\id_card_sample_01.jpg
+Test-Path test_data\testfiles\pdf\sample_report.pdf
 ```
 
 ---

@@ -36,4 +36,4 @@ gh release create v1.3.0 --title "v1.3.0 — Roadmap P0" --notes-file docs/relea
 
 - [ ] Cloud [MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md) 全过
 - [ ] Tracker 追加 Release 1.3 行
-- [ ] 更新 [智能文档处理系统设计方案.md](../architecture/智能文档处理系统设计方案.md) §10（可选）
+- [ ] 更新 [docuvision-system-design.md](../architecture/docuvision-system-design.md) §10（可选）

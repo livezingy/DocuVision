@@ -72,6 +72,7 @@ Test-Path test_data\testfiles\templates\id_document\id_card_sample_01.jpg
 ## 🎯 开始测试
 
 文件准备完成后，参考：
-- **详细测试步骤**：`docs/MANUAL_TESTING_GUIDE.md`
+- **云测步骤**：[docs/architecture/CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)
+- **验收索引**：[test_data/acceptance/README.md](README.md)
 - **API 文档**：`http://localhost:8000/docs`
 

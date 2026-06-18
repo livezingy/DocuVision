@@ -1,7 +1,7 @@
 # Release 1.0 发布清单
 
 > 目标 tag：**`v1.0.0`** · 日期：**2026-05-21** · 分支：`main`  
-> 范围定义见 [智能文档处理系统设计方案.md](../architecture/智能文档处理系统设计方案.md) §10「Release 1.0 范围」。
+> 范围定义见 [docuvision-system-design.md](../architecture/docuvision-system-design.md) §10「Release 1.0 范围」。
 
 ## 1. 代码与文档（仓库内）
 

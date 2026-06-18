@@ -104,13 +104,13 @@ const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 **功能**:
 - 显示 OCR 文本
-- 显示布局分析（Canvas 绘制）
-- 显示表格数据
+- 文档预览上的 SVG 布局叠加（hover 高亮）
+- 显示表格、图表、公式、印章等子 Tab
 - 显示导出选项
 
 **相关代码**:
 - 结果渲染: `renderAnalysisResults()`
-- Canvas 初始化: `loadUnifiedLayoutAnalysis()` (新增)
+- 预览与叠加: `updateDocumentPreview()`、`renderBlocks()`（SVG overlay）
 - 表格显示: `displayTableResults()`
 
 ### 4. 导出功能
@@ -138,17 +138,17 @@ const API_BASE_URL = 'http://localhost:8000/api/v1';
 - 批处理界面: Batch Processing 标签
 - 批处理 API: `/api/v1/batch`
 
-### 6. Canvas 布局显示 (新增)
+### 6. SVG 布局叠加
 
 **功能**:
-- 在文档上绘制布局元素
-- 支持鼠标交互（悬停、点击）
-- 显示元素类型和坐标
+- 在文档预览图像上绘制布局块（SVG `viewBox` 与图像坐标对齐）
+- 支持 hover 高亮与块类型标签
+- 与 Content 面板联动
 
 **相关代码**:
-- 初始化: `loadUnifiedLayoutAnalysis()`
-- Canvas 库: `frontend/layout-annotation.js`
-- 样式: Canvas 覆盖层 CSS
+- 叠加渲染: `renderBlocks()` in `app.js`
+- 预览容器: `#documentPage` / `#documentImage` in `index.html`
+- 样式: `styles.css`（`.layout-overlay` 等）
 
 ## 🎨 UI 布局
 
@@ -175,7 +175,7 @@ const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 ### 中列 - 文档预览
 - 当前文档显示
-- Canvas 布局覆盖层
+- SVG 布局叠加层
 - 分页导航
 
 ### 右列 - 结果显示
@@ -230,24 +230,22 @@ async function initializeAPIConnection() {
 - 如果无连接，显示警告信息
 - 提供清晰的用户反馈
 
-### Canvas 布局显示 (新增)
+### SVG 布局叠加
 
 ```javascript
-// app.js - 新增函数
-async function loadUnifiedLayoutAnalysis(taskId, pageNumber) {
-    // 1. 获取布局数据 API
-    // 2. 等待文档图像加载
-    // 3. 创建 Canvas 覆盖层
-    // 4. 初始化 LayoutAnnotator
-    // 5. 绘制布局元素
+// app.js — after result loads, updateDocumentPreview + renderBlocks
+async function updateDocumentPreview(result) {
+    // 1. Load page image from /api/v1/tasks/{id}/page-image/{page}
+    // 2. Fetch layout blocks when needed
+    // 3. renderBlocks() draws SVG overlay aligned to image natural size
 }
 ```
 
 **功能**:
-- 在图像上绘制识别的布局元素
-- 支持 14 种元素类型，不同颜色表示
-- 鼠标交互（悬停高亮、点击显示信息）
-- 右侧面板显示元素列表
+- 在预览图上绘制识别的布局块
+- 多种元素类型，颜色区分角色
+- 鼠标 hover 高亮
+- 与右侧 Content 子 Tab 同步
 
 ## 🔐 安全性考虑
 
@@ -295,7 +293,7 @@ console.log('[API] Fetching...');
 // 查看错误
 console.error('[Error]...');
 
-// 查看 Canvas 操作
+// 查看布局叠加
 console.log('[Layout] ...');
 ```
 
@@ -311,7 +309,7 @@ console.log('[Layout] ...');
 
 - **JavaScript**: 查看 `app.js` 中的注释和函数文档
 - **HTML/CSS**: 查看 `index.html` 和 `styles.css`
-- **Canvas**: 查看 `layout-annotation.js` 中的绘制代码
+- **Layout overlay**: `renderBlocks()` in `app.js`
 - **API**: 查看 `http://localhost:8000/docs` 的 Swagger 文档
 
 ## 🔄 常见修改

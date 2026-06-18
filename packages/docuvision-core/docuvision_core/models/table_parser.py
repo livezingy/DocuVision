@@ -101,59 +101,13 @@ class TableParser:
             
             for i, bbox in enumerate(boxes_arr):
                 try:
-                    # #region agent log
-                    from docuvision_core.utils.debug_utils import write_debug_log
-                    try:
-                        write_debug_log(
-                            location="table_parser.py:108",
-                            message="processing detected bbox",
-                            data={
-                                "bbox_index": i,
-                                "bbox": bbox.tolist() if hasattr(bbox, 'tolist') else str(bbox),
-                                "bbox_type": type(bbox).__name__
-                            },
-                            hypothesis_id="K"
-                        )
-                    except Exception as e:
-                        self.logger.warning(f"Debug log write failed at bbox processing: {e}")
-                    # #endregion
                     
                     # Comment.
                     bbox_arr = np.asarray(bbox).reshape(-1)
                     
-                    # #region agent log
-                    try:
-                        write_debug_log(
-                            location="table_parser.py:111",
-                            message="bbox reshaped",
-                            data={
-                                "bbox_index": i,
-                                "bbox_shape": bbox_arr.shape[0] if hasattr(bbox_arr, 'shape') else len(bbox_arr),
-                                "bbox_arr": bbox_arr.tolist() if hasattr(bbox_arr, 'tolist') else str(bbox_arr)
-                            },
-                            hypothesis_id="K"
-                        )
-                    except Exception as e:
-                        self.logger.warning(f"Debug log write failed at bbox reshape: {e}")
-                    # #endregion
                     
                     if bbox_arr.shape[0] < 4:
                         invalid_bbox_count += 1
-                        # #region agent log
-                        try:
-                            write_debug_log(
-                                location="table_parser.py:113",
-                                message="invalid bbox shape",
-                                data={
-                                    "bbox_index": i,
-                                    "bbox_shape": bbox_arr.shape[0] if hasattr(bbox_arr, 'shape') else len(bbox_arr),
-                                    "required": 4
-                                },
-                                hypothesis_id="K"
-                            )
-                        except Exception as e:
-                            self.logger.warning(f"Debug log write failed at invalid shape: {e}")
-                        # #endregion
                         self.logger.warning(f"Invalid bbox shape: {bbox}, skipping")
                         continue
                     
@@ -173,23 +127,6 @@ class TableParser:
                     }
                     is_valid = not any(violations.values())
                     
-                    # #region agent log
-                    try:
-                        write_debug_log(
-                            location="table_parser.py:117",
-                            message="bbox validation result",
-                            data={
-                                "bbox_index": i,
-                                "bbox": [float(x1), float(y1), float(x2), float(y2)],
-                                "img_size": [img_width, img_height],
-                                "is_valid": is_valid,
-                                "violations": violations
-                            },
-                            hypothesis_id="K"
-                        )
-                    except Exception as e:
-                        self.logger.warning(f"Debug log write failed at bbox validation: {e}")
-                    # #endregion
                     
                     if not is_valid:
                         invalid_bbox_count += 1
@@ -224,23 +161,6 @@ class TableParser:
                     self.logger.error(f"Error processing table {i}: {str(e)}")
                     continue
                     
-            # #region agent log
-            from docuvision_core.utils.debug_utils import write_debug_log
-            try:
-                write_debug_log(
-                    location="table_parser.py:147",
-                    message="parser_image completed",
-                    data={
-                        "total_bboxes": len(boxes_arr),
-                        "valid_bboxes": valid_bbox_count,
-                        "invalid_bboxes": invalid_bbox_count,
-                        "tables_parsed": len(tables)
-                    },
-                    hypothesis_id="K"
-                )
-            except Exception as e:
-                self.logger.warning(f"Debug log write failed at completion: {e}")
-            # #endregion
             
             self.logger.info(f"Successfully parsed {len(tables)} tables from image")
             return {'success': True, 'error': None, 'tables': tables}

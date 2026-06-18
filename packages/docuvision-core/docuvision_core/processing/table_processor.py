@@ -158,18 +158,6 @@ class TableProcessor:
 
     def process_pdf_page(self, pdf_path, page):
         """Docstring."""
-        # #region agent log
-        from docuvision_core.utils.debug_utils import write_debug_log
-        write_debug_log(
-            location="table_processor.py:147",
-            message="process_pdf_page entry",
-            data={
-                "pdf_path": str(pdf_path) if pdf_path else None,
-                "page_number": getattr(page, "page_number", None) if page else None
-            },
-            hypothesis_id="E"
-        )
-        # #endregion
         
         try:
             # Comment.
@@ -204,32 +192,11 @@ class TableProcessor:
             
             page_num = getattr(page, "page_number", 1)
             
-            # #region agent log
-            write_debug_log(
-                location="table_processor.py:176",
-                message="method and params extracted",
-                data={
-                    "method": method,
-                    "flavor": flavor,
-                    "score_threshold": score_threshold,
-                    "page_num": page_num
-                },
-                hypothesis_id="E"
-            )
-            # #endregion
             
             # Comment.
             try:
                 predicted_table_type = feature_analyzer.predict_table_type()
                 
-                # #region agent log
-                write_debug_log(
-                    location="table_processor.py:193",
-                    message="table type predicted",
-                    data={"predicted_table_type": predicted_table_type},
-                    hypothesis_id="D"
-                )
-                # #endregion
             except Exception as e:
                 self.logger.error(f"Failed to predict table type: {e}")
                 return []
@@ -244,18 +211,6 @@ class TableProcessor:
                     else:  # mixed method
                         flavor = "auto"
                     
-                    # #region agent log
-                    write_debug_log(
-                        location="table_processor.py:199",
-                        message="flavor auto-selected",
-                        data={
-                            "method": method,
-                            "predicted_table_type": predicted_table_type,
-                            "selected_flavor": flavor
-                        },
-                        hypothesis_id="E"
-                    )
-                    # #endregion
                 except Exception as e:
                     self.logger.error(f"Failed to set flavor: {e}")
                     return []
@@ -273,19 +228,6 @@ class TableProcessor:
                        (flavor == "stream" and predicted_table_type != "unbordered"):
                         is_mismatch = True
                 
-                # #region agent log
-                write_debug_log(
-                    location="table_processor.py:210",
-                    message="flavor mismatch check",
-                    data={
-                        "method": method,
-                        "flavor": flavor,
-                        "predicted_table_type": predicted_table_type,
-                        "is_mismatch": is_mismatch
-                    },
-                    hypothesis_id="E"
-                )
-                # #endregion
                 
                 if is_mismatch:
                     # Comment.
@@ -303,18 +245,6 @@ class TableProcessor:
             
             # Comment.
             try:
-                # #region agent log
-                write_debug_log(
-                    location="table_processor.py:242",
-                    message="starting table extraction",
-                    data={
-                        "method": method,
-                        "flavor": flavor,
-                        "score_threshold": score_threshold
-                    },
-                    hypothesis_id="E"
-                )
-                # #endregion
                 
                 if method == "pdfplumber":
                     results = self._process_pdfplumber(page, feature_analyzer, flavor, score_threshold)
@@ -326,18 +256,6 @@ class TableProcessor:
                     self.logger.error(f"Unknown table extraction method: {method}")
                     return []
                 
-                # #region agent log
-                write_debug_log(
-                    location="table_processor.py:252",
-                    message="table extraction completed",
-                    data={
-                        "method": method,
-                        "tables_found": len(results),
-                        "results": [{"score": r.get("score"), "source": r.get("source")} for r in results[:3]]
-                    },
-                    hypothesis_id="E"
-                )
-                # #endregion
                 
                 return results
             except Exception as e:

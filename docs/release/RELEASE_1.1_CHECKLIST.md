@@ -89,7 +89,7 @@ gh release create v1.1.0 --title "v1.1.0 — Pro KIE query fields" --notes-file 
 | **P1** | 文档类型自动分类、HITL、可搜索 PDF | 独立 feature |
 | **维护** | id_card 精度 / 样例 | `bugfix/*` 或 patch |
 
-产品对照（本地，不进 Git）：`test_data/TestResult/PLAN/Upwork文档处理需求与DocuVision能力分析.md`。
+产品对照（**local only, gitignored** — do not commit）：`test_data/TestResult/PLAN/Upwork文档处理需求与DocuVision能力分析.md` 及同目录其他 `*Upwork*` 规划稿。
 
 ## 7. 发版后检查
 

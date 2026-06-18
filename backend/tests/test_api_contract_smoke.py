@@ -159,15 +159,6 @@ async def run_contract_checks(test_file: Path | None, res: Results) -> None:
         r = await client.get(f"/api/v1/tasks/{fake_task_id}/result")
         res.add("GET missing task result", r.status_code == 404, f"status={r.status_code}")
 
-        r = await client.get(f"/api/v1/tasks/{fake_task_id}/canonical")
-        res.add("GET missing canonical", r.status_code == 404, f"status={r.status_code}")
-
-        r = await client.post(
-            f"/api/v1/tasks/{fake_task_id}/remapping",
-            json={"doc_type_hint": "invoice", "invalidate_cache": True},
-        )
-        res.add("POST remap missing task", r.status_code == 404, f"status={r.status_code}")
-
         r = await client.post(f"/api/v1/tasks/{fake_task_id}/cancel")
         res.add("POST cancel missing task", r.status_code == 404, f"status={r.status_code}")
 

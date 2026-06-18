@@ -5,9 +5,9 @@
       "document_type": "invoice",
       "options": {
         "document_type": "invoice",
-        "enable_layout": true,
-        "enable_table": false,
         "enable_kie": true,
+        "enable_layout": false,
+        "enable_table": false,
         "kie_pages": "1"
       },
       "files": [
@@ -18,49 +18,6 @@
         "invoices/multipage/invoice_multipage_3p_items.pdf",
         "invoices/sample-invoice.png"
       ]
-    },
-    {
-      "name": "kie_receipt_4",
-      "document_type": "receipt",
-      "options": {
-        "document_type": "receipt",
-        "enable_layout": true,
-        "enable_table": false,
-        "enable_kie": true,
-        "kie_pages": "1"
-      },
-      "files": [
-        "receipts/receipt-with-tips.png",
-        "receipts/contoso-receipt.png",
-        "receipts/receipt_sample_01.jpg",
-        "receipts/multipage/receipt_multipage_2p.pdf"
-      ]
-    },
-    {
-      "name": "kie_mixed_8",
-      "document_type": "invoice",
-      "options": {
-        "document_type": "invoice",
-        "enable_layout": true,
-        "enable_table": false,
-        "enable_kie": true,
-        "kie_pages": "1"
-      },
-      "files": [
-        "invoices/sample-invoice.png",
-        "invoices/invoice_sample_01.pdf",
-        "invoices/multipage/invoice_multipage_2p_header_detail.pdf",
-        "receipts/receipt-with-tips.png",
-        "receipts/contoso-receipt.png",
-        "invoices/receipt-invoice-like.png",
-        "receipts/receipt_sample_01.jpg",
-        "invoices/multipage/invoice_multipage_3p_items.pdf"
-      ],
-      "file_document_types": {
-        "receipts/receipt-with-tips.png": "receipt",
-        "receipts/contoso-receipt.png": "receipt",
-        "receipts/receipt_sample_01.jpg": "receipt"
-      }
     }
   ]
 }

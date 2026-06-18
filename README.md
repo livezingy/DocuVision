@@ -86,6 +86,16 @@ Lite API: [docs/architecture/lite-api.md](docs/architecture/lite-api.md). Limita
 
 ---
 
+## Documentation
+
+- **Index**: [docs/README.md](docs/README.md)
+- **System design**: [docuvision-system-design.md](docs/architecture/docuvision-system-design.md)
+- **Cloud validation**: [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md)
+- **Acceptance**: [test_data/acceptance/README.md](test_data/acceptance/README.md)
+- **Release archive**: [docs/release/README.md](docs/release/README.md)
+
+---
+
 
 ## License
 

@@ -1,6 +1,6 @@
 # 文档级 KIE（关键信息抽取）
 
-> 本文档描述 **当前实现** 与 **对外契约**；系统总纲见 [智能文档处理系统设计方案.md](./智能文档处理系统设计方案.md) §7.8、§9。云端验收记录见 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)。**GPU 环境验证顺序**见 [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)。
+> 本文档描述 **当前实现** 与 **对外契约**；系统总纲见 [docuvision-system-design.md](./docuvision-system-design.md) §7.8、§9。云端验收记录见 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)。**GPU 环境验证顺序**见 [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)。
 
 ## 1. 目标与范围
 

@@ -353,7 +353,7 @@ Lite 采用与 Pro 一致的三栏结构：
 
 ### 10.2 可选 Content 子 Tab（Transactions / Mapped）
 
-Lite 与 Pro 共用 [`frontend/shared/ui-features.js`](../../frontend/shared/ui-features.js) 控制 **Transactions**、**Mapped** 子 Tab 的显示。当前默认隐藏；用途与启用步骤见 [`智能文档处理系统设计方案.md`](./智能文档处理系统设计方案.md) §9.2。
+Lite 与 Pro 共用 [`frontend/shared/ui-features.js`](../../frontend/shared/ui-features.js) 控制 **Transactions**、**Mapped** 子 Tab 的显示。当前默认隐藏；用途与启用步骤见 [`docuvision-system-design.md`](./docuvision-system-design.md) §9.2。
 
 ---
 

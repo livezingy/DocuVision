@@ -7,7 +7,7 @@ from app.core.gpu_lib_path import ensure_pro_gpu_lib_path
 LIVE_API_HEALTH_URL = "http://localhost:8000/health"
 LIVE_API_SKIP_MESSAGE = f"Live API not reachable at {LIVE_API_HEALTH_URL}"
 
-_LIVE_API_TEST_MODULES = frozenset({"test_api.py", "test_e2e.py"})
+_LIVE_API_TEST_MODULES = frozenset({"test_live_api.py"})
 
 
 def live_api_reachable() -> bool:

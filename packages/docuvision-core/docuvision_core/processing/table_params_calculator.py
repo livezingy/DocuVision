@@ -4,7 +4,6 @@
 from typing import Dict, Optional, Tuple
 import numpy as np
 from docuvision_core.utils.logger import AppLogger
-from docuvision_core.utils.debug_utils import write_debug_log
 import math
 
 
@@ -20,18 +19,6 @@ class TableParamsCalculator:
     
     def get_pdfplumber_params(self, table_type: str = 'bordered') -> Dict:
         """Docstring."""
-        # #region agent log
-        try:
-            write_debug_log(
-                location="table_params_calculator.py:39",
-                message="get_pdfplumber_params entry",
-                data={"table_type": table_type},
-                hypothesis_id="A"
-            )
-        except Exception as e:
-            # Comment.
-            self.logger.warning(f"Debug log write failed at entry: {e}")
-        # #endregion
         
         # Comment.
         h_lines = self.analyzer.line_analysis.get('horizontal_lines', [])
@@ -39,43 +26,12 @@ class TableParamsCalculator:
         h_count = len(h_lines)
         v_count = len(v_lines)
         
-        # #region agent log
-        try:
-            write_debug_log(
-                location="table_params_calculator.py:54",
-                message="line counts extracted",
-                data={"h_count": h_count, "v_count": v_count},
-                hypothesis_id="B"
-            )
-        except Exception as e:
-            # Comment.
-            self.logger.warning(f"Debug log write failed at line counts: {e}")
-        # #endregion
         
         # Comment.
         if table_type == 'bordered':
             vertical_strategy = 'lines' if v_count >= 5 else 'text'
             horizontal_strategy = 'lines' if h_count >= 10 else 'text'
             
-            # #region agent log
-            try:
-                write_debug_log(
-                    location="table_params_calculator.py:59",
-                    message="strategy selected for bordered table",
-                    data={
-                        "vertical_strategy": vertical_strategy,
-                        "horizontal_strategy": horizontal_strategy,
-                        "v_count": v_count,
-                        "h_count": h_count,
-                        "v_threshold_met": v_count >= 5,
-                        "h_threshold_met": h_count >= 10
-                    },
-                    hypothesis_id="B"
-                )
-            except Exception as e:
-                # Comment.
-                self.logger.warning(f"Debug log write failed at strategy selection: {e}")
-            # #endregion
             
             self.logger.debug(
                 f"Bordered table strategy: V={vertical_strategy}(count={v_count}), "
@@ -85,23 +41,6 @@ class TableParamsCalculator:
             vertical_strategy = 'text'
             horizontal_strategy = 'lines' if h_count >= 3 else 'text'
             
-            # #region agent log
-            try:
-                write_debug_log(
-                    location="table_params_calculator.py:67",
-                    message="strategy selected for unbordered table",
-                    data={
-                        "vertical_strategy": vertical_strategy,
-                        "horizontal_strategy": horizontal_strategy,
-                        "h_count": h_count,
-                        "h_threshold_met": h_count >= 3
-                    },
-                    hypothesis_id="B"
-                )
-            except Exception as e:
-                # Comment.
-                self.logger.warning(f"Debug log write failed at unbordered strategy selection: {e}")
-            # #endregion
             
             self.logger.debug(
                 f"Unbordered table strategy: V={vertical_strategy}, "
@@ -135,38 +74,6 @@ class TableParamsCalculator:
         }
         
         # Comment.
-        # #region agent log
-        try:
-            char_analysis = self.analyzer.char_analysis
-            char_min_width = char_analysis.get('min_width', 0) if isinstance(char_analysis, dict) else 0
-            char_min_height = char_analysis.get('min_height', 0) if isinstance(char_analysis, dict) else 0
-            try:
-                write_debug_log(
-                    location="table_params_calculator.py:151",
-                    message="char analysis values before snap_tolerance calculation",
-                    data={
-                        "min_width": char_min_width,
-                        "min_height": char_min_height,
-                        "both_positive": char_min_width > 0 and char_min_height > 0,
-                        "char_analysis_type": type(char_analysis).__name__,
-                        "char_analysis_keys": list(char_analysis.keys()) if isinstance(char_analysis, dict) else []
-                    },
-                    hypothesis_id="A"
-                )
-            except Exception as log_e:
-                # Comment.
-                self.logger.warning(f"Debug log write failed at char_analysis: {log_e}")
-        except Exception as e:
-            try:
-                write_debug_log(
-                    location="table_params_calculator.py:151",
-                    message="char analysis access failed",
-                    data={"error": str(e)},
-                    hypothesis_id="A"
-                )
-            except:
-                self.logger.warning(f"Debug log write failed for error log: {e}")
-        # #endregion
         
         if self.analyzer.char_analysis.get('min_width', 0) > 0 and self.analyzer.char_analysis.get('min_height', 0) > 0:
             min_char_size = min(self.analyzer.char_analysis['min_width'], 
@@ -184,31 +91,6 @@ class TableParamsCalculator:
             
             params['snap_tolerance'] = max(0.5, min(raw_snap_tolerance, max_snap_tolerance))
             
-            # #region agent log
-            try:
-                write_debug_log(
-                    location="table_params_calculator.py:170",
-                    message="snap_tolerance calculated and clamped",
-                    data={
-                        "snap_tolerance": params['snap_tolerance'],
-                        "raw_value": raw_snap_tolerance,
-                        "min_char_size": min_char_size,
-                        "max_snap_tolerance": max_snap_tolerance,
-                        "is_valid": 0.5 <= params['snap_tolerance'] <= max_snap_tolerance
-                    },
-                    hypothesis_id="A"
-                )
-            except Exception as e:
-                try:
-                    write_debug_log(
-                        location="table_params_calculator.py:170",
-                        message="snap_tolerance log failed",
-                        data={"error": str(e), "snap_tolerance": params.get('snap_tolerance')},
-                        hypothesis_id="A"
-                    )
-                except:
-                    self.logger.warning(f"Debug log write failed for snap_tolerance: {e}")
-            # #endregion
             
             self.logger.debug(
                 f"snap_tolerance={params['snap_tolerance']:.2f} "
@@ -325,23 +207,6 @@ class TableParamsCalculator:
         params_before_validation = params.copy()
         params = self._validate_params(params)
         
-        # #region agent log
-        params_changed = {k: v for k, v in params.items() if k in params_before_validation and params_before_validation[k] != v}
-        try:
-            write_debug_log(
-                location="table_params_calculator.py:208",
-                message="final params after validation",
-                data={
-                    "params": params,
-                    "params_changed": params_changed,
-                    "validation_applied": len(params_changed) > 0
-                },
-                hypothesis_id="C"
-            )
-        except Exception as e:
-            # Comment.
-            self.logger.warning(f"Debug log write failed at final params: {e}")
-        # #endregion
         
         self.logger.debug(f"Final pdfplumber params: {params}")
         

@@ -168,6 +168,6 @@
 ## 📚 相关文档
 
 - 测试数据说明：`test_data/acceptance/README.md`
-- 手动测试步骤：`docs/MANUAL_TESTING_GUIDE.md`
+- 云测步骤：`docs/architecture/CLOUD_VALIDATION.md`
 - API 文档：`http://localhost:8000/docs`
 

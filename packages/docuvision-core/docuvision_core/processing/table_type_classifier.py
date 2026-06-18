@@ -127,47 +127,14 @@ class TableTypeClassifier:
     
     def _quick_alignment_check(self, lines, direction):
         """Docstring."""
-        # #region agent log
-        from docuvision_core.utils.debug_utils import write_debug_log
-        write_debug_log(
-            location="table_type_classifier.py:254",
-            message="alignment check entry",
-            data={
-                "lines_count": len(lines),
-                "direction": direction
-            },
-            hypothesis_id="D"
-        )
-        # #endregion
         
         if len(lines) < 3:
-            # #region agent log
-            write_debug_log(
-                location="table_type_classifier.py:269",
-                message="alignment check: insufficient lines",
-                data={"lines_count": len(lines), "min_required": 3},
-                hypothesis_id="D"
-            )
-            # #endregion
             return 0.0
         
         # Comment.
         coord_key = 'y0' if direction == 'horizontal' else 'x0'
         coords = sorted([line[coord_key] for line in lines])
         
-        # #region agent log
-        write_debug_log(
-            location="table_type_classifier.py:273",
-            message="coordinates extracted and sorted",
-            data={
-                "direction": direction,
-                "coord_key": coord_key,
-                "coords_count": len(coords),
-                "coord_range": [min(coords), max(coords)] if coords else None
-            },
-            hypothesis_id="D"
-        )
-        # #endregion
         
         # Comment.
         tolerance = 3
@@ -184,55 +151,16 @@ class TableTypeClassifier:
                 current_group = [coords[i]]
         groups.append(current_group)
         
-        # #region agent log
-        write_debug_log(
-            location="table_type_classifier.py:289",
-            message="coordinates grouped",
-            data={
-                "direction": direction,
-                "tolerance": tolerance,
-                "groups_count": len(groups),
-                "group_sizes": [len(g) for g in groups],
-                "max_group_size": max(len(g) for g in groups) if groups else 0
-            },
-            hypothesis_id="D"
-        )
-        # #endregion
         
         # Comment.
         max_group_size = max(len(g) for g in groups)
         alignment_ratio = max_group_size / len(coords)
         
-        # #region agent log
-        write_debug_log(
-            location="table_type_classifier.py:293",
-            message="alignment ratio calculated",
-            data={
-                "direction": direction,
-                "max_group_size": max_group_size,
-                "total_coords": len(coords),
-                "alignment_ratio": alignment_ratio
-            },
-            hypothesis_id="D"
-        )
-        # #endregion
         
         return alignment_ratio
     
     def _calculate_dynamic_threshold(self):
         """Docstring."""
-        # #region agent log
-        from docuvision_core.utils.debug_utils import write_debug_log
-        write_debug_log(
-            location="table_type_classifier.py:297",
-            message="dynamic threshold calculation entry",
-            data={
-                "page_width": float(self.page.width),
-                "page_height": float(self.page.height)
-            },
-            hypothesis_id="D"
-        )
-        # #endregion
         
         # Comment.
         a4_width = 595.0
@@ -246,18 +174,6 @@ class TableTypeClassifier:
         # Comment.
         area_ratio = page_area / a4_area
         
-        # #region agent log
-        write_debug_log(
-            location="table_type_classifier.py:319",
-            message="area ratio calculated",
-            data={
-                "a4_area": a4_area,
-                "page_area": float(page_area),
-                "area_ratio": float(area_ratio)
-            },
-            hypothesis_id="D"
-        )
-        # #endregion
         
         # Comment.
         # Comment.
@@ -267,19 +183,6 @@ class TableTypeClassifier:
         # Comment.
         dynamic_threshold = max(10, min(dynamic_threshold, 30))
         
-        # #region agent log
-        write_debug_log(
-            location="table_type_classifier.py:323",
-            message="dynamic threshold calculated and clamped",
-            data={
-                "base_threshold": base_threshold,
-                "raw_threshold": float(raw_threshold),
-                "final_threshold": dynamic_threshold,
-                "was_clamped": dynamic_threshold != int(raw_threshold) or dynamic_threshold < 10 or dynamic_threshold > 30
-            },
-            hypothesis_id="D"
-        )
-        # #endregion
         
         self.logger.debug(
             f"Dynamic threshold calculation: page size={self.page.width:.1f}x{self.page.height:.1f}pt, "

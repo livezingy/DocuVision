@@ -79,21 +79,6 @@ class TableVisualize:
 
     def visualize_cell_detection(self, table_image: Image.Image, cell_coordinates: List[Dict], save_path: Optional[str] = None) -> bool:
         """Docstring."""
-        # #region agent log
-        from docuvision_core.utils.debug_utils import write_debug_log
-        try:
-            write_debug_log(
-                location="table_visualize.py:92",
-                message="visualize_cell_detection entry",
-                data={
-                    "cell_coordinates_count": len(cell_coordinates),
-                    "image_mode": table_image.mode if table_image else None
-                },
-                hypothesis_id="J"
-            )
-        except Exception as e:
-            self.logger.warning(f"Debug log write failed at visualize_cell_detection entry: {e}")
-        # #endregion
         
         try:
             # Comment.
@@ -103,21 +88,6 @@ class TableVisualize:
             # Comment.
             img_width, img_height = table_image.size
             
-            # #region agent log
-            try:
-                write_debug_log(
-                    location="table_visualize.py:110",
-                    message="image size extracted",
-                    data={
-                        "img_width": img_width,
-                        "img_height": img_height,
-                        "image_mode": table_image.mode
-                    },
-                    hypothesis_id="J"
-                )
-            except Exception as e:
-                self.logger.warning(f"Debug log write failed at image size: {e}")
-            # #endregion
             
             # Comment.
             fig_width = 16
@@ -143,23 +113,6 @@ class TableVisualize:
                 for col_idx, cell_data in enumerate(row_cells):
                     cell_bbox = cell_data['cell']
                     
-                    # #region agent log
-                    try:
-                        write_debug_log(
-                            location="table_visualize.py:131",
-                            message="cell bbox before validation",
-                            data={
-                                "row": row_idx,
-                                "col": col_idx,
-                                "bbox": cell_bbox,
-                                "bbox_type": type(cell_bbox).__name__,
-                                "bbox_len": len(cell_bbox) if hasattr(cell_bbox, '__len__') else None
-                            },
-                            hypothesis_id="J"
-                        )
-                    except Exception as e:
-                        self.logger.warning(f"Debug log write failed at bbox before validation: {e}")
-                    # #endregion
                     
                     if len(cell_bbox) >= 4:
                         x1, y1, x2, y2 = cell_bbox
@@ -175,24 +128,6 @@ class TableVisualize:
                         }
                         is_valid = not any(violations.values())
                         
-                        # #region agent log
-                        try:
-                            write_debug_log(
-                                location="table_visualize.py:136",
-                                message="cell bbox validation result",
-                                data={
-                                    "row": row_idx,
-                                    "col": col_idx,
-                                    "bbox": [float(x1), float(y1), float(x2), float(y2)],
-                                    "img_size": [img_width, img_height],
-                                    "is_valid": is_valid,
-                                    "violations": violations
-                                },
-                                hypothesis_id="J"
-                            )
-                        except Exception as e:
-                            self.logger.warning(f"Debug log write failed at bbox validation: {e}")
-                        # #endregion
                         
                         if not is_valid:
                             invalid_count += 1
@@ -216,39 +151,8 @@ class TableVisualize:
                                bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.7))
                     else:
                         invalid_count += 1
-                        # #region agent log
-                        try:
-                            write_debug_log(
-                                location="table_visualize.py:154",
-                                message="invalid bbox format",
-                                data={
-                                    "row": row_idx,
-                                    "col": col_idx,
-                                    "bbox": cell_bbox,
-                                    "bbox_len": len(cell_bbox) if hasattr(cell_bbox, '__len__') else None
-                                },
-                                hypothesis_id="J"
-                            )
-                        except Exception as e:
-                            self.logger.warning(f"Debug log write failed at invalid format: {e}")
-                        # #endregion
                         self.logger.warning(f"Invalid cell bbox format at R{row_idx+1}C{col_idx+1}: {cell_bbox}")
             
-            # #region agent log
-            try:
-                write_debug_log(
-                    location="table_visualize.py:156",
-                    message="cell detection visualization completed",
-                    data={
-                        "valid_count": valid_count,
-                        "invalid_count": invalid_count,
-                        "total_cells": valid_count + invalid_count
-                    },
-                    hypothesis_id="J"
-                )
-            except Exception as e:
-                self.logger.warning(f"Debug log write failed at completion: {e}")
-            # #endregion
             
             plt.axis('off')
             plt.title("Cell Detection Results", fontsize=16, fontweight='bold')

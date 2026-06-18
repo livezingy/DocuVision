@@ -166,7 +166,8 @@ site/
 docker/
 docs/*
 !docs/architecture/
-!docs/architecture/智能文档处理系统设计方案.md
+!docs/architecture/docuvision-system-design.md
+!docs/README.md
 !docs/architecture/media/
 !docs/architecture/media/**
 !docs/demo/
@@ -174,6 +175,7 @@ docs/*
 !docs/release/
 !docs/release/**
 docs/R&D/**
+!docs/R&D/README.md
 
 # Intentionally not versioned / removed from repo (maintainer-local or retired paths)
 .claude/
@@ -181,8 +183,6 @@ docs/R&D/**
 /CONTRIBUTING.md
 /STARTUP_GUIDE.md
 /REMAINING_ISSUES_TRACKER.md
-/docs/DATA_FLOW_DIAGRAM.md
-/docs/AZURE_CONTRACT_AND_PADDLE_OUTPUT_DISCOVERY.md
 # Tests: ignore __pycache__ and result artefacts but commit source files
 tests/**/__pycache__/
 backend/tests/__pycache__/
@@ -234,6 +234,8 @@ test_data/testfiles/GeneralFiles_staging/
 
 # Cloud test screenshots / artifacts (not versioned)
 test_data/TestResult/
+test_data/TestResult/PLAN/
+*Upwork*
 
 # Test data (keep structure but ignore actual test files)
 test_data/**/*.pdf

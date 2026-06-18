@@ -1,19 +1,30 @@
 # 测试数据说明
 
-仓库中 **`test_data/` 根下仅四个目录**：`acceptance/`（本说明与验收矩阵）、`testfiles/`（分类样例）、`Azure/`（参考 JSON）、`TestResult/`（本地临时输出，**不提交 Git**）。
+仓库中 **`test_data/` 根下目录**：
+
+| 目录 | 用途 | Git |
+|------|------|-----|
+| `acceptance/` | 验收矩阵、清单、快速开始 | tracked |
+| `AutoTest/` | 自动化测试规划 | tracked |
+| `scripts/` | 验收脚本（batch KIE、fixture 生成等） | tracked |
+| `testfiles/` | 分类样例（pdf、images、invoices 等） | tracked |
+| `Azure/` | Azure Layout / DI 风格参考 JSON | tracked |
+| `TestResult/` | 本地截图、导出、规划稿 | **gitignored** |
 
 ## 📁 `test_data` 根目录结构
 
 ```
 test_data/
 ├── acceptance/     # 验收矩阵、清单、快速开始
-├── testfiles/      # 所有待测/固定样例：pdf、images、templates 等（路径均相对本目录）
-├── Azure/          # Azure Layout / DI 风格参考 JSON（纳入版本库）
-├── TestResult/     # 云端截图、导出缓存等（已在 test_data/.gitignore 中忽略）
+├── AutoTest/       # Playwright E2E 等自动化规划
+├── scripts/        # 验收与 fixture 脚本
+├── testfiles/      # 所有待测/固定样例
+├── Azure/          # Azure 参考 JSON
+├── TestResult/     # 本地产物（gitignored）
 └── .gitignore      # 仅忽略 TestResult/
 ```
 
-样例文件的**物理路径**形如：`test_data/testfiles/pdf/text_based/sample_report.pdf`（即原 `test_data/pdf/...` 已迁入 `testfiles/`）。
+样例文件的**物理路径**形如：`test_data/testfiles/pdf/sample_report.pdf`（原 `test_data/pdf/...` 已迁入 `testfiles/`）。
 
 ## 云端与旧目录（Git 之外）
 
@@ -168,7 +179,8 @@ test_data/
 
 ## 🔗 相关文档
 
-- 手动测试步骤：`docs/MANUAL_TESTING_GUIDE.md`
+- 云测步骤：[docs/architecture/CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)
+- 快速开始：[QUICK_START.md](QUICK_START.md)
+- 文档索引：[docs/README.md](../../docs/README.md)
 - API 文档：`http://localhost:8000/docs`
-- 测试指南：`docs/TESTING_GUIDE.md`
 

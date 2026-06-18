@@ -11,9 +11,8 @@ Cloud REPL / terminal usage:
 Test stages:
     Stage 1  Basic endpoints  GET /  /health  /api/v1/engines
     Stage 2  File upload      POST /api/v1/upload
-    Stage 3  Analyze pipeline POST /api/v1/analyze -> poll status -> GET canonical
-    Stage 4  Remapping        POST /api/v1/tasks/{id}/remapping
-    Stage 5  GZIP check       Accept-Encoding: gzip -> Content-Encoding: gzip
+    Stage 3  Analyze pipeline POST /api/v1/analyze -> poll status -> GET result
+    Stage 4  GZIP check       Accept-Encoding: gzip -> Content-Encoding: gzip
 """
 
 import argparse
@@ -31,11 +30,11 @@ _BACKEND_DIR = _SCRIPT_DIR.parent                      # backend/
 _PROJECT_ROOT = _BACKEND_DIR.parent                    # project root
 
 _DEFAULT_TEST_FILE_CANDIDATES = [
-    _PROJECT_ROOT / "test_data" / "images" / "scanned" / "scanned_page_02.jpg",
-    _PROJECT_ROOT / "test_data" / "images" / "scanned" / "scanned_page_01.jpg",
-    _PROJECT_ROOT / "test_data" / "images" / "photos",          # directory - pick first child
-    _PROJECT_ROOT / "test_data" / "pdf" / "text_based",
-    _PROJECT_ROOT / "test_data" / "pdf" / "image_based",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie" / "id_card_sample_01.jpg",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "invoices" / "sample-invoice.png",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "images" / "kie",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "pdf",
+    _PROJECT_ROOT / "test_data" / "testfiles" / "invoices",
 ]
 
 
@@ -146,10 +145,10 @@ async def run_tests(test_file: Path | None, lang: str, skip_pipeline: bool, resu
                         f"ocr={ocr_avail}  layout={lay_avail}")
 
         if skip_pipeline:
-            print(_warn("--skip-pipeline: skipping Stages 2-5"))
+            print(_warn("--skip-pipeline: skipping Stages 2-4"))
             return
 
-        # Stage 2 & 3: Upload -> Analyze -> Poll -> Canonical
+        # Stage 2 & 3: Upload -> Analyze -> Poll -> Result
         print(f"\n{_CYAN}-- Stage 2-3: Upload + Analyze pipeline --{_RESET}")
 
         if test_file is None:
@@ -213,39 +212,24 @@ async def run_tests(test_file: Path | None, lang: str, skip_pipeline: bool, resu
             if final_status != "completed":
                 return
 
-            # Canonical
-            rc = await long_client.get(
-                f"/api/v1/tasks/{task_id}/canonical",
-                params={"include_raw": "false"},
-            )
-            can_ok = rc.status_code == 200
-            if can_ok:
-                data   = rc.json()
-                blocks = data.get("blocks", data.get("content_blocks", []))
-                fields = {k: data[k] for k in ("doc_id", "schema_version", "total_pages")
-                          if k in data}
-                results.record("GET canonical", True,
-                               f"blocks={len(blocks)}  meta={fields}")
+            rr = await long_client.get(f"/api/v1/tasks/{task_id}/result")
+            result_ok = rr.status_code == 200
+            if result_ok:
+                data = rr.json()
+                has_layout = isinstance(data.get("layout"), dict) and bool(data.get("layout"))
+                view = data.get("view") if isinstance(data.get("view"), dict) else {}
+                has_view = bool(view.get("pages"))
+                results.record("GET result", True,
+                               f"layout={has_layout}  view_pages={len(view.get('pages', []))}")
             else:
-                results.record("GET canonical", False,
-                               f"status={rc.status_code}  {rc.text[:120]}")
+                results.record("GET result", False,
+                               f"status={rr.status_code}  {rr.text[:120]}")
                 return
 
-            # Stage 4: Remapping
-            print(f"\n{_CYAN}-- Stage 4: Remapping --{_RESET}")
-            rr = await long_client.post(
-                f"/api/v1/tasks/{task_id}/remapping",
-                json={"doc_type_hint": "invoice", "invalidate_cache": True},
-            )
-            remap_ok = rr.status_code == 200
-            results.record("POST remapping", remap_ok,
-                           f"status={rr.status_code}" + (f"  {rr.json().get('status','?')}" if remap_ok else f"  {rr.text[:120]}"))
-
-            # Stage 5: GZIP verification
-            print(f"\n{_CYAN}-- Stage 5: GZIP compression --{_RESET}")
+            # Stage 4: GZIP verification
+            print(f"\n{_CYAN}-- Stage 4: GZIP compression --{_RESET}")
             rg = await long_client.get(
-                f"/api/v1/tasks/{task_id}/canonical",
-                params={"include_raw": "false"},
+                f"/api/v1/tasks/{task_id}/result",
                 headers={"Accept-Encoding": "gzip"},
             )
             enc = rg.headers.get("content-encoding", "")
@@ -275,7 +259,7 @@ def main() -> None:
         test_file = _find_default_test_file()
         if test_file is None:
             print(_warn("No default test file found. Pipeline stages will be skipped."))
-            print(_warn("Hint: add an image under test_data/testfiles/images/scanned/ or pass --file."))
+            print(_warn("Hint: add an image under test_data/testfiles/invoices/ or pass --file."))
         else:
             print(_info(f"Auto-selected test file: {test_file}"))
     else:

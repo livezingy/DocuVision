@@ -2,7 +2,7 @@
 
 > 版本：v1.1  
 > 基线：Release 1.0.1 Pro KIE  
-> 关联：[kie.md](./kie.md)、[智能文档处理系统设计方案.md](./智能文档处理系统设计方案.md) §10
+> 关联：[kie.md](./kie.md)、[docuvision-system-design.md](./docuvision-system-design.md) §10
 
 ## 1. 目标
 

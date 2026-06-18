@@ -143,24 +143,6 @@ class TableModels:
                 if not _is_valid_local_path(path_or_id):
                     normalized_path = local_dir
 
-                # #region agent log
-                from docuvision_core.utils.debug_utils import write_debug_log
-                try:
-                    write_debug_log(
-                        location="table_models.py:100",
-                        message="loading model and processor",
-                        data={
-                            "kind": kind,
-                            "original_path": path_or_id,
-                            "normalized_path": normalized_path,
-                            "is_valid_local": _is_valid_local_path(path_or_id),
-                            "path_exists": os.path.exists(normalized_path) if normalized_path else False
-                        },
-                        hypothesis_id="L"
-                    )
-                except Exception as e:
-                    self.logger.warning(f"Debug log write failed: {e}")
-                # #endregion
 
                 if local_model_ready(Path(normalized_path)):
                     try:
@@ -194,21 +176,6 @@ class TableModels:
                 )
                 model_id = _resolve_model_id(path_or_id, kind)
 
-                # #region agent log
-                try:
-                    write_debug_log(
-                        location="table_models.py:114",
-                        message="falling back to HuggingFace Hub",
-                        data={
-                            "kind": kind,
-                            "local_path": normalized_path,
-                            "hf_model_id": model_id,
-                        },
-                        hypothesis_id="L"
-                    )
-                except Exception as e:
-                    self.logger.warning(f"Debug log write failed: {e}")
-                # #endregion
 
                 os.makedirs(normalized_path, exist_ok=True)
                 model = TableTransformerForObjectDetection.from_pretrained(model_id).to(self.device)

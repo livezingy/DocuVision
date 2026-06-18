@@ -1,6 +1,11 @@
+---
+description: DocuVision project workflow, cloud validation, and doc reading map
+alwaysApply: true
+---
+
 ## 关于项目
 
-当前项目是使用paddle组件 [仿Azure智能文档处理系统] 。`test_data/Azure/` 下为 Azure 风格参考 JSON；历史若曾使用 `test_data/Azure/AzureDocs` 等路径，以仓库当前 `test_data` 四目录布局为准。
+当前项目是使用 Paddle 组件的 [仿 Azure 智能文档处理系统]。`test_data/Azure/` 下为 Azure 风格参考 JSON；样例与验收矩阵见 `test_data/testfiles/`、`test_data/acceptance/`（完整布局见 `test_data/acceptance/README.md`）。
 
 ## 技术栈
 
@@ -11,46 +16,69 @@
 ## 开发环境
 
 - 本地环境**未安装** Paddle（paddlepaddle / paddleocr / paddlex）及 **Qwen2.5-VL 相关栈**（如 `torch` + `transformers` 大模型推理）。本地以**改代码、走静态检查/审查**为主，不做依赖 GPU 或完整推理链的本地跑通。
-- 工作流：本地修改代码 → 提交至 Git → **腾讯 Cloud Studio GPU** 环境拉取代码后安装依赖并运行/调试；云端环境**不**作为日常改代码的主场所（与既有约定一致：Cloud 中不对业务代码做持久修改时，以 Git 为真源）。
+- 工作流：本地修改代码 → 提交至 Git → **腾讯 Cloud Studio GPU** 拉取后安装依赖并验证；云端不以持久改业务代码为主场所，**Git 为真源**。
 
 ## 测试与验证（pytest）
 
-- **本地无 backend 完整依赖**（无 Paddle / Qwen 等与线上一致的 venv）。**禁止在本地仓库内执行 `pytest` 作为验证手段**；助手**不得**在本地调用终端去跑 backend 的 pytest 并据此声称「已验证通过」。
-- **DocuVision Lite**：本地仅改代码与 `apps/lite/backend/tests/`、`packages/docuvision-core/tests/`；验收见 [apps/lite/backend/tests/README.md](../apps/lite/backend/tests/README.md) 与 GitHub Actions `CI Lite`（**PR 至 main 自动跑**；日常 push 默认不触发，见 `003-git.mdc`）。**勿在本地检查 Python 是否可用**。
-- **pytest 仅在云端（腾讯 Cloud Studio GPU-environment 等与线上一致的依赖环境）由用户执行**；助手默认**不**代替用户在云端跑测，除非用户明确要求助手在可联网/可执行命令的环境中代跑。
-- 改动了后端/KIE/编排等与运行时强相关的逻辑时，助手应在交付说明中给出**供用户在云端复制执行的命令**及**期望结果**（见下节「何时必须先测」）。
-- 「改完主动跑验证」：对用户而言在云端执行；助手侧以**给出可复制的云端命令 + 期望**代替本地 pytest。
+| 范围 | 在哪里跑 | 助手本地能否 pytest |
+|------|----------|---------------------|
+| **Pro backend 契约** | Cloud Studio GPU / GitHub `kie-phase-a.yml` | **禁止**；不得声称本地 pytest 已通过 |
+| **Pro live API** | Cloud，`python run.py` 已启动 | **禁止**；见 `test_live_api.py` |
+| **Lite + docuvision-core** | GitHub `CI Lite`（PR→main）/ Cloud | **禁止**本地 pytest；以 CI + Cloud 为准 |
+| **前端 Vitest** | 本地或 Cloud（`npm install` 后） | 允许（无 Paddle） |
+
+- 改动了后端/KIE/编排等与运行时强相关的逻辑时，交付说明须给出**可复制 Cloud 命令 + 期望**（见 `008-cloud-testing.mdc` 与 `CLOUD_VALIDATION.md`）。
+- 多数改动**不硬等** Cloud 结果；助手应继续交付并在末尾附**建议 pytest 范围**。
 
 ### 何时必须先由云端 pytest 再继续
 
-- **多数改动不以此为硬门槛**：若逻辑上**不依赖**你先在云端跑 pytest 才能继续（例如文档、样式、与已知失败无关的增量修复），助手应**直接继续修改**，并在本轮交付末尾附上**建议云端执行的 pytest 范围**供你择机跑。
-- **需要你先测再迭代时**，助手须明确写出（示例，随改动调整）：
-  - **建议命令**（在 `backend/` 下、已激活与线上一致的 venv）：
-    - `pytest tests/test_kie_service.py -q`
-    - `pytest tests/test_kie_return_raw_contract.py -q`
-    - `pytest tests/test_orchestrator_order.py -q`
-  - **期望**：上述相关用例全部 **passed**（KIE 单测内为 mock，**不加载**真实 Qwen 权重；若 import 链要求完整 backend，仍须在已装依赖的云端执行）。
-- 若你反馈失败日志，助手再根据 traceback 修改；**未反馈前**，除非助手判断存在**仅靠静态审查无法排除的明显错误**，否则可按上一条**继续开发**而不空等。
+- **硬门槛**：KIE/编排/契约字段变更、发版合 `main`、用户明确要求「Cloud 验证通过再继续」。
+- **建议命令**（`backend/`、`docuvision_env` 已激活）— Phase A 最小集：
+
+```bash
+pytest tests/test_kie_field_metrics.py tests/test_kie_service.py \
+  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+```
+
+- **发版前扩展**（v1.3）：见 [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md) 阶段 A 完整列表。
+- **Live 发票 KIE**（单独终端、勿与全量 pytest 并行）：
+
+```bash
+pytest tests/test_live_api.py::TestLiveInvoiceKie -s
+```
+
+- **期望**：相关用例 `passed`；KIE 契约单测为 mock，不加载 Qwen 权重。
 
 ## 项目结构
 
 ```
 DocuVision/
-├── backend/        # FastAPI 后端
-├── frontend/       # 前端
-├── docs/
-│   └── architecture/   # 架构文档，启动时阅读
+├── backend/              # Pro FastAPI (:8000)
+├── frontend/             # Pro SPA
+├── apps/lite/            # Lite CPU (:8001)
+├── packages/docuvision-core/
+├── docs/                 # 索引见 docs/README.md
 ├── test_data/
-│   ├── acceptance/   # 验收矩阵与说明
-│   ├── testfiles/    # 分类样例
-│   ├── Azure/        # Azure 参考 JSON（纳入 Git）
-│   └── TestResult/   # 临时输出（不纳入 Git）
+│   ├── acceptance/       # 验收矩阵
+│   ├── AutoTest/         # E2E 规划
+│   ├── scripts/          # 验收/fixture 脚本（进 Git）
+│   ├── testfiles/        # 分类样例
+│   ├── Azure/            # Azure 参考 JSON
+│   └── TestResult/       # 本地输出（gitignore）
+└── supabase/migrations/  # Lite Trial PoC schema
 ```
 
-## 启动时必读
+## 按任务选读文档（勿全量通读 architecture）
 
-1. `docs/architecture/` 目录下的所有文档
-2. `test_data/Azure/` 参考 JSON，并与 `test_data/testfiles/`、`test_data/acceptance/` 对照阅读
+| 任务类型 | 先读 |
+|----------|------|
+| 总览 / 编排 / Envelope | [docuvision-system-design.md](../docs/architecture/docuvision-system-design.md) |
+| KIE 契约 / 验收 | [kie.md](../docs/architecture/kie.md) → [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md) |
+| Lite API / UI | [lite-api.md](../docs/architecture/lite-api.md) → `apps/lite/backend/tests/README.md` |
+| 发版 / 合 main | [docs/release/README.md](../docs/release/README.md) → 对应 `MERGE_MAIN_v*.md` |
+| 样例路径 / Batch | [test_data/acceptance/README.md](../test_data/acceptance/README.md) |
+| Trial 演示 | [docs/demo/TRIAL_DEMO.md](../docs/demo/TRIAL_DEMO.md) |
+| 文档索引 | [docs/README.md](../docs/README.md) |
 
 ## 思维原则
 
@@ -62,44 +90,34 @@ DocuVision/
 
 给我真实判断，方案有问题直接指出来。发现更好的做法直接说，不用等我问。
 
-
 ## 沟通方式
 
 - 默认中文；**代码、注释、docstring、日志、UI 文案、命令、变量名用英文**（详见 `007-code-language.mdc`）
 - **`docs/` 设计文档可用中文**（详见 `005-document.mdc`）
-
 - 结论先行，再给理由，不要先铺垫背景
-
 - 遇到模糊需求，先给最合理的方案，再问要不要调整
-
 - 不要问「你确定要这样吗」，除非命中下方红线
 
 ## 自主边界（红线，必须先问我）
 
 以下操作即使在 auto-accept 模式下也必须停下来问我：
 
-- 删除文件、目录或 git 历史
-
+- 删除文件、目录或 git 历史（**用户在本轮对话中明确授权删除的除外**）
 - 修改 .env、密钥、token、**CI/CD 配置**（含 `.github/workflows/**`；日常 push 默认不跑 Actions，见 `003-git.mdc`）
-
 - 数据库 schema 变更或数据迁移
-
 - git push、git rebase、git reset --hard、强制推送
-
 - 安装新的全局依赖或修改系统配置
-
 - 公开发布（npm publish、部署到生产、发文章等）
 
 ## 通用工程纪律
 
-- 改完主动跑验证，不要只改不验（验证在云端由用户执行；助手见上文「测试与验证（pytest）」，交付时给出云端命令与期望）
-
+- 改完主动跑验证，不要只改不验（Pro/Lite 验证在 Cloud/CI；助手给出 Cloud 命令与期望）
 - 不要为了让代码跑起来注释掉报错或加绕过标记，找根本原因
-
 - 密钥、token、密码不进代码、不进 commit、不进日志
-
 - 大改动前先在 Plan Mode 出方案，我确认后再动手
 
 ## 文档同步
 
-代码变更后，同步更新 `docs/architecture/` 下的相关文档。
+- **Living**：改代码时同步 `docs/architecture/` 中相关契约文档
+- **Frozen**：不修改已发布版本的 `RELEASE_*`、`MERGE_MAIN_v*`
+- **Local only**：`docs/R&D/`、`test_data/TestResult/`、`*Upwork*` 不进 Git

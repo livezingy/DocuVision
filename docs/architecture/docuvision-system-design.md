@@ -1,5 +1,7 @@
 # 智能文档处理系统设计方案
 
+> **Status**: living  
+> **File**: `docuvision-system-design.md`（英文路径名；本文标题保留中文）  
 > 版本：v1.12  
 > 日期：2026-05-20  
 > 参考：Azure Document Intelligence Layout API（layout-checklist.jpg.json 等样本）
@@ -672,7 +674,7 @@ fused 层各 block 的 `processing_status` 字段：
     "kie_fields_count": 3,
     "kie_items_count": 0,
     "kie_confidence_avg": 0.92,
-    "kie_confidence_source": "uie-m-base",
+    "kie_confidence_source": "qwen2.5-vl",
     "kie_model_load_ms": 1200,
     "kie_items_source": "n/a"
   },
@@ -692,7 +694,7 @@ fused 层各 block 的 `processing_status` 字段：
 | `kie_fields_count` | `view.fields` 字典键数量 |
 | `kie_items_count` | 发票/收据场景下行项目数量（来自 `kie_meta`） |
 | `kie_confidence_avg` | 字段级平均置信度（来自服务） |
-| `kie_confidence_source` | 当前实现：尝试 KIE 时为固定串 `uie-m-base`，未尝试为空字符串（后续换引擎时可扩展） |
+| `kie_confidence_source` | 当前实现：尝试 KIE 时为固定串 `qwen2.5-vl`，未尝试为空字符串 |
 | `kie_model_load_ms` | Worker 加载 + 本次推理耗时（毫秒，来自服务 metadata） |
 | `kie_items_source` | 明细行来源策略（如 `ItemsAggregator` 的 tier 说明），默认可能为 `n/a` |
 

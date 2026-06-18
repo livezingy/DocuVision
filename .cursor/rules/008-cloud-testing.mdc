@@ -1,43 +1,143 @@
 ---
-description: Cloud Studio GPU manual API/E2E test commands (zsh/bash)
+description: Cloud Studio GPU manual validation — phased pytest, live API, batch (zsh/bash)
 globs:
 alwaysApply: true
 ---
 
 # Cloud manual testing (Cloud Studio zsh/bash)
 
+**Canonical order**: [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md) (Phase A–G). This file is the **copy-paste cheat sheet** for assistants and operators.
+
 ## Shell convention
 
-- **Tencent Cloud Studio GPU** default terminal is **zsh** (`➜` prompt). Assistant-facing copy-paste commands use **bash/zsh** syntax.
+- **Tencent Cloud Studio GPU** default terminal is **zsh** (`➜` prompt). Assistant-facing commands use **bash/zsh** syntax.
 - **Do not** paste PowerShell (`$VAR = "..."`, `Invoke-WebRequest`, `Join-Path`) into Cloud Studio zsh — causes `command not found: =`.
-- **Windows local** (PowerShell): same logical steps; translate paths (`D:\...` vs `/workspace/DocuVision`) and use `Invoke-WebRequest` / `Test-Path` if the user is on Windows.
+- **Windows local** (PowerShell): same logical steps; translate paths (`D:\...` vs `/workspace/DocuVision`).
 - Optional: run `pwsh` in Cloud Studio only when the user explicitly wants PowerShell.
 
-## Prerequisites (before Phase B or E2E)
-
-1. Pro venv active (`docuvision_env`), deps installed per [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md).
-2. **Pro server** in a **separate** terminal:
+## One-time setup
 
 ```bash
-cd /workspace/DocuVision/backend
+export REPO_ROOT="/workspace/DocuVision"
+cd "$REPO_ROOT"
+git pull   # or your feature branch
+
+# Pro GPU venv (separate from Lite)
+python3 -m venv ~/docuvision_env
+source ~/docuvision_env/bin/activate
+cd "$REPO_ROOT/backend"
+./install_pro_gpu.sh   # or per requirements.txt header
+cp -n .env.cloud .env  # do not commit .env
+```
+
+Lite CPU validation uses **`docuvision_lite_env`** — see `apps/lite/backend/tests/README.md`. **Never mix** Pro and Lite venvs.
+
+## Phase map (quick)
+
+| Phase | What | Doc section |
+|-------|------|-------------|
+| **A** | Contract pytest (CPU, mock KIE) | CLOUD_VALIDATION §阶段 A |
+| **B** | `python run.py` + `/health` | §阶段 B |
+| **C–E** | Invoice / id_card KIE samples | §阶段 C–E |
+| **MP** | Multipage `kie_pages` | `multipage_kie.md` |
+| **H-Batch** | `kie_invoice_6` + manifest | `batch_kie.md` |
+| **F** | Full pytest (ignore live) | §阶段 F |
+| **Live** | `test_live_api.py` (server required) | below |
+
+## Phase A — Pro contract pytest (no Qwen weights)
+
+**Minimum** (GitHub `kie-phase-a.yml` on PR):
+
+```bash
+cd "$REPO_ROOT/backend"
+source ~/docuvision_env/bin/activate
+pytest tests/test_kie_field_metrics.py tests/test_kie_service.py \
+  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+```
+
+**v1.3 pre-release extension**:
+
+```bash
+cd "$REPO_ROOT/backend"
+source ~/docuvision_env/bin/activate
+pytest tests/test_kie_pages_parse.py tests/test_kie_field_merge.py \
+  tests/test_batch_export_service.py \
+  tests/test_kie_field_validation.py tests/test_kie_schema_templates.py \
+  tests/test_document_type_classifier.py tests/test_file_type_detector.py \
+  tests/test_kie_field_metrics.py tests/test_kie_service.py \
+  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+
+cd "$REPO_ROOT/packages/docuvision-core"
+pip install -e ".[lite,dev]" && pytest tests/processing/test_table_stitch.py -q
+```
+
+**Lite on PR** (GitHub `ci-lite.yml`, not Cloud GPU required):
+
+```bash
+cd "$REPO_ROOT/apps/lite/backend"
+pip install -r requirements-lite.txt
+pip install -e "../../../packages/docuvision-core[lite,dev]"
+python -m pytest tests/ -q
+```
+
+## Phase B — Pro server + health
+
+**Terminal 1** (keep running):
+
+```bash
+cd "$REPO_ROOT/backend"
 source ~/docuvision_env/bin/activate
 python run.py
 ```
 
-3. Health check must return **HTTP 200** before any analyze test:
+**Terminal 2**:
 
 ```bash
-export REPO_ROOT="/workspace/DocuVision"
 export API_ROOT="http://127.0.0.1:8000"
 curl -s -o /dev/null -w "HTTP %{http_code}\n" "$API_ROOT/health"
 curl -s "$API_ROOT/health" | python3 -m json.tool | head -20
 ```
 
-If `curl` shows **`HTTP_CODE:000`**, the server is **not reachable**. Fix: start `python run.py`, confirm port `8000`, retry health.
+If **`HTTP 000`** → server not reachable. Fix `run.py`, port `8000`, retry.
+
+Recommended `.env` for test windows: `DEBUG=false` (avoid uvicorn reload clearing in-memory `tasks`).
+
+## Live API tests (`test_live_api.py`)
+
+Requires **Phase B** server on `:8000`. Module auto-skips when health fails.
+
+```bash
+cd "$REPO_ROOT/backend"
+source ~/docuvision_env/bin/activate
+# Server must already be running in another terminal
+pytest tests/test_live_api.py -q
+```
+
+**Invoice KIE only** (GPU; do not run during full `pytest tests/`):
+
+```bash
+pytest tests/test_live_api.py::TestLiveInvoiceKie -s
+```
+
+## Phase F — full backend pytest (exclude live)
+
+```bash
+cd "$REPO_ROOT/backend"
+source ~/docuvision_env/bin/activate
+pip install "httpx>=0.24,<0.28"
+pytest tests/ -q --tb=short --ignore=tests/test_live_api.py
+```
+
+## Manual pipeline script (optional REPL)
+
+```bash
+cd "$REPO_ROOT/backend"
+source ~/docuvision_env/bin/activate
+python tests/test_api_pipeline.py --skip-pipeline
+python tests/test_api_pipeline.py --file "$REPO_ROOT/test_data/testfiles/invoices/sample-invoice.png"
+```
 
 ## Frontend unit tests (Vitest)
-
-Vitest is a **devDependency**; run `npm install` once per frontend checkout:
 
 ```bash
 cd "$REPO_ROOT/frontend"
@@ -47,38 +147,7 @@ npm run test:unit -- tests/unit/queue.test.js
 
 `vitest: not found` → run `npm install` in `frontend/` first.
 
-## Backend unit tests
-
-```bash
-cd "$REPO_ROOT/backend"
-source ~/docuvision_env/bin/activate
-python -m pytest tests/test_kie_pages_parse.py -q
-```
-
-## `Task not found` while `TASK_ID` looks correct
-
-Tasks live in an **in-memory** `tasks` dict (see `backend/app/main.py`). **404 Task not found** after a valid analyze usually means:
-
-1. **Server restarted** or **uvicorn reload** (`run.py` uses `reload=settings.DEBUG`; default `DEBUG=True`) — the old `task_id` is gone.
-2. **Analyze and poll hit different processes** (rare multi-worker); use one stable `python run.py` instance.
-3. **Stale** response JSON from an earlier run after the server was restarted.
-
-**Mitigation**: disable reload for the test window (`DEBUG=false` in `backend/.env`, restart `run.py`), or submit analyze and poll immediately. **Sanity check**:
-
-```bash
-test -d "$REPO_ROOT/backend/uploads/<TASK_ID>" && echo "upload dir exists"
-```
-
-If the folder exists but GET task returns 404 → memory was cleared. Re-run analyze on the **current** server.
-
-## Path placeholders
-
-| Placeholder | Cloud Studio |
-|-------------|--------------|
-| `<REPO_ROOT>` | `/workspace/DocuVision` |
-| `$SAMPLE` | `$REPO_ROOT/test_data/testfiles/invoices/sample-invoice.png` |
-
-## Common variables (zsh/bash)
+## Common variables
 
 ```bash
 export REPO_ROOT="/workspace/DocuVision"
@@ -88,37 +157,58 @@ export SAMPLE="$REPO_ROOT/test_data/testfiles/invoices/sample-invoice.png"
 test -f "$SAMPLE" && echo "sample ok"
 ```
 
+## `Task not found` while `TASK_ID` looks correct
+
+Tasks live in an **in-memory** `tasks` dict (`backend/app/main.py`). **404 Task not found** after analyze usually means:
+
+1. **Server restarted** or **uvicorn reload** (`DEBUG=True` default) — old `task_id` gone.
+2. Analyze and poll hit **different processes** — use one stable `python run.py`.
+3. **Stale** JSON from a prior run after restart.
+
+**Mitigation**: `DEBUG=false` for test window; analyze and poll immediately.
+
+```bash
+test -d "$REPO_ROOT/backend/uploads/<TASK_ID>" && echo "upload dir exists"
+```
+
+Upload dir exists but GET task 404 → memory cleared; re-run analyze.
+
 ## Form booleans for FastAPI
 
 Use **`1` / `0`** for `enable_kie` and other bool Form fields (not `true`/`false` strings).
 
 ## KIE query field names
 
-API ids: `[A-Za-z][A-Za-z0-9_]*` only (no spaces). UI normalizes spaces to `_` (e.g. `CUSTOMER NAME` → `CUSTOMER_NAME`). See [kie-custom-fields.md](../docs/architecture/kie-custom-fields.md).
+API ids: `[A-Za-z][A-Za-z0-9_]*` only (no spaces). UI normalizes spaces to `_`. See [kie-custom-fields.md](../docs/architecture/kie-custom-fields.md).
 
 ## Batch API quick reference
 
 ```bash
 export BATCH_API="$API_ROOT/api/v1/batch"
 
-# Create (curl -F for multipart)
 curl -s -X POST "$BATCH_API" \
   -F "name=My batch" \
-  -F 'options={"document_type":"id_card","enable_kie":true,"enable_layout":true,"kie_pages":"1"}' \
+  -F 'options={"document_type":"invoice","enable_kie":true,"enable_layout":true,"kie_pages":"1"}' \
   -F "files=@$SAMPLE"
 
-# Poll summary (prefer over GET /batch/{id} for large results)
 curl -s "$BATCH_API/<BATCH_ID>/summary" | python3 -m json.tool
-
-# Export
 curl -s -o batch_kie.csv "$BATCH_API/<BATCH_ID>/export.csv?mode=kie"
-curl -s -o batch.json "$BATCH_API/<BATCH_ID>/export.json"
 ```
+
+**H-Batch acceptance** (PowerShell on Windows; bash users see `batch_kie.md` for curl):
+
+```bash
+# Cloud zsh: use curl per BATCH_E2E_CHECKLIST.md, or:
+pwsh -File "$REPO_ROOT/test_data/scripts/run_batch_kie_acceptance.ps1"
+```
+
+Manifest: `test_data/testfiles/batch/manifest.json` → set `kie_invoice_6`.
 
 Full checklist: [BATCH_E2E_CHECKLIST.md](../test_data/acceptance/BATCH_E2E_CHECKLIST.md).
 
 ## Related docs
 
-- [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md) — Phase A–G order
+- [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md) — full Phase A–G
 - [KIE_TEST_RUN_TRACKER.md](../docs/architecture/KIE_TEST_RUN_TRACKER.md) — batch records
-- `004-project.mdc` — pytest on cloud only; manual API tests follow this file
+- [docs/README.md](../docs/README.md) — doc + test layout index
+- `004-project.mdc` — Pro pytest cloud-only; task-based doc reading

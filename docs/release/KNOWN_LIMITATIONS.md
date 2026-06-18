@@ -59,7 +59,7 @@
 | GPU | 生产级延迟建议 GPU；PP-StructureV3 + Qwen 串行占用显存，避免并行多 Job 抢 GPU。 |
 | KIE 冷启动 | 首次 KIE 或 warmup 前 `kie.model_load_ms` 可达数十秒（视模型缓存路径而定）。 |
 | 测试 | **Phase A** CI 不加载 Qwen/Paddle；端到端 KIE 效果依赖 **Cloud 手册** 回归，非全量 pytest。 |
-| Live API tests | `test_api.py` / `test_e2e.py` skip when `:8000` is down; do not run full pytest alongside a live GPU server. |
+| Live API tests | `test_live_api.py` skips when `:8000` is down; do not run full pytest alongside a live GPU server. Run KIE live test alone: `pytest tests/test_live_api.py::TestLiveInvoiceKie -s`. |
 
 ## 样例与文档
 

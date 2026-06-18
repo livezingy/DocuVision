@@ -256,13 +256,13 @@ Get-Content "$env:TEMP/batch_$BATCH_ID.csv" -TotalCount 3
 ```bash
 cd backend
 pip install "httpx>=0.24,<0.28"
-pytest tests/ -q --tb=short --ignore=tests/test_user_workflows.py
+pytest tests/ -q --tb=short --ignore=tests/test_live_api.py
 ```
 
-`test_user_workflows.py` 依赖**已启动**的 `:8000` 且与全量 pytest **争 GPU**；单独验证：
+`test_live_api.py` 依赖**已启动**的 `:8000` 且与全量 pytest **争 GPU**；单独验证：
 
 ```bash
-pytest tests/test_user_workflows.py::TestInvoiceProcessingWorkflow -s
+pytest tests/test_live_api.py::TestLiveInvoiceKie -s
 ```
 
 结果批次写入 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)。导出 JSON 汇总：

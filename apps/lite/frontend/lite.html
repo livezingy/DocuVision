@@ -371,6 +371,7 @@
           <button type="button" class="action-btn" id="liteBatchCsvBtn" disabled>Download CSV</button>
           <button type="button" class="action-btn" id="liteBatchXlsxBtn" disabled>Download Excel</button>
         </div>
+        <ul id="liteBatchFileList" class="lite-batch-file-list" aria-label="Selected PDF files"></ul>
         <div id="liteBatchStatus" class="upload-hint">No active batch</div>
       </section>
     </main>
@@ -424,6 +425,13 @@
             <label class="field-row" id="pagesFieldRow">
               Pages
               <input type="text" id="optPages" placeholder="all" class="text-input" />
+            </label>
+            <label class="field-row">Table vertical template
+              <select id="optTableTemplateProcessing" class="select-input">
+                <option value="">None</option>
+                <option value="bank_statement">Bank statement</option>
+                <option value="invoice_line_items">Invoice line items</option>
+              </select>
             </label>
           </div>
         </div>
@@ -489,7 +497,7 @@
             <input type="number" id="optScoreThreshold" class="text-input" value="0.5" min="0" max="1" step="0.05" />
           </label>
           <label class="field-row">Table vertical template
-            <select id="optTableTemplate" class="select-input">
+            <select id="optTableTemplateAdvanced" class="select-input">
               <option value="">None</option>
               <option value="bank_statement">Bank statement</option>
               <option value="invoice_line_items">Invoice line items</option>

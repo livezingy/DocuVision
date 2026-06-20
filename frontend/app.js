@@ -1454,6 +1454,13 @@ function buildKieQueryFieldsPayload() {
 /**
  * Get current processing options from dialog
  */
+function isAutoClassifyEnabled() {
+    const el = document.getElementById('optAutoClassify');
+    if (!el) return false;
+    if (el.type === 'checkbox') return el.checked;
+    return String(el.value || '').toLowerCase() === 'yes';
+}
+
 function getProcessingOptions() {
     const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
     const isLayout = selectedMode === 'layout';
@@ -1553,7 +1560,7 @@ async function startProcessing() {
 
     let options;
     try {
-        if (document.getElementById('optAutoClassify')?.checked && firstPending.file) {
+        if (isAutoClassifyEnabled() && firstPending.file) {
             await maybeAutoClassifyDocument(firstPending.file);
         }
         options = getProcessingOptions();
@@ -3794,7 +3801,7 @@ function setBatchControlsForBatch(batch) {
  */
 async function createBatch(name, files) {
     try {
-        if (document.getElementById('optAutoClassify')?.checked && files?.length) {
+        if (isAutoClassifyEnabled() && files?.length) {
             await maybeAutoClassifyDocument(files[0]);
         }
         const formData = new FormData();

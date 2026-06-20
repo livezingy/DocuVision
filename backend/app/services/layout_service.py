@@ -225,8 +225,9 @@ class PPStructureEngine(BaseLayoutEngine):
             model_settings = doc_pre.get("model_settings", {})
             use_unwarping = model_settings.get("use_doc_unwarping", False)
             angle = doc_pre.get("angle", -1)
-            orig_img = doc_pre["input_img"]
-            orig_h, orig_w = orig_img.shape[:2]
+            orig_img = doc_pre.get("input_img")
+            if orig_img is not None:
+                orig_h, orig_w = self._image_shape_hw(orig_img)
 
         if doc_pre is None:
             base_img = cv2.imread(src_image_path)
@@ -235,24 +236,36 @@ class PPStructureEngine(BaseLayoutEngine):
             matrix_inv = None
             warn_msg = None
         elif use_unwarping:
-            output_img = doc_pre["output_img"]
-            if output_img.shape[2] == 3:
+            output_img = doc_pre.get("output_img")
+            if output_img is None:
+                raise ValueError("doc_preprocessor_res missing output_img for unwarping visualization")
+            out_h, out_w = self._image_shape_hw(output_img)
+            if out_h <= 0 or out_w <= 0:
+                raise ValueError("doc_preprocessor output_img has invalid shape")
+            if hasattr(output_img, "shape") and len(output_img.shape) >= 3 and output_img.shape[2] == 3:
                 base_img = cv2.cvtColor(output_img, cv2.COLOR_RGB2BGR)
             else:
-                base_img = output_img.copy()
+                base_img = output_img.copy() if hasattr(output_img, "copy") else cv2.imread(src_image_path)
             matrix_inv = None
             warn_msg = (
                 "[WARN] use_doc_unwarping=True: no inverse warp map available; "
                 "boxes are drawn on preprocessed output_img, not on original input image."
             )
         else:
-            if orig_img.shape[2] == 3:
-                base_img = cv2.cvtColor(orig_img, cv2.COLOR_RGB2BGR)
+            if orig_img is None or orig_h <= 0 or orig_w <= 0:
+                base_img = cv2.imread(src_image_path)
+                if base_img is None:
+                    raise ValueError(f"Unable to read source image: {src_image_path}")
+                matrix_inv = None
+                warn_msg = None
             else:
-                base_img = orig_img.copy()
-            matrix, _, _ = self._build_rotation_matrix(angle, orig_h, orig_w)
-            matrix_inv = cv2.invertAffineTransform(matrix) if matrix is not None else None
-            warn_msg = None
+                if hasattr(orig_img, "shape") and len(orig_img.shape) >= 3 and orig_img.shape[2] == 3:
+                    base_img = cv2.cvtColor(orig_img, cv2.COLOR_RGB2BGR)
+                else:
+                    base_img = orig_img.copy() if hasattr(orig_img, "copy") else cv2.imread(src_image_path)
+                matrix, _, _ = self._build_rotation_matrix(angle, orig_h, orig_w)
+                matrix_inv = cv2.invertAffineTransform(matrix) if matrix is not None else None
+                warn_msg = None
 
         if warn_msg:
             logger.warning(warn_msg)
@@ -289,7 +302,8 @@ class PPStructureEngine(BaseLayoutEngine):
                 label = b.get("label", None)
                 bbox = b.get("coordinate", None)
 
-            if not label or bbox is None or len(bbox) != 4:
+            norm_bbox = self._normalize_bbox_coords(bbox)
+            if not norm_bbox:
                 continue
 
             if label in text_labels:
@@ -301,7 +315,7 @@ class PPStructureEngine(BaseLayoutEngine):
             else:
                 continue
 
-            x1, y1, x2, y2 = map(float, bbox)
+            x1, y1, x2, y2 = norm_bbox
             if matrix_inv is not None:
                 x1, y1, x2, y2 = self._transform_bbox_inv((x1, y1, x2, y2), matrix_inv)
 
@@ -367,11 +381,71 @@ class PPStructureEngine(BaseLayoutEngine):
         except Exception as e:
             logger.debug(f"PPStructure block visualization failed for {img_path}: {e}")
 
+    @staticmethod
+    def _image_shape_hw(img_obj) -> tuple:
+        """Return (height, width) for numpy/PIL-like images; (0, 0) when unknown."""
+        if img_obj is None:
+            return 0.0, 0.0
+        try:
+            if hasattr(img_obj, "shape"):
+                shape = img_obj.shape
+                if len(shape) >= 2:
+                    return float(shape[0]), float(shape[1])
+                return 0.0, 0.0
+            if hasattr(img_obj, "size") and isinstance(img_obj.size, tuple) and len(img_obj.size) >= 2:
+                return float(img_obj.size[1]), float(img_obj.size[0])
+        except Exception:
+            pass
+        return 0.0, 0.0
+
+    @staticmethod
+    def _normalize_bbox_coords(bbox) -> Optional[List[float]]:
+        """Flatten bbox/coordinate payloads to [x1, y1, x2, y2] when possible."""
+        if bbox is None:
+            return None
+        try:
+            import numpy as np
+
+            if isinstance(bbox, np.ndarray):
+                flat = bbox.astype(float).reshape(-1).tolist()
+            elif isinstance(bbox, (list, tuple)):
+                if len(bbox) == 4 and all(isinstance(v, (int, float)) for v in bbox):
+                    flat = [float(v) for v in bbox]
+                elif len(bbox) == 1 and isinstance(bbox[0], (list, tuple)):
+                    flat = [float(v) for v in bbox[0][:4]]
+                elif len(bbox) >= 4 and isinstance(bbox[0], (list, tuple)):
+                    flat = [float(v) for v in bbox[0][:4]]
+                else:
+                    flat = [float(v) for v in bbox[:4]]
+            else:
+                return None
+        except Exception:
+            return None
+
+        if len(flat) < 4:
+            return None
+        return flat[:4]
+
     def _call_engine(self, img_path: str, vis_src_path: Optional[str] = None):
         """Call engine with version-compatible method"""
         if hasattr(self, '_is_v3') and self._is_v3:
-            # PPStructureV3 uses predict() method
-            result = self._engine.predict(img_path)
+            predict_kwargs = {
+                "use_doc_orientation_classify": False,
+                "use_doc_unwarping": False,
+            }
+            try:
+                result = self._engine.predict(img_path, **predict_kwargs)
+            except TypeError:
+                result = self._engine.predict(img_path)
+            except Exception as e:
+                err = str(e)
+                if "too many indices" in err or "1-dimensional" in err:
+                    logger.warning(
+                        f"PPStructureV3 predict failed with shape error; retrying without preprocess kwargs: {e}"
+                    )
+                    result = self._engine.predict(img_path)
+                else:
+                    raise
         else:
             # PPStructure (2.x) uses direct call
             result = self._engine(img_path)
@@ -487,22 +561,20 @@ class PPStructureEngine(BaseLayoutEngine):
                     angle_deg = float(_raw_angle) if _raw_angle is not None and float(_raw_angle) >= 0 else 0.0
                     _in_img = _doc_pre2.get('input_img')
                     if _in_img is not None:
-                        input_h, input_w = _in_img.shape[:2]
+                        input_h, input_w = self._image_shape_hw(_in_img)
                     _out_img = _doc_pre2.get('output_img')
                     if _out_img is not None:
                         prep_path = f"{img_path}_preprocessed.png"
-                        if _out_img.shape[2] == 3:
-                            # doc_preprocessor output_img is already BGR, no conversion needed
+                        out_h, out_w = self._image_shape_hw(_out_img)
+                        if out_h > 0 and out_w > 0:
                             cv2.imwrite(prep_path, _out_img)
-                        else:
-                            cv2.imwrite(prep_path, _out_img)
-                        preprocessed_path = prep_path
-                        preprocessed_h, preprocessed_w = _out_img.shape[:2]
-                        logger.info(
-                            f"[Preprocess] Saved output_img: {prep_path} "
-                            f"({preprocessed_w}x{preprocessed_h}) "
-                            f"angle={angle_deg} unwarping={use_doc_unwarping}"
-                        )
+                            preprocessed_path = prep_path
+                            preprocessed_h, preprocessed_w = out_h, out_w
+                            logger.info(
+                                f"[Preprocess] Saved output_img: {prep_path} "
+                                f"({preprocessed_w}x{preprocessed_h}) "
+                                f"angle={angle_deg} unwarping={use_doc_unwarping}"
+                            )
         except Exception as _exc2:
             logger.debug(f"[Preprocess] Failed to extract preprocessing metadata: {_exc2}")
 
@@ -637,8 +709,9 @@ class PPStructureEngine(BaseLayoutEngine):
                     else:
                         _coord = getattr(_box, 'coordinate', [])
                         _sc = getattr(_box, 'score', None)
-                    if _coord and len(_coord) >= 4 and _sc is not None:
-                        _det_score_pairs.append((list(map(float, _coord[:4])), float(_sc)))
+                    norm_coord = self._normalize_bbox_coords(_coord)
+                    if norm_coord and _sc is not None:
+                        _det_score_pairs.append((norm_coord, float(_sc)))
             except Exception as _e:
                 logger.debug(f"Page {page_num}: Could not build det score map: {_e}")
 
@@ -663,10 +736,11 @@ class PPStructureEngine(BaseLayoutEngine):
                     f"text='{block_text_str[:100]}' | content='{content_str[:100]}'"
                 )
 
-                if not bbox or len(bbox) < 4:
+                norm_bbox = self._normalize_bbox_coords(bbox)
+                if not norm_bbox:
                     continue
 
-                raw_bbox = list(map(float, bbox[:4]))
+                raw_bbox = norm_bbox
                 # Keep preprocessed-space bbox; view_builder applies inverse transform.
                 bbox_dict = self._extract_bbox(raw_bbox)
                 # Build flat polygon from bbox corners: [x0,y0, x1,y0, x1,y1, x0,y1]
@@ -822,11 +896,12 @@ class PPStructureEngine(BaseLayoutEngine):
                 continue
 
             # Skip invalid elements
-            if not bbox or len(bbox) < 4:
+            norm_bbox = self._normalize_bbox_coords(bbox)
+            if not norm_bbox:
                 logger.debug(f"Element {idx}: Invalid bbox {bbox}")
                 continue
 
-            _bbox_raw = list(map(float, bbox[:4]))
+            _bbox_raw = norm_bbox
             _bbox_dict = self._extract_bbox(_bbox_raw)
             _bx0, _by0, _bx1, _by1 = _bbox_raw[0], _bbox_raw[1], _bbox_raw[2], _bbox_raw[3]
             element = {

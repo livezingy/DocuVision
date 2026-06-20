@@ -848,6 +848,22 @@ function applyProfileToAdvanced() {
   setActiveModalTab("advanced");
 }
 
+function syncTableTemplateSelects(value) {
+  const v = value || "";
+  ["optTableTemplateProcessing", "optTableTemplateAdvanced"].forEach((id) => {
+    const el = $(id);
+    if (el) el.value = v;
+  });
+}
+
+function readTableTemplateFromModal() {
+  return (
+    $("optTableTemplateProcessing")?.value ||
+    $("optTableTemplateAdvanced")?.value ||
+    ""
+  ).trim();
+}
+
 function syncModalFromState() {
   document.querySelector(`input[name="extractMode"][value="${state.options.mode}"]`).checked = true;
   $("optExtractTables").checked = state.options.extractTables;
@@ -858,7 +874,7 @@ function syncModalFromState() {
   $("optOcrEngine").value = state.options.ocrEngine;
   $("optLanguages").value = state.options.languages;
   $("optScoreThreshold").value = state.options.scoreThreshold;
-  if ($("optTableTemplate")) $("optTableTemplate").value = state.options.tableTemplate || "";
+  syncTableTemplateSelects(state.options.tableTemplate || "");
   document.querySelector(`input[name="paramMode"][value="${state.options.paramMode}"]`).checked = true;
 
   const cp = state.options.customParams || getCurrentPageProfile()?.computed_params;
@@ -921,7 +937,7 @@ function readOptionsFromModal() {
   state.options.languages = $("optLanguages").value.trim() || "eng";
   state.options.paramMode = document.querySelector('input[name="paramMode"]:checked').value;
   state.options.scoreThreshold = parseFloat($("optScoreThreshold").value) || 0.5;
-  state.options.tableTemplate = ($("optTableTemplate")?.value || "").trim();
+  state.options.tableTemplate = readTableTemplateFromModal();
 
   if (state.options.paramMode === "custom") {
     try {
@@ -1488,6 +1504,9 @@ function initModal() {
     updateOptionsVisibility();
     updateAdvancedControls();
   });
+  ["optTableTemplateProcessing", "optTableTemplateAdvanced"].forEach((id) => {
+    $(id)?.addEventListener("change", (e) => syncTableTemplateSelects(e.target.value));
+  });
 
   els.modal.addEventListener("click", (e) => {
     if (e.target === els.modal) closeModal();
@@ -1660,6 +1679,24 @@ function initLiteTabs() {
   });
 }
 
+function renderLiteBatchFileList(files, taskRows) {
+  const listEl = $("liteBatchFileList");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  const taskMap = new Map((taskRows || []).map((t) => [t.file_name, t]));
+  const names = files?.length
+    ? Array.from(files).map((f) => f.name)
+    : (taskRows || []).map((t) => t.file_name);
+  if (!names.length) return;
+  names.forEach((name) => {
+    const li = document.createElement("li");
+    const task = taskMap.get(name);
+    const status = task?.status ? ` (${task.status})` : "";
+    li.textContent = `${name}${status}`;
+    listEl.appendChild(li);
+  });
+}
+
 function initLiteBatch() {
   const fileInput = $("liteBatchFiles");
   $("liteBatchSelectBtn")?.addEventListener("click", () => fileInput?.click());
@@ -1667,6 +1704,7 @@ function initLiteBatch() {
     const count = fileInput.files?.length || 0;
     const el = $("liteBatchFileCount");
     if (el) el.textContent = count ? `${count} PDF(s) selected` : "";
+    renderLiteBatchFileList(fileInput.files || []);
   });
   $("liteBatchCreateBtn")?.addEventListener("click", createLiteBatch);
   $("liteBatchStartBtn")?.addEventListener("click", startLiteBatch);
@@ -1692,6 +1730,7 @@ async function createLiteBatch() {
   }
   liteBatchState.batchId = data.batch_id;
   $("liteBatchStartBtn").disabled = false;
+  renderLiteBatchFileList(files, data.tasks);
   $("liteBatchStatus").textContent = `Batch ${data.batch_id} created (${data.total_tasks || files.length} files)`;
   setStatus("Lite batch created");
 }
@@ -1708,6 +1747,7 @@ function pollLiteBatch(batchId) {
   liteBatchState.pollTimer = setInterval(async () => {
     const res = await fetch(`${API_BASE}/batch/${batchId}`);
     const data = await res.json();
+    renderLiteBatchFileList(null, data.tasks);
     $("liteBatchStatus").textContent = `${data.status} — ${data.completed_tasks || 0}/${data.total_tasks || 0}`;
     if (["completed", "failed", "cancelled"].includes(data.status)) {
       clearInterval(liteBatchState.pollTimer);

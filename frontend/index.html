@@ -624,12 +624,12 @@
                         </p>
                         <input type="text" class="kie-query-fields-input" id="optKiePages" placeholder="1" spellcheck="false">
                     </div>
-                    <div class="kie-query-fields-block" style="margin-top: 16px;">
-                        <label class="option-item">
-                            <input type="checkbox" id="optAutoClassify" />
-                            <span class="checkbox-custom"></span>
-                            <span class="option-label">Auto-detect document type before analyze (heuristic)</span>
-                        </label>
+                    <div class="engine-selector" style="margin-top: 16px;">
+                        <label class="engine-label" for="optAutoClassify">Auto-detect document type (heuristic)</label>
+                        <select class="engine-select" id="optAutoClassify">
+                            <option value="no" selected>No</option>
+                            <option value="yes">Yes</option>
+                        </select>
                     </div>
                     <div class="kie-query-fields-block" style="margin-top: 16px;">
                         <label class="engine-label" for="optTableTemplate">Table vertical template (PDF tables)</label>

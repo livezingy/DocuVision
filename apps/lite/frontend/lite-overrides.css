@@ -405,3 +405,19 @@
 #extractTablesRow[hidden] {
     display: none !important;
 }
+
+.lite-batch-file-list {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.lite-batch-file-list li {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+    word-break: break-all;
+}

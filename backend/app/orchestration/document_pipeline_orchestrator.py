@@ -186,6 +186,7 @@ async def table_step(ctx: PipelineContext) -> None:
         layout_elements=layout_elements,
         ocr_text_blocks=ocr_text_blocks,
         allow_fullpage_fallback=allow_fullpage_fallback,
+        table_areas=options.get("table_areas"),
     )
     orchestrator.ensure_not_cancelled(ctx)
 
@@ -209,6 +210,17 @@ async def table_step(ctx: PipelineContext) -> None:
     ctx["result"]["table_extraction_meta"] = step_meta
 
     ctx["result"]["tables"] = table_result if isinstance(table_result, list) else []
+
+    table_template = str(options.get("table_template") or "").strip().lower()
+    if not table_template and str(options.get("document_type") or "").lower() == "custom":
+        table_template = str(options.get("kie_template") or options.get("template_id") or "").strip().lower()
+    if table_template in ("bank_statement", "invoice_line_items"):
+        from docuvision_core.processing.table_column_mapping import apply_table_template
+
+        mapped_rows = apply_table_template(ctx["result"]["tables"], table_template)
+        ctx["result"]["mapped_table_rows"] = mapped_rows
+        ctx["result"]["table_template"] = table_template
+
     await orchestrator.update_progress(ctx, 65, f"Table extraction completed | Tables: {len(ctx['result']['tables'])}")
 
 
@@ -788,6 +800,21 @@ async def finalize_step(ctx: PipelineContext) -> None:
     task["result"] = result
 
     await orchestrator.send_event(ctx["task_id"], "completed", "Processing completed", 100)
+
+    try:
+        from app.services.webhook_service import webhook_registry
+
+        await webhook_registry.dispatch_event_async(
+            "task.completed",
+            {
+                "task_id": ctx["task_id"],
+                "file_name": task.get("file_name"),
+                "status": task.get("status"),
+                "validation_passed": (result.get("kie_validation") or {}).get("validation_passed"),
+            },
+        )
+    except Exception as hook_exc:
+        logger.debug(f"Webhook dispatch skipped: {hook_exc}")
 
 
 # ============================================

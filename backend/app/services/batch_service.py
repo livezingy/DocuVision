@@ -312,6 +312,24 @@ class BatchService:
             batch.completed_at = datetime.now()
             
             logger.info(f"Batch {batch_id} finished: {batch.completed_tasks}/{batch.total_tasks} completed, {batch.failed_tasks} failed")
+
+            try:
+                from app.services.webhook_service import webhook_registry
+
+                asyncio.create_task(
+                    webhook_registry.dispatch_event_async(
+                        "batch.completed",
+                        {
+                            "batch_id": batch_id,
+                            "name": batch.name,
+                            "status": batch.status.value,
+                            "completed_tasks": batch.completed_tasks,
+                            "failed_tasks": batch.failed_tasks,
+                        },
+                    )
+                )
+            except Exception as hook_exc:
+                logger.debug(f"Batch webhook dispatch skipped: {hook_exc}")
             
         except Exception as e:
             batch.status = BatchStatus.FAILED

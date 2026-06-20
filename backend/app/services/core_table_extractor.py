@@ -28,16 +28,20 @@ def extract_digital_pdf_tables(
     *,
     max_pages: int = 50,
     score_threshold: float = 0.5,
+    table_areas: Optional[List[List[float]]] = None,
+    table_template: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Extract tables from born-digital PDF using docuvision-core TableProcessor."""
-    processor = TableProcessor(
-        {
-            "table_method": "mixed",
-            "flavor": "auto",
-            "score_threshold": score_threshold,
-            "smart_camelot_fallback_threshold": 0.8,
-        }
-    )
+    processor_params: Dict[str, Any] = {
+        "table_method": "mixed",
+        "flavor": "auto",
+        "score_threshold": score_threshold,
+        "smart_camelot_fallback_threshold": 0.8,
+    }
+    if table_areas:
+        processor_params["table_areas"] = table_areas
+
+    processor = TableProcessor(processor_params)
 
     tables: List[Dict[str, Any]] = []
     with pdfplumber.open(file_path) as pdf:

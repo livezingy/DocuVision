@@ -260,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAnalysisView();
     initExportButtons();
     initBatchProcessing();
+    initHitlReviews();
     initPreviewPagination();
 
     // Insert a lightweight skeleton placeholder to avoid initial flash
@@ -636,6 +637,7 @@ function initTabs() {
     const navTabs = document.querySelectorAll('.nav-tab');
     const processView = document.getElementById('processMainView');
     const batchView = document.getElementById('batchMainView');
+    const reviewsView = document.getElementById('reviewsMainView');
     navTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             if (tab.disabled) return;
@@ -646,11 +648,15 @@ function initTabs() {
 
             const tabName = tab.dataset.tab;
             if (processView && batchView) {
+                processView.classList.add('hidden');
+                batchView.classList.add('hidden');
+                if (reviewsView) reviewsView.classList.add('hidden');
                 if (tabName === 'batch') {
-                    processView.classList.add('hidden');
                     batchView.classList.remove('hidden');
+                } else if (tabName === 'reviews') {
+                    if (reviewsView) reviewsView.classList.remove('hidden');
+                    refreshHitlReviews();
                 } else {
-                    batchView.classList.add('hidden');
                     processView.classList.remove('hidden');
                 }
             }
@@ -1474,7 +1480,9 @@ function getProcessingOptions() {
             ? ((document.getElementById('optKiePages')?.value || '').trim() || '1')
             : '1',
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
-        layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure'
+        layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure',
+        table_template: (document.getElementById('optTableTemplate')?.value || '').trim(),
+        validation_passed_only: Boolean(document.getElementById('batchValidationPassedOnly')?.checked),
     };
 
     return options;
@@ -1531,11 +1539,23 @@ async function startProcessing() {
         }
     }
 
+    const pickTarget = previewHelpers().pickProcessingTarget;
+    const firstPending = typeof pickTarget === 'function'
+        ? pickTarget(Array.from(queueItems), currentQueueItem)
+        : queueItems[0];
+    if (!firstPending) {
+        showNotification('No files waiting to be processed', 'warning');
+        return;
+    }
+
     // Clear previous results, but keep document preview visible during processing
     clearResultsDisplay(true);
 
     let options;
     try {
+        if (document.getElementById('optAutoClassify')?.checked && firstPending.file) {
+            await maybeAutoClassifyDocument(firstPending.file);
+        }
         options = getProcessingOptions();
     } catch (err) {
         showNotification(err.message || String(err), 'error');
@@ -1548,15 +1568,6 @@ async function startProcessing() {
         !lastHealthPayload.kie.model_loaded
     ) {
         showNotification('首次 KIE 将加载 Qwen 模型，可能需数十秒，请耐心等待进度。', 'info');
-    }
-
-    const pickTarget = previewHelpers().pickProcessingTarget;
-    const firstPending = typeof pickTarget === 'function'
-        ? pickTarget(Array.from(queueItems), currentQueueItem)
-        : queueItems[0];
-    if (!firstPending) {
-        showNotification('No files waiting to be processed', 'warning');
-        return;
     }
     // If another item is already processing, queue this one instead of starting
     const activeProcessing = document.querySelector('.queue-item.processing');
@@ -3716,8 +3727,10 @@ function initBatchProcessing() {
  * Fetch batch export and trigger a file download (not an in-browser tab).
  */
 async function downloadBatchExport(batchId, kind) {
+    const validationOnly = document.getElementById('batchValidationPassedOnly')?.checked;
+    const validationQuery = validationOnly ? '&validation_passed_only=true' : '';
     const paths = {
-        csv: `/batch/${batchId}/export.csv?mode=kie`,
+        csv: `/batch/${batchId}/export.csv?mode=kie${validationQuery}`,
         json: `/batch/${batchId}/export.json`,
         xlsx: `/batch/${batchId}/export.xlsx?mode=all`,
     };
@@ -3781,6 +3794,9 @@ function setBatchControlsForBatch(batch) {
  */
 async function createBatch(name, files) {
     try {
+        if (document.getElementById('optAutoClassify')?.checked && files?.length) {
+            await maybeAutoClassifyDocument(files[0]);
+        }
         const formData = new FormData();
         formData.append('name', name);
 
@@ -4660,4 +4676,98 @@ function adjustDocumentSize() {
 window.addEventListener('resize', () => {
     setTimeout(adjustDocumentSize, 100);
 });
+
+async function maybeAutoClassifyDocument(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_ROOT_URL}/api/v1/classify`, {
+        method: 'POST',
+        body: formData,
+    });
+    if (!response.ok) {
+        throw new Error(`Classify failed (${response.status})`);
+    }
+    const result = await response.json();
+    const docType = String(result.document_type || 'auto');
+    if (!docType || docType === 'auto') {
+        showNotification('Auto-detect: no confident document type', 'info');
+        return result;
+    }
+    const radio = document.querySelector(`input[name="processingMode"][value="${docType}"]`);
+    if (radio) {
+        radio.checked = true;
+        showNotification(`Auto-detect: ${docType} (${result.confidence ?? '?'})`, 'success');
+    }
+    return result;
+}
+
+let hitlSelectedReviewId = null;
+
+function initHitlReviews() {
+    document.getElementById('hitlRefreshBtn')?.addEventListener('click', refreshHitlReviews);
+    document.getElementById('hitlApproveBtn')?.addEventListener('click', () => resolveHitlReview('approved'));
+    document.getElementById('hitlRejectBtn')?.addEventListener('click', () => resolveHitlReview('rejected'));
+    document.getElementById('hitlReviewTableBody')?.addEventListener('click', async (event) => {
+        const row = event.target.closest('tr[data-review-id]');
+        if (!row) return;
+        hitlSelectedReviewId = row.dataset.reviewId;
+        await loadHitlReviewDetail(hitlSelectedReviewId);
+    });
+}
+
+async function refreshHitlReviews() {
+    const tbody = document.getElementById('hitlReviewTableBody');
+    if (!tbody) return;
+    try {
+        const response = await fetch(`${API_ROOT_URL}/api/v1/hitl/reviews?limit=50`);
+        const data = await response.json();
+        const reviews = data.reviews || [];
+        tbody.innerHTML = reviews.length
+            ? reviews.map((item) => `
+                <tr data-review-id="${item.review_id}" style="cursor:pointer;">
+                    <td style="padding:8px;">${escapeHtml(item.file_name || '')}</td>
+                    <td style="padding:8px;">${escapeHtml(item.reason || '')}</td>
+                    <td style="padding:8px;">${escapeHtml(item.created_at || '')}</td>
+                </tr>`).join('')
+            : '<tr><td colspan="3" style="padding:8px;">No pending reviews.</td></tr>';
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="3" style="padding:8px;">Failed to load reviews: ${escapeHtml(error.message)}</td></tr>`;
+    }
+}
+
+async function loadHitlReviewDetail(reviewId) {
+    const detail = document.getElementById('hitlReviewDetail');
+    const approveBtn = document.getElementById('hitlApproveBtn');
+    const rejectBtn = document.getElementById('hitlRejectBtn');
+    if (!detail || !reviewId) return;
+    try {
+        const response = await fetch(`${API_ROOT_URL}/api/v1/hitl/reviews/${reviewId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const item = await response.json();
+        detail.textContent = JSON.stringify(item.payload || item, null, 2);
+        if (approveBtn) approveBtn.disabled = false;
+        if (rejectBtn) rejectBtn.disabled = false;
+    } catch (error) {
+        detail.textContent = `Failed to load review: ${error.message}`;
+    }
+}
+
+async function resolveHitlReview(status) {
+    if (!hitlSelectedReviewId) return;
+    try {
+        const response = await fetch(
+            `${API_ROOT_URL}/api/v1/hitl/reviews/${hitlSelectedReviewId}/resolve?status=${encodeURIComponent(status)}`,
+            { method: 'POST' },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        showNotification(`Review ${status}`, 'success');
+        hitlSelectedReviewId = null;
+        document.getElementById('hitlReviewDetail').textContent = 'Select a review item.';
+        document.getElementById('hitlApproveBtn').disabled = true;
+        document.getElementById('hitlRejectBtn').disabled = true;
+        await refreshHitlReviews();
+    } catch (error) {
+        showNotification(`Resolve failed: ${error.message}`, 'error');
+    }
+}
 

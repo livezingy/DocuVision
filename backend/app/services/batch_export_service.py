@@ -67,6 +67,7 @@ def build_kie_csv_rows(batch: BatchJob, options: Optional[Dict[str, Any]] = None
     """Build header and row dicts for KIE aggregate CSV."""
     options = options or batch.options or {}
     doc_type_default = str(options.get("document_type", "") or "")
+    validation_passed_only = bool(options.get("validation_passed_only"))
 
     dynamic_keys: Set[str] = set()
     rows: List[Dict[str, str]] = []
@@ -90,6 +91,10 @@ def build_kie_csv_rows(batch: BatchJob, options: Optional[Dict[str, Any]] = None
             validation = task.result.get("kie_validation") or {}
         if not isinstance(validation, dict):
             validation = {}
+        if validation_passed_only and validation.get("validation_passed") is False:
+            continue
+        if validation_passed_only and task.status != TaskStatus.COMPLETED:
+            continue
         row: Dict[str, str] = {
             "file_name": task.file_name,
             "status": task.status.value,
@@ -186,6 +191,22 @@ def _table_dataframe(table: Dict[str, Any]):
     return pd.DataFrame(data)
 
 
+def _collect_mapped_table_rows(batch: BatchJob) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for task in batch.tasks:
+        if task.status != TaskStatus.COMPLETED or not isinstance(task.result, dict):
+            continue
+        mapped = task.result.get("mapped_table_rows")
+        if not isinstance(mapped, list):
+            continue
+        for entry in mapped:
+            if isinstance(entry, dict):
+                row = dict(entry)
+                row["file_name"] = task.file_name
+                rows.append(row)
+    return rows
+
+
 def build_batch_xlsx_bytes(batch: BatchJob, mode: str = "all") -> bytes:
     """Build aggregated batch workbook (summary, optional KIE sheet, per-file table sheets)."""
     import pandas as pd
@@ -214,6 +235,11 @@ def build_batch_xlsx_bytes(batch: BatchJob, mode: str = "all") -> bytes:
             header, rows = build_kie_csv_rows(batch)
             pd.DataFrame(rows, columns=header).to_excel(writer, sheet_name="KIE", index=False)
             used_names.add("KIE")
+
+        mapped_rows = _collect_mapped_table_rows(batch)
+        if mapped_rows:
+            pd.DataFrame(mapped_rows).to_excel(writer, sheet_name="MappedRows", index=False)
+            used_names.add("MappedRows")
 
         if include_tables:
             for task in batch.tasks:

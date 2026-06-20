@@ -89,7 +89,31 @@ def default_rules_for_document_type(document_type: str) -> Dict[str, Dict[str, s
             "date": {"type": "date"},
             "total": {"type": "currency"},
             "total_amount": {"type": "currency"},
+            "subtotal": {"type": "currency"},
+            "tax": {"type": "currency"},
         }
     if doc == "receipt":
-        return {"date": {"type": "date"}, "total": {"type": "currency"}}
+        return {
+            "date": {"type": "date"},
+            "total": {"type": "currency"},
+            "subtotal": {"type": "currency"},
+            "tax": {"type": "currency"},
+        }
+    if doc == "id_card":
+        return {"id_number": {"type": "regex", "pattern": r"^\d{18}$"}}
+    if doc == "passport":
+        return {"passport_number": {"type": "regex", "pattern": r"^[A-Za-z0-9]{6,12}$"}}
+    if doc == "bank_card":
+        return {
+            "card_number": {"type": "regex", "pattern": r"^[\d\s-]{13,19}$"},
+            "expiry_date": {"type": "date"},
+        }
+    if doc == "custom":
+        return {
+            "transaction_date": {"type": "date"},
+            "amount": {"type": "currency"},
+            "unit_price": {"type": "currency"},
+            "line_total": {"type": "currency"},
+            "balance": {"type": "currency"},
+        }
     return {}

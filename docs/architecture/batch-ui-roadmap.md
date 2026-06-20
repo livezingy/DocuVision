@@ -30,4 +30,4 @@ Productize Pro batch API in the static SPA (`frontend/`): job list, progress, fa
 ## References
 
 - Pro batch curl/Python: [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md), root README
-- Upwork ETL narrative: **local only, gitignored** — `test_data/TestResult/PLAN/` (`*Upwork*` files; never commit)
+- Upwork ETL narrative: **local only, gitignored** — `docs/R&D/upwork/` (`*Upwork*` files; never commit)

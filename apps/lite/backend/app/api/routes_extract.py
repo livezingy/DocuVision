@@ -49,6 +49,8 @@ def _run_pipeline(
     extract_tables: bool = True,
     extract_text: bool = True,
     use_transformer: bool = True,
+    table_areas: Optional[str] = None,
+    table_template: Optional[str] = None,
 ):
     detected, page_count = detect_file_type(file_path, mime_type)
     lang_list = [p.strip() for p in (languages or "eng").split(",") if p.strip()] or ["eng"]
@@ -65,6 +67,8 @@ def _run_pipeline(
                 param_mode=param_mode,
                 custom_params=custom_params,
                 max_pages=settings.MAX_PAGES,
+                table_areas=table_areas,
+                table_template=table_template,
             )
             output["detected_file_type"] = detected
             output["page_count"] = page_count
@@ -250,6 +254,8 @@ async def extract_auto(
     extract_tables: bool = Form(True),
     extract_text: bool = Form(True),
     use_transformer: bool = Form(True),
+    table_areas: Optional[str] = Form(None),
+    table_template: Optional[str] = Form(None),
 ):
     raw = await file.read()
     validate_upload(file, raw)
@@ -272,6 +278,8 @@ async def extract_auto(
             extract_tables,
             extract_text,
             use_transformer,
+            table_areas,
+            table_template,
         )
         result = build_lite_result(
             job_id=job_id,

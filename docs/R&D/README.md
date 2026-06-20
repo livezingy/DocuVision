@@ -8,6 +8,7 @@ Use this folder for exploratory write-ups that are **not** authoritative for the
 |------|---------|
 | [azure-contract-and-paddle-discovery.md](azure-contract-and-paddle-discovery.md) | Azure sample observations + contract direction notes |
 | [data-flow-diagram-legacy.md](data-flow-diagram-legacy.md) | **Deprecated** early PaddleOCR flow diagrams — do not cite in PRs |
+| [upwork/](upwork/) | Upwork / 客户场景 R&D（local only；见 [upwork/README.md](upwork/README.md)）— 含 **医疗传真 intake** 差距分析与 Phase 1 手册 |
 
 **Authoritative docs** live in [../architecture/](../architecture/) and [../README.md](../README.md).
 

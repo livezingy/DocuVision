@@ -176,6 +176,7 @@ docs/*
 !docs/release/**
 docs/R&D/**
 !docs/R&D/README.md
+# Upwork planning notes live under docs/R&D/upwork/ (covered by docs/R&D/** above)
 
 # Intentionally not versioned / removed from repo (maintainer-local or retired paths)
 .claude/

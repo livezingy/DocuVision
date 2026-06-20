@@ -345,6 +345,25 @@
     text-align: left;
 }
 
+#processMainView {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+}
+
+#batchMainView.hidden {
+    display: none !important;
+}
+
+#processMainView.hidden {
+    display: none !important;
+}
+
+#previewStage {
+    position: relative;
+}
+
 @media (max-width: 1100px) {
     .main-content {
         flex-direction: column;

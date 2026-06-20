@@ -1929,19 +1929,22 @@ async def retry_batch_failed(batch_id: str):
 
 
 @app.get("/api/v1/batch/{batch_id}/export.csv")
-async def export_batch_csv(batch_id: str, mode: str = "kie"):
+async def export_batch_csv(batch_id: str, mode: str = "kie", validation_passed_only: bool = False):
     """Download aggregated batch results as CSV (mode: kie, summary, failures)."""
     batch = batch_service.get_batch(batch_id)
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
 
     mode_norm = (mode or "kie").strip().lower()
+    export_opts = dict(batch.options or {})
+    if validation_passed_only:
+        export_opts["validation_passed_only"] = True
     if mode_norm == "summary":
         header, rows = build_summary_csv_rows(batch)
     elif mode_norm in ("failures", "failure"):
         header, rows = build_failure_csv_rows(batch)
     else:
-        header, rows = build_kie_csv_rows(batch)
+        header, rows = build_kie_csv_rows(batch, options=export_opts)
 
     csv_text = render_csv(header, rows)
     filename = f"batch_{batch_id}_{mode_norm}.csv"
@@ -2067,10 +2070,28 @@ async def save_kie_template(template_id: str, body: Dict[str, Any]):
 
 
 @app.get("/api/v1/hitl/reviews")
-async def list_hitl_reviews(limit: int = 50):
+async def list_hitl_reviews(limit: int = 50, include_payload: bool = False):
     from app.services.hitl_queue import hitl_queue
 
-    return {"reviews": hitl_queue.list_pending(limit=limit)}
+    return {"reviews": hitl_queue.list_pending(limit=limit, include_payload=include_payload)}
+
+
+@app.get("/api/v1/hitl/reviews/{review_id}")
+async def get_hitl_review(review_id: str):
+    from app.services.hitl_queue import hitl_queue
+
+    item = hitl_queue.get(review_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return {
+        "review_id": item.review_id,
+        "task_id": item.task_id,
+        "file_name": item.file_name,
+        "reason": item.reason,
+        "status": item.status,
+        "created_at": item.created_at.isoformat(),
+        "payload": item.payload,
+    }
 
 
 @app.post("/api/v1/hitl/reviews/{review_id}/resolve")
@@ -2091,11 +2112,15 @@ async def list_webhooks():
 
 
 @app.post("/api/v1/webhooks")
-async def register_webhook(url: str = Form(...), events: str = Form("task.completed,batch.completed")):
+async def register_webhook(
+    url: str = Form(...),
+    events: str = Form("task.completed,batch.completed"),
+    secret: str = Form(""),
+):
     from app.services.webhook_service import webhook_registry
 
     event_list = [e.strip() for e in events.split(",") if e.strip()]
-    sub = webhook_registry.register(url, event_list)
+    sub = webhook_registry.register(url, event_list, secret=secret)
     return {
         "subscription_id": sub.subscription_id,
         "url": sub.url,

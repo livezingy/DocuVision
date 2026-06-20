@@ -1008,7 +1008,9 @@ GET /api/v1/jobs/{job_id}/debug
 | UI | Batch Processing 标签；pause/resume/retry；Options 快照 |
 | 测试 | Phase A 37 项；Cloud MP + H-Batch + UI 冒烟 — [MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md) |
 
-**post-v1.2 优先级**（见 [RELEASE_1.2_NOTES.md](../release/RELEASE_1.2_NOTES.md)、[RELEASE_1.1_CHECKLIST.md](../release/RELEASE_1.1_CHECKLIST.md) §6）：**P0** 字段校验引擎、custom schema / 模板；**P1** 自动 `document_type`、HITL、可搜索 PDF、邮件/webhook；**P2** HWR、垂直模板、翻译。身份证精度走 `bugfix/*` / patch。
+**v1.3 已交付（P0）**：Pro born-digital → `docuvision-core` 表格路由；跨页 stitch MVP；Lite Batch API；KIE 字段校验 + YAML 模板 API；Batch Excel（v1.2.1+）。详见 [RELEASE_1.3.0_NOTES.md](../release/RELEASE_1.3.0_NOTES.md)。
+
+**post-v1.3 优先级（v1.4 主线）**：垂直表格列映射（bank_statement / invoice_line_items）、`table_areas` ROI UI、自动 `document_type` 产品化、HITL Review UI、Webhook HTTP 投递；邮件 IMAP 建议独立服务/n8n。**v1.5+**：可搜索 PDF、PDF 工具箱产品化、Batch 持久化。身份证精度走 `bugfix/*` / patch。
 
 ### 明确不在范围 / 未来独立服务
 

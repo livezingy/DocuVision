@@ -22,6 +22,8 @@ const DEFAULT_OPTIONS = {
   paramMode: "auto",
   customParams: null,
   scoreThreshold: 0.5,
+  tableAreas: null,
+  tableTemplate: "",
 };
 
 const state = {
@@ -856,6 +858,7 @@ function syncModalFromState() {
   $("optOcrEngine").value = state.options.ocrEngine;
   $("optLanguages").value = state.options.languages;
   $("optScoreThreshold").value = state.options.scoreThreshold;
+  if ($("optTableTemplate")) $("optTableTemplate").value = state.options.tableTemplate || "";
   document.querySelector(`input[name="paramMode"][value="${state.options.paramMode}"]`).checked = true;
 
   const cp = state.options.customParams || getCurrentPageProfile()?.computed_params;
@@ -918,6 +921,7 @@ function readOptionsFromModal() {
   state.options.languages = $("optLanguages").value.trim() || "eng";
   state.options.paramMode = document.querySelector('input[name="paramMode"]:checked').value;
   state.options.scoreThreshold = parseFloat($("optScoreThreshold").value) || 0.5;
+  state.options.tableTemplate = ($("optTableTemplate")?.value || "").trim();
 
   if (state.options.paramMode === "custom") {
     try {
@@ -1266,6 +1270,12 @@ async function runExtractionForItem(item, { silent = false } = {}) {
   if (state.options.paramMode === "custom" && state.options.customParams) {
     form.append("custom_params", JSON.stringify(state.options.customParams));
   }
+  if (state.options.tableAreas) {
+    form.append("table_areas", JSON.stringify(state.options.tableAreas));
+  }
+  if (state.options.tableTemplate) {
+    form.append("table_template", state.options.tableTemplate);
+  }
 
   try {
     const res = await fetch(`${API_BASE}/extract/auto`, { method: "POST", body: form });
@@ -1607,6 +1617,9 @@ async function init() {
   initResultsTabs();
   initPanelLayout();
   initPreviewZoom();
+  initLiteTabs();
+  initLiteBatch();
+  initTableRoi();
   $("helpBtn")?.addEventListener("click", () => window.open("/docs", "_blank"));
   els.runBtn.addEventListener("click", runExtraction);
   fetchHealth();
@@ -1631,3 +1644,143 @@ async function init() {
 }
 
 void init();
+
+const liteBatchState = { batchId: null, pollTimer: null };
+
+function initLiteTabs() {
+  document.querySelectorAll(".nav-tab[data-tab]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      if (tab.disabled) return;
+      document.querySelectorAll(".nav-tab[data-tab]").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      const name = tab.dataset.tab;
+      $("processMainView")?.classList.toggle("hidden", name !== "process");
+      $("batchMainView")?.classList.toggle("hidden", name !== "batch");
+    });
+  });
+}
+
+function initLiteBatch() {
+  const fileInput = $("liteBatchFiles");
+  $("liteBatchSelectBtn")?.addEventListener("click", () => fileInput?.click());
+  fileInput?.addEventListener("change", () => {
+    const count = fileInput.files?.length || 0;
+    const el = $("liteBatchFileCount");
+    if (el) el.textContent = count ? `${count} PDF(s) selected` : "";
+  });
+  $("liteBatchCreateBtn")?.addEventListener("click", createLiteBatch);
+  $("liteBatchStartBtn")?.addEventListener("click", startLiteBatch);
+  $("liteBatchCsvBtn")?.addEventListener("click", () => downloadLiteBatchExport("csv"));
+  $("liteBatchXlsxBtn")?.addEventListener("click", () => downloadLiteBatchExport("xlsx"));
+}
+
+async function createLiteBatch() {
+  const files = Array.from($("liteBatchFiles")?.files || []);
+  if (!files.length) {
+    setStatus("Select PDF files for Lite batch.");
+    return;
+  }
+  const form = new FormData();
+  form.append("name", $("liteBatchName")?.value || "Lite batch");
+  form.append("options", JSON.stringify({ table_only: true }));
+  files.forEach((f) => form.append("files", f));
+  const res = await fetch(`${API_BASE}/batch`, { method: "POST", body: form });
+  const data = await res.json();
+  if (!res.ok) {
+    setStatus(`Lite batch create failed: ${data?.detail || res.statusText}`);
+    return;
+  }
+  liteBatchState.batchId = data.batch_id;
+  $("liteBatchStartBtn").disabled = false;
+  $("liteBatchStatus").textContent = `Batch ${data.batch_id} created (${data.total_tasks || files.length} files)`;
+  setStatus("Lite batch created");
+}
+
+async function startLiteBatch() {
+  const id = liteBatchState.batchId;
+  if (!id) return;
+  await fetch(`${API_BASE}/batch/${id}/start`, { method: "POST" });
+  pollLiteBatch(id);
+}
+
+function pollLiteBatch(batchId) {
+  if (liteBatchState.pollTimer) clearInterval(liteBatchState.pollTimer);
+  liteBatchState.pollTimer = setInterval(async () => {
+    const res = await fetch(`${API_BASE}/batch/${batchId}`);
+    const data = await res.json();
+    $("liteBatchStatus").textContent = `${data.status} — ${data.completed_tasks || 0}/${data.total_tasks || 0}`;
+    if (["completed", "failed", "cancelled"].includes(data.status)) {
+      clearInterval(liteBatchState.pollTimer);
+      liteBatchState.pollTimer = null;
+      $("liteBatchCsvBtn").disabled = false;
+      $("liteBatchXlsxBtn").disabled = false;
+    }
+  }, 2000);
+}
+
+async function downloadLiteBatchExport(kind) {
+  const id = liteBatchState.batchId;
+  if (!id) return;
+  const path = kind === "xlsx" ? `${API_BASE}/batch/${id}/export.xlsx` : `${API_BASE}/batch/${id}/export.csv`;
+  const res = await fetch(path);
+  if (!res.ok) {
+    setStatus(`Download failed (${res.status})`);
+    return;
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `lite_batch_${id}.${kind === "xlsx" ? "xlsx" : "csv"}`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function initTableRoi() {
+  const stage = $("previewStage");
+  const overlay = $("tableRoiOverlay");
+  const btn = $("tableRoiBtn");
+  if (!stage || !btn) return;
+
+  let drawing = false;
+  let start = null;
+
+  btn.addEventListener("click", () => {
+    drawing = !drawing;
+    btn.classList.toggle("primary", drawing);
+    setStatus(drawing ? "Draw table ROI: drag on preview" : "Table ROI mode off");
+  });
+
+  stage.addEventListener("mousedown", (event) => {
+    if (!drawing) return;
+    const rect = stage.getBoundingClientRect();
+    start = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  });
+
+  stage.addEventListener("mouseup", (event) => {
+    if (!drawing || !start) return;
+    const rect = stage.getBoundingClientRect();
+    const end = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    const w = state.previewNaturalWidth || rect.width;
+    const h = state.previewNaturalHeight || rect.height;
+    const sx = w / rect.width;
+    const sy = h / rect.height;
+    const x0 = Math.min(start.x, end.x) * sx;
+    const y0 = Math.min(start.y, end.y) * sy;
+    const x1 = Math.max(start.x, end.x) * sx;
+    const y1 = Math.max(start.y, end.y) * sy;
+    state.options.tableAreas = [[x0, y0, x1, y1]];
+    if (overlay) {
+      overlay.classList.remove("hidden");
+      overlay.style.left = `${Math.min(start.x, end.x)}px`;
+      overlay.style.top = `${Math.min(start.y, end.y)}px`;
+      overlay.style.width = `${Math.abs(end.x - start.x)}px`;
+      overlay.style.height = `${Math.abs(end.y - start.y)}px`;
+    }
+    drawing = false;
+    btn.classList.remove("primary");
+    start = null;
+    setStatus("Table ROI saved for next extraction");
+    persistSession();
+  });
+}

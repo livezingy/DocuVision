@@ -68,9 +68,9 @@
 
 ## 后续版本方向（post-v1.3.0）
 
-- **v1.4（P1）**：table_areas ROI UI、完整 HITL 工作流、邮件/IMAP、垂直列映射模板。
-- **v1.5+**：PDF 工具箱产品化、可搜索 PDF 质量、Batch 持久化。
-- **维护**：Playwright E2E P1/P2（Batch tab）；CI Phase A 扩展测项（workflow 变更需维护者同意）。
+- **v1.4（已规划/部分落地）**：垂直表格列映射（`table_column_mapping`）、`table_areas` ROI UI（Lite）、自动 `document_type`、HITL Review UI、Webhook HTTP 投递、Lite Batch UI。
+- **v1.5+**：见 [v1.5-roadmap.md](../architecture/v1.5-roadmap.md) — 可搜索 PDF、PDF 工具箱产品化、Batch 持久化；邮件 IMAP 独立服务。
+- **维护**：Playwright E2E P1/P2（Batch/Reviews tab）；CI Phase A 扩展测项（workflow 变更需维护者同意）。
 
 Cloud 验收：[MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md)。
 

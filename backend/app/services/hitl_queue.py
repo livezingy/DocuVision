@@ -34,23 +34,27 @@ class HitlReviewQueue:
         self._items[item.review_id] = item
         return item
 
-    def list_pending(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def list_pending(self, limit: int = 50, include_payload: bool = False) -> List[Dict[str, Any]]:
         out = []
         for item in self._items.values():
             if item.status != "pending":
                 continue
-            out.append(
-                {
-                    "review_id": item.review_id,
-                    "task_id": item.task_id,
-                    "file_name": item.file_name,
-                    "reason": item.reason,
-                    "created_at": item.created_at.isoformat(),
-                }
-            )
+            entry = {
+                "review_id": item.review_id,
+                "task_id": item.task_id,
+                "file_name": item.file_name,
+                "reason": item.reason,
+                "created_at": item.created_at.isoformat(),
+            }
+            if include_payload:
+                entry["payload"] = item.payload
+            out.append(entry)
             if len(out) >= limit:
                 break
         return out
+
+    def get(self, review_id: str) -> Optional[ReviewItem]:
+        return self._items.get(review_id)
 
     def resolve(self, review_id: str, status: str = "approved") -> Optional[ReviewItem]:
         item = self._items.get(review_id)

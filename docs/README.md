@@ -20,7 +20,8 @@ Read in this order when onboarding to the codebase:
 4. [architecture/lite-api.md](architecture/lite-api.md) — Lite REST API
 5. [architecture/shared-ui-shell.md](architecture/shared-ui-shell.md) — Pro/Lite shared UI
 6. [architecture/batch-ui-roadmap.md](architecture/batch-ui-roadmap.md) — Batch UI roadmap
-7. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
+7. [architecture/v1.5-roadmap.md](architecture/v1.5-roadmap.md) — post-v1.4 long-tail (searchable PDF, batch persistence)
+8. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
 
 ## Validation and QA
 

@@ -39,6 +39,17 @@ def test_build_kie_csv_has_core_columns() -> None:
     assert "boom" in csv_text
 
 
+def test_build_kie_csv_validation_passed_only() -> None:
+    batch = _sample_batch()
+    batch.tasks[0].result["kie_validation"] = {"validation_passed": False}
+    header, rows = build_kie_csv_rows(batch, options={"validation_passed_only": True})
+    assert len(rows) == 0
+
+    batch.tasks[0].result["kie_validation"] = {"validation_passed": True}
+    header, rows = build_kie_csv_rows(batch, options={"validation_passed_only": True})
+    assert len(rows) == 1
+
+
 def test_build_batch_xlsx_bytes() -> None:
     from app.services.batch_export_service import build_batch_xlsx_bytes
 
@@ -50,3 +61,17 @@ def test_build_batch_xlsx_bytes() -> None:
     assert isinstance(payload, bytes)
     assert len(payload) > 100
     assert payload[:2] == b"PK"
+
+
+def test_build_batch_xlsx_includes_mapped_rows_sheet() -> None:
+    from app.services.batch_export_service import build_batch_xlsx_bytes
+    import pandas as pd
+    import io
+
+    batch = _sample_batch()
+    batch.tasks[0].result["mapped_table_rows"] = [
+        {"transaction_date": "2024-01-01", "amount": "1.00", "file_name": "a.png"},
+    ]
+    payload = build_batch_xlsx_bytes(batch, mode="all")
+    sheets = pd.ExcelFile(io.BytesIO(payload)).sheet_names
+    assert "MappedRows" in sheets

@@ -62,10 +62,8 @@ async function installProApiMocks(page, options = {}) {
   });
 
   await page.routeWebSocket(`${API_PREFIX}/tasks/**/ws**`, (ws) => {
-    ws.onConnection((socket) => {
-      socket.send(JSON.stringify({ type: 'completed', message: 'Processing completed', progress: 100 }));
-      socket.close();
-    });
+    ws.send(JSON.stringify({ type: 'completed', message: 'Processing completed', progress: 100 }));
+    ws.close();
   });
 
   await page.route(`${API_PREFIX}/tasks/*`, async (route) => {

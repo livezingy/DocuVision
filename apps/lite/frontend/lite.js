@@ -1,4 +1,4 @@
-﻿const API_BASE = window.LITE_API_BASE || "/api/v1/lite";
+const API_BASE = window.LITE_API_BASE || "/api/v1/lite";
 const LITE_SESSION_KEY = "docuvision.lite.session.v1";
 const LITE_FILE_DB = "docuvision-lite-files";
 const LITE_FILE_STORE = "files";
@@ -229,7 +229,7 @@ function formatRoutingSummary(routing) {
   const engine = routing.engine_used || routing.requested_engine || "auto";
   const flavor = routing.flavor_used;
   if (flavor && flavor !== "auto" && !String(engine).includes(flavor)) {
-    return `${engine} 路 ${formatFlavorLabel(flavor)}`;
+    return `${engine} · ${formatFlavorLabel(flavor)}`;
   }
   return engine;
 }
@@ -265,7 +265,7 @@ function resolveFlavorForApi(engine, flavor) {
 
 function formatTableSourceLabel(source) {
   if (!source) return "unknown";
-  return String(source).replace(/_/g, " 路 ");
+  return String(source).replace(/_/g, " · ");
 }
 
 function updateZoomUI() {
@@ -410,11 +410,11 @@ async function fetchHealth() {
   try {
     const res = await fetch(`${API_BASE}/health`);
     const data = await res.json();
-    els.apiVersion.textContent = data.api_version || "鈥?;
+    els.apiVersion.textContent = data.api_version || "—";
     els.statusDot.classList.add("online");
     const engines = data.engines || {};
-    const parts = Object.entries(engines).map(([k, v]) => `${k}${v.available ? " 鉁? : " 鉁?}`);
-    els.statusEngines.textContent = parts.join(" 路 ");
+    const parts = Object.entries(engines).map(([k, v]) => `${k}${v.available ? " ✓" : " ✗"}`);
+    els.statusEngines.textContent = parts.join(" · ");
   } catch {
     els.statusEngines.textContent = "Backend unreachable";
   }
@@ -454,7 +454,7 @@ function updateQueueUI() {
     row.innerHTML = `
       <div class="queue-item-body">
         <div class="queue-item-name">${escapeHtml(item.file.name)}</div>
-        <div class="queue-item-meta">${formatBytes(item.file.size)} 路 ${item.status || "pending"}</div>
+        <div class="queue-item-meta">${formatBytes(item.file.size)} · ${item.status || "pending"}</div>
         <div class="queue-item-status">${escapeHtml(item.statusMessage || "")}</div>
       </div>
       <button type="button" class="queue-item-action" title="Remove" aria-label="Remove">
@@ -729,7 +729,7 @@ async function fetchProfile(file, { silent = false } = {}) {
     if (!silent) {
       renderDocumentProfile();
       setActiveMainTab("profile");
-      setStatus("Profile ready 鈥?configure options or run extraction");
+      setStatus("Profile ready — configure options or run extraction");
       persistSession();
     }
     return data;
@@ -797,7 +797,7 @@ function renderPageProfileDetail(pageProf) {
         <h5>Classification</h5>
         <span class="badge ${cls}">${escapeHtml(pageProf.table_type)}</span>
         <div class="score-bar"><div class="score-bar-fill" style="width:${scorePct}%"></div></div>
-        <div>Score: ${pageProf.table_type_score?.toFixed(2) ?? "鈥?} 路 H:${cd.h_lines ?? 0} V:${cd.v_lines ?? 0}</div>
+        <div>Score: ${pageProf.table_type_score?.toFixed(2) ?? "—"} · H:${cd.h_lines ?? 0} V:${cd.v_lines ?? 0}</div>
       </div>
       <div class="profile-card">
         <h5>Routing suggestion</h5>
@@ -823,12 +823,12 @@ function renderPageProfileDetail(pageProf) {
       <summary>Line analysis</summary>
       <div class="profile-details-body">
         <dl>
-          <dt>Method</dt><dd>${escapeHtml(cd.method || "鈥?)}</dd>
-          <dt>Horizontal lines</dt><dd>${cd.h_lines ?? "鈥?}</dd>
-          <dt>Vertical lines</dt><dd>${cd.v_lines ?? "鈥?}</dd>
-          <dt>Line concentration</dt><dd>${cd.line_concentration != null ? cd.line_concentration.toFixed(2) : "鈥?}</dd>
-          <dt>Area ratio</dt><dd>${cd.area_ratio != null ? cd.area_ratio.toFixed(2) : "鈥?}</dd>
-          <dt>Direction balance</dt><dd>${cd.direction_balance != null ? cd.direction_balance.toFixed(2) : "鈥?}</dd>
+          <dt>Method</dt><dd>${escapeHtml(cd.method || "—")}</dd>
+          <dt>Horizontal lines</dt><dd>${cd.h_lines ?? "—"}</dd>
+          <dt>Vertical lines</dt><dd>${cd.v_lines ?? "—"}</dd>
+          <dt>Line concentration</dt><dd>${cd.line_concentration != null ? cd.line_concentration.toFixed(2) : "—"}</dd>
+          <dt>Area ratio</dt><dd>${cd.area_ratio != null ? cd.area_ratio.toFixed(2) : "—"}</dd>
+          <dt>Direction balance</dt><dd>${cd.direction_balance != null ? cd.direction_balance.toFixed(2) : "—"}</dd>
         </dl>
       </div>
     </details>`;
@@ -894,7 +894,7 @@ function updateModalProfileSummary() {
     el.textContent = state.profile?.scan_profile?.message || "Upload a file to see suggested parameters.";
     return;
   }
-  el.textContent = `Page ${pp.page}: ${pp.table_type} (score ${pp.table_type_score?.toFixed(2)}) 鈫?${pp.suggested_routing?.engine} / ${formatFlavorLabel(normalizeFlavorFromProfile(pp.suggested_routing?.flavor))}`;
+  el.textContent = `Page ${pp.page}: ${pp.table_type} (score ${pp.table_type_score?.toFixed(2)}) → ${pp.suggested_routing?.engine} / ${formatFlavorLabel(normalizeFlavorFromProfile(pp.suggested_routing?.flavor))}`;
 }
 
 function updateAdvancedControls() {
@@ -986,7 +986,7 @@ function renderTable(table, index) {
   wrap.className = "table-card";
   const header = document.createElement("div");
   header.className = "table-card-header";
-  header.textContent = `Table ${index + 1} 路 page ${table.page} 路 score ${(table.score || 0).toFixed(2)} 路 ${formatTableSourceLabel(table.source)}`;
+  header.textContent = `Table ${index + 1} · page ${table.page} · score ${(table.score || 0).toFixed(2)} · ${formatTableSourceLabel(table.source)}`;
   wrap.appendChild(header);
 
   const rows = [];
@@ -1156,21 +1156,21 @@ function renderQualityPanel(data) {
   const q = data.quality || {};
   const warnings = data.warnings || [];
   const hints = data.hints || [];
-  const score = q.overall_confidence != null ? `${Math.round(q.overall_confidence * 100)}%` : "鈥?;
+  const score = q.overall_confidence != null ? `${Math.round(q.overall_confidence * 100)}%` : "—";
   const routingLine = data.routing ? formatRoutingSummary(data.routing) : null;
   const ocrBlocks = q.ocr_blocks ?? (data.ocr || []).length;
   const warnHtml = warnings.length
     ? warnings.map((w) => {
         const isFailure = w.code === "ocr_extraction_failed";
         const cls = isFailure ? "quality-warn quality-fail" : "quality-warn";
-        return `<div class="${cls}">鈿?${escapeHtml(w.code || "")}: ${escapeHtml(w.message || "")}</div>`;
+        return `<div class="${cls}">⚠ ${escapeHtml(w.code || "")}: ${escapeHtml(w.message || "")}</div>`;
       }).join("")
     : "";
   const hintHtml = hints.length
-    ? hints.map((h) => `<div class="quality-hint">馃挕 ${escapeHtml(h.message || "")}</div>`).join("")
+    ? hints.map((h) => `<div class="quality-hint">💡 ${escapeHtml(h.message || "")}</div>`).join("")
     : "";
   els.qualityPanel.innerHTML = `
-    <div class="quality-score">Confidence: ${score} 路 Tables: ${q.tables_accepted ?? 0}/${q.tables_found ?? 0} 路 OCR blocks: ${ocrBlocks} 路 Pages: ${q.pages_processed ?? 0}</div>
+    <div class="quality-score">Confidence: ${score} · Tables: ${q.tables_accepted ?? 0}/${q.tables_found ?? 0} · OCR blocks: ${ocrBlocks} · Pages: ${q.pages_processed ?? 0}</div>
     ${routingLine ? `<div class="quality-hint">Routing: ${escapeHtml(routingLine)}</div>` : ""}
     ${warnHtml}${hintHtml}`;
   els.qualityPanel.classList.remove("hidden");
@@ -1199,7 +1199,7 @@ function renderTransactionTable(container, rows, emptyMsg) {
     const tr = document.createElement("tr");
     headers.forEach((h) => {
       const td = document.createElement("td");
-      td.textContent = tx[h] ?? "鈥?;
+      td.textContent = tx[h] ?? "—";
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
@@ -1309,7 +1309,7 @@ async function runExtractionForItem(item, { silent = false } = {}) {
     if (!silent && state.activeIndex >= 0 && state.queue[state.activeIndex] === item) {
       renderResults(data);
       const routing = formatRoutingSummary(data.routing);
-      setStatus(`Done in ${data.processing_ms} ms 鈥?${routing}`);
+      setStatus(`Done in ${data.processing_ms} ms — ${routing}`);
     }
     persistSession();
   } catch (err) {
@@ -1335,7 +1335,7 @@ async function runExtraction() {
 
   if (!item.profile) {
     item.status = "profiling";
-    item.statusMessage = "Analyzing profile鈥?;
+    item.statusMessage = "Analyzing profile…";
     updateQueueUI();
     try {
       item.profile = await fetchProfileForItem(item.file);
@@ -1353,9 +1353,9 @@ async function runExtraction() {
   }
 
   item.status = "extracting";
-  item.statusMessage = "Extracting鈥?;
+  item.statusMessage = "Extracting…";
   updateQueueUI();
-  setStatus("Extracting鈥?);
+  setStatus("Extracting…");
   await runExtractionForItem(item);
 
   item.status = item.result ? "done" : "failed";
@@ -1369,7 +1369,7 @@ async function runExtraction() {
     setActiveMainTab("content");
     setActiveContentTab(item.result.tables?.length ? "tables" : "text");
     const routing = formatRoutingSummary(item.result.routing);
-    setStatus(`Done in ${item.result.processing_ms || 0} ms 鈥?${routing}`);
+    setStatus(`Done in ${item.result.processing_ms || 0} ms — ${routing}`);
   }
 }
 

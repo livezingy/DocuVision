@@ -352,14 +352,6 @@
     width: 100%;
 }
 
-#batchMainView.hidden {
-    display: none !important;
-}
-
-#processMainView.hidden {
-    display: none !important;
-}
-
 #previewStage {
     position: relative;
 }

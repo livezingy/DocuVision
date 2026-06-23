@@ -2001,26 +2001,6 @@ async def export_batch_json(batch_id: str):
 # Roadmap APIs (v1.3–v1.5 MVP)
 # ============================================
 
-@app.post("/api/v1/classify")
-async def classify_uploaded_document(file: UploadFile = File(...)):
-    """Auto-detect document_type from uploaded file (heuristic MVP)."""
-    import tempfile
-
-    suffix = os.path.splitext(file.filename or "")[1] or ".bin"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
-    try:
-        from app.services.document_type_classifier import classify_document
-
-        return classify_document(tmp_path)
-    finally:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-
-
 @app.post("/api/v1/document/profile")
 async def document_profile_scan(file: UploadFile = File(...)):
     """Pre-scan upload and suggest routing options (Pro Document Profile)."""

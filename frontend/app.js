@@ -1454,13 +1454,6 @@ function buildKieQueryFieldsPayload() {
 /**
  * Get current processing options from dialog
  */
-function isAutoClassifyEnabled() {
-    const el = document.getElementById('optAutoClassify');
-    if (!el) return false;
-    if (el.type === 'checkbox') return el.checked;
-    return String(el.value || '').toLowerCase() === 'yes';
-}
-
 function getProcessingOptions() {
     const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
     const isLayout = selectedMode === 'layout';
@@ -1560,9 +1553,6 @@ async function startProcessing() {
 
     let options;
     try {
-        if (isAutoClassifyEnabled() && firstPending.file) {
-            await maybeAutoClassifyDocument(firstPending.file);
-        }
         options = getProcessingOptions();
     } catch (err) {
         showNotification(err.message || String(err), 'error');
@@ -3801,9 +3791,6 @@ function setBatchControlsForBatch(batch) {
  */
 async function createBatch(name, files) {
     try {
-        if (isAutoClassifyEnabled() && files?.length) {
-            await maybeAutoClassifyDocument(files[0]);
-        }
         const formData = new FormData();
         formData.append('name', name);
 
@@ -4683,30 +4670,6 @@ function adjustDocumentSize() {
 window.addEventListener('resize', () => {
     setTimeout(adjustDocumentSize, 100);
 });
-
-async function maybeAutoClassifyDocument(file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await fetch(`${API_ROOT_URL}/api/v1/classify`, {
-        method: 'POST',
-        body: formData,
-    });
-    if (!response.ok) {
-        throw new Error(`Classify failed (${response.status})`);
-    }
-    const result = await response.json();
-    const docType = String(result.document_type || 'auto');
-    if (!docType || docType === 'auto') {
-        showNotification('Auto-detect: no confident document type', 'info');
-        return result;
-    }
-    const radio = document.querySelector(`input[name="processingMode"][value="${docType}"]`);
-    if (radio) {
-        radio.checked = true;
-        showNotification(`Auto-detect: ${docType} (${result.confidence ?? '?'})`, 'success');
-    }
-    return result;
-}
 
 let hitlSelectedReviewId = null;
 

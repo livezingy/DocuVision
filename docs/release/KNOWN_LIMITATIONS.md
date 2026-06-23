@@ -12,7 +12,7 @@
 | Raster tables | Image and scan PDF **Table Transformer** extraction is **frozen** by default (`RASTER_TABLES_FROZEN`); text OCR only on raster docs. |
 | Born-digital PDF | Table extraction via pdfplumber / Camelot; see [lite-api.md](../architecture/lite-api.md). |
 | Models | EasyOCR / optional Transformer weights under `packages/docuvision-core/models/` — bootstrap required on new hosts ([models/README.md](../../packages/docuvision-core/models/README.md)). |
-| Batch | Lite batch API at `/api/v1/lite/batch` (table-only PDF, in-memory). Pro batch adds **Excel** export (v1.2.1+). |
+| Batch | Pro batch at `/api/v1/batch` with CSV/JSON/**Excel** export (in-memory). Lite batch API removed from UI. |
 | GPU | Lite targets CPU; Pro remains GPU-recommended for layout + KIE latency. |
 
 ## KIE / 证件票据 (Pro)
@@ -68,7 +68,7 @@
 
 ## 后续版本方向（post-v1.3.0）
 
-- **v1.4（已规划/部分落地）**：垂直表格列映射（`table_column_mapping`）、`table_areas` ROI UI（Lite）、自动 `document_type`、HITL Review UI、Webhook HTTP 投递、Lite Batch UI。
+- **v1.4（已规划/部分落地）**：垂直表格列映射（`table_column_mapping`）、HITL Review UI、Webhook HTTP 投递。
 - **v1.5+**：见 [v1.5-roadmap.md](../architecture/v1.5-roadmap.md) — 可搜索 PDF、PDF 工具箱产品化、Batch 持久化；邮件 IMAP 独立服务。
 - **维护**：Playwright E2E P1/P2（Batch/Reviews tab）；CI Phase A 扩展测项（workflow 变更需维护者同意）。
 

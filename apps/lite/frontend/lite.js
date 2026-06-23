@@ -615,6 +615,7 @@ async function addFilesToQueue(files, { replace = false } = {}) {
   const item = getActiveItem();
   if (!item) return addedItems.length;
 
+  resetPreviewState();
   state.previewScale = 1;
   await renderPreview(item.file);
   await fetchProfile(item.file);
@@ -662,13 +663,25 @@ async function renderPreview(file) {
   state.previewUrl = URL.createObjectURL(file);
 
   if (isPdf && window.pdfjsLib) {
-    const buf = await file.arrayBuffer();
-    state.pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
-    state.totalPages = state.pdfDoc.numPages;
-    els.totalPages.textContent = state.totalPages;
-    els.currentPage.textContent = state.currentPage;
-    updatePageButtons();
-    await renderPdfPage(state.currentPage);
+    state.currentPage = 1;
+    state.pdfDoc = null;
+    try {
+      const buf = await file.arrayBuffer();
+      state.pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+      state.totalPages = state.pdfDoc.numPages;
+      els.totalPages.textContent = state.totalPages;
+      els.currentPage.textContent = "1";
+      updatePageButtons();
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await renderPdfPage(1);
+    } catch (err) {
+      console.error("[Lite] PDF preview failed:", err);
+      state.pdfDoc = null;
+      els.previewCanvas.classList.add("hidden");
+      els.previewPlaceholder.textContent = `PDF preview failed: ${err.message || "unknown error"}`;
+      els.previewPlaceholder.classList.remove("hidden");
+      setStatus("PDF preview failed");
+    }
   } else if (file.type.startsWith("image/") || /\.(png|jpe?g|bmp|tiff?)$/i.test(file.name)) {
     state.pdfDoc = null;
     state.totalPages = 1;
@@ -699,8 +712,10 @@ async function renderPreview(file) {
 }
 
 async function renderPdfPage(pageNum) {
-  if (!state.pdfDoc) return;
-  const page = await state.pdfDoc.getPage(pageNum);
+  if (!state.pdfDoc || !els.previewCanvas) return;
+  const safePage = Math.min(Math.max(1, pageNum), state.totalPages || 1);
+  state.currentPage = safePage;
+  const page = await state.pdfDoc.getPage(safePage);
   const baseViewport = page.getViewport({ scale: 1 });
   const container = els.previewContainer;
   const fitScale = Math.min(
@@ -720,7 +735,7 @@ async function renderPdfPage(pageNum) {
   canvas.style.height = `${viewport.height}px`;
   await page.render({ canvasContext: ctx, viewport }).promise;
   canvas.classList.remove("hidden");
-  els.currentPage.textContent = pageNum;
+  els.currentPage.textContent = String(safePage);
   updateZoomUI();
 }
 

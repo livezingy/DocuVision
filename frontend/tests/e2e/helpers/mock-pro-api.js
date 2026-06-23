@@ -87,7 +87,7 @@ async function installProApiMocks(page, options = {}) {
     finish();
   });
 
-  await page.route(`${API_PREFIX}/tasks/*`, async (route) => {
+  await page.route(`${API_PREFIX}/tasks/**`, async (route) => {
     const url = route.request().url();
     if (url.includes('/result')) {
       await route.fulfill(jsonResponse(mockResult(pageCount)));

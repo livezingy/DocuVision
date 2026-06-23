@@ -23,6 +23,16 @@ function mockResult(pageCount) {
   };
 }
 
+function mockHealthPayload() {
+  return {
+    status: 'ok',
+    api_version: '1.2.0',
+    layout: { ready: true },
+    table: { ready: true, strategy: 'layout_first' },
+    kie: { model_loaded: false },
+  };
+}
+
 /**
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
@@ -31,16 +41,17 @@ async function installProApiMocks(page, options = {}) {
   const pageCount = options.pageCount ?? 1;
   const tasks = new Map();
 
-  await page.route(`${API_PREFIX}/health`, async (route) => {
-    await route.fulfill(
-      jsonResponse({
-        status: 'ok',
-        api_version: '1.2.0',
-        layout: { ready: true },
-        table: { ready: true, strategy: 'layout_first' },
-        kie: { model_loaded: false },
-      }),
-    );
+  // Pro app.js calls API_ROOT_URL + '/health' (e.g. http://localhost:8000/health), not /api/v1/health.
+  await page.route(/\/health$/i, async (route) => {
+    await route.fulfill(jsonResponse(mockHealthPayload()));
+  });
+
+  await page.route(/http:\/\/(127\.0\.0\.1|localhost):8000\/?(\?.*)?$/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    await route.fulfill(jsonResponse({ name: 'DocuVision', version: '1.2.0' }));
   });
 
   await page.route(`${API_PREFIX}/upload`, async (route) => {
@@ -83,11 +94,11 @@ async function installProApiMocks(page, options = {}) {
       finish();
     });
 
-    // Send completion proactively (Playwright WebSocketRoute API; no onConnection).
-    finish();
+    // Defer so the client attaches onmessage before the completed payload arrives.
+    setTimeout(finish, 0);
   });
 
-  await page.route(`${API_PREFIX}/tasks/**`, async (route) => {
+  await page.route(/\/api\/v1\/tasks\//, async (route) => {
     const url = route.request().url();
     if (url.includes('/result')) {
       await route.fulfill(jsonResponse(mockResult(pageCount)));

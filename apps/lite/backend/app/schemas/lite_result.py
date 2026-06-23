@@ -281,6 +281,12 @@ class LiteScanProfile(LiteModel):
     message: str = ""
 
 
+class LitePreviewResponse(LiteModel):
+    preview_id: str
+    page_count: int = 1
+    file_name: str = ""
+
+
 class LiteDocumentProfile(LiteModel):
     schema_version: str = LITE_SCHEMA_VERSION
     api_version: str = LITE_API_VERSION

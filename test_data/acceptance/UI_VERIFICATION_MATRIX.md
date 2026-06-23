@@ -66,17 +66,24 @@ Planning detail: [PRO_UI_E2E_PLAN.md](../AutoTest/PRO_UI_E2E_PLAN.md).
 # API contract (CI Lite on PR)
 cd apps/lite/backend && python -m pytest tests/ -q
 
+# Preview API subset
+python -m pytest tests/test_lite_preview.py -q
+
 # OCR / table messaging subset (documented in checklist)
 python -m pytest tests/test_lite_ocr_messaging.py tests/test_lite_bordered_tables.py -q
+
+# Lite browser E2E (requires Lite server; CI Lite runs this on PR)
+cd frontend && npm install && npm run test:e2e:lite
 ```
 
-**CI Lite 不跑** Playwright / 浏览器。Lite **无** Playwright E2E 套件（截至当前）。
+**CI Lite**（PR → `main`）跑 `pytest tests/` + **`npm run test:e2e:lite`**（`LITE-PREVIEW-01`）。
 
 ### 3.2 LITE-UI 映射
 
 | Rule | 主题 | API pytest 覆盖 | E2E 绿减手工？ | 手工验收标准（要点） |
 |------|------|-----------------|----------------|----------------------|
-| LITE-UI-001 | Upload + Profile | 部分 `test_lite_analyze_profile.py` | **否** — 需浏览器 Profile 切换/翻页同步 | Profile tab、`table_type`、页码联动 |
+| LITE-PREVIEW-01 | PDF 中栏预览 | `test_lite_preview.py` | **是** — `lite-preview.e2e.js` 断言 `#previewImage` 可见 | 上传 PDF 非空白、多页 Next |
+| LITE-UI-001 | Upload + Profile | 部分 `test_lite_analyze_profile.py` | **部分** — E2E 覆盖预览可见；Profile 文案/联动仍建议 spot-check | Profile tab、`table_type`、页码联动 |
 | LITE-UI-002 | Content tabs | 部分 extract/profile | **否** | Tables 网格、Figures 空态 |
 | LITE-UI-003 | OCR 低置信/失败 | `test_lite_ocr_messaging.py` | **部分** — API 消息对；Quality 面板/UI 仍手工 | `low_confidence` / `ocr_extraction_failed` / `no_text_detected` 可见 |
 | LITE-UI-004 | Queue | 无 | **否** | 多文件、Remove、选中项单独分析 |
@@ -102,7 +109,7 @@ Checklist steps: [`apps/lite/backend/tests/LITE_UI_TEST_CHECKLIST.md`](../../app
 | 产品 | 条件 | 最小手工 |
 |------|------|----------|
 | **Pro** | `test:e2e` + `test:unit` 绿 | ① 单票样例真实 Analyze+KIE（Cloud）② Options 改过后点一轮 ③ Export 任一下载 |
-| **Lite** | `pytest tests/` 绿 | `LITE_UI_TEST_CHECKLIST` 中 **LITE-UI-004**（队列）+ **LITE-UI-007**（Options）+ 本次改动涉及章节 |
+| **Lite** | `pytest tests/` + `npm run test:e2e:lite` 绿 | `LITE_UI_TEST_CHECKLIST` 中 **LITE-UI-004**（队列）+ **LITE-UI-007**（Options）+ 本次改动涉及章节 |
 | **共享 CSS/JS** | 上两项相关子集绿 | Lite + Pro 各打开一页，看 Export 四按钮与 toast |
 
 ## 6. 维护

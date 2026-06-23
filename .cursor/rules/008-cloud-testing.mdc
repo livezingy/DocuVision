@@ -80,6 +80,22 @@ pip install -e "../../../packages/docuvision-core[lite,dev]"
 python -m pytest tests/ -q
 ```
 
+**Lite preview E2E** (CI Lite on PR; CPU, starts `run_lite.py` via Playwright):
+
+```bash
+cd "$REPO_ROOT/frontend"
+npm install
+npm run test:e2e:lite
+```
+
+Contract only:
+
+```bash
+cd "$REPO_ROOT/apps/lite/backend"
+source ~/docuvision_lite_env/bin/activate
+python -m pytest tests/test_lite_preview.py -q
+```
+
 ## Phase B — Pro server + health
 
 **Terminal 1** (keep running):

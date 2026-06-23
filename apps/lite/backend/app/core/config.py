@@ -23,6 +23,8 @@ class LiteSettings(BaseSettings):
 
     JOB_DATA_DIR: str = "data/lite_jobs"
 
+    PREVIEW_DATA_DIR: str = "data/lite_previews"
+
     # Raster (image / scan PDF) Table Transformer extraction; default off in Lite.
     RASTER_TABLE_EXTRACTION_ENABLED: bool = False
 

@@ -5,9 +5,90 @@ const LITE_FILE_STORE = "files";
 /** When true, image/scan PDF table extraction (Transformer) is disabled; text OCR only. */
 const RASTER_TABLES_FROZEN = true;
 
-if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+async function uploadPreview(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/preview`, { method: "POST", body: form });
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = data?.error?.message || data?.detail?.error?.message || data?.detail || res.statusText;
+    throw new Error(typeof msg === "string" ? msg : "Preview upload failed");
+  }
+  return {
+    previewId: data.preview_id,
+    pageCount: Number(data.page_count) || 1,
+    fileName: data.file_name || file.name,
+  };
+}
+
+async function fetchPreviewPageUrl(previewId, pageNum) {
+  const res = await fetch(`${API_BASE}/preview/${previewId}/page-image/${pageNum}`);
+  if (!res.ok) {
+    throw new Error(`Preview page fetch failed (${res.status})`);
+  }
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+function applyPreviewImageLayout() {
+  if (!els.previewImage || els.previewImage.classList.contains("hidden")) return;
+  state.previewNaturalWidth = els.previewImage.naturalWidth || 1;
+  state.previewNaturalHeight = els.previewImage.naturalHeight || 1;
+  const container = els.previewContainer;
+  const fitScale = Math.min(
+    (container.clientWidth - 16) / state.previewNaturalWidth,
+    (container.clientHeight - 16) / state.previewNaturalHeight,
+    state.previewId ? 1.5 : 1,
+  );
+  state.previewBaseScale = Math.max(0.1, fitScale || 1);
+  applyImagePreviewZoom();
+}
+
+async function renderServerPreviewPage(pageNum) {
+  const item = getActiveItem();
+  const previewId = state.previewId || item?.previewId;
+  if (!previewId) {
+    throw new Error("Preview session not available");
+  }
+  const safePage = Math.min(Math.max(1, pageNum), state.totalPages || 1);
+  state.currentPage = safePage;
+  if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+  state.previewUrl = await fetchPreviewPageUrl(previewId, safePage);
+  els.previewImage.onload = () => applyPreviewImageLayout();
+  els.previewImage.src = state.previewUrl;
+  els.previewImage.classList.remove("hidden");
+  els.previewCanvas?.classList.add("hidden");
+  els.currentPage.textContent = String(safePage);
+  updatePageButtons();
+  updateZoomUI();
+}
+
+async function ensurePreviewSession(file, item) {
+  if (item?.previewId) {
+    state.previewId = item.previewId;
+    state.totalPages = item.previewPageCount || 1;
+    try {
+      await renderServerPreviewPage(state.currentPage || 1);
+      return;
+    } catch (err) {
+      console.warn("[Lite] Stale preview session, re-uploading:", err);
+      item.previewId = null;
+      item.previewPageCount = 0;
+      state.previewId = null;
+    }
+  }
+  const uploaded = await uploadPreview(file);
+  state.previewId = uploaded.previewId;
+  state.totalPages = uploaded.pageCount;
+  if (item) {
+    item.previewId = uploaded.previewId;
+    item.previewPageCount = uploaded.pageCount;
+  }
+  state.currentPage = 1;
+  els.totalPages.textContent = String(state.totalPages);
+  els.currentPage.textContent = "1";
+  updatePageButtons();
+  await renderServerPreviewPage(1);
 }
 
 const DEFAULT_OPTIONS = {
@@ -33,7 +114,7 @@ const state = {
   result: null,
   currentPage: 1,
   totalPages: 1,
-  pdfDoc: null,
+  previewId: null,
   previewUrl: null,
   options: { ...DEFAULT_OPTIONS },
   processing: false,
@@ -53,6 +134,10 @@ function syncActiveFromQueue() {
   state.file = item?.file || null;
   state.profile = item?.profile || null;
   state.result = item?.result || null;
+  state.previewId = item?.previewId || null;
+  if (item?.previewPageCount) {
+    state.totalPages = item.previewPageCount;
+  }
 }
 
 const $ = (id) => document.getElementById(id);
@@ -309,8 +394,8 @@ function applyImagePreviewZoom() {
 }
 
 async function refreshPreviewZoom() {
-  if (state.pdfDoc) {
-    await renderPdfPage(state.currentPage);
+  if (state.previewId) {
+    await renderServerPreviewPage(state.currentPage);
   } else if (state.file && !els.previewImage.classList.contains("hidden")) {
     applyImagePreviewZoom();
   }
@@ -568,6 +653,8 @@ function createQueueItem(file) {
     file,
     profile: null,
     result: null,
+    previewId: null,
+    previewPageCount: 0,
     status: "pending",
     statusMessage: "",
   };
@@ -586,7 +673,7 @@ function enqueueFiles(files) {
 
 function resetPreviewState() {
   state.currentPage = 1;
-  state.pdfDoc = null;
+  state.previewId = null;
   if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
   state.previewUrl = null;
 }
@@ -659,84 +746,41 @@ async function renderPreview(file) {
   updateZoomUI();
 
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-  if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
-  state.previewUrl = URL.createObjectURL(file);
+  const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|bmp|tiff?)$/i.test(file.name);
+  const item = getActiveItem();
 
-  if (isPdf && window.pdfjsLib) {
-    state.currentPage = 1;
-    state.pdfDoc = null;
+  if (isPdf) {
     try {
-      const buf = await file.arrayBuffer();
-      state.pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
-      state.totalPages = state.pdfDoc.numPages;
-      els.totalPages.textContent = state.totalPages;
-      els.currentPage.textContent = "1";
-      updatePageButtons();
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      await renderPdfPage(1);
+      await ensurePreviewSession(file, item);
     } catch (err) {
       console.error("[Lite] PDF preview failed:", err);
-      state.pdfDoc = null;
-      els.previewCanvas.classList.add("hidden");
+      state.previewId = null;
+      els.previewImage.classList.add("hidden");
       els.previewPlaceholder.textContent = `PDF preview failed: ${err.message || "unknown error"}`;
       els.previewPlaceholder.classList.remove("hidden");
       setStatus("PDF preview failed");
     }
-  } else if (file.type.startsWith("image/") || /\.(png|jpe?g|bmp|tiff?)$/i.test(file.name)) {
-    state.pdfDoc = null;
+    return;
+  }
+
+  if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+  state.previewUrl = URL.createObjectURL(file);
+  state.previewId = null;
+
+  if (isImage) {
     state.totalPages = 1;
     state.currentPage = 1;
     els.totalPages.textContent = "1";
     els.currentPage.textContent = "1";
-    els.previewImage.onload = () => {
-      state.previewNaturalWidth = els.previewImage.naturalWidth || 1;
-      state.previewNaturalHeight = els.previewImage.naturalHeight || 1;
-      const container = els.previewContainer;
-      const fitScale = Math.min(
-        (container.clientWidth - 16) / state.previewNaturalWidth,
-        (container.clientHeight - 16) / state.previewNaturalHeight,
-        1,
-      );
-      state.previewBaseScale = Math.max(0.1, fitScale || 1);
-      applyImagePreviewZoom();
-    };
+    els.previewImage.onload = () => applyPreviewImageLayout();
     els.previewImage.src = state.previewUrl;
     els.previewImage.classList.remove("hidden");
     els.prevPage.disabled = true;
     els.nextPage.disabled = true;
   } else {
-    state.pdfDoc = null;
     els.previewPlaceholder.textContent = file.name;
     els.previewPlaceholder.classList.remove("hidden");
   }
-}
-
-async function renderPdfPage(pageNum) {
-  if (!state.pdfDoc || !els.previewCanvas) return;
-  const safePage = Math.min(Math.max(1, pageNum), state.totalPages || 1);
-  state.currentPage = safePage;
-  const page = await state.pdfDoc.getPage(safePage);
-  const baseViewport = page.getViewport({ scale: 1 });
-  const container = els.previewContainer;
-  const fitScale = Math.min(
-    (container.clientWidth - 16) / baseViewport.width,
-    (container.clientHeight - 16) / baseViewport.height,
-    1.5,
-  );
-  state.previewBaseScale = Math.max(0.1, fitScale || 1);
-  state.previewNaturalWidth = baseViewport.width;
-  state.previewNaturalHeight = baseViewport.height;
-  const viewport = page.getViewport({ scale: state.previewBaseScale * state.previewScale });
-  const canvas = els.previewCanvas;
-  const ctx = canvas.getContext("2d");
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  canvas.style.width = `${viewport.width}px`;
-  canvas.style.height = `${viewport.height}px`;
-  await page.render({ canvasContext: ctx, viewport }).promise;
-  canvas.classList.remove("hidden");
-  els.currentPage.textContent = String(safePage);
-  updateZoomUI();
 }
 
 function updatePageButtons() {
@@ -1468,7 +1512,9 @@ function initPagination() {
   els.prevPage.addEventListener("click", async () => {
     if (state.currentPage > 1) {
       state.currentPage--;
-      await renderPdfPage(state.currentPage);
+      if (state.previewId) {
+        await renderServerPreviewPage(state.currentPage);
+      }
       updatePageButtons();
       if (els.profilePageSelect.options.length) {
         els.profilePageSelect.value = String(state.currentPage);
@@ -1479,7 +1525,9 @@ function initPagination() {
   els.nextPage.addEventListener("click", async () => {
     if (state.currentPage < state.totalPages) {
       state.currentPage++;
-      await renderPdfPage(state.currentPage);
+      if (state.previewId) {
+        await renderServerPreviewPage(state.currentPage);
+      }
       updatePageButtons();
       if (els.profilePageSelect.options.length) {
         els.profilePageSelect.value = String(state.currentPage);
@@ -1494,7 +1542,7 @@ function initProfile() {
   els.profilePageSelect.addEventListener("change", () => {
     const p = parseInt(els.profilePageSelect.value, 10);
     state.currentPage = p;
-    if (state.pdfDoc) renderPdfPage(p);
+    if (state.previewId) void renderServerPreviewPage(p);
     renderPageProfileDetail(getCurrentPageProfile());
   });
   els.applyProfileBtn.addEventListener("click", applyProfileToAdvanced);

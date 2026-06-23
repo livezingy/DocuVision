@@ -58,3 +58,15 @@ jobs:
       - name: Run Lite API tests
         working-directory: apps/lite/backend
         run: python -m pytest tests/ -q
+
+      - name: Install frontend deps for Lite E2E
+        working-directory: frontend
+        run: npm install
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run Lite preview E2E
+        working-directory: frontend
+        run: npm run test:e2e:lite

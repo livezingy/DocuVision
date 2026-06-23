@@ -7,7 +7,8 @@
 
 | 文件 | 保留原因 |
 |------|----------|
-| `test_*.py`（12 个） | 均在 CI 或文档中引用；**无冗余删除** |
+| `test_*.py`（13 个） | 均在 CI 或文档中引用；**无冗余删除** |
+| `test_lite_preview.py` | `POST /preview` + `GET .../page-image` 契约（PDF/PNG 魔数） |
 | `test_image_table_pipeline.py` | 覆盖冻结后的 `image_table_pipeline`（含 `RASTER_TABLE_EXTRACTION_ENABLED=true` 时的 mock 路径） |
 | `test_raster_transformer_frozen.py` | 默认冻结下 `/extract/auto` 不调用 Transformer |
 | `fixtures/sample_bordered.pdf` | 数字 PDF 表格/Profile 集成测试 |

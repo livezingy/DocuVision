@@ -21,9 +21,9 @@ Automated API/UI contract tests: `python -m pytest tests/test_lite_ocr_messaging
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Upload a born-digital PDF | Right panel switches to **Profile** tab |
+| 1 | Upload a born-digital PDF | Right panel switches to **Profile** tab; **center preview shows page 1** (not blank) |
 | 2 | Check Profile content | `table_type`, routing strategy, typography visible |
-| 3 | Change page in center preview | Profile page selector syncs |
+| 3 | Change page in center preview | Profile page selector syncs; preview image updates |
 
 ## LITE-UI-002 Content Tabs
 

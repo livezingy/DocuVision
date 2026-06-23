@@ -49,6 +49,8 @@ Lite 面向 **CPU 友好** 场景：born-digital PDF 表格（pdfplumber/camelot
 |------|------|------|------|
 | `GET` | `/health` | 健康检查、引擎就绪 | A ✅ |
 | `GET` | `/engines` | 可用引擎列表 | A ✅ |
+| `POST` | `/preview` | 上传文件用于中栏预览（返回 `preview_id`、`page_count`） | D+ ✅ |
+| `GET` | `/preview/{preview_id}/page-image/{page_num}` | PDF 页栅格化 PNG / 原图（与 Pro `/page-image` 同思路） | D+ ✅ |
 | `POST` | `/analyze/profile` | 上传后轻量预扫描，返回 LiteDocumentProfile | D ✅ |
 | `POST` | `/extract/tables` | PDF 表格提取 | C |
 | `POST` | `/extract/ocr` | 图片/扫描 OCR | C |
@@ -334,7 +336,7 @@ Lite 采用与 Pro 一致的三栏结构：
 | 区域 | 内容 |
 |------|------|
 | 左栏 | Upload Document、Processing Queue（最多 3 个文件） |
-| 中栏 | 文档预览（`preview-header` → `preview-container` → `preview-pagination`），**不含** Document Profile |
+| 中栏 | 文档预览（`preview-header` → `preview-container` → `preview-pagination`），**不含** Document Profile；PDF 经 `POST /preview` + `GET .../page-image/{n}` 服务端栅格化（不依赖浏览器 pdf.js） |
 | 右栏 | Processing Results |
 
 ### 10.1 右栏主 Tab
@@ -366,6 +368,7 @@ Lite 与 Pro 共用 [`frontend/shared/ui-features.js`](../../frontend/shared/ui-
 - [x] Phase D：`lite.html` 前端（baseline）
 - [x] Phase D+：`POST /analyze/profile` + 三栏 UI + Document Profile
 - [x] Phase D++：Document Profile 迁至右栏 Profile Tab；中栏预览与 Pro 对齐
+- [x] Phase D+++：`POST /preview` + `GET /preview/{id}/page-image/{n}` 服务端 PDF 预览（替代浏览器 pdf.js）
 
 ---
 
@@ -377,3 +380,4 @@ Lite 与 Pro 共用 [`frontend/shared/ui-features.js`](../../frontend/shared/ui-
 | v0.2 | 2026-05-26 | 新增 LiteDocumentProfile、`POST /analyze/profile` |
 | v0.3 | 2026-05-27 | Document Profile 移至右栏 Profile Tab；Transactions/Mapped 默认隐藏（ui-features.js） |
 | v0.4 | 2026-05-27 | 统一 flavor 语义（auto/bordered/unbordered）；Smart Camelot 低分兜底策略 |
+| v0.5 | 2026-06-23 | 服务端 preview API；PDF 中栏预览与 Pro `/page-image` 同思路 |

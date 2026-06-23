@@ -215,6 +215,9 @@ npm run test:unit
 npm run test:e2e
 ```
 
+- E2E auto-starts `python3 -m http.server 8000` at repo root when `:8000` is free (API mocked; no `run.py` required). If Pro is already on `:8000`, Playwright reuses it (`reuseExistingServer`).
+- Override entry: `PW_INDEX_URL=http://127.0.0.1:8000/frontend/index.html`. Skip auto server: `PW_SKIP_WEBSERVER=1 npm run test:e2e` (then start `run.py` or static server yourself).
+
 - E2E uses **mock API** (`frontend/tests/e2e/helpers/mock-pro-api.js`); green does **not** replace Cloud KIE or full manual UI matrix.
 - **Manual scope after UI changes**: [UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md); assistant lists remaining checks per `004-project.mdc` §手工测试提醒.
 

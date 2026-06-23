@@ -57,48 +57,70 @@ function syncActiveFromQueue() {
 
 const $ = (id) => document.getElementById(id);
 
-const els = {
-  uploadZone: $("uploadZone"),
-  fileInput: $("fileInput"),
-  queueList: $("queueList"),
-  queueCount: $("queueCount"),
-  runBtn: $("runBtn"),
-  analysisOptionsBtn: $("analysisOptionsBtn"),
-  previewPlaceholder: $("previewPlaceholder"),
-  previewCanvas: $("previewCanvas"),
-  previewImage: $("previewImage"),
-  previewStage: $("previewStage"),
-  previewContainer: $("previewContainer"),
-  zoomInBtn: $("zoomInBtn"),
-  zoomOutBtn: $("zoomOutBtn"),
-  zoomFitBtn: $("zoomFitBtn"),
-  zoomLevel: $("zoomLevel"),
-  openValidationLink: $("openValidationLink"),
-  prevPage: $("prevPage"),
-  nextPage: $("nextPage"),
-  currentPage: $("currentPage"),
-  totalPages: $("totalPages"),
-  documentProfile: $("documentProfile"),
-  profilePageSelect: $("profilePageSelect"),
-  profileContent: $("profileContent"),
-  applyProfileBtn: $("applyProfileBtn"),
-  contentText: $("contentText"),
-  contentTableList: $("contentTableList"),
-  resultJson: $("resultJson"),
-  exportJsonBtn: $("exportJsonBtn"),
-  exportCsvBtn: $("exportCsvBtn"),
-  exportMarkdownBtn: $("exportMarkdownBtn"),
-  exportDocxBtn: $("exportDocxBtn"),
-  statusDot: $("statusDot"),
-  statusEngines: $("statusEngines"),
-  statusMessage: $("statusMessage"),
-  apiVersion: $("apiVersion"),
-  saveValidationBtn: $("saveValidationBtn"),
-  qualityPanel: $("qualityPanel"),
-  contentTransactionsList: $("contentTransactionsList"),
-  contentMappedList: $("contentMappedList"),
-  modal: $("analysisOptionsModal"),
-};
+/** DOM refs; populated in bindElements() once the document is ready. */
+const els = {};
+
+function bindElements() {
+  Object.assign(els, {
+    uploadZone: $("uploadZone"),
+    fileInput: $("fileInput"),
+    queueList: $("queueList"),
+    queueCount: $("queueCount"),
+    runBtn: $("runBtn"),
+    analysisOptionsBtn: $("analysisOptionsBtn"),
+    previewPlaceholder: $("previewPlaceholder"),
+    previewCanvas: $("previewCanvas"),
+    previewImage: $("previewImage"),
+    previewStage: $("previewStage"),
+    previewContainer: $("previewContainer"),
+    zoomInBtn: $("zoomInBtn"),
+    zoomOutBtn: $("zoomOutBtn"),
+    zoomFitBtn: $("zoomFitBtn"),
+    zoomLevel: $("zoomLevel"),
+    openValidationLink: $("openValidationLink"),
+    prevPage: $("prevPage"),
+    nextPage: $("nextPage"),
+    currentPage: $("currentPage"),
+    totalPages: $("totalPages"),
+    documentProfile: $("documentProfile"),
+    profilePageSelect: $("profilePageSelect"),
+    profileContent: $("profileContent"),
+    applyProfileBtn: $("applyProfileBtn"),
+    contentText: $("contentText"),
+    contentTableList: $("contentTableList"),
+    resultJson: $("resultJson"),
+    exportJsonBtn: $("exportJsonBtn"),
+    exportCsvBtn: $("exportCsvBtn"),
+    exportMarkdownBtn: $("exportMarkdownBtn"),
+    exportDocxBtn: $("exportDocxBtn"),
+    statusDot: $("statusDot"),
+    statusEngines: $("statusEngines"),
+    statusMessage: $("statusMessage"),
+    apiVersion: $("apiVersion"),
+    saveValidationBtn: $("saveValidationBtn"),
+    qualityPanel: $("qualityPanel"),
+    contentTransactionsList: $("contentTransactionsList"),
+    contentMappedList: $("contentMappedList"),
+    modal: $("analysisOptionsModal"),
+  });
+}
+
+function setRadioChecked(name, value) {
+  const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(String(value)) : String(value);
+  const match = document.querySelector(`input[name="${name}"][value="${escaped}"]`);
+  if (match) {
+    match.checked = true;
+    return;
+  }
+  const fallback = document.querySelector(`input[name="${name}"]`);
+  if (fallback) fallback.checked = true;
+}
+
+function normalizeRestoredOptions(raw) {
+  const merged = { ...DEFAULT_OPTIONS, ...(raw || {}), customParams: raw?.customParams ?? null };
+  delete merged.tableAreas;
+  return merged;
+}
 
 function newQueueItemId() {
   return crypto.randomUUID ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -217,7 +239,7 @@ async function restoreSession() {
 
   state.queue = restored;
   state.activeIndex = Math.min(Math.max(payload.activeIndex ?? 0, 0), restored.length - 1);
-  state.options = { ...DEFAULT_OPTIONS, ...(payload.options || {}), customParams: payload.options?.customParams ?? null };
+  state.options = normalizeRestoredOptions(payload.options);
   state.previewScale = payload.previewScale || 1;
   syncActiveFromQueue();
   updateQueueUI();
@@ -864,17 +886,17 @@ function readTableTemplateFromModal() {
 }
 
 function syncModalFromState() {
-  document.querySelector(`input[name="extractMode"][value="${state.options.mode}"]`).checked = true;
-  $("optExtractTables").checked = state.options.extractTables;
-  $("optExtractText").checked = state.options.extractText;
-  $("optPages").value = state.options.pages || "";
-  $("optEngine").value = state.options.engine;
-  $("optFlavor").value = normalizeFlavorFromProfile(state.options.flavor);
-  $("optOcrEngine").value = state.options.ocrEngine;
-  $("optLanguages").value = state.options.languages;
-  $("optScoreThreshold").value = state.options.scoreThreshold;
+  setRadioChecked("extractMode", state.options.mode || "smart");
+  if ($("optExtractTables")) $("optExtractTables").checked = state.options.extractTables;
+  if ($("optExtractText")) $("optExtractText").checked = state.options.extractText;
+  if ($("optPages")) $("optPages").value = state.options.pages || "";
+  if ($("optEngine")) $("optEngine").value = state.options.engine;
+  if ($("optFlavor")) $("optFlavor").value = normalizeFlavorFromProfile(state.options.flavor);
+  if ($("optOcrEngine")) $("optOcrEngine").value = state.options.ocrEngine;
+  if ($("optLanguages")) $("optLanguages").value = state.options.languages;
+  if ($("optScoreThreshold")) $("optScoreThreshold").value = state.options.scoreThreshold;
   syncTableTemplateSelects(state.options.tableTemplate || "");
-  document.querySelector(`input[name="paramMode"][value="${state.options.paramMode}"]`).checked = true;
+  setRadioChecked("paramMode", state.options.paramMode || "auto");
 
   const cp = state.options.customParams || getCurrentPageProfile()?.computed_params;
   $("paramsCamelotLattice").value = cp ? JSON.stringify(cp.camelot_lattice || {}, null, 2) : "{}";
@@ -925,17 +947,17 @@ function updateAdvancedControls() {
 }
 
 function readOptionsFromModal() {
-  state.options.mode = document.querySelector('input[name="extractMode"]:checked').value;
+  state.options.mode = document.querySelector('input[name="extractMode"]:checked')?.value || "smart";
   const showTables = isDigitalPdfDocument() && !(isRasterDocument() && RASTER_TABLES_FROZEN);
-  state.options.extractTables = showTables ? $("optExtractTables").checked : false;
-  state.options.extractText = $("optExtractText").checked;
-  state.options.pages = $("optPages").value.trim();
-  state.options.engine = $("optEngine").value;
-  state.options.flavor = normalizeFlavorFromProfile($("optFlavor").value);
-  state.options.ocrEngine = $("optOcrEngine").value;
-  state.options.languages = $("optLanguages").value.trim() || "eng";
-  state.options.paramMode = document.querySelector('input[name="paramMode"]:checked').value;
-  state.options.scoreThreshold = parseFloat($("optScoreThreshold").value) || 0.5;
+  state.options.extractTables = showTables ? ($("optExtractTables")?.checked ?? true) : false;
+  state.options.extractText = $("optExtractText")?.checked ?? true;
+  state.options.pages = ($("optPages")?.value || "").trim();
+  state.options.engine = $("optEngine")?.value || "auto";
+  state.options.flavor = normalizeFlavorFromProfile($("optFlavor")?.value);
+  state.options.ocrEngine = $("optOcrEngine")?.value || "auto";
+  state.options.languages = ($("optLanguages")?.value || "").trim() || "eng";
+  state.options.paramMode = document.querySelector('input[name="paramMode"]:checked')?.value || "auto";
+  state.options.scoreThreshold = parseFloat($("optScoreThreshold")?.value) || 0.5;
   state.options.tableTemplate = readTableTemplateFromModal();
 
   if (state.options.paramMode === "custom") {
@@ -1401,6 +1423,10 @@ function setActiveContentTab(tab) {
 }
 
 function initUpload() {
+  if (!els.uploadZone || !els.fileInput) {
+    console.error("[Lite] Upload controls missing (uploadZone or fileInput)");
+    return;
+  }
   els.uploadZone.addEventListener("click", () => els.fileInput.click());
   els.fileInput.addEventListener("change", () => {
     const files = els.fileInput.files;
@@ -1423,6 +1449,7 @@ function initUpload() {
 }
 
 function initPagination() {
+  if (!els.prevPage || !els.nextPage) return;
   els.prevPage.addEventListener("click", async () => {
     if (state.currentPage > 1) {
       state.currentPage--;
@@ -1448,6 +1475,7 @@ function initPagination() {
 }
 
 function initProfile() {
+  if (!els.profilePageSelect || !els.applyProfileBtn) return;
   els.profilePageSelect.addEventListener("change", () => {
     const p = parseInt(els.profilePageSelect.value, 10);
     state.currentPage = p;
@@ -1458,14 +1486,20 @@ function initProfile() {
 }
 
 function initModal() {
-  els.analysisOptionsBtn.addEventListener("click", openModal);
-  $("closeAnalysisOptionsBtn").addEventListener("click", closeModal);
-  $("cancelOptionsBtn").addEventListener("click", closeModal);
-  $("resetOptionsBtn").addEventListener("click", () => {
+  if (!els.analysisOptionsBtn || !els.modal) {
+    console.error("[Lite] Analysis options controls missing");
+    return;
+  }
+  els.analysisOptionsBtn.addEventListener("click", () => {
+    void openModal();
+  });
+  $("closeAnalysisOptionsBtn")?.addEventListener("click", closeModal);
+  $("cancelOptionsBtn")?.addEventListener("click", closeModal);
+  $("resetOptionsBtn")?.addEventListener("click", () => {
     state.options = defaultOptions();
     syncModalFromState();
   });
-  $("saveOptionsBtn").addEventListener("click", () => {
+  $("saveOptionsBtn")?.addEventListener("click", () => {
     try {
       readOptionsFromModal();
       closeModal();
@@ -1517,7 +1551,7 @@ function initResultsTabs() {
     btn.addEventListener("click", () => setActiveContentTab(btn.dataset.content));
   });
 
-  $("copyJsonBtn").addEventListener("click", () => {
+  $("copyJsonBtn")?.addEventListener("click", () => {
     if (!state.result) {
       const msg = "No result data to copy.";
       DocuVisionNotify.show(msg, "error");
@@ -1623,6 +1657,8 @@ function initPreviewZoom() {
 }
 
 async function init() {
+  bindElements();
+  document.getElementById("processMainView")?.classList.remove("hidden");
   window.DocuVisionUiFeatures?.applyLiteUiFeatures?.()
     || window.DocuVisionUiFeatures?.applyContentTabFeatures();
   initUpload();
@@ -1633,7 +1669,7 @@ async function init() {
   initPanelLayout();
   initPreviewZoom();
   $("helpBtn")?.addEventListener("click", () => window.open("/docs", "_blank"));
-  els.runBtn.addEventListener("click", runExtraction);
+  els.runBtn?.addEventListener("click", runExtraction);
   fetchHealth();
   fetchEnginesCatalog();
 
@@ -1655,4 +1691,16 @@ async function init() {
   }
 }
 
-void init();
+function startLiteApp() {
+  void init().catch((err) => {
+    console.error("[Lite] init failed:", err);
+    const statusEl = document.getElementById("statusMessage");
+    if (statusEl) statusEl.textContent = `UI init failed: ${err.message}`;
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", startLiteApp);
+} else {
+  startLiteApp();
+}

@@ -62,8 +62,29 @@ async function installProApiMocks(page, options = {}) {
   });
 
   await page.routeWebSocket(`${API_PREFIX}/tasks/**/ws**`, (ws) => {
-    ws.send(JSON.stringify({ type: 'completed', message: 'Processing completed', progress: 100 }));
-    ws.close();
+    const completed = JSON.stringify({
+      type: 'completed',
+      message: 'Processing completed',
+      progress: 100,
+    });
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      ws.send(completed);
+      ws.close();
+    };
+
+    ws.onMessage((message) => {
+      if (message === 'ping') {
+        ws.send('pong');
+        return;
+      }
+      finish();
+    });
+
+    // Send completion proactively (Playwright WebSocketRoute API; no onConnection).
+    finish();
   });
 
   await page.route(`${API_PREFIX}/tasks/*`, async (route) => {

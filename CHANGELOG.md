@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-06-23
+
+Maintenance release: remove unused Lite/Pro UI scope, add Lite server-side PDF preview. See [RELEASE_1.3.1_NOTES.md](docs/release/RELEASE_1.3.1_NOTES.md) and [MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md).
+
+### Added
+
+- Lite **server-side preview** API (`POST /preview`, `GET .../page-image/{n}`) with PyMuPDF rasterization.
+- Lite contract tests `test_lite_preview.py`; Playwright **LITE-PREVIEW-01** (`npm run test:e2e:lite`).
+
+### Removed
+
+- Pro **Auto-detect** UI and analyze classify shortcut.
+- Lite **Batch API/UI** (`/api/v1/lite/batch`).
+- Lite **Table ROI** UI; client-side **pdf.js** in Lite frontend.
+
+### Changed
+
+- `APP_VERSION` default **1.3.1**; Pro E2E mock routes extended for queue/options regression.
+- Cloud merge gate v1.3.1 replaces **LITE-BATCH-001** with **LITE-PREVIEW-001**.
+
 ## [1.3.0] — 2026-06-17
 
 Roadmap **P0** (PDF core routing + IDP validation + Lite batch). See [RELEASE_1.3.0_NOTES.md](docs/release/RELEASE_1.3.0_NOTES.md) and [MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.3.0_CLOUD_CHECKLIST.md).

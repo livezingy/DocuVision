@@ -57,7 +57,6 @@ async function renderServerPreviewPage(pageNum) {
   els.previewImage.onload = () => applyPreviewImageLayout();
   els.previewImage.src = state.previewUrl;
   els.previewImage.classList.remove("hidden");
-  els.previewCanvas?.classList.add("hidden");
   els.currentPage.textContent = String(safePage);
   updatePageButtons();
   updateZoomUI();
@@ -154,7 +153,6 @@ function bindElements() {
     runBtn: $("runBtn"),
     analysisOptionsBtn: $("analysisOptionsBtn"),
     previewPlaceholder: $("previewPlaceholder"),
-    previewCanvas: $("previewCanvas"),
     previewImage: $("previewImage"),
     previewStage: $("previewStage"),
     previewContainer: $("previewContainer"),
@@ -593,7 +591,6 @@ async function removeQueueItem(index) {
     state.result = null;
     resetPreviewState();
     els.previewPlaceholder.classList.remove("hidden");
-    els.previewCanvas.classList.add("hidden");
     els.previewImage.classList.add("hidden");
     renderDocumentProfile();
     renderResults(null);
@@ -741,7 +738,6 @@ async function handleFiles(files) {
 
 async function renderPreview(file) {
   els.previewPlaceholder.classList.add("hidden");
-  els.previewCanvas.classList.add("hidden");
   els.previewImage.classList.add("hidden");
   updateZoomUI();
 

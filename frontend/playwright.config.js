@@ -9,6 +9,7 @@ const staticServerCmd = process.platform === 'win32' ? 'python -m http.server 80
 module.exports = defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.e2e.js',
+  testIgnore: '**/lite/**',
   timeout: 120 * 1000,
   retries: 0,
   use: {

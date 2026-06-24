@@ -9,6 +9,7 @@ function samplePdfPath() {
     __dirname,
     '..',
     '..',
+    '..',
     'backend',
     'tests',
     'fixtures',

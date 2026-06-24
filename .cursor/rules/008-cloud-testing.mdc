@@ -85,7 +85,15 @@ python -m pytest tests/ -q
 ```bash
 cd "$REPO_ROOT/frontend"
 npm install
+npx playwright install chromium
 npm run test:e2e:lite
+```
+
+From `apps/lite/frontend/` (delegates to `frontend/`):
+
+```bash
+cd "$REPO_ROOT/apps/lite/frontend"
+npm run test:e2e   # requires frontend/node_modules from step above
 ```
 
 Contract only:

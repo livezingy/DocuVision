@@ -74,6 +74,7 @@ python -m pytest tests/test_lite_ocr_messaging.py tests/test_lite_bordered_table
 
 # Lite browser E2E (requires Lite server; CI Lite runs this on PR)
 cd frontend && npm install && npm run test:e2e:lite
+# Or from apps/lite/frontend: npm install && npm run test:e2e
 ```
 
 **CI Lite**（PR → `main`）跑 `pytest tests/` + **`npm run test:e2e:lite`**（`LITE-PREVIEW-01`）。

@@ -29,7 +29,7 @@ def test_preview_pdf_upload_and_page_image():
     page = client.get(f"/api/v1/lite/preview/{body['preview_id']}/page-image/1")
     assert page.status_code == 200, page.text
     assert page.headers["content-type"].startswith("image/")
-    assert page.content[:4] == PNG_MAGIC
+    assert page.content.startswith(PNG_MAGIC)
 
 
 def test_preview_png_page_image():

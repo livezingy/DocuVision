@@ -1,0 +1,10 @@
+{
+  "name": "docuvision-lite-frontend-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lite E2E shim — runs Playwright from repo frontend/ (shared @playwright/test)",
+  "scripts": {
+    "test:e2e": "npm --prefix ../../../frontend run test:e2e:lite",
+    "test:e2e:headed": "npm --prefix ../../../frontend run test:e2e:lite -- --headed"
+  }
+}

@@ -154,6 +154,13 @@ function write(name, pages) {
   console.log("Wrote", outPath);
 }
 
+function writeTo(dir, name, pages) {
+  fs.mkdirSync(dir, { recursive: true });
+  const outPath = path.join(dir, name);
+  fs.writeFileSync(outPath, buildPdf(pages), "utf8");
+  console.log("Wrote", outPath);
+}
+
 write("financial_report_01.pdf", [
   tablePage(
     "Acme Corp - Quarterly Transaction Report",
@@ -224,6 +231,31 @@ write("financial_report_scansim.pdf", [
     false
   ),
 ]);
+
+const INVOICE_OUT = path.join(__dirname, "..", "testfiles", "invoices");
+writeTo(INVOICE_OUT, "invoice_line_items_sample.pdf", [
+  tablePage(
+    "Acme Consulting - Invoice #INV-2024-1042",
+    "Bill To: Example Corp    Date: 2024-06-15",
+    ["Description", "Qty", "Unit Price", "Amount"],
+    [
+      ["Professional services - Phase 1", "40", "125.00", "5,000.00"],
+      ["Travel expenses", "1", "350.00", "350.00"],
+      ["Software license", "5", "99.00", "495.00"],
+    ],
+    true
+  ),
+]);
+
+const invoiceReadme = `# Invoice test samples
+
+| File | Purpose |
+|------|---------|
+| \`invoice_line_items_sample.pdf\` | Bordered line-items table for \`table_template=invoice_line_items\` (MAPPED-UI-002) |
+
+Regenerate: \`node test_data/scripts/generate_general_testfiles_pure.mjs\`
+`;
+fs.writeFileSync(path.join(INVOICE_OUT, "README.md"), invoiceReadme, "utf8");
 
 const readme = `# GeneralFiles — Trial / Cloud Test Samples
 

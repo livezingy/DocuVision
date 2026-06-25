@@ -261,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initExportButtons();
     initBatchProcessing();
     initHitlReviews();
+    initPdfTools();
     initPreviewPagination();
 
     // Insert a lightweight skeleton placeholder to avoid initial flash
@@ -638,6 +639,7 @@ function initTabs() {
     const processView = document.getElementById('processMainView');
     const batchView = document.getElementById('batchMainView');
     const reviewsView = document.getElementById('reviewsMainView');
+    const pdfToolsView = document.getElementById('pdfToolsMainView');
     navTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             if (tab.disabled) return;
@@ -651,11 +653,14 @@ function initTabs() {
                 processView.classList.add('hidden');
                 batchView.classList.add('hidden');
                 if (reviewsView) reviewsView.classList.add('hidden');
+                if (pdfToolsView) pdfToolsView.classList.add('hidden');
                 if (tabName === 'batch') {
                     batchView.classList.remove('hidden');
                 } else if (tabName === 'reviews') {
                     if (reviewsView) reviewsView.classList.remove('hidden');
                     refreshHitlReviews();
+                } else if (tabName === 'pdftools') {
+                    if (pdfToolsView) pdfToolsView.classList.remove('hidden');
                 } else {
                     processView.classList.remove('hidden');
                 }
@@ -1356,6 +1361,8 @@ function resetAnalysisOptions() {
     if (kieNote) kieNote.classList.add('hidden');
     const kieQueryInput = document.getElementById('optKieQueryFields');
     if (kieQueryInput) kieQueryInput.value = '';
+    const optTableTemplate = document.getElementById('optTableTemplate');
+    if (optTableTemplate) optTableTemplate.value = '';
     updateKieQueryFieldsAvailability();
     updateEnhancementTabs(false, false);
     showNotification('Options reset to defaults', 'info');
@@ -2186,6 +2193,7 @@ async function updateResultsDisplay(result) {
     // Update Content views
     updateContentText(result);
     updateContentTables(result);
+    updateContentMappedRows(result);
     updateContentFigures(result);
     updateContentFormulas((result.view || {}).formulas || []);
     updateContentSeals((result.view || {}).seals || []);
@@ -2228,6 +2236,97 @@ function renderQualityPanelPro(result) {
         <div class="quality-score">Confidence: ${score} · KIE fields: ${quality.kie_fields_count ?? '—'} · Tables: ${(result.view?.tables || []).length}</div>
         ${warnHtml}`;
     panel.classList.remove('hidden');
+}
+
+const TABLE_TEMPLATE_COLUMNS = {
+    bank_statement: ['transaction_date', 'description', 'amount', 'balance'],
+    invoice_line_items: ['line_description', 'quantity', 'unit_price', 'line_total'],
+};
+
+function renderSchemaTable(containerId, rows, columns, emptyMsg, metaColumns) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    const safeRows = Array.isArray(rows) ? rows : [];
+    const safeColumns = Array.isArray(columns) ? columns : [];
+    if (!safeRows.length) {
+        container.innerHTML = `<p class="empty-state">${escapeHtml(emptyMsg || 'No rows.')}</p>`;
+        return;
+    }
+    const meta = Array.isArray(metaColumns) ? metaColumns : [];
+    const headers = [...safeColumns, ...meta];
+    const table = document.createElement('table');
+    table.className = 'extracted-table';
+    const thead = document.createElement('thead');
+    const hr = document.createElement('tr');
+    headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        hr.appendChild(th);
+    });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    safeRows.forEach(row => {
+        const tr = document.createElement('tr');
+        headers.forEach(h => {
+            const td = document.createElement('td');
+            const val = row && row[h] != null && String(row[h]).trim() !== '' ? row[h] : '—';
+            td.textContent = val;
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
+
+function updateContentMappedRows(result) {
+    const tabBtn = document.getElementById('tabBtnMapped');
+    const rows = Array.isArray(result?.mapped_table_rows) ? result.mapped_table_rows : [];
+    const template = String(result?.table_template || '').trim().toLowerCase();
+    const hasRows = rows.length > 0;
+
+    if (tabBtn) {
+        tabBtn.classList.toggle('hidden', !hasRows);
+    }
+
+    const container = document.getElementById('contentMappedList');
+    if (!container) return;
+
+    if (!hasRows) {
+        renderSchemaTable(
+            'contentMappedList',
+            [],
+            TABLE_TEMPLATE_COLUMNS[template] || [],
+            template
+                ? 'No mapped rows. Check table headers match the template aliases or enable Table extraction.'
+                : 'Select a table vertical template in Analysis Options to map rows to a unified schema.'
+        );
+        return;
+    }
+
+    const columns = TABLE_TEMPLATE_COLUMNS[template];
+    const fieldKeys = columns || Object.keys(rows[0] || {}).filter(
+        k => !['template', 'source_table_index', 'page', 'row_index', 'file_name'].includes(k)
+    );
+    container.innerHTML = '';
+    if (template) {
+        const note = document.createElement('p');
+        note.className = 'kie-meta-line';
+        note.innerHTML = `Template: <strong>${escapeHtml(template)}</strong> · ${rows.length} row(s)`;
+        container.appendChild(note);
+    }
+    const tableWrap = document.createElement('div');
+    tableWrap.id = 'contentMappedTableWrap';
+    container.appendChild(tableWrap);
+    renderSchemaTable(
+        'contentMappedTableWrap',
+        rows,
+        fieldKeys,
+        'No mapped rows.',
+        ['page', 'source_table_index']
+    );
 }
 
 function renderDemoTransactionTable(containerId, rows, emptyMsg) {
@@ -4672,9 +4771,140 @@ window.addEventListener('resize', () => {
 });
 
 let hitlSelectedReviewId = null;
+let hitlSelectedTaskId = null;
+let hitlCurrentProfile = 'full';
+let hitlCurrentSchemaFields = [];
+
+function initPdfTools() {
+    const mergeInput = document.getElementById('pdfMergeFileInput');
+    const mergeSelectBtn = document.getElementById('pdfMergeSelectBtn');
+    const mergeBtn = document.getElementById('pdfMergeBtn');
+    const mergeCount = document.getElementById('pdfMergeFileCount');
+    const mergeStatus = document.getElementById('pdfMergeStatus');
+    let mergeFiles = [];
+
+    if (mergeSelectBtn && mergeInput) {
+        mergeSelectBtn.addEventListener('click', () => mergeInput.click());
+        mergeInput.addEventListener('change', () => {
+            mergeFiles = Array.from(mergeInput.files || []);
+            if (mergeCount) {
+                mergeCount.textContent = mergeFiles.length
+                    ? `${mergeFiles.length} PDF(s) selected`
+                    : '';
+            }
+            if (mergeBtn) mergeBtn.disabled = mergeFiles.length < 2;
+        });
+    }
+
+    mergeBtn?.addEventListener('click', async () => {
+        if (mergeFiles.length < 2) {
+            showNotification('Select at least two PDF files', 'warning');
+            return;
+        }
+        try {
+            if (mergeStatus) mergeStatus.textContent = 'Merging...';
+            const formData = new FormData();
+            mergeFiles.forEach(f => formData.append('files', f));
+            const response = await fetch(`${API_ROOT_URL}/api/v1/pdf-tools/merge`, {
+                method: 'POST',
+                body: formData,
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'merged.pdf';
+            a.click();
+            URL.revokeObjectURL(url);
+            if (mergeStatus) mergeStatus.textContent = 'Download started: merged.pdf';
+            showNotification('PDFs merged', 'success');
+        } catch (error) {
+            if (mergeStatus) mergeStatus.textContent = '';
+            showNotification(`Merge failed: ${error.message}`, 'error');
+        }
+    });
+
+    const metaInput = document.getElementById('pdfMetaFileInput');
+    const metaSelectBtn = document.getElementById('pdfMetaSelectBtn');
+    const metaBtn = document.getElementById('pdfMetaBtn');
+    const metaResult = document.getElementById('pdfMetaResult');
+    let metaFile = null;
+
+    if (metaSelectBtn && metaInput) {
+        metaSelectBtn.addEventListener('click', () => metaInput.click());
+        metaInput.addEventListener('change', () => {
+            metaFile = (metaInput.files && metaInput.files[0]) || null;
+            if (metaBtn) metaBtn.disabled = !metaFile;
+        });
+    }
+
+    metaBtn?.addEventListener('click', async () => {
+        if (!metaFile) return;
+        try {
+            const formData = new FormData();
+            formData.append('file', metaFile);
+            const response = await fetch(`${API_ROOT_URL}/api/v1/pdf-tools/metadata`, {
+                method: 'POST',
+                body: formData,
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (metaResult) metaResult.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+            if (metaResult) metaResult.textContent = `Failed: ${error.message}`;
+        }
+    });
+
+    const splitInput = document.getElementById('pdfSplitFileInput');
+    const splitSelectBtn = document.getElementById('pdfSplitSelectBtn');
+    const splitBtn = document.getElementById('pdfSplitBtn');
+    const splitPageInput = document.getElementById('pdfSplitPageInput');
+    let splitFile = null;
+
+    if (splitSelectBtn && splitInput) {
+        splitSelectBtn.addEventListener('click', () => splitInput.click());
+        splitInput.addEventListener('change', () => {
+            splitFile = (splitInput.files && splitInput.files[0]) || null;
+            if (splitBtn) splitBtn.disabled = !splitFile;
+        });
+    }
+
+    splitBtn?.addEventListener('click', async () => {
+        if (!splitFile) return;
+        const pageNum = parseInt(splitPageInput?.value || '1', 10) || 1;
+        try {
+            const formData = new FormData();
+            formData.append('file', splitFile);
+            formData.append('pages', String(pageNum));
+            const response = await fetch(`${API_ROOT_URL}/api/v1/pdf-tools/split`, {
+                method: 'POST',
+                body: formData,
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/pdf')) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `page_${pageNum}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showNotification('Page downloaded', 'success');
+            } else {
+                const data = await response.json();
+                showNotification(`Split returned ${data.count} page(s) (server paths only)`, 'info');
+            }
+        } catch (error) {
+            showNotification(`Split failed: ${error.message}`, 'error');
+        }
+    });
+}
 
 function initHitlReviews() {
     document.getElementById('hitlRefreshBtn')?.addEventListener('click', refreshHitlReviews);
+    document.getElementById('hitlSaveBtn')?.addEventListener('click', saveHitlReviewFields);
     document.getElementById('hitlApproveBtn')?.addEventListener('click', () => resolveHitlReview('approved'));
     document.getElementById('hitlRejectBtn')?.addEventListener('click', () => resolveHitlReview('rejected'));
     document.getElementById('hitlReviewTableBody')?.addEventListener('click', async (event) => {
@@ -4706,35 +4936,142 @@ async function refreshHitlReviews() {
 }
 
 async function loadHitlReviewDetail(reviewId) {
-    const detail = document.getElementById('hitlReviewDetail');
+    const fieldsContainer = document.getElementById('hitlReviewFields');
+    const summary = document.getElementById('hitlReviewSummary');
     const approveBtn = document.getElementById('hitlApproveBtn');
     const rejectBtn = document.getElementById('hitlRejectBtn');
-    if (!detail || !reviewId) return;
+    const saveBtn = document.getElementById('hitlSaveBtn');
+    if (!fieldsContainer || !reviewId) return;
     try {
         const response = await fetch(`${API_ROOT_URL}/api/v1/hitl/reviews/${reviewId}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const item = await response.json();
-        detail.textContent = JSON.stringify(item.payload || item, null, 2);
+        hitlSelectedTaskId = item.task_id || null;
+        const payload = item.payload || {};
+        const validation = payload.validation || {};
+        hitlCurrentProfile = payload.hitl_profile || 'full';
+        hitlCurrentSchemaFields = Array.isArray(payload.schema_fields) ? payload.schema_fields : [];
+        const fields = payload.fields && typeof payload.fields === 'object' ? payload.fields : {};
+        const failed = new Set(
+            Object.entries(validation.validation_field_results || {})
+                .filter(([, v]) => v && v.valid === false)
+                .map(([k]) => k)
+        );
+
+        if (summary) {
+            const passed = validation.validation_passed ? 'passed' : 'failed';
+            summary.textContent = `Profile: ${hitlCurrentProfile} · Validation: ${passed} · Task: ${item.task_id || '—'}`;
+        }
+
+        fieldsContainer.innerHTML = '';
+        const keys = Object.keys(fields);
+        if (!keys.length) {
+            fieldsContainer.innerHTML = '<p class="empty-state">No KIE fields in review payload.</p>';
+        } else {
+            const primaryKeys = hitlCurrentProfile === 'lite' && hitlCurrentSchemaFields.length
+                ? hitlCurrentSchemaFields.filter(k => k in fields)
+                : keys;
+            const secondaryKeys = keys.filter(k => !primaryKeys.includes(k));
+
+            primaryKeys.forEach(key => {
+                fieldsContainer.appendChild(buildHitlFieldEditor(key, fields[key], failed.has(key)));
+            });
+            if (secondaryKeys.length && hitlCurrentProfile === 'lite') {
+                const details = document.createElement('details');
+                details.style.marginTop = '12px';
+                details.innerHTML = `<summary class="upload-hint">Other fields (${secondaryKeys.length})</summary>`;
+                secondaryKeys.forEach(key => {
+                    details.appendChild(buildHitlFieldEditor(key, fields[key], failed.has(key)));
+                });
+                fieldsContainer.appendChild(details);
+            } else {
+                secondaryKeys.forEach(key => {
+                    fieldsContainer.appendChild(buildHitlFieldEditor(key, fields[key], failed.has(key)));
+                });
+            }
+        }
+
         if (approveBtn) approveBtn.disabled = false;
         if (rejectBtn) rejectBtn.disabled = false;
+        if (saveBtn) saveBtn.disabled = !hitlSelectedTaskId;
     } catch (error) {
-        detail.textContent = `Failed to load review: ${error.message}`;
+        fieldsContainer.innerHTML = `<p class="empty-state">Failed to load review: ${escapeHtml(error.message)}</p>`;
+    }
+}
+
+function buildHitlFieldEditor(key, value, isFailed) {
+    const wrap = document.createElement('div');
+    wrap.className = 'kie-field-card';
+    if (isFailed) wrap.style.borderColor = 'var(--warning, #f59e0b)';
+    const label = document.createElement('label');
+    label.className = 'kie-field-label';
+    label.textContent = key;
+    label.setAttribute('for', `hitl-field-${key}`);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `hitl-field-${key}`;
+    input.className = 'kie-field-input';
+    input.dataset.fieldKey = key;
+    input.value = value == null ? '' : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+    wrap.appendChild(label);
+    wrap.appendChild(input);
+    return wrap;
+}
+
+function collectHitlFieldValues() {
+    const out = {};
+    document.querySelectorAll('#hitlReviewFields input[data-field-key]').forEach(input => {
+        const key = input.dataset.fieldKey;
+        if (!key) return;
+        out[key] = input.value;
+    });
+    return out;
+}
+
+async function saveHitlReviewFields() {
+    if (!hitlSelectedTaskId) return;
+    const fields = collectHitlFieldValues();
+    try {
+        const response = await fetch(`${API_ROOT_URL}/api/v1/tasks/${hitlSelectedTaskId}/kie-fields`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fields }),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const validation = data.kie_validation || {};
+        const summary = document.getElementById('hitlReviewSummary');
+        if (summary) {
+            const passed = validation.validation_passed ? 'passed' : 'failed';
+            summary.textContent = `Profile: ${hitlCurrentProfile} · Validation: ${passed} (saved) · Task: ${hitlSelectedTaskId}`;
+        }
+        showNotification('Fields saved to task', 'success');
+    } catch (error) {
+        showNotification(`Save failed: ${error.message}`, 'error');
     }
 }
 
 async function resolveHitlReview(status) {
     if (!hitlSelectedReviewId) return;
+    const correctedFields = collectHitlFieldValues();
     try {
         const response = await fetch(
             `${API_ROOT_URL}/api/v1/hitl/reviews/${hitlSelectedReviewId}/resolve?status=${encodeURIComponent(status)}`,
-            { method: 'POST' },
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, corrected_fields: correctedFields }),
+            },
         );
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         showNotification(`Review ${status}`, 'success');
         hitlSelectedReviewId = null;
-        document.getElementById('hitlReviewDetail').textContent = 'Select a review item.';
+        hitlSelectedTaskId = null;
+        document.getElementById('hitlReviewFields').innerHTML = '';
+        document.getElementById('hitlReviewSummary').textContent = '';
         document.getElementById('hitlApproveBtn').disabled = true;
         document.getElementById('hitlRejectBtn').disabled = true;
+        document.getElementById('hitlSaveBtn').disabled = true;
         await refreshHitlReviews();
     } catch (error) {
         showNotification(`Resolve failed: ${error.message}`, 'error');

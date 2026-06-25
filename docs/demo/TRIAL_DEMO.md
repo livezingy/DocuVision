@@ -42,7 +42,30 @@ Pre-run each sample once and note `processing_ms` before the live session.
 
 1. **Lite (5 min)** — Upload born-digital PDF → 右栏 **Profile** Tab（自动切换）→ Run Analysis → **Tables** + **Quality** panel → Export CSV/JSON。
 2. **Pro (15 min)** — Upload invoice/receipt → Analysis Options → **Invoice** or **Receipt** mode → **Fields** + Result JSON → **Export** (real API).
-3. **Persistence (10 min)** — **Save to validation** → open `validation.html`.（**Mapped** Tab 当前默认隐藏；启用 Transactions/Mapped 见 [`docuvision-system-design.md`](../architecture/docuvision-system-design.md) §9.2）
+3. **Persistence (10 min)** — **Save to validation** → open `validation.html`.
+
+## Unified schema demo (v1.4 trial — T2/T3 / ETL)
+
+**Story**: Multiple vendor PDFs → same four-column schema → Batch Excel **MappedRows** sheet.
+
+### Single-file golden paths (Pro)
+
+| Template | Sample | Analysis Options |
+|----------|--------|------------------|
+| `bank_statement` | `test_data/testfiles/GeneralFiles/bank_statement_sample.pdf` | Layout off, Table on, KIE off, **Table vertical template = bank_statement** |
+| `invoice_line_items` | `test_data/testfiles/invoices/invoice_line_items_sample.pdf` | Same with **invoice_line_items** |
+
+After Run Analysis → **Content → Mapped rows** tab shows unified columns (not raw table headers).
+
+### Batch demo (MAPPED-BATCH-001)
+
+```powershell
+pwsh -File test_data/scripts/run_batch_mapped_acceptance.ps1
+```
+
+Manifest set: `mapped_bank_statement_3` (3 PDFs, `table_template=bank_statement`). Open exported `.xlsx` → **MappedRows** sheet.
+
+**Deferred** (post-trial): custom alias API, debit/credit split columns, deep stitch integration.
 
 ## Supabase PoC (post-trial / Assessment)
 

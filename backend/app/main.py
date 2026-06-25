@@ -557,6 +557,15 @@ class BatchCreateModel(BaseModel):
     options: Dict[str, Any] = {}
 
 
+class KieFieldsPatchModel(BaseModel):
+    fields: Dict[str, Any]
+
+
+class HitlResolveModel(BaseModel):
+    status: str = "approved"
+    corrected_fields: Optional[Dict[str, Any]] = None
+
+
 # ============================================
 # API Routes - Core (P1)
 # ============================================
@@ -782,6 +791,8 @@ async def analyze_document(
     return_raw: bool = Form(False),
     kie_query_fields: Optional[str] = Form(None),
     kie_pages: Optional[str] = Form(None),
+    table_template: Optional[str] = Form(None),
+    enable_hitl: bool = Form(True),
 ):
     """Upload and analyze a single document"""
     # Validate file
@@ -856,6 +867,9 @@ async def analyze_document(
         "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
         "kie_pages": (kie_pages or "").strip() or "1",
     }
+    if table_template and str(table_template).strip():
+        options["table_template"] = str(table_template).strip().lower()
+    options["enable_hitl"] = bool(enable_hitl)
 
     _resolve_kie_query_fields_in_options(options)
 
@@ -1700,6 +1714,30 @@ async def cancel_task(task_id: str):
     return {"message": "Task cancelled", "task_id": task_id}
 
 
+def _apply_kie_fields_to_task(task: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
+    from app.services.kie_fields_update import apply_kie_fields_to_task
+
+    return apply_kie_fields_to_task(task, fields)
+
+
+@app.patch("/api/v1/tasks/{task_id}/kie-fields")
+async def patch_task_kie_fields(task_id: str, body: KieFieldsPatchModel):
+    """Update KIE fields after human review."""
+    if task_id not in tasks:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task = tasks[task_id]
+    try:
+        validation = _apply_kie_fields_to_task(task, body.fields)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "task_id": task_id,
+        "fields": body.fields,
+        "kie_validation": validation,
+    }
+
+
 @app.delete("/api/v1/tasks/{task_id}")
 async def delete_task(task_id: str):
     """Delete a task (can delete any task regardless of status)"""
@@ -2075,13 +2113,38 @@ async def get_hitl_review(review_id: str):
 
 
 @app.post("/api/v1/hitl/reviews/{review_id}/resolve")
-async def resolve_hitl_review(review_id: str, status: str = "approved"):
+async def resolve_hitl_review(
+    review_id: str,
+    status: str = "approved",
+    body: Optional[HitlResolveModel] = None,
+):
     from app.services.hitl_queue import hitl_queue
 
-    item = hitl_queue.resolve(review_id, status=status)
+    item = hitl_queue.get(review_id)
     if not item:
         raise HTTPException(status_code=404, detail="Review not found")
-    return {"review_id": review_id, "status": item.status}
+
+    resolved_status = (body.status if body and body.status else status).strip().lower()
+    if resolved_status not in {"approved", "rejected"}:
+        raise HTTPException(status_code=400, detail="status must be approved or rejected")
+
+    if resolved_status == "approved":
+        task_id = item.task_id
+        if task_id in tasks:
+            if body and body.corrected_fields is not None:
+                _apply_kie_fields_to_task(tasks[task_id], body.corrected_fields)
+            else:
+                result = tasks[task_id].get("result")
+                if isinstance(result, dict):
+                    validation = dict(result.get("kie_validation") or {})
+                    validation["manual_reviewed"] = True
+                    validation["validation_passed"] = True
+                    result["kie_validation"] = validation
+
+    item = hitl_queue.resolve(review_id, status=resolved_status)
+    if not item:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return {"review_id": review_id, "status": item.status, "task_id": item.task_id}
 
 
 @app.get("/api/v1/webhooks")
@@ -2129,6 +2192,14 @@ async def pdf_tools_split(file: UploadFile = File(...), pages: str = Form("")):
     out_dir = os.path.join(tempfile.gettempdir(), f"split_{uuid.uuid4().hex[:8]}")
     try:
         outputs = split_pdf(in_path, out_dir, pages=page_list)
+        if len(outputs) == 1 and os.path.isfile(outputs[0]):
+            base = os.path.splitext(file.filename or "document")[0]
+            page_num = (page_list or [1])[0]
+            return FileResponse(
+                outputs[0],
+                filename=f"{base}_page_{page_num}.pdf",
+                media_type="application/pdf",
+            )
         return {"pages": outputs, "count": len(outputs)}
     finally:
         try:

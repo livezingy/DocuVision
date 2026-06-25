@@ -51,6 +51,7 @@
 | KIE query fields（v1.1） | `kie_query_fields` **仅追加**内置 schema（最多 20 字段）。**v1.3** 起支持 `document_type=custom` 与 YAML 模板库（MVP）；无字段 bbox 联动。见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)。 |
 | KIE validation（v1.3） | 启发式 date/currency 规则 + `kie_validation`；非 ground-truth 逐字校验；HITL 队列为内存 MVP。 |
 | Batch Processing UI | v1.2+ Pro Batch tab with aggregated CSV/JSON/**Excel**; in-memory batch, lost on restart. Lite has no batch UI/API since v1.3.1. |
+| Table column mapping (v1.4) | `table_template` maps PDF tables to unified schema (`mapped_table_rows`). **Debit/Credit split columns, Chinese headers, and complex merged cells** are extensible; current aliases target **English headers** primarily. Custom alias API deferred. |
 | 字段 bbox | KIE 字段与画布标注框 **未** 联动。 |
 | 翻译 / 长文档 VL 问答 | 明确不在 1.0 / 1.0.1 范围。 |
 

@@ -53,6 +53,8 @@ cd frontend && npm run test:e2e
 | **Analysis Options** | layout/table/KIE/`kie_query_fields` 传入 analyze | 改 Options 对话框或 Form 字段（无 UI-A-* E2E  yet） |
 | **Export 下载** | JSON/CSV 等与 API 一致 | 改 `export-ui.js` 或 export 路由（无 UI-R-03 E2E yet） |
 | **Batch tab** | 建批、暂停、CSV 行数 | 改 Batch UI（无 UI-B-* E2E yet） |
+| **PDF-TOOL-001** | PDF Tools tab: merge ≥2 PDF → download valid `merged.pdf`; metadata JSON | 改 PDF Tools UI 或 `/api/v1/pdf-tools/*` |
+| **HITL-EDIT-001** | Reviews: edit fields → Save → Approve → task `kie_fields` updated | 改 HITL UI 或 PATCH `/tasks/{id}/kie-fields` |
 | **三栏 resize** | 拖拽 handle 有效 | 改 `panel-resize.js` / layout CSS |
 | **视觉/文案** | 按钮 SVG、空态、主题 | 改 `components.css` / `styles.css`；E2E 不断言像素 |
 

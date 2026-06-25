@@ -1784,6 +1784,23 @@ body.show-analysis .analyzed-region {
     border: 1px solid var(--border-subtle);
 }
 
+.kie-field-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+}
+
+.kie-field-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
 .kie-field-card-header {
     display: flex;
     align-items: center;

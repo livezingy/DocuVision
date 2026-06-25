@@ -724,18 +724,25 @@ async def kie_step(ctx: PipelineContext) -> None:
     pages_requested = str(pages_spec or "1").strip() or "1"
 
     ctx["result"]["kie_fields"] = fields
-    from app.services.kie.field_validation import default_rules_for_document_type, validate_kie_fields
+    from app.services.hitl_policy import resolve_hitl_policy
+    from app.services.kie.field_validation import validate_kie_fields
 
-    validation = validate_kie_fields(fields, default_rules_for_document_type(document_type))
+    policy = resolve_hitl_policy(options)
+    validation = validate_kie_fields(fields, policy.validation_rules)
     ctx["result"]["kie_validation"] = validation
-    if not validation.get("validation_passed") and options.get("enable_hitl", True):
+    if policy.should_enqueue(validation, options.get("enable_hitl", True)):
         from app.services.hitl_queue import hitl_queue
 
         hitl_queue.enqueue(
             str(ctx.get("task_id", "")),
             str(ctx["task"].get("file_name", "")),
             "kie_validation_failed",
-            {"validation": validation, "fields": fields},
+            {
+                "validation": validation,
+                "fields": fields,
+                "hitl_profile": policy.profile,
+                "schema_fields": list(policy.schema_field_names),
+            },
         )
     ctx["result"]["kie_meta"] = {
         "attempted": True,

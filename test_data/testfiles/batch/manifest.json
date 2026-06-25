@@ -18,6 +18,22 @@
         "invoices/multipage/invoice_multipage_3p_items.pdf",
         "invoices/sample-invoice.png"
       ]
+    },
+    {
+      "name": "mapped_bank_statement_3",
+      "document_type": "general",
+      "options": {
+        "document_type": "general",
+        "enable_layout": false,
+        "enable_kie": false,
+        "enable_table": true,
+        "table_template": "bank_statement"
+      },
+      "files": [
+        "GeneralFiles/bank_statement_sample.pdf",
+        "GeneralFiles/financial_report_02.pdf",
+        "GeneralFiles/bank_statement_sample.pdf"
+      ]
     }
   ]
 }

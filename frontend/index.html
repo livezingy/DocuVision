@@ -54,6 +54,15 @@
                         </svg>
                         Reviews
                     </button>
+                    <button type="button" class="nav-tab" data-tab="pdftools" title="Merge PDFs and read metadata">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        PDF Tools
+                    </button>
                 </div>
             </div>
             <div class="nav-right">
@@ -228,7 +237,7 @@
                                 <polyline points="16 3 21 3 21 8"></polyline>
                                 <line x1="4" y1="20" x2="21" y2="3"></line>
                             </svg>
-                            Mapped
+                            Mapped rows
                         </button>
                         <button class="content-sub-tab" data-content="figures">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -447,12 +456,50 @@
                     </div>
                     <div style="flex: 1; min-width: 280px;">
                         <h3 style="margin-top:0;">Review detail</h3>
-                        <pre id="hitlReviewDetail" style="background:#111827;color:#e5e7eb;padding:12px;border-radius:8px;max-height:420px;overflow:auto;font-size:12px;">Select a review item.</pre>
-                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                        <div id="hitlReviewSummary" class="upload-hint" style="margin-bottom: 8px;"></div>
+                        <div id="hitlReviewFields" class="kie-fields-grid" style="max-height: 360px; overflow: auto;"></div>
+                        <pre id="hitlReviewDetail" class="hidden" style="background:#111827;color:#e5e7eb;padding:12px;border-radius:8px;max-height:420px;overflow:auto;font-size:12px;">Select a review item.</pre>
+                        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" class="action-btn secondary" id="hitlSaveBtn" disabled>Save fields</button>
                             <button type="button" class="action-btn primary" id="hitlApproveBtn" disabled>Approve</button>
                             <button type="button" class="action-btn secondary" id="hitlRejectBtn" disabled>Reject</button>
                         </div>
                     </div>
+                </div>
+            </section>
+        </main>
+
+        <main class="main-content batch-main-view hidden" id="pdfToolsMainView">
+            <section class="batch-panel" style="padding: 24px; flex: 1; overflow: auto;">
+                <h2 class="section-title">PDF Tools</h2>
+                <p class="upload-hint">Merge PDFs before Analyze, or inspect document metadata. Searchable PDF and batch AcroForm are planned for v1.5.</p>
+
+                <h3 style="margin-top: 24px;">Merge PDFs</h3>
+                <p class="upload-hint">Select two or more PDF files to merge in order.</p>
+                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;">
+                    <input type="file" id="pdfMergeFileInput" multiple accept=".pdf,application/pdf" hidden>
+                    <button type="button" class="action-btn secondary" id="pdfMergeSelectBtn">Select PDFs</button>
+                    <span id="pdfMergeFileCount" class="upload-hint"></span>
+                    <button type="button" class="action-btn primary" id="pdfMergeBtn" disabled>Merge &amp; Download</button>
+                </div>
+                <p id="pdfMergeStatus" class="upload-hint"></p>
+
+                <h3 style="margin-top: 32px;">Metadata</h3>
+                <p class="upload-hint">Read embedded PDF metadata and page count.</p>
+                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;">
+                    <input type="file" id="pdfMetaFileInput" accept=".pdf,application/pdf" hidden>
+                    <button type="button" class="action-btn secondary" id="pdfMetaSelectBtn">Select PDF</button>
+                    <button type="button" class="action-btn primary" id="pdfMetaBtn" disabled>Read metadata</button>
+                </div>
+                <pre id="pdfMetaResult" style="background:#111827;color:#e5e7eb;padding:12px;border-radius:8px;max-height:320px;overflow:auto;font-size:12px;">No metadata loaded.</pre>
+
+                <h3 style="margin-top: 32px;">Split single page</h3>
+                <p class="upload-hint">Extract one page as a new PDF (1-based page number).</p>
+                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: center;">
+                    <input type="file" id="pdfSplitFileInput" accept=".pdf,application/pdf" hidden>
+                    <button type="button" class="action-btn secondary" id="pdfSplitSelectBtn">Select PDF</button>
+                    <label class="upload-hint">Page <input type="number" id="pdfSplitPageInput" min="1" value="1" style="width: 64px; margin-left: 4px;"></label>
+                    <button type="button" class="action-btn primary" id="pdfSplitBtn" disabled>Split &amp; Download</button>
                 </div>
             </section>
         </main>

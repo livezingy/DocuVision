@@ -2,6 +2,8 @@
 
 import asyncio
 
+import pytest
+
 from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator, table_step
 
 
@@ -62,12 +64,18 @@ def test_table_step_applies_bank_statement_template(tmp_path):
     assert rows[0].get("description") == "Deposit"
 
 
-def test_analyze_form_accepts_table_template():
+def test_analyze_form_accepts_table_template(monkeypatch):
     from fastapi.testclient import TestClient
 
-    from app.main import app
+    from app import main as main_module
 
-    client = TestClient(app)
+    async def _noop_process(task_id, task):
+        task["status"] = "completed"
+        task["result"] = {"document_info": {"file_name": task.get("file_name", "")}}
+
+    monkeypatch.setattr(main_module, "process_document", _noop_process)
+
+    client = TestClient(main_module.app)
     response = client.post(
         "/api/v1/analyze",
         data={
@@ -81,4 +89,7 @@ def test_analyze_form_accepts_table_template():
     )
     assert response.status_code == 200, response.text
     payload = response.json()
-    assert payload.get("task_id")
+    task_id = payload.get("task_id")
+    assert task_id
+    task = main_module.tasks[task_id]
+    assert task["options"].get("table_template") == "bank_statement"

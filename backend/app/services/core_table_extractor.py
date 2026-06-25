@@ -8,19 +8,8 @@ import pdfplumber
 from loguru import logger
 
 from docuvision_core.processing.table_processor import TableProcessor
+from docuvision_core.processing.table_result_mapper import processor_results_to_tables
 from docuvision_core.processing.table_stitch import stitch_tables_by_header
-
-
-def _map_core_table(raw: Dict[str, Any], page_num: int) -> Dict[str, Any]:
-    data = raw.get("data") or raw.get("cells") or []
-    return {
-        "page": page_num,
-        "data": data,
-        "score": raw.get("score", 0.0),
-        "bbox": raw.get("bbox"),
-        "source": raw.get("source", "docuvision_core"),
-        "engine_used": "docuvision_core",
-    }
 
 
 def extract_digital_pdf_tables(
@@ -32,6 +21,7 @@ def extract_digital_pdf_tables(
     table_template: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Extract tables from born-digital PDF using docuvision-core TableProcessor."""
+    del table_template  # applied in orchestrator table_step after extraction
     processor_params: Dict[str, Any] = {
         "table_method": "mixed",
         "flavor": "auto",
@@ -53,9 +43,7 @@ def extract_digital_pdf_tables(
             except Exception as exc:
                 logger.warning(f"Core table extraction failed on page {page_num}: {exc}")
                 continue
-            for raw in raw_list or []:
-                if isinstance(raw, dict):
-                    tables.append(_map_core_table(raw, page_num))
+            tables.extend(processor_results_to_tables(raw_list or [], page_num))
 
     logger.info(f"Core digital PDF tables extracted: {len(tables)} from {file_path}")
     if not tables:

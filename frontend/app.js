@@ -4360,6 +4360,24 @@ function updateContentText(result) {
 }
 
 /**
+ * Normalize table dict for display (core/Lite may use headers+rows without data grid).
+ */
+function normalizeTableForDisplay(table) {
+    if (!table || typeof table !== 'object') return table;
+    const data = table.data;
+    if (Array.isArray(data) && data.length > 0) {
+        return table;
+    }
+    const headers = Array.isArray(table.headers) ? table.headers : [];
+    const rows = Array.isArray(table.rows) ? table.rows : [];
+    if (!headers.length && !rows.length) {
+        return table;
+    }
+    const grid = headers.length ? [headers, ...rows] : rows;
+    return { ...table, data: grid };
+}
+
+/**
  * Update Content Tables view
  */
 function updateContentTables(result) {
@@ -4367,7 +4385,7 @@ function updateContentTables(result) {
     if (!contentTableList) return;
 
     // Render extracted tables (or fallback layout-derived tables) into contentTableList
-    let extractedTables = result.tables || [];
+    let extractedTables = (result.tables || []).map(normalizeTableForDisplay);
 
     // Fallback: Layout-only mode can contain table HTML in result.layout.elements
     if (extractedTables.length === 0) {

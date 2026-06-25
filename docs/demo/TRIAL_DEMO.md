@@ -52,7 +52,7 @@ Pre-run each sample once and note `processing_ms` before the live session.
 
 | Template | Sample | Analysis Options |
 |----------|--------|------------------|
-| `bank_statement` | `test_data/testfiles/GeneralFiles/bank_statement_sample.pdf` | Layout off, Table on, KIE off, **Table vertical template = bank_statement** |
+| `bank_statement` | `test_data/testfiles/GeneralFiles/bank_statement_sample.pdf` | Advanced → **Table vertical template = bank_statement** + **Table-only mode** (skips Layout); Processing tab: **Tables** on, KIE off |
 | `invoice_line_items` | `test_data/testfiles/invoices/invoice_line_items_sample.pdf` | Same with **invoice_line_items** |
 
 After Run Analysis → **Content → Mapped rows** tab shows unified columns (not raw table headers).

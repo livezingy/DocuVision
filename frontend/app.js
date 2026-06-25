@@ -1319,6 +1319,16 @@ function initAnalysisOptionsDialog() {
             resetAnalysisOptions();
         });
     }
+
+    const tableTemplateSelect = document.getElementById('optTableTemplate');
+    const tableOnlyCheckbox = document.getElementById('optTableOnlyMode');
+    if (tableTemplateSelect && tableOnlyCheckbox) {
+        tableTemplateSelect.addEventListener('change', () => {
+            if (tableTemplateSelect.value) {
+                tableOnlyCheckbox.checked = true;
+            }
+        });
+    }
 }
 
 /**
@@ -1363,6 +1373,8 @@ function resetAnalysisOptions() {
     if (kieQueryInput) kieQueryInput.value = '';
     const optTableTemplate = document.getElementById('optTableTemplate');
     if (optTableTemplate) optTableTemplate.value = '';
+    const optTableOnlyMode = document.getElementById('optTableOnlyMode');
+    if (optTableOnlyMode) optTableOnlyMode.checked = false;
     updateKieQueryFieldsAvailability();
     updateEnhancementTabs(false, false);
     showNotification('Options reset to defaults', 'info');
@@ -1470,9 +1482,14 @@ function getProcessingOptions() {
         return KIE_DOC_TYPES.has(String(dt).toLowerCase());
     })();
 
+    const tableTemplate = (document.getElementById('optTableTemplate')?.value || '').trim();
+    const tableOnlyMode = Boolean(document.getElementById('optTableOnlyMode')?.checked);
+
     const options = {
-        document_type: isLayout ? 'auto' : selectedMode,
-        enable_layout: true,
+        document_type: tableOnlyMode && tableTemplate
+            ? 'general'
+            : (isLayout ? 'auto' : selectedMode),
+        enable_layout: isLayout && !tableOnlyMode,
         // Layout mode text extraction comes from PP-StructureV3 block content, not OCRService.
         enable_ocr: false,
         enable_table: isLayout ? (document.getElementById('optEnableTable')?.checked ?? true) : true,
@@ -1480,7 +1497,7 @@ function getProcessingOptions() {
         enable_chart: isLayout ? (document.getElementById('optEnableChart')?.checked || false) : false,
         enable_seal: isLayout ? (document.getElementById('optEnableSeal')?.checked || false) : false,
         // Auto-enable KIE when user selects invoice/receipt/id_card processing mode
-        enable_kie: enableKie,
+        enable_kie: tableOnlyMode ? false : enableKie,
         kie_query_fields: buildKieQueryFieldsPayload(),
         // Ignore stale PDF page specs when KIE is off (layout-only runs on images).
         kie_pages: enableKie
@@ -1488,7 +1505,7 @@ function getProcessingOptions() {
             : '1',
         ocr_engine: document.getElementById('dialogOcrEngineSelect')?.value || 'paddleocr',
         layout_engine: document.getElementById('dialogLayoutEngineSelect')?.value || 'ppstructure',
-        table_template: (document.getElementById('optTableTemplate')?.value || '').trim(),
+        table_template: tableTemplate,
         validation_passed_only: Boolean(document.getElementById('batchValidationPassedOnly')?.checked),
     };
 

@@ -45,6 +45,9 @@ def processor_results_to_tables(
                 rows = [[_clean_cell(c) for c in row] for row in extracted]
             except Exception:
                 rows = []
+        if not headers and rows:
+            headers = [str(c) for c in rows[0]]
+            rows = rows[1:]
 
         data = item.get("data")
         if not data:

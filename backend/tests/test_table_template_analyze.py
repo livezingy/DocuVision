@@ -69,9 +69,11 @@ def test_analyze_form_accepts_table_template(monkeypatch):
 
     from app import main as main_module
 
-    async def _noop_process(task_id, task):
-        task["status"] = "completed"
-        task["result"] = {"document_info": {"file_name": task.get("file_name", "")}}
+    async def _noop_process(task_id: str):
+        task = main_module.tasks.get(task_id)
+        if task:
+            task["status"] = "completed"
+            task["result"] = {"document_info": {"file_name": task.get("file_name", "")}}
 
     monkeypatch.setattr(main_module, "process_document", _noop_process)
 

@@ -30,6 +30,8 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, '');
+/** Prefer /api/v1/health (works on Baidu AI Studio api_serving); /health kept for direct :8000 access. */
+const HEALTH_URL = `${API_BASE_URL}/health`;
 
 /** Last successful GET /health JSON (dependencies, kie, api_version). */
 let lastHealthPayload = null;
@@ -94,7 +96,7 @@ function applyHealthToFooter(health) {
     if (health.kie && health.kie.model_loaded === false && !kieHealthRefreshTimer) {
         kieHealthRefreshTimer = window.setTimeout(() => {
             kieHealthRefreshTimer = null;
-            fetch(`${API_ROOT_URL}/health`)
+            fetch(HEALTH_URL)
                 .then((r) => (r.ok ? r.json() : null))
                 .then((h) => {
                     if (h) applyHealthToFooter(h);
@@ -280,7 +282,7 @@ async function initializeAPIConnection() {
         console.log('[Init] Checking API connection to:', API_BASE_URL);
 
         // First check the health endpoint
-        const healthResponse = await fetch(API_ROOT_URL + '/health', {
+        const healthResponse = await fetch(HEALTH_URL, {
             timeout: 3000
         });
 
@@ -1674,7 +1676,7 @@ async function startProcessing() {
             // Check API availability first (with timeout for health check only)
             let apiAvailable = false;
             try {
-                const healthCheck = await fetch(`${API_ROOT_URL}/health`, {
+                const healthCheck = await fetch(HEALTH_URL, {
                     method: 'GET',
                     signal: AbortSignal.timeout(5000) // 5 second timeout for health check only
                 });

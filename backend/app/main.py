@@ -304,8 +304,7 @@ kie_service = QwenDocumentKIEService()
 @app.on_event("startup")
 async def _kie_optional_warmup_background() -> None:
     """When DOCUVISION_KIE_WARMUP is truthy, load KIE model after startup without blocking readiness."""
-    raw = os.environ.get("DOCUVISION_KIE_WARMUP", "")
-    if str(raw).strip().lower() not in {"1", "true", "yes", "y", "on"}:
+    if not settings.KIE_WARMUP:
         return
 
     async def _run() -> None:
@@ -581,8 +580,7 @@ async def root():
     }
 
 
-@app.get("/health")
-async def health_check():
+def _build_health_payload() -> dict:
     deps_extra = {
         "torch": _get_dist_version(["torch"]),
         "transformers": _get_dist_version(["transformers"]),
@@ -619,6 +617,17 @@ async def health_check():
             }
         }
     }
+
+
+@app.get("/health")
+async def health_check():
+    return _build_health_payload()
+
+
+@app.get("/api/v1/health")
+async def health_check_v1():
+    """Same payload as GET /health; use behind reverse proxies that only forward /api/v1/*."""
+    return _build_health_payload()
 
 
 @app.get("/api/v1/engines")

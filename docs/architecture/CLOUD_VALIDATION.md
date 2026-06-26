@@ -1,6 +1,6 @@
 # Cloud Studio GPU 验证顺序与验收标准
 
-> 本地无 Paddle 完整环境时，以 **腾讯 Cloud Studio GPU** 为端到端真环境。勿提交密钥；使用 `backend/.env.cloud` 复制为 `.env`。
+> 本地无 Paddle 完整环境时，以 **腾讯 Cloud Studio GPU** 或 **百度 AI Studio V100** 为端到端真环境。勿提交密钥；使用 `backend/.env.cloud` 复制为 `.env`。
 >
 > **文档定位**：发版前、修改 KIE/编排/模型配置后的**回归手册**；与 [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md)（批次记录）配套，**测试完成后仍保留**。
 
@@ -31,6 +31,98 @@ cp -n .env.cloud .env   # 按需改模型路径，勿提交 .env
 | `DEBUG_MODE` | 排障时可 `true`，自动写 `backend/debug/{job_id}/` |
 
 显存：**先跑完 PP-StructureV3（layout/table），再跑 KIE**；同一 Job 内编排器已串行。避免并行多 Job 同时加载双模型。
+
+### 1.1 百度 AI Studio（BML CodeLab + V100，已验证）
+
+与腾讯 Cloud Studio 不同：Notebook 通过 **`api_serving/{port}`** 暴露服务，**根路径 `GET /health` 往往无法从浏览器访问**（空白页），但 **`/api/v1/*` 可正常转发**。Pro SPA 与后端 health 检查已对齐为 **`GET /api/v1/health`**（`GET /health` 仍保留，供本机 `:8000` 与 Cloud Studio 直连）。
+
+**环境要求**
+
+| 项 | 说明 |
+|----|------|
+| GPU | 启动环境时选 **NVIDIA V100**（勿用 Iluvatar/DCU）；与 Pro `install_pro_gpu.sh` 栈一致 |
+| Python | 独立 venv `~/docuvision_env`，**勿**把依赖 pip 进 AI Studio `external-libraries` |
+| pip | 平台默认 `install.user=true`；安装前设 `PIP_CONFIG_FILE`（见下） |
+| `.env` | `cp -n .env.cloud .env`；`DEBUG=false`；`DOCUVISION_KIE_WARMUP=1` 可选（已纳入 Settings） |
+
+**一次性安装（终端）**
+
+```bash
+python3 -m venv ~/docuvision_env
+source ~/docuvision_env/bin/activate
+
+cat > /tmp/pip-docuvision.conf << 'EOF'
+[global]
+index-url = http://mirrors.baidubce.com/pypi/simple/
+
+[install]
+trusted-host = mirrors.baidubce.com
+user = false
+EOF
+export PIP_CONFIG_FILE=/tmp/pip-docuvision.conf
+
+cd ~/DocuVision/backend
+unset LD_LIBRARY_PATH
+./install_pro_gpu.sh
+cp -n .env.cloud .env
+# 建议 .env: DEBUG=false
+```
+
+首次启动若 PP-Structure 模型下载超过 worker 120s，日志会出现 `Available layout engines: []`；**预下载或重启** `python run.py` 后再试（见 `layout_service` worker 初始化）。
+
+**启动后端**
+
+```bash
+source ~/docuvision_env/bin/activate
+cd ~/DocuVision/backend
+DEBUG_MODE=false python run.py
+```
+
+本机自检（必须通过再开 UI）：
+
+```bash
+curl -s http://127.0.0.1:8000/health | python3 -m json.tool | grep -A3 '"layout"'
+curl -s http://127.0.0.1:8000/api/v1/health | python3 -m json.tool | head -3
+# 期望 layout.ready=true, engines 含 ppstructure
+```
+
+**浏览器访问 Pro UI（已验证）**
+
+1. 在 CodeLab 启动 `run.py`（监听 `0.0.0.0:8000`）。
+2. 打开（将 `{project_base}` 换为当前项目 URL 中 `/home` 前的部分，端口与 `run.py` 一致）：
+
+   ```text
+   {project_base}/api_serving/8000/frontend/index.html
+   ```
+
+   示例形态：`https://aistudio.baidu.com/.../user/{uid}/{pid}/api_serving/8000/frontend/index.html`
+
+3. 确认 health 走 API 前缀（应返回 JSON，而非空白页）：
+
+   ```text
+   {project_base}/api_serving/8000/api/v1/health
+   ```
+
+4. 前端会自动把 API 指到同前缀下的 `/api/v1`（见 `frontend/app.js` 中 `/frontend` 路径推断）。
+
+**已知限制（AI Studio）**
+
+| 限制 | 影响 |
+|------|------|
+| `api_serving` 不转发 `GET /health` | 已用 `/api/v1/health` 规避 |
+| WebSocket `.../tasks/{id}/ws` 常 404 | 进度依赖 HTTP 轮询 `GET /api/v1/tasks/{id}`，功能仍可用 |
+| 无定时开关机 | 关页约 10 分钟 idle 自动中止；算力需手动启动环境 |
+| UI 演示首选 | 腾讯 Cloud Studio 端口预览仍最省事；AI Studio 适合 **延长 GPU 试用 + 本机 curl/pytest** |
+
+**无 UI 验收（终端，与 UI 等价）**
+
+```bash
+curl -s -X POST "http://127.0.0.1:8000/api/v1/analyze" \
+  -F "file=@$HOME/DocuVision/test_data/testfiles/invoices/sample-invoice.png" \
+  -F "document_type=invoice" -F "enable_layout=1" -F "enable_table=1" \
+  -F "enable_kie=1" -F "enable_ocr=0" -F "kie_pages=1"
+# 轮询 GET /api/v1/tasks/{task_id}
+```
 
 ## 2. 验证顺序（按阶段执行）
 

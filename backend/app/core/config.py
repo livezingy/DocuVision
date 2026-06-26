@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     KIE_QWEN_TORCH_DTYPE: str = Field(default="bfloat16", alias="DOCUVISION_KIE_QWEN_TORCH_DTYPE")
     KIE_MAX_PAGES: int = Field(default=5, alias="DOCUVISION_KIE_MAX_PAGES")
     BATCH_MAX_CONCURRENT_KIE: int = Field(default=1, alias="DOCUVISION_BATCH_MAX_CONCURRENT_KIE")
+    # Background KIE model warmup after startup (non-blocking). env: DOCUVISION_KIE_WARMUP
+    KIE_WARMUP: bool = Field(default=False, alias="DOCUVISION_KIE_WARMUP")
 
     class Config:
         env_file = ".env"

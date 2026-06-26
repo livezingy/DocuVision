@@ -71,7 +71,7 @@ Lite API: [docs/architecture/lite-api.md](docs/architecture/lite-api.md). Limita
    ```
 
    The frontend defaults to `http://localhost:8000/api/v1`; adjust `frontend/app.js` if needed.
-5. **Open the UI**: open or serve `frontend/index.html`.
+5. **Open the UI**: open or serve `frontend/index.html` (on **Baidu AI Studio**, use `{project_base}/api_serving/8000/frontend/index.html` — see [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) §1.1).
 6. **Cloud / KIE regression** (optional): see [docs/architecture/CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) and [docs/architecture/kie.md](docs/architecture/kie.md).
 
 ### Lite (CPU)

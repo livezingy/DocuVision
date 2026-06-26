@@ -131,6 +131,18 @@ async def run_contract_checks(test_file: Path | None, res: Results) -> None:
             status = None
         res.add("GET /health", r.status_code == 200 and status == "healthy", f"status={r.status_code} body_status={status}")
 
+        r = await client.get("/api/v1/health")
+        status_v1 = None
+        try:
+            status_v1 = r.json().get("status")
+        except Exception:
+            status_v1 = None
+        res.add(
+            "GET /api/v1/health",
+            r.status_code == 200 and status_v1 == "healthy",
+            f"status={r.status_code} body_status={status_v1}",
+        )
+
         r = await client.get("/api/v1/engines")
         has_ocr = False
         try:

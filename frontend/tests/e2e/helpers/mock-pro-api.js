@@ -41,7 +41,10 @@ async function installProApiMocks(page, options = {}) {
   const pageCount = options.pageCount ?? 1;
   const tasks = new Map();
 
-  // Pro app.js calls API_ROOT_URL + '/health' (e.g. http://localhost:8000/health), not /api/v1/health.
+  // Pro app.js calls GET /api/v1/health (and legacy GET /health on direct :8000).
+  await page.route(/\/api\/v1\/health$/i, async (route) => {
+    await route.fulfill(jsonResponse(mockHealthPayload()));
+  });
   await page.route(/\/health$/i, async (route) => {
     await route.fulfill(jsonResponse(mockHealthPayload()));
   });

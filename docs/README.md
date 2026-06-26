@@ -27,7 +27,7 @@ Read in this order when onboarding to the codebase:
 
 | Doc | Purpose |
 |-----|---------|
-| [architecture/CLOUD_VALIDATION.md](architecture/CLOUD_VALIDATION.md) | Cloud Studio GPU phases A–G |
+| [architecture/CLOUD_VALIDATION.md](architecture/CLOUD_VALIDATION.md) | Cloud Studio GPU phases A–G; **§1.1 Baidu AI Studio** Pro UI via `api_serving` |
 | [architecture/KIE_TEST_RUN_TRACKER.md](architecture/KIE_TEST_RUN_TRACKER.md) | KIE batch run log (append-only) |
 | [../test_data/acceptance/README.md](../test_data/acceptance/README.md) | Acceptance matrix index |
 | [../test_data/acceptance/UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) | UI E2E vs manual scope; assistant manual-test reminders |

@@ -97,13 +97,18 @@ curl -s http://127.0.0.1:8000/api/v1/health | python3 -m json.tool | head -3
 
    示例形态：`https://aistudio.baidu.com/.../user/{uid}/{pid}/api_serving/8000/frontend/index.html`
 
-3. 确认 health 走 API 前缀（应返回 JSON，而非空白页）：
+3. 确认 API 前缀可访问（应返回 JSON，而非空白页）：
 
    ```text
    {project_base}/api_serving/8000/api/v1/health
+   {project_base}/api_serving/8000/api/v1/engines
    ```
 
-4. 前端会自动把 API 指到同前缀下的 `/api/v1`（见 `frontend/app.js` 中 `/frontend` 路径推断）。
+   若 `/api/v1/health` 仍空白但 `/api/v1/engines` 正常，前端会在 analyze 前 **自动 fallback 到 engines 探测**（`checkApiReachable`）。
+
+4. **强制刷新** Pro UI（避免缓存旧 `app.js` 仍请求 `/health`）：`Ctrl+Shift+R` / 硬刷新；地址栏应加载 `app.js?v=20260626-health2`。F12 → Network 中 Run Analysis 前应看到 `GET .../api/v1/health` 或 `.../api/v1/engines`，**不应**再出现 `.../api_serving/8000/health`（无 `/api/v1`）。
+
+5. 前端会自动把 API 指到同前缀下的 `/api/v1`（见 `frontend/app.js` 中 `/frontend` 路径推断）。
 
 **已知限制（AI Studio）**
 

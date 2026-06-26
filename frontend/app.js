@@ -32,6 +32,61 @@ const API_BASE_URL = resolveApiBaseUrl();
 const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, '');
 /** Prefer /api/v1/health (works on Baidu AI Studio api_serving); /health kept for direct :8000 access. */
 const HEALTH_URL = `${API_BASE_URL}/health`;
+const ENGINES_URL = `${API_BASE_URL}/engines`;
+
+/**
+ * Probe API reachability (cloud proxies may block /health but allow /api/v1/*).
+ * Tries GET /api/v1/health, then GET /api/v1/engines as fallback.
+ */
+async function checkApiReachable(timeoutMs = 8000) {
+    let lastError = null;
+
+    try {
+        const healthResponse = await fetch(HEALTH_URL, {
+            method: 'GET',
+            signal: AbortSignal.timeout(timeoutMs),
+        });
+        if (healthResponse.ok) {
+            try {
+                const healthJson = await healthResponse.json();
+                if (healthJson) {
+                    return { ok: true, health: healthJson, probe: 'health' };
+                }
+            } catch (parseErr) {
+                lastError = parseErr;
+            }
+        } else {
+            lastError = new Error(`health HTTP ${healthResponse.status}`);
+        }
+    } catch (err) {
+        lastError = err;
+        console.warn('[API] Health probe failed:', err);
+    }
+
+    try {
+        const enginesResponse = await fetch(ENGINES_URL, {
+            method: 'GET',
+            signal: AbortSignal.timeout(timeoutMs),
+        });
+        if (enginesResponse.ok) {
+            try {
+                const enginesJson = await enginesResponse.json();
+                if (enginesJson && enginesJson.ocr) {
+                    return { ok: true, health: null, probe: 'engines' };
+                }
+            } catch (parseErr) {
+                lastError = parseErr;
+            }
+        } else {
+            lastError = new Error(`engines HTTP ${enginesResponse.status}`);
+        }
+    } catch (err) {
+        lastError = err;
+        console.warn('[API] Engines probe failed:', err);
+    }
+
+    return { ok: false, health: null, probe: null, error: lastError };
+}
 
 /** Last successful GET /health JSON (dependencies, kie, api_version). */
 let lastHealthPayload = null;
@@ -279,44 +334,42 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function initializeAPIConnection() {
     try {
-        console.log('[Init] Checking API connection to:', API_BASE_URL);
+        console.log('[Init] API_BASE_URL=', API_BASE_URL, 'HEALTH_URL=', HEALTH_URL);
 
-        // First check the health endpoint
-        const healthResponse = await fetch(HEALTH_URL, {
-            timeout: 3000
-        });
-
-        if (!healthResponse.ok) {
-            console.warn('[Init] Health check failed with status:', healthResponse.status);
+        const reachability = await checkApiReachable(8000);
+        if (!reachability.ok) {
+            console.warn('[Init] API reachability probe failed');
             updateStatusBar('warning', {
                 step: 'Server connection weak - some features may not work properly'
             });
             return;
         }
 
-        const healthJson = await healthResponse.json();
-        applyHealthToFooter(healthJson);
-
-        // Get server info
-        const infoResponse = await fetch(API_ROOT_URL, {
-            timeout: 3000
-        });
-
-        if (!infoResponse.ok) {
-            console.warn('[Init] Could not fetch server info');
-            updateStatusBar('warning', {
-                step: 'Server connection established but version info unavailable'
-            });
-            return;
+        if (reachability.health) {
+            applyHealthToFooter(reachability.health);
         }
 
-        const serverInfo = await infoResponse.json();
-        console.log('[Init] Server info:', serverInfo);
-        console.log('[Init] ✓ API connection successful - ' + serverInfo.name + ' v' + serverInfo.version);
+        console.log('[Init] API probe OK via', reachability.probe);
 
-        // Show brief success message
+        // Get server info (optional; root / may be blocked on some cloud proxies)
+        try {
+            const infoResponse = await fetch(API_ROOT_URL, {
+                signal: AbortSignal.timeout(5000),
+            });
+            if (infoResponse.ok) {
+                const serverInfo = await infoResponse.json();
+                console.log('[Init] Server info:', serverInfo);
+                updateStatusBar('success', {
+                    step: '✓ API Connected: ' + serverInfo.name + ' v' + serverInfo.version
+                });
+                return;
+            }
+        } catch (infoErr) {
+            console.warn('[Init] Could not fetch server info:', infoErr);
+        }
+
         updateStatusBar('success', {
-            step: '✓ API Connected: ' + serverInfo.name + ' v' + serverInfo.version
+            step: '✓ API Connected (' + reachability.probe + ' probe)'
         });
 
     } catch (error) {
@@ -1673,23 +1726,16 @@ async function startProcessing() {
                 }
             });
 
-            // Check API availability first (with timeout for health check only)
-            let apiAvailable = false;
-            try {
-                const healthCheck = await fetch(HEALTH_URL, {
-                    method: 'GET',
-                    signal: AbortSignal.timeout(5000) // 5 second timeout for health check only
-                });
-                if (healthCheck && healthCheck.ok) {
-                    apiAvailable = true;
-                }
-            } catch (e) {
-                console.warn('Health check failed:', e);
+            const reachability = await checkApiReachable(8000);
+            if (!reachability.ok) {
+                throw new Error(
+                    `API server is not available. Please ensure backend is reachable at ${API_BASE_URL}`
+                );
             }
-
-            if (!apiAvailable) {
-                throw new Error(`API server is not available. Please ensure backend is reachable at ${API_ROOT_URL}`);
+            if (reachability.health) {
+                applyHealthToFooter(reachability.health);
             }
+            console.log('[Analyze] API probe OK via', reachability.probe);
 
             // Don't set timeout for upload - let it take as long as needed
             // Layout analysis and other processing can take several minutes

@@ -570,11 +570,9 @@
                                 <span class="option-badge">Default</span>
                             </label>
                             <div class="layout-sub-options" id="layoutSubOptions">
-                                <label class="sub-option-item sub-option-disabled">
-                                    <input type="checkbox" checked disabled>
-                                    <span class="option-label">Text &amp; Figures (from PP-StructureV3)</span>
-                                    <span class="option-badge-sm">Always on</span>
-                                </label>
+                                <p class="upload-hint" style="margin: 0 0 8px 0;">
+                                    Includes text and figures from layout analysis.
+                                </p>
                                 <label class="sub-option-item">
                                     <input type="checkbox" id="optEnableTable" checked>
                                     <span class="option-label">Tables</span>
@@ -591,6 +589,25 @@
                                     <input type="checkbox" id="optEnableSeal">
                                     <span class="option-label">Seals</span>
                                 </label>
+                            </div>
+                        </div>
+                        <div class="option-group">
+                            <label class="option-item">
+                                <input type="radio" name="processingMode" id="optTableMapping" value="table_mapping">
+                                <span class="radio-custom"></span>
+                                <span class="option-label">Table mapping</span>
+                                <span class="option-badge">ETL</span>
+                            </label>
+                            <div class="layout-sub-options hidden" id="tableMappingSubOptions">
+                                <p class="upload-hint" id="tableMappingHint" style="margin: 0 0 8px 0;">
+                                    Maps columns to a unified schema (Mapped rows tab). Optimized for digital PDFs today.
+                                </p>
+                                <p class="upload-hint hidden" id="tableMappingEligibility" style="margin: 0 0 8px 0;"></p>
+                                <label class="engine-label" for="optTableTemplate">Template</label>
+                                <select id="optTableTemplate" class="engine-select">
+                                    <option value="bank_statement">Bank statement</option>
+                                    <option value="invoice_line_items">Invoice line items</option>
+                                </select>
                             </div>
                         </div>
                         <!-- KIE document type options -->
@@ -640,7 +657,7 @@
                             <option value="easyocr">EasyOCR</option>
                         </select>
                     </div>
-                    <div class="engine-selector">
+                    <div class="engine-selector" id="enginesLayoutSection">
                         <label class="engine-label">Layout Engine</label>
                         <select class="engine-select" id="dialogLayoutEngineSelect">
                             <option value="ppstructure" selected>PP-StructureV2 (Recommended)</option>
@@ -670,21 +687,6 @@
                             Empty or 1 = first page only. Use <code>all</code>, <code>1-3</code>, or comma list. Max 5 pages.
                         </p>
                         <input type="text" class="kie-query-fields-input" id="optKiePages" placeholder="1" spellcheck="false">
-                    </div>
-                    <div class="kie-query-fields-block" style="margin-top: 16px;">
-                        <label class="engine-label" for="optTableTemplate">Table vertical template (PDF tables)</label>
-                        <select id="optTableTemplate" class="engine-select">
-                            <option value="">None</option>
-                            <option value="bank_statement">Bank statement</option>
-                            <option value="invoice_line_items">Invoice line items</option>
-                        </select>
-                        <p class="upload-hint" style="margin: 8px 0 0 0;">
-                            For born-digital PDF table mapping, enable table-only mode below (skips Layout GPU).
-                        </p>
-                        <label class="sub-option-item" style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="optTableOnlyMode">
-                            <span class="option-label">Table-only mode (skip Layout analysis)</span>
-                        </label>
                     </div>
                 </div>
             </div>

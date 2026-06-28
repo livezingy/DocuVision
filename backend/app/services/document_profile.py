@@ -7,6 +7,10 @@ from typing import Any, Dict
 from app.services.document_type_classifier import classify_document
 from app.services.file_type_detector import detect_file_type
 
+# Table mapping UI mode (processingMode=table_mapping) routing by detected_file_type:
+# - pdf_digital (v1.4): analyze with enable_layout=false, docuvision-core TableProcessor, table_template.
+# - pdf_scan / image (future): enable_layout=true, Tables on, mapping quality gate TBD; UI mode id unchanged.
+
 
 def build_document_profile(file_path: str) -> Dict[str, Any]:
     detected, page_count = detect_file_type(file_path)

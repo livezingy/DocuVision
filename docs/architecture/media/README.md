@@ -4,6 +4,7 @@
 
 - `docuvision-ui.png` — hero screenshot for the root README.
 - `DocVision_table.gif`, `DocVision_receipt.gif`, `DocVision_Invoice.gif` — recorded UI walkthroughs for the README **Examples** section.
+- `M1_pro_map_bank_statement.gif` — Table mapping mode: Processing → **Table mapping** → Template **Bank statement** → Mapped rows tab.
 
 ## Lite (record locally; add to repo when ready)
 

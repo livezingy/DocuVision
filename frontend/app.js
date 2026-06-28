@@ -30,6 +30,9 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, '');
+
+/** Set from initApp; toggles Processing mode sub-panels. */
+let syncProcessingModeUI = function () {};
 /** Prefer /api/v1/health (works on Baidu AI Studio api_serving); /health kept for direct :8000 access. */
 const HEALTH_URL = `${API_BASE_URL}/health`;
 const ENGINES_URL = `${API_BASE_URL}/engines`;
@@ -482,6 +485,7 @@ function handleFiles(files) {
         // Create queue item
         const queueItem = createQueueItem(file.name, file);
         queueList.appendChild(queueItem);
+        fetchDocumentProfileForQueueItem(queueItem);
         addedCount++;
 
         // Display the first file automatically, or if queue was empty before
@@ -804,25 +808,49 @@ function initResultTabs() {
     const optEnableSeal = document.getElementById('optEnableSeal');
 
     const syncModeUI = () => {
-        const isLayout = document.querySelector('input[name="processingMode"]:checked')?.value === 'layout';
-        // Always show sub-options; dim them when a KIE mode is active to show layout runs automatically.
+        const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
+        const isLayout = selectedMode === 'layout';
+        const isTableMapping = selectedMode === TABLE_MAPPING_MODE;
+
         if (layoutSubOptions) {
-            layoutSubOptions.classList.remove('hidden');
-            layoutSubOptions.classList.toggle('sub-options-dimmed', !isLayout);
+            layoutSubOptions.classList.toggle('hidden', !isLayout);
+            layoutSubOptions.classList.remove('sub-options-dimmed');
         }
+
+        const tableMappingSubOptions = document.getElementById('tableMappingSubOptions');
+        if (tableMappingSubOptions) {
+            tableMappingSubOptions.classList.toggle('hidden', !isTableMapping);
+        }
+
+        const enginesLayoutSection = document.getElementById('enginesLayoutSection');
+        if (enginesLayoutSection) {
+            enginesLayoutSection.classList.toggle('sub-options-dimmed', isTableMapping);
+        }
+
         const kieNote = document.getElementById('kieNote');
-        if (kieNote) kieNote.classList.toggle('hidden', isLayout);
-        if (!isLayout) updateEnhancementTabs(false, false);
-        else {
+        if (kieNote) kieNote.classList.toggle('hidden', isLayout || isTableMapping);
+
+        if (isLayout) {
             updateEnhancementTabs(
                 optEnableFormula ? optEnableFormula.checked : false,
                 optEnableSeal ? optEnableSeal.checked : false
             );
+        } else {
+            updateEnhancementTabs(false, false);
         }
+
+        if (isTableMapping) {
+            updateTableMappingEligibility(currentQueueItem);
+        } else {
+            clearTableMappingEligibility();
+        }
+
         updateKieQueryFieldsAvailability();
     };
 
     processingModeRadios.forEach(radio => radio.addEventListener('change', syncModeUI));
+    syncProcessingModeUI = syncModeUI;
+    syncModeUI();
     updateKieQueryFieldsAvailability();
 
     if (optEnableFormula) {
@@ -1118,6 +1146,8 @@ async function switchToQueueItem(queueItem) {
         syncPreviewPaginationControls(previewPages, 1);
         await updatePreviewView('original');
     }
+
+    updateTableMappingEligibility(queueItem);
 }
 
 /**
@@ -1374,16 +1404,6 @@ function initAnalysisOptionsDialog() {
             resetAnalysisOptions();
         });
     }
-
-    const tableTemplateSelect = document.getElementById('optTableTemplate');
-    const tableOnlyCheckbox = document.getElementById('optTableOnlyMode');
-    if (tableTemplateSelect && tableOnlyCheckbox) {
-        tableTemplateSelect.addEventListener('change', () => {
-            if (tableTemplateSelect.value) {
-                tableOnlyCheckbox.checked = true;
-            }
-        });
-    }
 }
 
 /**
@@ -1427,9 +1447,11 @@ function resetAnalysisOptions() {
     const kieQueryInput = document.getElementById('optKieQueryFields');
     if (kieQueryInput) kieQueryInput.value = '';
     const optTableTemplate = document.getElementById('optTableTemplate');
-    if (optTableTemplate) optTableTemplate.value = '';
-    const optTableOnlyMode = document.getElementById('optTableOnlyMode');
-    if (optTableOnlyMode) optTableOnlyMode.checked = false;
+    if (optTableTemplate) optTableTemplate.value = 'bank_statement';
+    const tableMappingSubOptions = document.getElementById('tableMappingSubOptions');
+    if (tableMappingSubOptions) tableMappingSubOptions.classList.add('hidden');
+    clearTableMappingEligibility();
+    syncProcessingModeUI();
     updateKieQueryFieldsAvailability();
     updateEnhancementTabs(false, false);
     showNotification('Options reset to defaults', 'info');
@@ -1437,6 +1459,82 @@ function resetAnalysisOptions() {
 
 const KIE_DOC_TYPES = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card', 'financial_report']);
 const KIE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
+const TABLE_MAPPING_MODE = 'table_mapping';
+const TABLE_MAPPING_ELIGIBLE = new Set(['pdf_digital']);
+const TABLE_MAPPING_IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'tif', 'tiff', 'gif', 'bmp', 'webp']);
+
+function getSelectedProcessingMode() {
+    return document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
+}
+
+function clearTableMappingEligibility() {
+    const el = document.getElementById('tableMappingEligibility');
+    if (!el) return;
+    el.textContent = '';
+    el.classList.add('hidden');
+}
+
+function updateTableMappingEligibility(queueItem) {
+    const el = document.getElementById('tableMappingEligibility');
+    if (!el) return;
+    if (getSelectedProcessingMode() !== TABLE_MAPPING_MODE) {
+        clearTableMappingEligibility();
+        return;
+    }
+
+    const detected = queueItem?.documentProfile?.detected_file_type;
+    let message = 'Upload a digital PDF for best results.';
+    if (detected === 'pdf_digital') {
+        message = 'Ready for table mapping.';
+    } else if (detected === 'pdf_scan' || detected === 'image') {
+        message = 'Scanned documents are not supported for table mapping in v1.4. Use Layout Analysis.';
+    }
+
+    el.textContent = message;
+    el.classList.remove('hidden');
+}
+
+async function fetchDocumentProfileForQueueItem(queueItem) {
+    if (!queueItem?.file) return;
+    const formData = new FormData();
+    formData.append('file', queueItem.file, queueItem.file.name || queueItem.dataset.fileName || 'upload');
+    try {
+        const response = await fetch(`${API_BASE_URL}/document/profile`, {
+            method: 'POST',
+            body: formData,
+        });
+        if (!response.ok) {
+            queueItem.documentProfile = null;
+            return;
+        }
+        queueItem.documentProfile = await response.json();
+        if (currentQueueItem === queueItem) {
+            updateTableMappingEligibility(queueItem);
+        }
+    } catch (err) {
+        console.warn('Document profile pre-scan failed:', err);
+        queueItem.documentProfile = null;
+    }
+}
+
+function isTableMappingRunBlocked(queueItem) {
+    if (getSelectedProcessingMode() !== TABLE_MAPPING_MODE) {
+        return false;
+    }
+
+    const fileName = String(queueItem?.dataset?.fileName || queueItem?.file?.name || '').toLowerCase();
+    const ext = fileName.includes('.') ? fileName.split('.').pop() : '';
+    if (TABLE_MAPPING_IMAGE_EXTENSIONS.has(ext)) {
+        return true;
+    }
+
+    const detected = queueItem?.documentProfile?.detected_file_type;
+    if (detected && !TABLE_MAPPING_ELIGIBLE.has(detected)) {
+        return true;
+    }
+
+    return false;
+}
 
 /**
  * Normalize user-facing labels to API field ids (spaces -> underscores).
@@ -1529,30 +1627,39 @@ function buildKieQueryFieldsPayload() {
  * Get current processing options from dialog
  */
 function getProcessingOptions() {
-    const selectedMode = document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';
+    const selectedMode = getSelectedProcessingMode();
     const isLayout = selectedMode === 'layout';
+    const isTableMapping = selectedMode === TABLE_MAPPING_MODE;
 
     const enableKie = (function() {
         const dt = isLayout ? 'auto' : selectedMode;
         return KIE_DOC_TYPES.has(String(dt).toLowerCase());
     })();
 
-    const tableTemplate = (document.getElementById('optTableTemplate')?.value || '').trim();
-    const tableOnlyMode = Boolean(document.getElementById('optTableOnlyMode')?.checked);
+    const optTableTemplate = document.getElementById('optTableTemplate');
+    const tableTemplate = isTableMapping
+        ? String(optTableTemplate?.value || 'bank_statement').trim()
+        : '';
 
     const options = {
-        document_type: tableOnlyMode && tableTemplate
-            ? 'general'
-            : (isLayout ? 'auto' : selectedMode),
-        enable_layout: isLayout && !tableOnlyMode,
+        document_type: isTableMapping ? 'general' : (isLayout ? 'auto' : selectedMode),
+        enable_layout: isTableMapping ? false : isLayout,
         // Layout mode text extraction comes from PP-StructureV3 block content, not OCRService.
         enable_ocr: false,
-        enable_table: isLayout ? (document.getElementById('optEnableTable')?.checked ?? true) : true,
-        enable_formula: isLayout ? (document.getElementById('optEnableFormula')?.checked || false) : false,
-        enable_chart: isLayout ? (document.getElementById('optEnableChart')?.checked || false) : false,
-        enable_seal: isLayout ? (document.getElementById('optEnableSeal')?.checked || false) : false,
+        enable_table: isTableMapping
+            ? true
+            : (isLayout ? (document.getElementById('optEnableTable')?.checked ?? true) : true),
+        enable_formula: isTableMapping
+            ? false
+            : (isLayout ? (document.getElementById('optEnableFormula')?.checked || false) : false),
+        enable_chart: isTableMapping
+            ? false
+            : (isLayout ? (document.getElementById('optEnableChart')?.checked || false) : false),
+        enable_seal: isTableMapping
+            ? false
+            : (isLayout ? (document.getElementById('optEnableSeal')?.checked || false) : false),
         // Auto-enable KIE when user selects invoice/receipt/id_card processing mode
-        enable_kie: tableOnlyMode ? false : enableKie,
+        enable_kie: isTableMapping ? false : enableKie,
         kie_query_fields: buildKieQueryFieldsPayload(),
         // Ignore stale PDF page specs when KIE is off (layout-only runs on images).
         kie_pages: enableKie
@@ -1637,6 +1744,15 @@ async function startProcessing() {
         showNotification(err.message || String(err), 'error');
         return;
     }
+
+    if (isTableMappingRunBlocked(firstPending)) {
+        showNotification(
+            'Table mapping requires a digital PDF. Use Layout Analysis for scanned documents.',
+            'error'
+        );
+        return;
+    }
+
     if (
         options.enable_kie &&
         lastHealthPayload &&

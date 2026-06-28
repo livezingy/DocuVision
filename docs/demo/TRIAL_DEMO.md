@@ -52,8 +52,10 @@ Pre-run each sample once and note `processing_ms` before the live session.
 
 | Template | Sample | Analysis Options |
 |----------|--------|------------------|
-| `bank_statement` | `test_data/testfiles/GeneralFiles/bank_statement_sample.pdf` | Advanced → **Table vertical template = bank_statement** + **Table-only mode** (skips Layout); Processing tab: **Tables** on, KIE off |
-| `invoice_line_items` | `test_data/testfiles/invoices/invoice_line_items_sample.pdf` | Same with **invoice_line_items** |
+| `bank_statement` | `test_data/testfiles/GeneralFiles/bank_statement_sample.pdf` | Processing → **Table mapping** → Template **Bank statement** → Run Analysis |
+| `invoice_line_items` | `test_data/testfiles/invoices/invoice_line_items_sample.pdf` | Same with Template **Invoice line items** |
+
+Upload triggers document profile pre-scan; eligibility hint shows *Ready for table mapping* on digital PDFs. Scanned PDFs/images are blocked in v1.4 (use **Layout Analysis**).
 
 After Run Analysis → **Content → Mapped rows** tab shows unified columns (not raw table headers).
 

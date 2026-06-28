@@ -1012,6 +1012,13 @@ GET /api/v1/jobs/{job_id}/debug
 
 **post-v1.3 优先级（v1.4 主线）**：垂直表格列映射（bank_statement / invoice_line_items）、`table_areas` ROI UI、自动 `document_type` 产品化、HITL Review UI、Webhook HTTP 投递；邮件 IMAP 建议独立服务/n8n。**v1.5+**：可搜索 PDF、PDF 工具箱产品化、Batch 持久化。身份证精度走 `bugfix/*` / patch。
 
+**Pro Table mapping UI（v1.4）**：Analysis Options → Processing → `processingMode=table_mapping` + Template 子面板；上传时 `POST /document/profile` 驱动 eligibility。Analyze 路由：
+
+| `detected_file_type` | v1.4 | 后续 |
+|----------------------|------|------|
+| `pdf_digital` | `enable_layout=false`，core TableProcessor，`table_template` → `mapped_table_rows` | 同左 |
+| `pdf_scan` / `image` | UI 阻止 Run；提示 Layout Analysis | `enable_layout=true` + mapping quality gate（mode id 不变） |
+
 ### 明确不在范围 / 未来独立服务
 
 以下能力**不纳入**当前 analyze Job 与 Phase 3 排期；若产品需要，应作为**独立服务或 API** 单独立项，避免与 PP-StructureV3 + Qwen KIE 争抢 GPU 显存。

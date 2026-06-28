@@ -2249,6 +2249,112 @@ body.show-analysis .analyzed-region {
     background: linear-gradient(135deg, var(--error-400), var(--error-500));
 }
 
+/* Full-page nav views (Batch, Reviews, PDF Tools) */
+.batch-main-view {
+    flex-direction: column;
+}
+
+.batch-panel {
+    padding: 24px;
+    flex: 1;
+    overflow: auto;
+}
+
+.view-page-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+}
+
+.view-section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 24px 0 8px;
+}
+
+.view-section-title--flush {
+    margin-top: 0;
+}
+
+.view-split {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.view-split-col {
+    flex: 1;
+    min-width: 280px;
+}
+
+.view-pre {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    max-height: 320px;
+    overflow: auto;
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid var(--border-subtle);
+    line-height: 1.5;
+}
+
+.view-pre--tall {
+    max-height: 420px;
+}
+
+.view-inline-input {
+    width: 64px;
+    margin-left: 4px;
+    padding: 4px 8px;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+}
+
+.batch-controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+    align-items: center;
+}
+
+.batch-controls-row--spaced {
+    margin-bottom: 12px;
+}
+
+.batch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.batch-table th,
+.batch-table td {
+    text-align: left;
+    padding: 8px;
+}
+
+.batch-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.batch-table td {
+    color: var(--text-primary);
+}
+
+.result-header .quality-panel {
+    margin: 0 0 12px;
+}
+
 /* Animation for KIE field cards */
 .kie-field-card {
     animation: fadeIn 0.3s ease-out;

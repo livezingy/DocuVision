@@ -2413,6 +2413,15 @@ function renderQualityPanelPro(result) {
         return;
     }
     const quality = result.quality || {};
+    const kieAttempted = quality.kie_attempted === true
+        || (quality.kie_stage && !['skipped', 'disabled', ''].includes(String(quality.kie_stage)));
+
+    if (!kieAttempted) {
+        panel.classList.add('hidden');
+        panel.innerHTML = '';
+        return;
+    }
+
     const warnings = [];
     if (quality.kie_error_message) {
         warnings.push({ code: 'kie_error', message: quality.kie_error_message });
@@ -2420,15 +2429,32 @@ function renderQualityPanelPro(result) {
     if (quality.kie_production_hit === false && quality.kie_production_reason) {
         warnings.push({ code: 'kie_production', message: quality.kie_production_reason });
     }
-    const score = quality.kie_confidence_avg != null
+
+    const summaryParts = [];
+    const kieScore = quality.kie_confidence_avg != null
         ? `${Math.round(quality.kie_confidence_avg * 100)}%`
-        : (quality.overall_confidence != null ? `${Math.round(quality.overall_confidence * 100)}%` : '—');
+        : '—';
+    summaryParts.push(`KIE confidence: ${kieScore}`);
+    summaryParts.push(`KIE fields: ${quality.kie_fields_count ?? '—'}`);
+    const tableCount = (result.view?.tables || []).length;
+    if (tableCount > 0) {
+        summaryParts.push(`Tables: ${tableCount}`);
+    }
+
     const warnHtml = warnings.map(w =>
         `<div class="quality-warn">⚠ ${escapeHtml(w.code)}: ${escapeHtml(w.message)}</div>`
     ).join('');
-    panel.innerHTML = `
-        <div class="quality-score">Confidence: ${score} · KIE fields: ${quality.kie_fields_count ?? '—'} · Tables: ${(result.view?.tables || []).length}</div>
-        ${warnHtml}`;
+
+    if (!summaryParts.length && !warnHtml) {
+        panel.classList.add('hidden');
+        panel.innerHTML = '';
+        return;
+    }
+
+    const summaryHtml = summaryParts.length
+        ? `<div class="quality-score">${summaryParts.join(' · ')}</div>`
+        : '';
+    panel.innerHTML = `${summaryHtml}${warnHtml}`;
     panel.classList.remove('hidden');
 }
 

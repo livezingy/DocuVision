@@ -1045,8 +1045,8 @@ body {
 }
 
 .quality-panel .quality-score {
-    font-weight: 600;
-    color: var(--primary-400);
+    font-weight: 500;
+    color: var(--text-secondary);
 }
 
 .quality-panel .quality-warn {

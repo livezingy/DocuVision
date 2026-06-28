@@ -390,10 +390,10 @@
         </main>
 
         <main class="main-content batch-main-view hidden" id="batchMainView">
-            <section class="batch-panel" style="padding: 24px; flex: 1; overflow: auto;">
-                <h2 class="section-title">Batch Processing</h2>
+            <section class="batch-panel">
+                <h2 class="view-page-title">Batch Processing</h2>
                 <p class="upload-hint">Server-side batch jobs. Options mirror Analysis Options (KIE, layout, query fields, kie_pages).</p>
-                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;">
+                <div class="batch-controls-row">
                     <input type="text" id="batchNameInput" class="batch-name-input" placeholder="Batch name" value="Batch job" style="min-width: 160px;">
                     <input type="file" id="batchFileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif" hidden>
                     <button type="button" class="action-btn secondary" id="batchSelectFilesBtn">Select files</button>
@@ -401,7 +401,7 @@
                     <button type="button" class="action-btn primary" id="batchCreateBtn">Create batch</button>
                     <button type="button" class="action-btn primary" id="batchStartBtn" disabled>Start</button>
                 </div>
-                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+                <div class="batch-controls-row batch-controls-row--spaced">
                     <button type="button" class="action-btn secondary" id="batchPauseBtn" disabled>Pause</button>
                     <button type="button" class="action-btn secondary" id="batchResumeBtn" disabled>Resume</button>
                     <button type="button" class="action-btn secondary" id="batchCancelBtn" disabled>Cancel</button>
@@ -419,13 +419,13 @@
                     <span id="batchProgressText"></span>
                 </div>
                 <div class="batch-file-list" id="batchTaskTable" style="overflow: auto;">
-                    <table class="batch-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <table class="batch-table">
                         <thead>
                             <tr>
-                                <th style="text-align: left; padding: 8px;">File</th>
-                                <th style="text-align: left; padding: 8px;">Status</th>
-                                <th style="text-align: left; padding: 8px;">KIE hit</th>
-                                <th style="text-align: left; padding: 8px;">Error</th>
+                                <th>File</th>
+                                <th>Status</th>
+                                <th>KIE hit</th>
+                                <th>Error</th>
                             </tr>
                         </thead>
                         <tbody id="batchTaskTableBody"></tbody>
@@ -435,31 +435,31 @@
         </main>
 
         <main class="main-content batch-main-view hidden" id="reviewsMainView">
-            <section class="batch-panel" style="padding: 24px; flex: 1; overflow: auto;">
-                <h2 style="margin: 0 0 8px;">HITL Review Queue</h2>
+            <section class="batch-panel">
+                <h2 class="view-page-title">HITL Review Queue</h2>
                 <p class="upload-hint">Low-confidence or validation-failed KIE results awaiting approve/reject.</p>
-                <div class="batch-controls-row" style="display: flex; gap: 8px; margin: 12px 0;">
+                <div class="batch-controls-row">
                     <button type="button" class="action-btn secondary" id="hitlRefreshBtn">Refresh</button>
                 </div>
-                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 280px;">
-                        <table class="batch-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <div class="view-split">
+                    <div class="view-split-col">
+                        <table class="batch-table">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left; padding: 8px;">File</th>
-                                    <th style="text-align: left; padding: 8px;">Reason</th>
-                                    <th style="text-align: left; padding: 8px;">Created</th>
+                                    <th>File</th>
+                                    <th>Reason</th>
+                                    <th>Created</th>
                                 </tr>
                             </thead>
                             <tbody id="hitlReviewTableBody"></tbody>
                         </table>
                     </div>
-                    <div style="flex: 1; min-width: 280px;">
-                        <h3 style="margin-top:0;">Review detail</h3>
+                    <div class="view-split-col">
+                        <h3 class="view-section-title view-section-title--flush">Review detail</h3>
                         <div id="hitlReviewSummary" class="upload-hint" style="margin-bottom: 8px;"></div>
                         <div id="hitlReviewFields" class="kie-fields-grid" style="max-height: 360px; overflow: auto;"></div>
-                        <pre id="hitlReviewDetail" class="hidden" style="background:#111827;color:#e5e7eb;padding:12px;border-radius:8px;max-height:420px;overflow:auto;font-size:12px;">Select a review item.</pre>
-                        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        <pre id="hitlReviewDetail" class="view-pre view-pre--tall hidden">Select a review item.</pre>
+                        <div class="batch-controls-row">
                             <button type="button" class="action-btn secondary" id="hitlSaveBtn" disabled>Save fields</button>
                             <button type="button" class="action-btn primary" id="hitlApproveBtn" disabled>Approve</button>
                             <button type="button" class="action-btn secondary" id="hitlRejectBtn" disabled>Reject</button>
@@ -470,13 +470,13 @@
         </main>
 
         <main class="main-content batch-main-view hidden" id="pdfToolsMainView">
-            <section class="batch-panel" style="padding: 24px; flex: 1; overflow: auto;">
-                <h2 class="section-title">PDF Tools</h2>
+            <section class="batch-panel">
+                <h2 class="view-page-title">PDF Tools</h2>
                 <p class="upload-hint">Merge PDFs before Analyze, or inspect document metadata. Searchable PDF and batch AcroForm are planned for v1.5.</p>
 
-                <h3 style="margin-top: 24px;">Merge PDFs</h3>
+                <h3 class="view-section-title">Merge PDFs</h3>
                 <p class="upload-hint">Select two or more PDF files to merge in order.</p>
-                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;">
+                <div class="batch-controls-row">
                     <input type="file" id="pdfMergeFileInput" multiple accept=".pdf,application/pdf" hidden>
                     <button type="button" class="action-btn secondary" id="pdfMergeSelectBtn">Select PDFs</button>
                     <span id="pdfMergeFileCount" class="upload-hint"></span>
@@ -484,21 +484,21 @@
                 </div>
                 <p id="pdfMergeStatus" class="upload-hint"></p>
 
-                <h3 style="margin-top: 32px;">Metadata</h3>
+                <h3 class="view-section-title">Metadata</h3>
                 <p class="upload-hint">Read embedded PDF metadata and page count.</p>
-                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;">
+                <div class="batch-controls-row">
                     <input type="file" id="pdfMetaFileInput" accept=".pdf,application/pdf" hidden>
                     <button type="button" class="action-btn secondary" id="pdfMetaSelectBtn">Select PDF</button>
                     <button type="button" class="action-btn primary" id="pdfMetaBtn" disabled>Read metadata</button>
                 </div>
-                <pre id="pdfMetaResult" style="background:#111827;color:#e5e7eb;padding:12px;border-radius:8px;max-height:320px;overflow:auto;font-size:12px;">No metadata loaded.</pre>
+                <pre id="pdfMetaResult" class="view-pre">No metadata loaded.</pre>
 
-                <h3 style="margin-top: 32px;">Split single page</h3>
+                <h3 class="view-section-title">Split single page</h3>
                 <p class="upload-hint">Extract one page as a new PDF (1-based page number).</p>
-                <div class="batch-controls-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: center;">
+                <div class="batch-controls-row">
                     <input type="file" id="pdfSplitFileInput" accept=".pdf,application/pdf" hidden>
                     <button type="button" class="action-btn secondary" id="pdfSplitSelectBtn">Select PDF</button>
-                    <label class="upload-hint">Page <input type="number" id="pdfSplitPageInput" min="1" value="1" style="width: 64px; margin-left: 4px;"></label>
+                    <label class="upload-hint">Page <input type="number" id="pdfSplitPageInput" min="1" value="1" class="view-inline-input"></label>
                     <button type="button" class="action-btn primary" id="pdfSplitBtn" disabled>Split &amp; Download</button>
                 </div>
             </section>

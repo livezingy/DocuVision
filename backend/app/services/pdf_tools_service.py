@@ -4,9 +4,26 @@ from __future__ import annotations
 
 import io
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
+
+
+def coerce_page_list(pages: Union[None, int, List[Any]]) -> Optional[List[int]]:
+    """Normalize page selectors to a 1-based page index list."""
+    if pages is None:
+        return None
+    if isinstance(pages, int):
+        return [pages]
+    if isinstance(pages, list):
+        out: List[int] = []
+        for page in pages:
+            try:
+                out.append(int(page))
+            except (TypeError, ValueError):
+                continue
+        return out or None
+    return None
 
 
 def merge_pdfs(file_paths: List[str], output_path: str) -> str:
@@ -29,7 +46,7 @@ def split_pdf(file_path: str, output_dir: str, pages: Optional[List[int]] = None
     os.makedirs(output_dir, exist_ok=True)
     src = fitz.open(file_path)
     outputs: List[str] = []
-    page_indices = pages or list(range(1, src.page_count + 1))
+    page_indices = coerce_page_list(pages) or list(range(1, src.page_count + 1))
     for page_num in page_indices:
         if page_num < 1 or page_num > src.page_count:
             continue

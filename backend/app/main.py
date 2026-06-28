@@ -2185,14 +2185,16 @@ async def pdf_tools_split(file: UploadFile = File(...), pages: str = Form("")):
     import json
     import tempfile
 
-    from app.services.pdf_tools_service import split_pdf
+    from app.services.pdf_tools_service import coerce_page_list, split_pdf
 
     page_list = None
     if pages.strip():
         try:
-            page_list = json.loads(pages)
+            page_list = coerce_page_list(json.loads(pages))
         except Exception:
-            page_list = [int(p.strip()) for p in pages.split(",") if p.strip().isdigit()]
+            page_list = coerce_page_list(
+                [int(p.strip()) for p in pages.split(",") if p.strip().isdigit()]
+            )
 
     suffix = os.path.splitext(file.filename or "")[1] or ".pdf"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:

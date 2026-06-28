@@ -489,6 +489,7 @@
                 <div class="batch-controls-row">
                     <input type="file" id="pdfMetaFileInput" accept=".pdf,application/pdf" hidden>
                     <button type="button" class="action-btn secondary" id="pdfMetaSelectBtn">Select PDF</button>
+                    <span id="pdfMetaFileCount" class="upload-hint"></span>
                     <button type="button" class="action-btn primary" id="pdfMetaBtn" disabled>Read metadata</button>
                 </div>
                 <pre id="pdfMetaResult" class="view-pre">No metadata loaded.</pre>
@@ -498,6 +499,7 @@
                 <div class="batch-controls-row">
                     <input type="file" id="pdfSplitFileInput" accept=".pdf,application/pdf" hidden>
                     <button type="button" class="action-btn secondary" id="pdfSplitSelectBtn">Select PDF</button>
+                    <span id="pdfSplitFileCount" class="upload-hint"></span>
                     <label class="upload-hint">Page <input type="number" id="pdfSplitPageInput" min="1" value="1" class="view-inline-input"></label>
                     <button type="button" class="action-btn primary" id="pdfSplitBtn" disabled>Split &amp; Download</button>
                 </div>

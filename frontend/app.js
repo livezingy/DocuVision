@@ -5066,6 +5066,7 @@ function initPdfTools() {
     const metaInput = document.getElementById('pdfMetaFileInput');
     const metaSelectBtn = document.getElementById('pdfMetaSelectBtn');
     const metaBtn = document.getElementById('pdfMetaBtn');
+    const metaCount = document.getElementById('pdfMetaFileCount');
     const metaResult = document.getElementById('pdfMetaResult');
     let metaFile = null;
 
@@ -5073,6 +5074,9 @@ function initPdfTools() {
         metaSelectBtn.addEventListener('click', () => metaInput.click());
         metaInput.addEventListener('change', () => {
             metaFile = (metaInput.files && metaInput.files[0]) || null;
+            if (metaCount) {
+                metaCount.textContent = metaFile ? `1 PDF selected: ${metaFile.name}` : '';
+            }
             if (metaBtn) metaBtn.disabled = !metaFile;
         });
     }
@@ -5097,6 +5101,7 @@ function initPdfTools() {
     const splitInput = document.getElementById('pdfSplitFileInput');
     const splitSelectBtn = document.getElementById('pdfSplitSelectBtn');
     const splitBtn = document.getElementById('pdfSplitBtn');
+    const splitCount = document.getElementById('pdfSplitFileCount');
     const splitPageInput = document.getElementById('pdfSplitPageInput');
     let splitFile = null;
 
@@ -5104,6 +5109,9 @@ function initPdfTools() {
         splitSelectBtn.addEventListener('click', () => splitInput.click());
         splitInput.addEventListener('change', () => {
             splitFile = (splitInput.files && splitInput.files[0]) || null;
+            if (splitCount) {
+                splitCount.textContent = splitFile ? `1 PDF selected: ${splitFile.name}` : '';
+            }
             if (splitBtn) splitBtn.disabled = !splitFile;
         });
     }
@@ -5114,7 +5122,7 @@ function initPdfTools() {
         try {
             const formData = new FormData();
             formData.append('file', splitFile);
-            formData.append('pages', String(pageNum));
+            formData.append('pages', JSON.stringify([pageNum]));
             const response = await fetch(`${API_ROOT_URL}/api/v1/pdf-tools/split`, {
                 method: 'POST',
                 body: formData,

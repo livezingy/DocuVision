@@ -36,8 +36,7 @@ async function uploadTwoFiles(page) {
 test.describe('UI-Q Queue and preview', () => {
   test.beforeEach(async ({ page }) => {
     await installProApiMocks(page, { pageCount: 3 });
-    await page.goto(INDEX_URL);
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto(INDEX_URL, { waitUntil: 'domcontentloaded' });
   });
 
   test('UI-Q-01 selected item is preferred for Run Analysis', async ({ page }) => {

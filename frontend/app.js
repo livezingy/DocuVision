@@ -1537,6 +1537,39 @@ function isTableMappingRunBlocked(queueItem) {
 }
 
 /**
+ * Reset a completed/cancelled/failed queue item so Run Analysis can process it again.
+ * @param {HTMLElement} item
+ * @returns {boolean}
+ */
+function resetQueueItemForReprocessing(item) {
+    if (!item?.file) {
+        return false;
+    }
+
+    item.classList.remove('completed', 'cancelled', 'failed', 'queued');
+    item.classList.add('pending');
+
+    const status = item.querySelector('.queue-item-status');
+    if (status) {
+        status.textContent = 'Waiting';
+    }
+
+    const icon = item.querySelector('.queue-item-icon');
+    if (icon) {
+        icon.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+        `;
+    }
+
+    delete item.result;
+    delete item.dataset.taskId;
+    return true;
+}
+
+/**
  * Normalize user-facing labels to API field ids (spaces -> underscores).
  */
 function normalizeKieFieldName(raw) {
@@ -1681,48 +1714,28 @@ async function startProcessing() {
     // Check for pending files first
     let queueItems = document.querySelectorAll('.queue-item.pending');
 
-    // If no pending files, check for completed or cancelled files that can be reprocessed
+    // If no pending files, reset a completed item for reprocessing (prefer selected queue item)
     if (queueItems.length === 0) {
-        const completedItems = document.querySelectorAll('.queue-item.completed, .queue-item.cancelled, .queue-item.failed');
-        if (completedItems.length > 0) {
-            // Ask user if they want to reprocess
-            const firstItem = completedItems[0];
-            if (firstItem.file) {
-                // Reset the item to pending state
-                firstItem.classList.remove('completed', 'cancelled', 'failed');
-                firstItem.classList.add('pending');
-
-                // Reset status
-                const status = firstItem.querySelector('.queue-item-status');
-                if (status) {
-                    status.textContent = 'Waiting';
-                }
-
-                // Reset icon
-                const icon = firstItem.querySelector('.queue-item-icon');
-                if (icon) {
-                    icon.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                    `;
-                }
-
-                // Clear previous result
-                delete firstItem.result;
-                delete firstItem.dataset.taskId;
-
-                showNotification('Document reset for reprocessing', 'info');
-                queueItems = document.querySelectorAll('.queue-item.pending');
-            } else {
-                showNotification('No files available for processing. Please upload a new file.', 'warning');
-                return;
-            }
-        } else {
+        const completedItems = Array.from(
+            document.querySelectorAll('.queue-item.completed, .queue-item.cancelled, .queue-item.failed')
+        );
+        if (completedItems.length === 0) {
             showNotification('No files waiting to be processed', 'warning');
             return;
         }
+
+        const pickReprocess = previewHelpers().pickReprocessTarget;
+        const reprocessTarget = typeof pickReprocess === 'function'
+            ? pickReprocess(completedItems, currentQueueItem)
+            : completedItems[0];
+
+        if (!reprocessTarget || !resetQueueItemForReprocessing(reprocessTarget)) {
+            showNotification('No files available for processing. Please upload a new file.', 'warning');
+            return;
+        }
+
+        showNotification('Document reset for reprocessing', 'info');
+        queueItems = document.querySelectorAll('.queue-item.pending');
     }
 
     const pickTarget = previewHelpers().pickProcessingTarget;

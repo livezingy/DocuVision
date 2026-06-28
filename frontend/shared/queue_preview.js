@@ -56,6 +56,24 @@ export function pickProcessingTarget(pendingItems, currentItem) {
 }
 
 /**
+ * Pick which completed/failed item Run Analysis should reset for reprocessing.
+ * Prefer the currently selected queue item when it is re-runnable.
+ * @param {HTMLElement[]} completedItems
+ * @param {HTMLElement|null|undefined} currentItem
+ * @returns {HTMLElement|null}
+ */
+export function pickReprocessTarget(completedItems, currentItem) {
+    const list = Array.isArray(completedItems) ? completedItems : [];
+    if (list.length === 0) {
+        return null;
+    }
+    if (currentItem && list.includes(currentItem)) {
+        return currentItem;
+    }
+    return list[0];
+}
+
+/**
  * Clamp page number to [1, totalPages].
  * @param {number} page
  * @param {number} totalPages

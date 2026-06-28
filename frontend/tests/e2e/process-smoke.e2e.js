@@ -29,8 +29,7 @@ function sampleImagePath() {
 test.describe('UI-S Smoke', () => {
   test.beforeEach(async ({ page }) => {
     await installProApiMocks(page);
-    await page.goto(INDEX_URL);
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto(INDEX_URL, { waitUntil: 'domcontentloaded' });
   });
 
   test('UI-S-01 page loads with health-driven status', async ({ page }) => {

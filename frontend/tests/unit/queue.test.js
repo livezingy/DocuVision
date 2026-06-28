@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
     resolveDocumentPageCount,
     pickProcessingTarget,
+    pickReprocessTarget,
     normalizePreviewPage,
     formatCompletedStatus,
     findNextQueueItem,
@@ -65,6 +66,21 @@ describe('formatCompletedStatus', () => {
     it('formats singular and plural labels', () => {
         expect(formatCompletedStatus(1)).toBe('Completed · 1 page');
         expect(formatCompletedStatus(3)).toBe('Completed · 3 pages');
+    });
+});
+
+describe('pickReprocessTarget', () => {
+    it('prefers currently selected completed item', () => {
+        const first = makeQueueItem('completed');
+        const second = makeQueueItem('completed');
+        expect(pickReprocessTarget([first, second], second)).toBe(second);
+    });
+
+    it('falls back to first completed when selection is not re-runnable', () => {
+        const first = makeQueueItem('completed');
+        const second = makeQueueItem('completed');
+        const pending = makeQueueItem('pending');
+        expect(pickReprocessTarget([first, second], pending)).toBe(first);
     });
 });
 

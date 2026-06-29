@@ -1315,7 +1315,19 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
     """
 
     _CUDA_KEYWORDS = ('CUBLAS', 'cuBLAS', 'CUDA_STATUS', 'ExternalError', 'cublasCreate')
-    _INIT_TIMEOUT = 120   # seconds to wait for worker startup (model load)
+
+    def _init_timeout_seconds(self) -> int:
+        raw = os.environ.get("APP_LAYOUT_WORKER_INIT_TIMEOUT", "").strip()
+        if not raw:
+            raw = os.environ.get("LAYOUT_WORKER_INIT_TIMEOUT", "").strip()
+        if raw.isdigit():
+            return max(30, int(raw))
+        try:
+            from app.core.config import settings
+            return max(30, int(settings.LAYOUT_WORKER_INIT_TIMEOUT))
+        except Exception:
+            return 120
+
     _INFER_TIMEOUT = 180  # seconds to wait per inference
 
     def __init__(self, use_gpu: bool = False, lang: str = "en"):
@@ -1344,9 +1356,12 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
         logger.info(f"PPStructureV3 subprocess worker started (pid={self._process.pid})")
 
         try:
-            msg = self._res_q.get(timeout=self._INIT_TIMEOUT)
+            msg = self._res_q.get(timeout=self._init_timeout_seconds())
         except _queue_module.Empty:
-            logger.error(f"PPStructureV3 worker did not respond within {self._INIT_TIMEOUT}s")
+            logger.error(
+                "PPStructureV3 worker did not respond within %ss",
+                self._init_timeout_seconds(),
+            )
             self._kill_worker()
             return
 

@@ -2339,6 +2339,26 @@ async def startup_event():
     logger.info(f"OCR Engines: {ocr_service.get_available_engines()}")
     logger.info(f"Layout Engines: {layout_service.get_available_engines()}")
     logger.info(f"Table Engines: {table_service.get_available_engines()}")
+    try:
+        from app.services.kie_qwen_service import preflight_kie_model_path
+
+        kie_pf = preflight_kie_model_path()
+        logger.info(
+            "KIE model path: {} (configured: {}, hub_id={}, local_ready={})",
+            kie_pf["resolved"],
+            kie_pf["configured"],
+            kie_pf["is_hub_id"],
+            kie_pf["local_ready"],
+        )
+        if not kie_pf["is_hub_id"] and not kie_pf["local_ready"]:
+            logger.error(
+                "KIE preflight failed: local model weights missing at {}. "
+                "Run modelscope snapshot_download('Qwen/Qwen2.5-VL-3B-Instruct') "
+                "or set DOCUVISION_KIE_QWEN_MODEL_ID.",
+                kie_pf["resolved"],
+            )
+    except Exception:
+        pass
     logger.info("=" * 60)
 
 

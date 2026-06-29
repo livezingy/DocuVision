@@ -116,6 +116,8 @@ curl -s http://127.0.0.1:8000/api/v1/health | python3 -m json.tool | head -3
 |------|------|
 | `api_serving` 不转发 `GET /health` | 已用 `/api/v1/health` 规避 |
 | WebSocket `.../tasks/{id}/ws` 常 404 | 进度依赖 HTTP 轮询 `GET /api/v1/tasks/{id}`，功能仍可用 |
+| KIE 模型默认路径 | 使用 `~/.cache/modelscope/...`；解析链：configured → `/root`→`~` remap → `MODELSCOPE_CACHE` → `~/.cache` 自动发现；env 键 **`DOCUVISION_KIE_QWEN_MODEL_ID`** / **`KIE_QWEN_MODEL_ID`**（进程 env 优先于 Settings）；启动日志 `KIE model path: ... local_ready=true` |
+| 首次启动 Layout 空 | PPStructure 子进程默认 120s 内未完成模型下载会超时；`.env` 设 `APP_LAYOUT_WORKER_INIT_TIMEOUT=300`，`DEBUG=false`，预下载或重启 `run.py` |
 | 无定时开关机 | 关页约 10 分钟 idle 自动中止；算力需手动启动环境 |
 | UI 演示首选 | 腾讯 Cloud Studio 端口预览仍最省事；AI Studio 适合 **延长 GPU 试用 + 本机 curl/pytest** |
 

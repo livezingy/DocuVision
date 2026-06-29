@@ -19,6 +19,11 @@ from app.services.pdf_raster import rasterize_pdf_page
 logger = logging.getLogger(__name__)
 
 _RASTER_IMAGE_EXTS = frozenset({".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".gif"})
+_MODELSCOPE_MODEL_REL_PATHS = (
+    os.path.join("hub", "models", "Qwen", "Qwen2___5-VL-3B-Instruct"),
+    os.path.join("hub", "models", "Qwen", "Qwen2.5-VL-3B-Instruct"),
+)
+_KIE_MODEL_ENV_KEYS = ("DOCUVISION_KIE_QWEN_MODEL_ID", "KIE_QWEN_MODEL_ID")
 
 
 def _is_raster_image_path(path: Optional[str]) -> bool:
@@ -60,6 +65,112 @@ def _items_count_from_fields(fields: Dict[str, Any]) -> int:
     return 0
 
 
+def _is_hub_model_id(value: str) -> bool:
+    """True when value looks like a HuggingFace / ModelScope repo id (not a filesystem path)."""
+    text = (value or "").strip()
+    if not text or text.startswith(("/", "~", ".")):
+        return False
+    if os.path.isabs(text):
+        return False
+    return "/" in text and ".." not in text
+
+
+def _configured_kie_model_id() -> str:
+    """Prefer process env over Settings (avoids stale singleton / import order on cloud hosts)."""
+    for key in _KIE_MODEL_ENV_KEYS:
+        value = os.environ.get(key, "").strip()
+        if value:
+            return value
+    return settings.KIE_QWEN_MODEL_ID
+
+
+def _modelscope_cache_bases() -> List[str]:
+    bases: List[str] = []
+    for key in ("MODELSCOPE_CACHE",):
+        raw = os.environ.get(key, "").strip()
+        if raw:
+            bases.append(os.path.expanduser(raw))
+    bases.append(os.path.expanduser("~/.cache/modelscope"))
+    seen = set()
+    ordered: List[str] = []
+    for base in bases:
+        norm = os.path.normpath(base)
+        if norm not in seen:
+            seen.add(norm)
+            ordered.append(norm)
+    return ordered
+
+
+def _discover_local_kie_model_dir() -> Optional[str]:
+    for base in _modelscope_cache_bases():
+        for rel in _MODELSCOPE_MODEL_REL_PATHS:
+            candidate = os.path.join(base, rel)
+            if os.path.isdir(candidate):
+                return candidate
+    return None
+
+
+def _local_kie_model_ready(path: str) -> bool:
+    if not path or not os.path.isdir(path):
+        return False
+    return os.path.isfile(os.path.join(path, "config.json"))
+
+
+def _resolve_kie_model_path(model_id: str) -> str:
+    """
+    Resolve KIE model location across cloud GPU hosts.
+
+    Order: configured path -> /root/.cache remap -> MODELSCOPE_CACHE / ~/.cache discovery.
+    Hub ids (e.g. Qwen/Qwen2.5-VL-3B-Instruct) pass through unchanged.
+    """
+    configured = (model_id or "").strip()
+    if _is_hub_model_id(configured):
+        return configured
+
+    path = os.path.expanduser(configured)
+    if _local_kie_model_ready(path):
+        return path
+
+    if path.startswith("/root/.cache/"):
+        fallback = os.path.expanduser(path.replace("/root", "~", 1))
+        if _local_kie_model_ready(fallback):
+            logger.info("KIE Qwen: remapping model path %s -> %s", path, fallback)
+            return fallback
+
+    discovered = _discover_local_kie_model_dir()
+    if discovered:
+        logger.info(
+            "KIE Qwen: using discovered ModelScope cache %s (configured: %s)",
+            discovered,
+            configured or "(empty)",
+        )
+        return discovered
+
+    if path and not _is_hub_model_id(path):
+        logger.error(
+            "KIE Qwen: local model directory not found: %s. "
+            "Download: python -c \"from modelscope import snapshot_download; "
+            "snapshot_download('Qwen/Qwen2.5-VL-3B-Instruct')\" "
+            "or set DOCUVISION_KIE_QWEN_MODEL_ID to an existing directory.",
+            path,
+        )
+    return path
+
+
+def preflight_kie_model_path(configured: Optional[str] = None) -> Dict[str, Any]:
+    """Startup check: resolved path, whether local weights exist, hub vs directory."""
+    cfg = configured if configured is not None else _configured_kie_model_id()
+    resolved = _resolve_kie_model_path(cfg)
+    is_hub = _is_hub_model_id(resolved)
+    local_ready = _local_kie_model_ready(resolved)
+    return {
+        "configured": cfg,
+        "resolved": resolved,
+        "is_hub_id": is_hub,
+        "local_ready": local_ready,
+    }
+
+
 class QwenDocumentKIEService:
     """Async facade: lazy HF load, serialized GPU inference, KieManager.extract."""
 
@@ -81,7 +192,14 @@ class QwenDocumentKIEService:
 
         from app.services.kie.KieManager import KieManager
 
-        model_id = settings.KIE_QWEN_MODEL_ID
+        configured = _configured_kie_model_id()
+        model_id = _resolve_kie_model_path(configured)
+        if not _is_hub_model_id(model_id) and not _local_kie_model_ready(model_id):
+            raise FileNotFoundError(
+                f"KIE Qwen model directory not found: {model_id} (configured: {configured}). "
+                "Download with modelscope snapshot_download('Qwen/Qwen2.5-VL-3B-Instruct') "
+                "or set DOCUVISION_KIE_QWEN_MODEL_ID / KIE_QWEN_MODEL_ID."
+            )
         dtype_key = (settings.KIE_QWEN_TORCH_DTYPE or "bfloat16").strip().lower()
         dtype_map = {
             "bfloat16": torch.bfloat16,

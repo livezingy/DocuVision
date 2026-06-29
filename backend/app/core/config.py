@@ -2,78 +2,107 @@
 DocuVision 配置文件
 """
 
-from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import AliasChoices, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 
 
 class Settings(BaseSettings):
-    """应用配置"""
+    """Application settings."""
 
-    # 应用基础配置
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+    # Application
     APP_NAME: str = "DocuVision"
     APP_VERSION: str = "1.3.1"
     DEBUG: bool = True
 
-    # 服务器配置
+    # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # 文件存储配置
+    # Storage
     UPLOAD_DIR: str = "./uploads"
     OUTPUT_DIR: str = "./outputs"
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
 
-    # OCR 配置
+    # OCR
     OCR_LANG: str = "ch"  # ch, en, multi
 
-    # ============================================
-    # Phase 1 API - Service-Level Configuration
-    # ============================================
-
-    # Debug mode: when enabled, saves raw/fused/quality JSONs + images to backend/debug/{job_id}/
-    # Must be service-level (not per-request) to prevent security issues and unnecessary disk I/O
-    # env override: APP_DEBUG_MODE
-    DEBUG_MODE: bool = Field(default=False, alias="APP_DEBUG_MODE")
-
-    # Debug artifacts output directory
-    DEBUG_OUTPUT_DIR: str = "./debug"
-
-    # Maximum number of debug jobs to retain before cleanup (FIFO)
-    DEBUG_KEEP_LAST_N: int = 50
-
-    # Debug overlay images: when enabled, renders bounding-box overlays on source images at each pipeline stage.
-    # Disabled by default to avoid unnecessary disk I/O on production deployments.
-    # env override: APP_ENABLE_DEBUG_OVERLAYS
-    ENABLE_DEBUG_OVERLAYS: bool = Field(default=False, alias="APP_ENABLE_DEBUG_OVERLAYS")
-
-    # Coordinate system strategy: keep UVDoc unwarping disabled by default.
-    # This preserves PP-StructureV3 text spacing and keeps view coordinates in original image space.
-    # env override: APP_USE_DOC_UNWARPING
-    USE_DOC_UNWARPING: bool = Field(default=False, alias="APP_USE_DOC_UNWARPING")
-
-    # Table strategy: when False, table service only consumes table regions from layout output.
-    # This avoids duplicated full-page PPStructure inference by default.
-    # env override: APP_TABLE_ALLOW_FULLPAGE_FALLBACK
-    TABLE_ALLOW_FULLPAGE_FALLBACK: bool = Field(default=False, alias="APP_TABLE_ALLOW_FULLPAGE_FALLBACK")
-
-    # KIE (Qwen2.5-VL) — HuggingFace id 或本地目录；env: DOCUVISION_KIE_QWEN_MODEL_ID
-    # 默认：ModelScope 缓存路径（云端 GPU /root 环境）；其他环境请设环境变量或 .env 覆盖
-    KIE_QWEN_MODEL_ID: str = Field(
-        default="/root/.cache/modelscope/hub/models/Qwen/Qwen2___5-VL-3B-Instruct",
-        alias="DOCUVISION_KIE_QWEN_MODEL_ID",
+    # Phase 1 API - service-level configuration
+    DEBUG_MODE: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("APP_DEBUG_MODE", "DEBUG_MODE"),
     )
-    KIE_QWEN_DEVICE_MAP: str = Field(default="auto", alias="DOCUVISION_KIE_QWEN_DEVICE_MAP")
-    KIE_QWEN_TORCH_DTYPE: str = Field(default="bfloat16", alias="DOCUVISION_KIE_QWEN_TORCH_DTYPE")
-    KIE_MAX_PAGES: int = Field(default=5, alias="DOCUVISION_KIE_MAX_PAGES")
-    BATCH_MAX_CONCURRENT_KIE: int = Field(default=1, alias="DOCUVISION_BATCH_MAX_CONCURRENT_KIE")
-    # Background KIE model warmup after startup (non-blocking). env: DOCUVISION_KIE_WARMUP
-    KIE_WARMUP: bool = Field(default=False, alias="DOCUVISION_KIE_WARMUP")
+    DEBUG_OUTPUT_DIR: str = "./debug"
+    DEBUG_KEEP_LAST_N: int = 50
+    ENABLE_DEBUG_OVERLAYS: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("APP_ENABLE_DEBUG_OVERLAYS", "ENABLE_DEBUG_OVERLAYS"),
+    )
+    USE_DOC_UNWARPING: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("APP_USE_DOC_UNWARPING", "USE_DOC_UNWARPING"),
+    )
+    TABLE_ALLOW_FULLPAGE_FALLBACK: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "APP_TABLE_ALLOW_FULLPAGE_FALLBACK",
+            "TABLE_ALLOW_FULLPAGE_FALLBACK",
+        ),
+    )
+    LAYOUT_WORKER_INIT_TIMEOUT: int = Field(
+        default=120,
+        validation_alias=AliasChoices(
+            "APP_LAYOUT_WORKER_INIT_TIMEOUT",
+            "LAYOUT_WORKER_INIT_TIMEOUT",
+        ),
+    )
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        populate_by_name = True  # Allow both field name and alias
+    # KIE (Qwen2.5-VL) — HuggingFace id or local directory
+    KIE_QWEN_MODEL_ID: str = Field(
+        default=os.path.expanduser(
+            "~/.cache/modelscope/hub/models/Qwen/Qwen2___5-VL-3B-Instruct"
+        ),
+        validation_alias=AliasChoices(
+            "DOCUVISION_KIE_QWEN_MODEL_ID",
+            "KIE_QWEN_MODEL_ID",
+        ),
+    )
+    KIE_QWEN_DEVICE_MAP: str = Field(
+        default="auto",
+        validation_alias=AliasChoices(
+            "DOCUVISION_KIE_QWEN_DEVICE_MAP",
+            "KIE_QWEN_DEVICE_MAP",
+        ),
+    )
+    KIE_QWEN_TORCH_DTYPE: str = Field(
+        default="bfloat16",
+        validation_alias=AliasChoices(
+            "DOCUVISION_KIE_QWEN_TORCH_DTYPE",
+            "KIE_QWEN_TORCH_DTYPE",
+        ),
+    )
+    KIE_MAX_PAGES: int = Field(
+        default=5,
+        validation_alias=AliasChoices("DOCUVISION_KIE_MAX_PAGES", "KIE_MAX_PAGES"),
+    )
+    BATCH_MAX_CONCURRENT_KIE: int = Field(
+        default=1,
+        validation_alias=AliasChoices(
+            "DOCUVISION_BATCH_MAX_CONCURRENT_KIE",
+            "BATCH_MAX_CONCURRENT_KIE",
+        ),
+    )
+    KIE_WARMUP: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("DOCUVISION_KIE_WARMUP", "KIE_WARMUP"),
+    )
 
 
 # 创建配置实例

@@ -134,6 +134,8 @@ curl -s -X POST "http://127.0.0.1:8000/api/v1/analyze" \
 
 ## 2. 验证顺序（按阶段执行）
 
+**v1.4.0 发版最小集**（2026-06-30）：先跑 [MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md) 回归子集（CORE-PDF、LITE-PREVIEW、KIE-VAL），再跑 [MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md)（Phase A v1.4、**MAP-TEMPLATE-001**、**MAPPED-BATCH-001**）。
+
 **v1.3.1 发版最小集**（2026-06-23）：先跑 [MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md)（回归 + BATCH-XLSX-001），再跑 [MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md)（CORE-PDF-001、**LITE-PREVIEW-001**、KIE-VAL-001；**不含** LITE-BATCH-001）。
 
 | 版本 | 发版门禁 |
@@ -141,6 +143,7 @@ curl -s -X POST "http://127.0.0.1:8000/api/v1/analyze" \
 | v1.2.1 | Phase A ≥37 + BATCH-XLSX-001 + H-Batch 6/6 回归 |
 | v1.3.0 | v1.2.1 回归 + Phase A 扩展 ≥45 + CORE-PDF-001 + LITE-BATCH-001 + KIE-VAL-001（历史 tag） |
 | v1.3.1 | v1.2.1 回归 + Phase A ≥45 + CORE-PDF-001 + **LITE-PREVIEW-001** + KIE-VAL-001 + Pro/Lite E2E；Lite batch **已移除** |
+| v1.4.0 | v1.3.1 回归子集 + Phase A **≥57** + core mapping **≥6** + **MAP-TEMPLATE-001** + **MAPPED-BATCH-001** + Pro/Lite E2E；手工 PDF-TOOL-001 / HITL-EDIT-001 |
 
 **v1.2 发版最小集**（2026-06-05 Cloud 已跑通）：**阶段 A（33 项）** → **B** → **MP**（2p `kie_pages=all`）→ **H-Batch**（`kie_invoice_6`）。阶段 C/D/E/F 继承 v1.1 基线，发版前可选复跑。
 
@@ -176,6 +179,27 @@ pytest tests/processing/test_table_stitch.py -q
 ```
 
 **通过标准**：全部 `passed`（Pro 预期 **≥45** + core stitch **2**）。
+
+**v1.4 扩展**（在 v1.3 列表基础上追加；Cloud 发 v1.4 tag 前跑）：
+
+```bash
+cd backend
+pytest tests/test_kie_pages_parse.py tests/test_kie_field_merge.py \
+  tests/test_batch_export_service.py \
+  tests/test_kie_field_validation.py tests/test_kie_schema_templates.py \
+  tests/test_document_type_classifier.py tests/test_file_type_detector.py \
+  tests/test_table_template_analyze.py tests/test_hitl_policy.py \
+  tests/test_task_kie_fields_patch.py tests/test_pdf_tools_service.py \
+  tests/test_kie_field_metrics.py tests/test_kie_service.py \
+  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+
+cd ../packages/docuvision-core
+pytest tests/processing/test_table_stitch.py \
+  tests/processing/test_table_column_mapping.py \
+  tests/processing/test_table_result_mapper.py -q
+```
+
+**通过标准（v1.4）**：全部 `passed`（Pro 预期 **≥57** + core **≥6**）。
 
 **v1.2 扩展**（含多页 KIE + batch 导出，**33 项**，2026-06-05 Cloud 已绿）：
 

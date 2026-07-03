@@ -1,7 +1,7 @@
 # Pro UI Playwright E2E 规划（讨论稿）
 
-Last updated: 2026-06-05  
-Status: **P0 已落地**（`process-smoke.e2e.js`、`process-queue.e2e.js` + mock API）；P1+ 仍待扩展  
+Last updated: 2026-06-30  
+Status: **P0 + v1.4 UI-TM / UI-PT**（`process-smoke.e2e.js`、`process-queue.e2e.js`、`process-table-mapping.e2e.js`、`process-pdf-tools.e2e.js` + mock API）；Batch/Reviews/HITL 仍待扩展  
 关联：`frontend/tests/e2e/`、`frontend/playwright.config.js`、[CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)
 
 ---

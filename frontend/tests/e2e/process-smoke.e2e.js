@@ -1,30 +1,8 @@
 const { test, expect } = require('@playwright/test');
-const path = require('path');
-const fs = require('fs');
 const { installProApiMocks } = require('./helpers/mock-pro-api');
+const { sampleImagePath } = require('./helpers/e2e-fixtures');
 
 const INDEX_URL = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/frontend/index.html';
-
-function sampleImagePath() {
-  const candidate = path.join(__dirname, '..', '..', '..', 'test_data', 'testfiles', 'invoices', 'sample-invoice.png');
-  if (fs.existsSync(candidate)) {
-    return candidate;
-  }
-  const fallback = path.join(__dirname, 'fixtures', 'tiny.png');
-  if (!fs.existsSync(path.dirname(fallback))) {
-    fs.mkdirSync(path.dirname(fallback), { recursive: true });
-  }
-  if (!fs.existsSync(fallback)) {
-    fs.writeFileSync(
-      fallback,
-      Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-        'base64',
-      ),
-    );
-  }
-  return fallback;
-}
 
 test.describe('UI-S Smoke', () => {
   test.beforeEach(async ({ page }) => {

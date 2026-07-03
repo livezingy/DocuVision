@@ -29,7 +29,7 @@ cd frontend && npm run test:e2e
 | 套件 | 路径 | 后端 |
 |------|------|------|
 | Vitest | `frontend/tests/unit/queue.test.js`, `envelope_display.test.js` | 无 |
-| Playwright | `frontend/tests/e2e/process-smoke.e2e.js`, `process-queue.e2e.js` | **Mock** |
+| Playwright | `frontend/tests/e2e/process-smoke.e2e.js`, `process-queue.e2e.js`, `process-table-mapping.e2e.js`, `process-pdf-tools.e2e.js` | **Mock** |
 
 ### 2.2 用例映射（当前已落地）
 
@@ -41,6 +41,14 @@ cd frontend && npm run test:e2e
 | UI-Q-01 | 选中项优先 Run Analysis | Playwright | `process-queue` UI-Q-01 | 是（未改 `app.js` 队列选中逻辑） |
 | UI-Q-03 | 完成态页数文案 | Playwright + Vitest | `process-queue` UI-Q-03；`formatCompletedStatus` | 是（未改 `queue_preview.js`） |
 | UI-Q-04 | 多页分页控件 | Playwright | `process-queue` UI-Q-04 | 是（未改分页 DOM/事件） |
+| UI-TM-01 | Table mapping 选项与 Template 下拉 | Playwright | `process-table-mapping` UI-TM-01 | 是（未改 Options Processing 面板） |
+| UI-TM-02 | Document profile eligibility 文案 | Playwright | `process-table-mapping` UI-TM-02 | 是（未改 profile / eligibility DOM） |
+| UI-TM-03 | Mapped rows 子 Tab 展示 | Playwright | `process-table-mapping` UI-TM-03 | 是（mock `mapped_table_rows`；真实 PDF 映射仍 Cloud） |
+| UI-TM-04 | 扫描/图片阻止 table mapping Run | Playwright | `process-table-mapping` UI-TM-04 | 是（未改 blocked 逻辑） |
+| UI-PT-01 | PDF Tools 顶栏与分区 | Playwright | `process-pdf-tools` UI-PT-01 | 是（未改 PDF Tools shell） |
+| UI-PT-02 | Merge ≥2 PDF 下载 | Playwright | `process-pdf-tools` UI-PT-02 | 是（mock merge；真实 PyMuPDF 仍手工 **PDF-TOOL-001**） |
+| UI-PT-03 | Metadata JSON | Playwright | `process-pdf-tools` UI-PT-03 | 部分 — mock JSON；真实 PDF 元数据仍手工 |
+| UI-PT-04 | Split 单页下载 | Playwright | `process-pdf-tools` UI-PT-04 | 是（mock split） |
 | UI-V-01 | 页数解析逻辑 | Vitest | `queue.test.js` `resolveDocumentPageCount` | 是（纯函数未改） |
 | UI-V-02 | 队列选中/下一项 | Vitest | `pickProcessingTarget`, `findNextQueueItem` | 是 |
 
@@ -53,7 +61,7 @@ cd frontend && npm run test:e2e
 | **Analysis Options** | layout/table/KIE/`kie_query_fields` 传入 analyze | 改 Options 对话框或 Form 字段（无 UI-A-* E2E  yet） |
 | **Export 下载** | JSON/CSV 等与 API 一致 | 改 `export-ui.js` 或 export 路由（无 UI-R-03 E2E yet） |
 | **Batch tab** | 建批、暂停、CSV 行数 | 改 Batch UI（无 UI-B-* E2E yet） |
-| **PDF-TOOL-001** | PDF Tools tab: merge ≥2 PDF → download valid `merged.pdf`; metadata JSON | 改 PDF Tools UI 或 `/api/v1/pdf-tools/*` |
+| **PDF-TOOL-001** | PDF Tools tab: merge ≥2 PDF → download valid `merged.pdf`; metadata JSON | 改 PDF Tools UI 或 `/api/v1/pdf-tools/*`；E2E mock 绿可减 merge/metadata 重复点击，**真实 PDF 有效性仍 Cloud/手工** |
 | **HITL-EDIT-001** | Reviews: edit fields → Save → Approve → task `kie_fields` updated | 改 HITL UI 或 PATCH `/tasks/{id}/kie-fields` |
 | **三栏 resize** | 拖拽 handle 有效 | 改 `panel-resize.js` / layout CSS |
 | **视觉/文案** | 按钮 SVG、空态、主题 | 改 `components.css` / `styles.css`；E2E 不断言像素 |

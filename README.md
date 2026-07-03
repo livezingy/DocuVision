@@ -10,10 +10,11 @@ DocuVision is an intelligent document processing stack built on [PaddleX](https:
 
 The web UI is a static single-page app under `frontend/` (no Node build). Layout matches `frontend/index.html` and `frontend/README_FRONTEND.md`.
 
-- **Top navigation**: primary **Document Processing** tab; **Batch Processing** is a disabled placeholder. **Settings** is disabled; **Help** opens API / help documentation (configurable URL, default `/docs`).
+- **Top navigation**: **Document Processing** (default), **Batch Processing** (multi-file jobs + CSV/JSON/Excel export), **Reviews** (HITL KIE validation queue), **PDF Tools** (merge / split / metadata). **Settings** is disabled; **Help** opens API / help documentation (configurable URL, default `/docs`).
+- **Analysis Options → Processing**: **Layout analysis** (default) or **Table mapping** (v1.4 — born-digital PDF only; templates `bank_statement`, `invoice_line_items`).
 - **Left panel**: **Upload Document** (drag-and-drop or file picker for PDF, PNG, JPG, TIFF) and **Processing Queue** listing jobs in flight.
 - **Center panel**: **document preview** with pagination, **Run Analysis**, and **Analysis Options** (modal) for pipeline toggles.
-- **Right panel**: **Processing Results** with main tabs **Content** and **Result**. Content exposes sub-tabs (e.g. Text, Tables, Figures, and optional Fields / Formulas / Seals when the backend returns them). **Result** shows JSON with copy/download. **Export Results** offers structured export actions.
+- **Right panel**: **Processing Results** with main tabs **Content** and **Result**. Content exposes sub-tabs (e.g. Text, Tables, **Mapped rows** when table mapping is used, Figures, and optional Fields / Formulas / Seals when the backend returns them). **Result** shows JSON with copy/download. **Export Results** offers structured export actions.
 - **Footer (status bar)**: connection / readiness, **stack version** and **KIE ready/cold** driven by `GET /health`, plus **API version** from the same payload.
 
 ### Examples
@@ -82,7 +83,7 @@ Lite API: [docs/architecture/lite-api.md](docs/architecture/lite-api.md). Limita
 4. Open: `http://localhost:8001/lite/lite.html`
 5. Cloud validation: [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) sections G0–H.
 
-7. **Release notes**: [CHANGELOG.md](CHANGELOG.md) · [v1.1.0](docs/release/RELEASE_1.1_NOTES.md) · [Known limitations](docs/release/KNOWN_LIMITATIONS.md) · KIE regression: [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md)
+7. **Release notes**: [CHANGELOG.md](CHANGELOG.md) · [v1.4.0](docs/release/RELEASE_1.4_NOTES.md) · [Known limitations](docs/release/KNOWN_LIMITATIONS.md) · KIE regression: [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md)
 
 ---
 

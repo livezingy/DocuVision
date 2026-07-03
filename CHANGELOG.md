@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-06-30
+
+Table mapping productization, HITL editable review, PDF Tools nav tab, and batch mapped-row Excel export. See [RELEASE_1.4_NOTES.md](docs/release/RELEASE_1.4_NOTES.md) and [MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md).
+
+### Added
+
+- Pro **Table mapping** processing mode: `processingMode=table_mapping` + `table_template` (`bank_statement`, `invoice_line_items`) → `mapped_table_rows` UI tab.
+- Document profile **eligibility** hint on upload (`Ready for table mapping` for `pdf_digital`).
+- Pro **Reviews** tab: editable KIE fields, Save (`PATCH /tasks/{id}/kie-fields`), Approve/Reject; **`hitl_policy`** profiles (`full` / `lite` / `off`).
+- Pro **PDF Tools** tab: merge, split, metadata (UI); API stubs remain for searchable / form-fill.
+- Batch manifest set **`mapped_bank_statement_3`**; XLSX **MappedRows** sheet; script `run_batch_mapped_acceptance.ps1` (**MAPPED-BATCH-001**).
+- Contract tests: `test_table_template_analyze.py`, `test_hitl_policy.py`, `test_task_kie_fields_patch.py`, `test_pdf_tools_service.py`; core `test_table_column_mapping.py`, `test_table_result_mapper.py`.
+- `accelerate` dependency for KIE `device_map=auto`; multi-cloud KIE model path discovery; `GET /api/v1/health` for AI Studio `api_serving`.
+
+### Changed
+
+- `APP_VERSION` default **1.4.0**; Phase A CI extended with v1.4 contract files.
+- Table mapping routes born-digital PDF via `enable_layout=false` + docuvision-core TableProcessor (no KIE / no HITL enqueue on this path).
+
+### Fixed
+
+- PDF Tools split page list coercion and file-selection hints.
+- Pro tab typography; Quality panel gated on KIE-enabled runs.
+- Queue reprocess prefers selected completed item; API probe fallback to `/engines` on AI Studio.
+
 ## [1.3.1] — 2026-06-23
 
 Maintenance release: remove unused Lite/Pro UI scope, add Lite server-side PDF preview. See [RELEASE_1.3.1_NOTES.md](docs/release/RELEASE_1.3.1_NOTES.md) and [MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md).

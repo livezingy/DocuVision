@@ -18,7 +18,8 @@
 ### 状态栏与主导航
 
 - 底部 **PaddleOCR / PaddleX 版本** 与 **API 版本** 来自 `GET /api/v1/health`（`dependencies`、`api_version`）；直连 `:8000` 时 `GET /health` 等价。**KIE ready/cold** 来自 `health.kie.model_loaded`（后台 `DOCUVISION_KIE_WARMUP` 完成后约 12s 内会自动再拉一次 health 刷新）。
-- 已移除虚假 **Memory** 读数；**Templates / History** 从未实现已从顶栏移除；**Batch / Settings** 为禁用占位；**Help** 打开 `HELP_DOC_URL` 或默认 `/docs`。
+- 已移除虚假 **Memory** 读数；**Templates / History** 从未实现已从顶栏移除。顶栏：**Document Processing**、**Batch Processing**、**Reviews**（HITL）、**PDF Tools** 可用；**Settings** 仍为禁用占位；**Help** 打开 `HELP_DOC_URL` 或默认 `/docs`。
+- **v1.4**：Analysis Options → Processing 可选 **Table mapping**（`table_template`）；Content 子 Tab **Mapped rows** 展示 `mapped_table_rows`。
 
 ## 📁 文件结构
 

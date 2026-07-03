@@ -3,8 +3,28 @@
 ## Pro (in repo)
 
 - `docuvision-ui.png` — hero screenshot for the root README.
-- `DocVision_table.gif`, `DocVision_receipt.gif`, `DocVision_Invoice.gif` — recorded UI walkthroughs for the README **Examples** section.
-- `M1_pro_map_bank_statement.gif` — Table mapping mode: Processing → **Table mapping** → Template **Bank statement** → Mapped rows tab.
+- `DocVision_table.gif`, `DocVision_receipt.gif`, `DocVision_Invoice.gif` — recorded UI walkthroughs for the README **Examples** section (Layout + KIE paths).
+
+### v1.4 (record before tag; link from README)
+
+| File | Scenario | Duration | Key frames |
+|------|----------|----------|------------|
+| `M1_pro_map_bank_statement.gif` | Table mapping — bank statement | 25–35s | Upload → Options **Table mapping** → Template **Bank statement** → Run → **Mapped rows** → Result JSON |
+| `M2_pro_map_invoice_line_items.gif` | Table mapping — invoice lines | 20–30s | Same with `invoice_line_items_sample.pdf` |
+| `M3_pro_batch_mapped_excel.gif` | Batch MappedRows XLSX | 30–40s | Batch tab → 3 PDFs → Excel → **MappedRows** sheet |
+
+Recording checklist (Pro): resolution 1280×720; Cloud GPU or CPU for table mapping; sample `test_data/testfiles/GeneralFiles/bank_statement_sample.pdf`; `DEBUG=false python run.py`; ffmpeg target **under 5 MB**. Do **not** imply HITL reviews table-mapping rows.
+
+**API preflight (before recording)**:
+
+```bash
+export REPO_ROOT="/workspace/DocuVision"
+bash "$REPO_ROOT/test_data/scripts/run_m1_table_mapping_acceptance.sh"
+```
+
+Pass = `MAP-TEMPLATE-001 pass` + `M1 acceptance PASSED` (artifacts under `test_data/TestResult/PhaseV14/M1/`).
+
+After adding GIFs, update root [README.md](../../README.md) **Examples** and [RELEASE_1.4_NOTES.md](../release/RELEASE_1.4_NOTES.md) post-release row.
 
 ## Lite (record locally; add to repo when ready)
 

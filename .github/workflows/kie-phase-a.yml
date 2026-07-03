@@ -1,4 +1,4 @@
-# Cloud validation Phase A — KIE contract tests (CPU, no Paddle, no Qwen weights).
+# Cloud validation Phase A — KIE + v1.4 table mapping contract tests (CPU, no Paddle, no Qwen weights).
 # See docs/architecture/CLOUD_VALIDATION.md
 
 name: KIE Phase A
@@ -11,11 +11,13 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - "packages/docuvision-core/**"
       - ".github/workflows/kie-phase-a.yml"
   pull_request:
     branches: [main]
     paths:
       - "backend/**"
+      - "packages/docuvision-core/**"
       - ".github/workflows/kie-phase-a.yml"
 
 concurrency:
@@ -27,9 +29,6 @@ jobs:
     if: github.event_name != 'push' || contains(github.event.head_commit.message, '[run ci]')
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
       - name: Checkout
@@ -40,17 +39,31 @@ jobs:
         with:
           python-version: "3.10"
           cache: pip
-          cache-dependency-path: backend/requirements-ci-phase-a.txt
+          cache-dependency-path: |
+            backend/requirements-ci-phase-a.txt
+            packages/docuvision-core/pyproject.toml
 
       - name: Install Phase A dependencies
+        working-directory: backend
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-ci-phase-a.txt
+          pip install -e ../packages/docuvision-core[lite]
 
-      - name: Run Phase A pytest
+      - name: Run Phase A pytest (Pro)
+        working-directory: backend
         env:
           PYTHONPATH: .
         run: |
           pytest tests/test_kie_field_metrics.py tests/test_kie_service.py \
             tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py \
+            tests/test_table_template_analyze.py tests/test_hitl_policy.py \
+            tests/test_task_kie_fields_patch.py tests/test_pdf_tools_service.py \
+            -q --tb=short
+
+      - name: Run Phase A pytest (docuvision-core mapping)
+        working-directory: packages/docuvision-core
+        run: |
+          pytest tests/processing/test_table_column_mapping.py \
+            tests/processing/test_table_result_mapper.py \
             -q --tb=short

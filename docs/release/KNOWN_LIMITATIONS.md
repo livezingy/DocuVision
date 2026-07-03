@@ -1,7 +1,7 @@
 # Known limitations
 
-> Applies through **`main` @ v1.3.1** (v1.3.0 P0 baseline + v1.3.1 scope trim).  
-> Release notes: [RELEASE_1.3.1_NOTES.md](./RELEASE_1.3.1_NOTES.md) · [RELEASE_1.3.0_NOTES.md](./RELEASE_1.3.0_NOTES.md)  
+> Applies through **`main` @ v1.4.0** (v1.3.x baseline + table mapping / HITL UI / PDF Tools).  
+> Release notes: [RELEASE_1.4_NOTES.md](./RELEASE_1.4_NOTES.md) · [RELEASE_1.3.1_NOTES.md](./RELEASE_1.3.1_NOTES.md)  
 > Acceptance rules: [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
 
 ## DocuVision Lite (since 1.0.1)
@@ -51,7 +51,9 @@
 | KIE query fields（v1.1） | `kie_query_fields` **仅追加**内置 schema（最多 20 字段）。**v1.3** 起支持 `document_type=custom` 与 YAML 模板库（MVP）；无字段 bbox 联动。见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)。 |
 | KIE validation（v1.3） | 启发式 date/currency 规则 + `kie_validation`；非 ground-truth 逐字校验；HITL 队列为内存 MVP。 |
 | Batch Processing UI | v1.2+ Pro Batch tab with aggregated CSV/JSON/**Excel**; in-memory batch, lost on restart. Lite has no batch UI/API since v1.3.1. |
-| Table column mapping (v1.4) | `table_template` maps PDF tables to unified schema (`mapped_table_rows`). **Debit/Credit split columns, Chinese headers, and complex merged cells** are extensible; current aliases target **English headers** primarily. Custom alias API deferred. |
+| Table column mapping (v1.4) | `table_template` maps born-digital PDF tables to unified schema (`mapped_table_rows`). **Scanned PDFs/images blocked** in UI (use Layout Analysis). **Debit/Credit split columns, Chinese headers, and complex merged cells** extensible; aliases target **English headers** primarily. Positional fallback when headers unmatched. Custom alias API deferred. **No HITL** on table-mapping analyze path (`document_type=general`, `enable_kie=false`). |
+| HITL Reviews UI (v1.4) | Editable KIE fields + Save/Approve; **`hitl_policy`** (`full`/`lite`/`off`). In-memory queue; **KIE validation failures only** — not table-mapping row review. |
+| PDF Tools UI (v1.4) | Nav tab: merge / split / metadata. **`searchable` / `form-fill` API stubs** — not in UI; productization v1.5+. |
 | 字段 bbox | KIE 字段与画布标注框 **未** 联动。 |
 | 翻译 / 长文档 VL 问答 | 明确不在 1.0 / 1.0.1 范围。 |
 
@@ -69,12 +71,11 @@
 - `test_data/TestResult/` 为本地/云端导出目录（gitignore），**不**随仓库分发。
 - 部分 `test_data/testfiles/` 样例仅供验收，使用时注意版权与隐私（勿提交真实证件）。
 
-## 后续版本方向（post-v1.3.1）
+## 后续版本方向（post-v1.4.0）
 
-- **v1.4（已规划/部分落地）**：垂直表格列映射（`table_column_mapping`）、HITL Review UI、Webhook HTTP 投递。
-- **v1.5+**：见 [v1.5-roadmap.md](../architecture/v1.5-roadmap.md) — 可搜索 PDF、PDF 工具箱产品化、Batch 持久化；邮件 IMAP 独立服务。
-- **维护**：Playwright E2E P1/P2（Batch/Reviews tab）；CI Lite preview + Pro E2E on PR.
+- **v1.5+**：见 [v1.5-roadmap.md](../architecture/v1.5-roadmap.md) — 可搜索 PDF、PDF 工具箱完整产品化、Batch/HITL/Webhook 持久化、`table_areas` ROI；邮件 IMAP 独立服务。
+- **维护**：Playwright E2E P1/P2（Batch/Reviews/PDF Tools tab）；CI Lite preview + Pro E2E + Phase A v1.4 on PR.
 
-Cloud 验收：[MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md)。
+Cloud 验收：[MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md)。
 
-路线图：[RELEASE_1.3.1_NOTES.md](./RELEASE_1.3.1_NOTES.md)。
+路线图：[RELEASE_1.4_NOTES.md](./RELEASE_1.4_NOTES.md)。

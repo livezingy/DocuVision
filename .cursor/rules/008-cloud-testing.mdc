@@ -46,16 +46,43 @@ Lite CPU validation uses **`docuvision_lite_env`** — see `apps/lite/backend/te
 
 ## Phase A — Pro contract pytest (no Qwen weights)
 
-**Minimum** (GitHub `kie-phase-a.yml` on PR):
+**Minimum** (GitHub `kie-phase-a.yml` on PR — KIE baseline + **v1.4 table mapping contracts**):
 
 ```bash
 cd "$REPO_ROOT/backend"
 source ~/docuvision_env/bin/activate
+pip install -e ../packages/docuvision-core[lite]
 pytest tests/test_kie_field_metrics.py tests/test_kie_service.py \
-  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py \
+  tests/test_table_template_analyze.py tests/test_hitl_policy.py \
+  tests/test_task_kie_fields_patch.py tests/test_pdf_tools_service.py -q
+
+cd "$REPO_ROOT/packages/docuvision-core"
+pytest tests/processing/test_table_column_mapping.py \
+  tests/processing/test_table_result_mapper.py -q
 ```
 
-**v1.3 pre-release extension**:
+**v1.4 Cloud pre-tag extension** (full gate — see [MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](../test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md) §1):
+
+```bash
+cd "$REPO_ROOT/backend"
+source ~/docuvision_env/bin/activate
+pytest tests/test_kie_pages_parse.py tests/test_kie_field_merge.py \
+  tests/test_batch_export_service.py \
+  tests/test_kie_field_validation.py tests/test_kie_schema_templates.py \
+  tests/test_document_type_classifier.py tests/test_file_type_detector.py \
+  tests/test_table_template_analyze.py tests/test_hitl_policy.py \
+  tests/test_task_kie_fields_patch.py tests/test_pdf_tools_service.py \
+  tests/test_kie_field_metrics.py tests/test_kie_service.py \
+  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+
+cd "$REPO_ROOT/packages/docuvision-core"
+pip install -e ".[lite,dev]" && pytest tests/processing/test_table_stitch.py \
+  tests/processing/test_table_column_mapping.py \
+  tests/processing/test_table_result_mapper.py -q
+```
+
+**v1.3 pre-release extension** (historical v1.3.0 tag — omit v1.4-only files):
 
 ```bash
 cd "$REPO_ROOT/backend"

@@ -2,7 +2,7 @@
 # M1 / MAP-TEMPLATE-001 — Pro table mapping acceptance (Tencent Cloud Studio / Baidu AI Studio).
 # Validates API path for M1_pro_map_bank_statement.gif storyboard before UI recording.
 #
-# Prerequisite: Pro server on :8000 (DEBUG=false python run.py).
+# Prerequisite: Pro server on :8000 (DEBUG=false python run.py) on release/v1.4.0-prep+ code.
 # Usage (zero config when cwd is repo root):
 #   cd ~/DocuVision && bash test_data/scripts/run_m1_table_mapping_acceptance.sh
 # Optional (non-standard clone path only):
@@ -35,23 +35,71 @@ if [[ ! -f "$BANK_SAMPLE" ]]; then
   exit 1
 fi
 
+# POST helper: write body to outfile; fail on non-200 or non-JSON (never pipe curl into python heredoc).
+curl_post_json() {
+  local url="$1"
+  local outfile="$2"
+  shift 2
+  local http
+  http=$(curl -sS -o "$outfile" -w "%{http_code}" -X POST "$url" "$@")
+  if [[ "$http" != "200" ]]; then
+    echo "FAIL: POST $url returned HTTP $http" >&2
+    echo "Response preview:" >&2
+    head -c 800 "$outfile" >&2 || true
+    echo >&2
+    exit 1
+  fi
+  if ! python3 -c "import json; json.load(open('$outfile'))" 2>/dev/null; then
+    echo "FAIL: POST $url did not return JSON (saved to $outfile)" >&2
+    head -c 800 "$outfile" >&2 || true
+    echo >&2
+    exit 1
+  fi
+}
+
+curl_get_json() {
+  local url="$1"
+  local outfile="$2"
+  local http
+  http=$(curl -sS -o "$outfile" -w "%{http_code}" "$url")
+  if [[ "$http" != "200" ]]; then
+    echo "FAIL: GET $url returned HTTP $http" >&2
+    head -c 800 "$outfile" >&2 || true
+    echo >&2
+    exit 1
+  fi
+  if ! python3 -c "import json; json.load(open('$outfile'))" 2>/dev/null; then
+    echo "FAIL: GET $url did not return JSON (saved to $outfile)" >&2
+    head -c 800 "$outfile" >&2 || true
+    echo >&2
+    exit 1
+  fi
+}
+
 # --- Step 0: health (status bar / api_version for GIF end card) ---
 HEALTH_JSON="$OUT_DIR/health.json"
-HTTP_CODE=$(curl -s -o "$HEALTH_JSON" -w "%{http_code}" "$API_ROOT/api/v1/health")
-if [[ "$HTTP_CODE" != "200" ]]; then
-  echo "FAIL: GET /api/v1/health returned HTTP $HTTP_CODE" >&2
-  echo "Start Pro: cd $REPO_ROOT/backend && source $VENV_ACTIVATE && DEBUG=false python run.py" >&2
-  exit 1
-fi
+curl_get_json "$API_ROOT/api/v1/health" "$HEALTH_JSON"
 
 python3 - <<PY
 import json, sys
 from pathlib import Path
+
 h = json.loads(Path("$HEALTH_JSON").read_text())
-ver = str(h.get("api_version") or "")
+ver = str(h.get("api_version") or "0.0.0")
 expected = "$EXPECTED_API_VERSION"
+
+def parse_ver(v):
+    parts = (v or "0").split(".")
+    while len(parts) < 2:
+        parts.append("0")
+    return int(parts[0]), int(parts[1])
+
+if parse_ver(ver) < parse_ver(expected):
+    print(f"FAIL: api_version={ver!r} is below {expected!r}", file=sys.stderr)
+    print("Pull release/v1.4.0-prep (or main after merge), restart: DEBUG=false python run.py", file=sys.stderr)
+    sys.exit(1)
 if ver != expected:
-    print(f"WARN: api_version={ver!r} (expected {expected!r}) — update EXPECTED_API_VERSION if tagging another train")
+    print(f"WARN: api_version={ver!r} (expected {expected!r})")
 else:
     print(f"OK: api_version={ver}")
 print(f"OK: health status={h.get('status')!r}")
@@ -59,10 +107,14 @@ PY
 
 # --- Step 1: document profile (M1 upload pre-scan -> eligibility) ---
 PROFILE_JSON="$OUT_DIR/document_profile.json"
-curl -s -X POST "$API_ROOT/api/v1/document/profile" \
-  -F "file=@$BANK_SAMPLE" | tee "$PROFILE_JSON" | python3 - <<'PY'
-import json, sys
-p = json.load(sys.stdin)
+curl_post_json "$API_ROOT/api/v1/document/profile" "$PROFILE_JSON" \
+  -F "file=@$BANK_SAMPLE"
+
+python3 - <<PY
+import json
+from pathlib import Path
+
+p = json.loads(Path("$PROFILE_JSON").read_text())
 detected = p.get("detected_file_type")
 assert detected == "pdf_digital", f"expected pdf_digital for M1 sample, got {detected!r}"
 print("OK: document/profile detected_file_type=pdf_digital (UI: Ready for table mapping)")
@@ -70,14 +122,14 @@ PY
 
 # --- Step 2: analyze table_mapping path (M1 Run Analysis) ---
 ANALYZE_JSON="$OUT_DIR/map_analyze.json"
-curl -s -X POST "$API_ROOT/api/v1/analyze" \
+curl_post_json "$API_ROOT/api/v1/analyze" "$ANALYZE_JSON" \
   -F "file=@$BANK_SAMPLE" \
   -F "document_type=general" \
   -F "enable_layout=0" \
   -F "enable_table=1" \
   -F "enable_kie=0" \
   -F "enable_ocr=0" \
-  -F "table_template=bank_statement" | tee "$ANALYZE_JSON"
+  -F "table_template=bank_statement"
 
 TASK_ID=$(python3 -c "import json; print(json.load(open('$ANALYZE_JSON'))['task_id'])")
 echo "task_id=$TASK_ID"
@@ -85,7 +137,7 @@ echo "export TASK_ID=$TASK_ID"
 
 STATUS=""
 for i in $(seq 1 90); do
-  STATUS=$(curl -s "$API_ROOT/api/v1/tasks/$TASK_ID" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))")
+  STATUS=$(curl -sS "$API_ROOT/api/v1/tasks/$TASK_ID" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))")
   echo "poll[$i] status=$STATUS"
   if [[ "$STATUS" == "completed" ]]; then
     break
@@ -104,9 +156,13 @@ fi
 
 # --- Step 3: result (M1 Mapped rows + Result JSON tab) ---
 RESULT_JSON="$OUT_DIR/map_result.json"
-curl -s "$API_ROOT/api/v1/tasks/$TASK_ID/result" | tee "$RESULT_JSON" | python3 - <<'PY'
-import json, sys
-r = json.load(sys.stdin)
+curl_get_json "$API_ROOT/api/v1/tasks/$TASK_ID/result" "$RESULT_JSON"
+
+python3 - <<PY
+import json
+from pathlib import Path
+
+r = json.loads(Path("$RESULT_JSON").read_text())
 assert r.get("table_template") == "bank_statement", r.get("table_template")
 rows = r.get("mapped_table_rows") or []
 assert len(rows) >= 1, "expected mapped_table_rows"

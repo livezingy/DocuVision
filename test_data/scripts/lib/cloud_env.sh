@@ -48,7 +48,10 @@ detect_cloud_provider() {
     return 0
   fi
 
-  if [[ "${USER:-}" == "aistudio" ]] || [[ -n "${AISTUDIO_PROJECT_ID:-}" ]]; then
+  if [[ "${USER:-}" == "aistudio" ]] \
+    || [[ -n "${AISTUDIO_PROJECT_ID:-}" ]] \
+    || [[ "$root" == /home/aistudio/* ]] \
+    || [[ "$(hostname 2>/dev/null || true)" == jupyter-* ]]; then
     echo "baidu"
     return 0
   fi

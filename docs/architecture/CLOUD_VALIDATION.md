@@ -122,6 +122,21 @@ curl -s http://127.0.0.1:8000/api/v1/health | python3 -m json.tool | head -3
 | 无定时开关机 | 关页约 10 分钟 idle 自动中止；算力需手动启动环境 |
 | UI 演示首选 | 腾讯 Cloud Studio 端口预览仍最省事；AI Studio 适合 **延长 GPU 试用 + 本机 curl/pytest** |
 
+**M1 一键验收（Table mapping API + GIF 前检）** — 腾讯 / 百度 **同脚本**，仅需在非标准路径时设 `DOCUVISION_ROOT`：
+
+```bash
+# Terminal 1
+source ~/docuvision_env/bin/activate
+cd "${DOCUVISION_ROOT:-$HOME/DocuVision}/backend"   # Tencent: /workspace/DocuVision
+DEBUG=false python run.py
+
+# Terminal 2
+cd "${DOCUVISION_ROOT:-$HOME/DocuVision}"           # or cd /workspace/DocuVision
+bash test_data/scripts/run_m1_table_mapping_acceptance.sh
+```
+
+脚本输出 `CLOUD_PROVIDER=tencent|baidu`、写入 `test_data/TestResult/PhaseV14/M1/*.json`；通过判据：`M1 acceptance PASSED`。详见 [MERGE_MAIN_v1.4 §3](../../test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md#3-map-template-001--pro-table-mapping-single-file) 与 [media/README.md M1](media/README.md).
+
 **无 UI 验收（终端，与 UI 等价）**
 
 ```bash

@@ -272,6 +272,23 @@ npm run test:e2e
 - E2E uses **mock API** (`frontend/tests/e2e/helpers/mock-pro-api.js`); green does **not** replace Cloud KIE or full manual UI matrix.
 - **Manual scope after UI changes**: [UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md); assistant lists remaining checks per `004-project.mdc` §手工测试提醒.
 
+## M1 — Table mapping API gate (Tencent / Baidu, one script)
+
+Optional: `export DOCUVISION_ROOT=~/DocuVision` (Baidu) or `/workspace/DocuVision` (Tencent) **only** if auto-detect fails.
+
+```bash
+# Terminal 1 — Pro server
+source ~/docuvision_env/bin/activate
+cd "${DOCUVISION_ROOT:-$HOME/DocuVision}/backend"
+DEBUG=false python run.py
+
+# Terminal 2 — MAP-TEMPLATE-001 + M1 GIF preflight
+cd "${DOCUVISION_ROOT:-$HOME/DocuVision}"
+bash test_data/scripts/run_m1_table_mapping_acceptance.sh
+```
+
+Pass: `M1 acceptance PASSED`. Baidu pip: set `PIP_CONFIG_FILE` per CLOUD_VALIDATION §1.1 before `pip install`.
+
 ## Related docs
 
 - [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md) — full Phase A–G

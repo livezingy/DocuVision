@@ -27,18 +27,26 @@ Related: [CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md), [ME
 
 ## §0 Common variables
 
+**路径（双云）**：仅需在非标准 clone 位置时设置 **`DOCUVISION_ROOT`**；否则脚本自动从 `test_data/scripts/` 推断仓库根目录。
+
 ```bash
-export REPO_ROOT="/workspace/DocuVision"
-export API_ROOT="http://127.0.0.1:8000"
+# Optional — only when repo is not ~/DocuVision (Baidu) or /workspace/DocuVision (Tencent):
+# export DOCUVISION_ROOT=~/DocuVision
+
+source test_data/scripts/lib/cloud_env.sh
+init_cloud_env
+# Sets: REPO_ROOT, CLOUD_PROVIDER (tencent|baidu|generic), API_ROOT=http://127.0.0.1:8000
+
 export LITE_ROOT="http://127.0.0.1:8001"
 export BANK_SAMPLE="$REPO_ROOT/test_data/testfiles/GeneralFiles/bank_statement_sample.pdf"
 export OUT_DIR="$REPO_ROOT/test_data/TestResult/PhaseV14"
 mkdir -p "$OUT_DIR"
 
 cd "$REPO_ROOT"
-git fetch origin && git checkout main && git pull origin main
+git fetch origin && git pull origin main
 
 cd backend && source ~/docuvision_env/bin/activate
+# Baidu AI Studio: export PIP_CONFIG_FILE=/tmp/pip-docuvision.conf first (CLOUD_VALIDATION §1.1)
 pip install -e ../packages/docuvision-core[lite] pdfplumber pymupdf -q
 ```
 
@@ -120,11 +128,18 @@ PY
 
 **Pass**: `table_template=bank_statement`; `mapped_table_rows` ≥1 row with schema column keys.
 
-**One-liner** (requires Pro `:8000` running):
+**One-liner** (requires Pro `:8000` running; auto-detects Tencent / Baidu):
 
 ```bash
-export REPO_ROOT="/workspace/DocuVision"
-bash "$REPO_ROOT/test_data/scripts/run_m1_table_mapping_acceptance.sh"
+cd ~/DocuVision          # Baidu AI Studio — or cd /workspace/DocuVision on Tencent
+bash test_data/scripts/run_m1_table_mapping_acceptance.sh
+```
+
+Non-standard clone path:
+
+```bash
+export DOCUVISION_ROOT=/path/to/DocuVision
+bash "$DOCUVISION_ROOT/test_data/scripts/run_m1_table_mapping_acceptance.sh"
 ```
 
 Optional UI spot-check: Analysis Options → **Table mapping** → Template **Bank statement** → Run → Content **Mapped rows**.

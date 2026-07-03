@@ -15,11 +15,12 @@
 
 Recording checklist (Pro): resolution 1280×720; Cloud GPU or CPU for table mapping; sample `test_data/testfiles/GeneralFiles/bank_statement_sample.pdf`; `DEBUG=false python run.py`; ffmpeg target **under 5 MB**. Do **not** imply HITL reviews table-mapping rows.
 
-**API preflight (before recording)**:
+**API preflight (before recording)** — auto-detects Tencent Cloud Studio / Baidu AI Studio:
 
 ```bash
-export REPO_ROOT="/workspace/DocuVision"
-bash "$REPO_ROOT/test_data/scripts/run_m1_table_mapping_acceptance.sh"
+cd ~/DocuVision && bash test_data/scripts/run_m1_table_mapping_acceptance.sh
+# Tencent: cd /workspace/DocuVision && bash test_data/scripts/run_m1_table_mapping_acceptance.sh
+# Non-standard path: export DOCUVISION_ROOT=/path/to/DocuVision
 ```
 
 Pass = `MAP-TEMPLATE-001 pass` + `M1 acceptance PASSED` (artifacts under `test_data/TestResult/PhaseV14/M1/`).

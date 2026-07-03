@@ -181,8 +181,6 @@ def _dependency_preflight_check() -> Dict[str, str]:
 
 _DEP_VERSIONS = _dependency_preflight_check()
 
-API_VERSION = "1.1.0"
-
 
 def _short_public_model_id(model_id: str) -> str:
     """Last path segment or trimmed id for health payloads (no full host paths)."""
@@ -222,6 +220,9 @@ from app.services.unified_layout_service import UnifiedLayoutService
 from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
 from app.core.config import settings
 from app.core.debug_utils import save_debug_overlay_image
+
+# Single source of truth for /health api_version and OpenAPI version (see config.APP_VERSION).
+API_VERSION = settings.APP_VERSION
 
 # Initialize FastAPI application
 app = FastAPI(

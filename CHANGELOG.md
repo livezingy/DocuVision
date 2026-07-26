@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `POST /api/v1/documents:analyze` (Phase1 Job endpoint) now accepts the full Form parameter set previously only on legacy `POST /api/v1/analyze`: `enable_layout`/`enable_table`/`enable_formula`/`enable_seal`/`enable_kie`, `language`, `ocr_engine`/`layout_engine`/`table_engine`, `table_allow_fullpage_fallback`, formula thresholds (`formula_disable_layout`/`formula_disable_preprocess`/`formula_two_stage_threshold_retry`/`formula_primary_layout_threshold`/`formula_fallback_layout_threshold`/`formula_layout_threshold`/`pipeline_formula_batch_size`), `table_template`, `enable_hitl`. Defaults mirror legacy; `document_type=invoice/receipt/id_card` auto-enables KIE. Non-breaking (all new params optional with legacy-matching defaults).
+
 ### Changed
 
 - `batch_export_service._task_kie_fields`: removed dead `quality` branch (`if isinstance(quality, dict): pass` had no effect).

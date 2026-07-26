@@ -1028,11 +1028,29 @@ async def process_document(task_id: str):
 @app.post("/api/v1/documents:analyze", response_model=JobStatus)
 async def analyze_document_v1(
     file: UploadFile = File(...),
+    enable_layout: bool = Form(True),
+    enable_table: bool = Form(True),
+    enable_formula: bool = Form(False),
+    enable_seal: bool = Form(False),
     enable_kie: bool = Form(False),
     document_type: str = Form("auto"),
+    language: str = Form("en"),
+    ocr_engine: Optional[str] = Form(None),
+    layout_engine: Optional[str] = Form(None),
+    table_engine: Optional[str] = Form(None),
+    table_allow_fullpage_fallback: Optional[bool] = Form(None),
+    formula_disable_layout: bool = Form(False),
+    formula_disable_preprocess: bool = Form(False),
+    formula_two_stage_threshold_retry: bool = Form(True),
+    formula_primary_layout_threshold: float = Form(0.5),
+    formula_fallback_layout_threshold: float = Form(0.2),
+    formula_layout_threshold: Optional[float] = Form(None),
+    pipeline_formula_batch_size: int = Form(1),
     return_raw: bool = Form(False),
     kie_query_fields: Optional[str] = Form(None),
     kie_pages: Optional[str] = Form(None),
+    table_template: Optional[str] = Form(None),
+    enable_hitl: bool = Form(True),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """
@@ -1042,6 +1060,10 @@ async def analyze_document_v1(
 
     Request: multipart/form-data with 'file' field
     Response: JobStatus with job_id
+
+    Form parameters mirror POST /api/v1/analyze (legacy) so the Phase 1
+    Job-based endpoint is feature-complete (layout/table/formula/seal/KIE
+    toggles, engine overrides, formula thresholds, table_template, HITL).
     """
     # Validate file
     ext = os.path.splitext(file.filename)[1].lower()
@@ -1053,6 +1075,12 @@ async def analyze_document_v1(
     if pages_err:
         raise HTTPException(status_code=400, detail=pages_err)
 
+    effective_table_allow_fullpage_fallback = (
+        settings.TABLE_ALLOW_FULLPAGE_FALLBACK
+        if table_allow_fullpage_fallback is None
+        else bool(table_allow_fullpage_fallback)
+    )
+
     job_id = str(uuid.uuid4())
     upload_dir = os.path.join(settings.UPLOAD_DIR, job_id)
     os.makedirs(upload_dir, exist_ok=True)
@@ -1062,22 +1090,52 @@ async def analyze_document_v1(
         content = await file.read()
         f.write(content)
 
-    # Phase 1 uses default options: layout=true, table=true for layout blocks
     options = {
-        "enable_layout": True,
-        "enable_table": True,
+        "enable_layout": enable_layout,
+        "enable_table": enable_table,
+        "enable_formula": enable_formula,
+        "enable_seal": enable_seal,
         "enable_kie": enable_kie,
         "document_type": document_type,
-        "table_allow_fullpage_fallback": settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
-        "language": "en",
+        "language": language,
+        "ocr_engine": ocr_engine,
+        "layout_engine": layout_engine,
+        "table_engine": table_engine,
+        "table_allow_fullpage_fallback": effective_table_allow_fullpage_fallback,
+        "formula_disable_layout": formula_disable_layout,
+        "formula_disable_preprocess": formula_disable_preprocess,
+        "formula_two_stage_threshold_retry": formula_two_stage_threshold_retry,
+        "formula_primary_layout_threshold": formula_primary_layout_threshold,
+        "formula_fallback_layout_threshold": formula_fallback_layout_threshold,
+        "formula_layout_threshold": formula_layout_threshold,
+        "pipeline_formula_batch_size": pipeline_formula_batch_size,
         "use_doc_unwarping": settings.USE_DOC_UNWARPING,
         "debug_mode": settings.DEBUG_MODE,
         "return_raw": return_raw,
         "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
         "kie_pages": (kie_pages or "").strip() or "1",
     }
+    if table_template and str(table_template).strip():
+        options["table_template"] = str(table_template).strip().lower()
+    options["enable_hitl"] = bool(enable_hitl)
 
     _resolve_kie_query_fields_in_options(options)
+
+    # Backward-compatible fallback: if user selected a document_type that
+    # typically requires KIE (invoice/receipt/id_card) but did not enable KIE,
+    # enable it automatically (mirrors legacy /api/v1/analyze behavior).
+    try:
+        doc_type_norm = str(document_type or "").strip().lower()
+        if doc_type_norm in {"invoice", "receipt", "id_card"} and not options.get("enable_kie", False):
+            options["enable_kie"] = True
+            logger.info(f"Phase1 analyze: auto-enabled KIE for document_type={doc_type_norm}")
+    except Exception:
+        pass
+
+    try:
+        logger.info("Phase1 analyze options: %s", options)
+    except Exception:
+        logger.debug("Failed to log phase1 analyze options")
 
     task = {
         "task_id": job_id,

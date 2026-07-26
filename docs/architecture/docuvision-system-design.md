@@ -485,28 +485,42 @@ fused 层各 block 的 `processing_status` 字段：
 
 ### 7.1 创建分析任务
 
-**`POST /api/v1/documents:analyze`**
+> 权威：`backend/tests/test_phase1_analyze_form.py`（Form 参数透传契约）
 
-```json
-{
-  "file_url": "https://example.com/sample.pdf",
-  "options": {
-    "document_type": "auto",
-    "ocr": true,
-    "layout": true,
-    "table": true,
-    "figure": true,
-    "enable_formula": false,
-    "enable_seal": false,
-    "enable_kie": false,
-    "kie_query_fields": [],
-    "return_markdown": true,
-    "return_html": true,
-    "language": "auto",
-    "return_raw": false
-  }
-}
-```
+**`POST /api/v1/documents:analyze`**（multipart/form-data）
+
+Phase1 Job-based 端点的 Form 参数与 legacy `POST /api/v1/analyze` 完全对齐（功能完整入口）：
+
+| Form 字段 | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| `file` | UploadFile | 必填 | `.pdf/.png/.jpg/.jpeg/.tiff/.tif` |
+| `enable_layout` | bool | `true` | 版面分析 |
+| `enable_table` | bool | `true` | 表格识别 |
+| `enable_formula` | bool | `false` | 公式识别 |
+| `enable_seal` | bool | `false` | 印章识别 |
+| `enable_kie` | bool | `false` | KIE 字段提取 |
+| `document_type` | str | `auto` | 见下表 |
+| `language` | str | `en` | OCR 语言 |
+| `ocr_engine` | str? | null | OCR 引擎覆盖 |
+| `layout_engine` | str? | null | 版面引擎覆盖 |
+| `table_engine` | str? | null | 表格引擎覆盖 |
+| `table_allow_fullpage_fallback` | bool? | null | null 时回退 `settings.TABLE_ALLOW_FULLPAGE_FALLBACK` |
+| `formula_disable_layout` | bool | `false` | 公式阶段跳过版面 |
+| `formula_disable_preprocess` | bool | `false` | 公式阶段跳过预处理 |
+| `formula_two_stage_threshold_retry` | bool | `true` | 两阶段阈值重试 |
+| `formula_primary_layout_threshold` | float | `0.5` | 主版面阈值 |
+| `formula_fallback_layout_threshold` | float | `0.2` | 回退版面阈值 |
+| `formula_layout_threshold` | float? | null | 显式版面阈值 |
+| `pipeline_formula_batch_size` | int | `1` | 公式批大小 |
+| `return_raw` | bool | `false` | 返回原始层 |
+| `kie_query_fields` | str? | null | KIE 查询字段（JSON/逗号分隔） |
+| `kie_pages` | str? | `"1"` | KIE 页范围（PDF） |
+| `table_template` | str? | null | `bank_statement`/`invoice_line_items`，触发列映射 |
+| `enable_hitl` | bool | `true` | HITL 审核 |
+
+兼容行为：`document_type` 为 `invoice`/`receipt`/`id_card` 且未显式开 `enable_kie` 时，自动启用 KIE（与 legacy 一致）。
+
+响应：`JobStatus`（`job_id`），用 `GET /api/v1/jobs/{job_id}` 轮询、`GET /api/v1/jobs/{job_id}/result` 取 `JobEnvelope`。
 
 `document_type` 可选值：
 
@@ -520,7 +534,7 @@ fused 层各 block 的 `processing_status` 字段：
 | `passport` | 触发护照字段提取 |
 | `bank_card` | 触发银行卡字段提取 |
 
-（与 [kie.md](./kie.md) 中 `kie_step` 支持的 `document_type` 一致；**不含**已移除的 `card_group`。）
+（与 [kie.md](./kie.md) 中 `kie_step` 支持的 `document_type` 一致；**不含**已移除的 `card_group` 与 `financial_report`。）
 
 ```json
 {

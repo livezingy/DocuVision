@@ -1,7 +1,7 @@
 ---
-description: Git commit, push, and GitHub Actions policy
+description: Git commit, push, branch, and GitHub Actions policy
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Git 规范
 

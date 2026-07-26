@@ -56,5 +56,4 @@ self.logger.info("PaddleOCR模型预加载已启动")
 ## Related rules
 
 - `002-python.mdc` — Python style (docstrings in English)
-- `005-document.mdc` — Markdown/docs (Chinese allowed)
-- `004-project.mdc` — project workflow
+- `004-project.mdc` — project workflow, doc sync (Chinese allowed in docs)

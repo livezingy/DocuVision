@@ -19,7 +19,7 @@ Productize Pro batch API in the static SPA (`frontend/`): job list, progress, fa
 2. Upload multiple files + `getProcessingOptions()` (layout/kie/query/kie_pages).
 3. Poll batch status; per-file table with KIE hit / error.
 4. Download CSV (KIE) and JSON bundle; retry failed + resume.
-5. English UI copy only (`007-code-language.mdc`).
+5. English UI copy only (`005-code-language.mdc`).
 
 ## Out of scope (this feature)
 

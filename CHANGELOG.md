@@ -7,12 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `batch_export_service._task_kie_fields`: removed dead `quality` branch (`if isinstance(quality, dict): pass` had no effect).
+- Debug artifact download endpoint (`GET /api/v1/jobs/{job_id}/debug/{filename}`): replaced `os.path.abspath(...).startswith(...)` with `Path.is_relative_to` to block sibling-directory traversal (e.g. `./debug2/...`).
+
 ### Removed
 
 - `enable_ocr` per-block OCR dead config removed from `ProcessingOptions`, `/api/v1/analyze` Form, frontend payload, and tests. Standalone `/api/v1/ocr` endpoint and `OCRService` are unchanged.
 - `chart_step` and `enable_chart` removed from orchestrator pipeline and Pro UI. `ChartService` deleted (no remaining callers).
 - `financial_report` document type removed from KIE registry, orchestrator allow-list, frontend `KIE_DOC_TYPES`, and docs. API callers passing `document_type=financial_report` now hit `unsupported_document_type` (breaking).
 - `table_areas` ROI removed across Pro/Lite/core: orchestrator, `table_service`, `core_table_extractor`, Lite `/extract/auto` Form field, Lite `table_pipeline`, core `TableProcessor`/`CamelotExtractor` params, and dead methods `extract_camelot_lattice`/`extract_camelot_stream`. Lite `/extract/auto` no longer accepts `table_areas` (breaking API change).
+- `POST /api/v1/pdf-tools/searchable` now returns `501 Not Implemented`. The previous `make_searchable_pdf` was a placeholder that inserted the supplied text into a fixed rectangle (not a real OCR text layer) and has been deleted. Searchable PDF remains on the v1.5+ roadmap (breaking).
 
 ## [1.4.0] — 2026-06-30
 

@@ -13,6 +13,7 @@ DocuVision 旨在**可运行于云端服务器**，提供**试用/演示**，展
 
 ## 开发环境
 - 本地**未装** Paddle 及 Qwen2.5-VL 栈；本地以改代码、静态检查/审查为主，不跑 GPU/推理链
+- 本机 Python：`D:\USERS\livez\Python\`（可跑**不需服务器/GPU** 的 pytest，如契约 mock、纯逻辑单测）
 - 工作流：本地改代码 → Git → 腾讯 Cloud Studio GPU 拉取验证；**Git 为真源**，云端不改业务代码
 
 ## 项目结构
@@ -51,15 +52,19 @@ DocuVision/
 | Trial 演示 | docs/demo/TRIAL_DEMO.md |
 
 ## 测试与验证（pytest 边界）
-| 范围 | 在哪跑 | 助手本地能否 pytest |
-|------|--------|---------------------|
-| Pro backend 契约 | Cloud / GitHub kie-phase-a.yml | **禁止** |
-| Pro live API | Cloud run.py 已启动 | **禁止** |
-| Lite + core | GitHub CI Lite / Cloud | **禁止** |
-| 前端 Vitest | 本地或 Cloud | 允许 |
+判据：**是否需要运行中的服务器或 GPU 推理**。不需 → 本机可跑；需 → Cloud。
 
-- 改后端/KIE/编排须给**可复制 Cloud 命令 + 期望**（见 006）
-- 多数改动不硬等 Cloud 结果；继续交付并附**建议 pytest 范围**
+| 范围 | 需服务器/GPU? | 在哪跑 | 助手本地能否 pytest |
+|------|---------------|--------|---------------------|
+| Pro backend 契约 mock（`test_kie_*.py`、`test_phase1_analyze_form.py`、`test_table_template_analyze.py` 等不加载 Paddle/Qwen） | 否 | 本机或 Cloud | **允许** |
+| Pro live API（`test_live_api.py` 需 `run.py` :8000） | 是 | Cloud | **禁止** |
+| Lite + core 契约 mock / 纯逻辑单测（不加载 Paddle） | 否 | 本机或 Cloud | **允许** |
+| Lite + core live 集成（需 :8001 或 Paddle 推理） | 是 | Cloud | **禁止** |
+| 前端 Vitest | 否 | 本机或 Cloud | 允许 |
+
+- 本机 pytest 用 `D:\USERS\livez\Python\` 的解释器；先确认测试不触发 `import paddle` / `import torch` / 连接 :8000/:8001
+- 改后端/KIE/编排须给**可复制 Cloud 命令 + 期望**（见 006）——针对需服务器/GPU 的部分
+- 多数改动不硬等 Cloud 结果；继续交付并附**建议 pytest 范围**（区分本机可跑 vs Cloud 专属）
 - **硬门槛**（须 Cloud 通过再继续）：KIE/编排/契约字段变更、发版合 main、用户明确要求
 
 ## 测试落点（新建/扩展测试前）
@@ -67,7 +72,7 @@ DocuVision/
 2. 优先扩展同域文件；新建文件当：新契约域、独立 env gate、CI 已按文件名登记
 3. 分层：契约 mock（`backend/tests/test_kie_*.py`）/ Live GPU（`test_live_api.py`）/ 手动脚本（`test_api_contract_smoke.py`、`test_api_pipeline.py`）/ Lite / Core
 4. Canonical 真源：逻辑断言以 pytest 为准；`kie/_smoke_check.py` 仅薄封装不重复断言
-5. 交付附建议 pytest 范围；不得声称本地 Pro/Lite pytest 已通过
+5. 交付附建议 pytest 范围；区分"本机可跑（mock/纯逻辑）"与"Cloud 专属（需服务器/GPU）"；本机跑过的 mock 测试可声称通过，**不得**声称本地 live API / GPU 测试已通过
 
 ## 死代码检查
 - 仅扫 touched 文件：未用 import、不可达分支、注释遗留块、已移除调用方但仍定义的符号
@@ -77,9 +82,11 @@ DocuVision/
 - 本地静态检查：`ruff check backend/ apps/lite/ packages/docuvision-core/ --select F401,F841`
 
 ## 手工测试提醒
+手动测试**仅含需云端启动服务器的测试**（live API、GPU/KIE 推理、真实 :8000/:8001 端到端）。不需服务器的 mock/纯逻辑 pytest 应在本机跑，不占手动测试范围。
+
 每次改动应用代码或 UI 须附 Manual test scope（用户未说"免手工说明"时不得省略）：
 1. 查 UI_VERIFICATION_MATRIX.md §4 列仍需手工项
-2. 写清：建议先跑的自动化（含命令）/ 仍需手工测什么 / 验收标准（规则 ID）
+2. 写清：建议先跑的自动化（含命令，区分本机可跑 vs Cloud 专属）/ 仍需云端手工测什么 / 验收标准（规则 ID）
 3. E2E 绿仅缩小 Pro 已映射手工项；Lite UI、真实 GPU/KIE 不得因 E2E 绿省略
 4. 发版/合 main 提醒最小手工集
 

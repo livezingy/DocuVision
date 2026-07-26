@@ -158,13 +158,7 @@ class CamelotExtractor(BaseExtractor):
         # Comment.
         extract_params['flavor'] = 'lattice'
         extract_params['pages'] = str(page_num)
-        
-        # Comment.
-        if params.get('table_areas'):
-            extract_params['table_areas'] = [
-                ",".join(map(str, area)) for area in params['table_areas']
-            ]
-        
+
         self.logger.info(f"[CamelotExtractor] Using lattice parameters: {extract_params}")
         
         try:
@@ -221,13 +215,7 @@ class CamelotExtractor(BaseExtractor):
         # Comment.
         extract_params['flavor'] = 'stream'
         extract_params['pages'] = str(page_num)
-        
-        # Comment.
-        if params.get('table_areas'):
-            extract_params['table_areas'] = [
-                ",".join(map(str, area)) for area in params['table_areas']
-            ]
-        
+
         self.logger.debug(f"[CamelotExtractor] Using stream parameters: {extract_params}")
         
         try:

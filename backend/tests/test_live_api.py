@@ -129,7 +129,6 @@ class TestLiveDocumentWorkflows:
         with open(test_file, "rb") as f:
             files = {"file": (test_file.name, f, "application/pdf")}
             data = {
-                "enable_ocr": "true",
                 "enable_layout": "true",
                 "enable_table": "true",
             }
@@ -168,7 +167,7 @@ class TestLiveDocumentWorkflows:
                 )
             data = {
                 "name": "Live API batch test",
-                "options": '{"enable_ocr": true, "enable_layout": true}',
+                "options": '{"enable_layout": true}',
             }
             response = requests.post(
                 f"{API_BASE_URL}/batch", files=files, data=data, timeout=30
@@ -207,7 +206,7 @@ class TestLiveDocumentWorkflows:
 
         with open(test_file, "rb") as f:
             files = {"file": (test_file.name, f, "application/pdf")}
-            data = {"enable_ocr": "true", "enable_table": "true"}
+            data = {"enable_table": "true"}
             response = requests.post(
                 f"{API_BASE_URL}/analyze", files=files, data=data, timeout=60
             )
@@ -241,9 +240,7 @@ class TestLiveInvoiceKie:
             "document_type": "invoice",
             "enable_layout": "true",
             "enable_table": "true",
-            "enable_ocr": "false",
             "enable_formula": "false",
-            "enable_chart": "false",
             "enable_seal": "false",
             "enable_kie": "true",
         }

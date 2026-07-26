@@ -1432,8 +1432,6 @@ function resetAnalysisOptions() {
     const optEnableTable = document.getElementById('optEnableTable');
     if (optEnableTable) optEnableTable.checked = true;
     document.getElementById('optEnableFormula').checked = false;
-    const optEnableChart = document.getElementById('optEnableChart');
-    if (optEnableChart) optEnableChart.checked = false;
     document.getElementById('optEnableSeal').checked = false;
     document.getElementById('dialogOcrEngineSelect').value = 'paddleocr';
     document.getElementById('dialogLayoutEngineSelect').value = 'ppstructure';
@@ -1457,7 +1455,7 @@ function resetAnalysisOptions() {
     showNotification('Options reset to defaults', 'info');
 }
 
-const KIE_DOC_TYPES = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card', 'financial_report']);
+const KIE_DOC_TYPES = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card']);
 const KIE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 const TABLE_MAPPING_MODE = 'table_mapping';
 const TABLE_MAPPING_ELIGIBLE = new Set(['pdf_digital']);
@@ -1677,17 +1675,12 @@ function getProcessingOptions() {
     const options = {
         document_type: isTableMapping ? 'general' : (isLayout ? 'auto' : selectedMode),
         enable_layout: isTableMapping ? false : isLayout,
-        // Layout mode text extraction comes from PP-StructureV3 block content, not OCRService.
-        enable_ocr: false,
         enable_table: isTableMapping
             ? true
             : (isLayout ? (document.getElementById('optEnableTable')?.checked ?? true) : true),
         enable_formula: isTableMapping
             ? false
             : (isLayout ? (document.getElementById('optEnableFormula')?.checked || false) : false),
-        enable_chart: isTableMapping
-            ? false
-            : (isLayout ? (document.getElementById('optEnableChart')?.checked || false) : false),
         enable_seal: isTableMapping
             ? false
             : (isLayout ? (document.getElementById('optEnableSeal')?.checked || false) : false),

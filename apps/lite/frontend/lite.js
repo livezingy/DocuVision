@@ -201,7 +201,6 @@ function setRadioChecked(name, value) {
 
 function normalizeRestoredOptions(raw) {
   const merged = { ...DEFAULT_OPTIONS, ...(raw || {}), customParams: raw?.customParams ?? null };
-  delete merged.tableAreas;
   return merged;
 }
 
@@ -1285,6 +1284,91 @@ function renderTransactionTable(container, rows, emptyMsg) {
   container.appendChild(table);
 }
 
+const TABLE_TEMPLATE_COLUMNS = {
+  bank_statement: ["transaction_date", "description", "amount", "balance"],
+  invoice_line_items: ["line_description", "quantity", "unit_price", "line_total"],
+};
+
+const MAPPED_META_COLUMNS = ["page", "source_table_index"];
+
+function renderSchemaTable(container, rows, columns, emptyMsg) {
+  container.innerHTML = "";
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeColumns = Array.isArray(columns) ? columns : [];
+  if (!safeRows.length) {
+    container.innerHTML = `<p class="scan-profile-msg">${escapeHtml(emptyMsg || "No rows.")}</p>`;
+    return;
+  }
+  const meta = MAPPED_META_COLUMNS;
+  const headers = [...safeColumns, ...meta];
+  const table = document.createElement("table");
+  table.className = "extracted-table";
+  const thead = document.createElement("thead");
+  const hr = document.createElement("tr");
+  headers.forEach((h) => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  safeRows.forEach((row) => {
+    const tr = document.createElement("tr");
+    headers.forEach((h) => {
+      const td = document.createElement("td");
+      td.textContent = row[h] ?? "";
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
+function updateContentMappedRows(data) {
+  const tabBtn = document.getElementById("tabBtnMapped");
+  const rows = Array.isArray(data?.mapped_table_rows) ? data.mapped_table_rows : [];
+  const template = String(data?.table_template || "").trim().toLowerCase();
+  const hasRows = rows.length > 0;
+  if (tabBtn) tabBtn.classList.toggle("hidden", !hasRows);
+  const container = els.contentMappedList;
+  if (!container) return;
+  if (!hasRows) {
+    const demoMapped = window.DocuVisionUiFeatures?.isContentTabEnabled("mapped")
+      ? (data.mapped_transactions
+        || (window.DocuVisionUiFeatures?.isContentTabEnabled("transactions")
+          ? (data.transactions || (window.DocuVisionDemo && DocuVisionDemo.extractTransactions(data)) || [])
+          : []))
+      : [];
+    if (demoMapped.length) {
+      renderTransactionTable(container, demoMapped, "No mapped transactions.");
+    } else {
+      container.innerHTML = `<p class="scan-profile-msg">${escapeHtml(
+        template
+          ? "No mapped rows. Check table headers match the template aliases or enable Table extraction."
+          : "Select a table vertical template in Analysis Options to map rows to a unified schema."
+      )}</p>`;
+    }
+    return;
+  }
+  const columns = TABLE_TEMPLATE_COLUMNS[template]
+    || Object.keys(rows[0] || {}).filter(
+      (k) => !["template", "source_table_index", "page", "row_index", "file_name"].includes(k)
+    );
+  container.innerHTML = "";
+  if (template) {
+    const note = document.createElement("p");
+    note.className = "scan-profile-msg";
+    note.innerHTML = `Template: <strong>${escapeHtml(template)}</strong> · ${rows.length} row(s)`;
+    container.appendChild(note);
+  }
+  const wrap = document.createElement("div");
+  wrap.id = "contentMappedTableWrap";
+  container.appendChild(wrap);
+  renderSchemaTable(wrap, rows, columns, "No mapped rows.");
+}
+
 function renderResults(data) {
   state.result = data;
   const item = getActiveItem();
@@ -1305,9 +1389,7 @@ function renderResults(data) {
     if (window.DocuVisionUiFeatures?.isContentTabEnabled("transactions")) {
       renderTransactionTable(els.contentTransactionsList, [], "No transactions yet.");
     }
-    if (window.DocuVisionUiFeatures?.isContentTabEnabled("mapped")) {
-      renderTransactionTable(els.contentMappedList, [], "No mapped transactions yet.");
-    }
+    updateContentMappedRows(null);
     return;
   }
 
@@ -1321,13 +1403,7 @@ function renderResults(data) {
     const transactions = data.transactions || (window.DocuVisionDemo && DocuVisionDemo.extractTransactions(data)) || [];
     renderTransactionTable(els.contentTransactionsList, transactions, "No transaction rows detected from tables.");
   }
-  if (window.DocuVisionUiFeatures?.isContentTabEnabled("mapped")) {
-    const mapped = data.mapped_transactions
-      || (window.DocuVisionUiFeatures?.isContentTabEnabled("transactions")
-        ? (data.transactions || (window.DocuVisionDemo && DocuVisionDemo.extractTransactions(data)) || [])
-        : []);
-    renderTransactionTable(els.contentMappedList, mapped, "No mapped transactions.");
-  }
+  updateContentMappedRows(data);
 
   els.resultJson.querySelector("code").textContent = JSON.stringify(data, null, 2);
   els.exportJsonBtn.disabled = false;
@@ -1461,10 +1537,10 @@ function setActiveMainTab(tab) {
 
 function setActiveContentTab(tab) {
   const tabBtn = document.querySelector(`.content-sub-tab[data-content="${tab}"]`);
-  if (
-    !window.DocuVisionUiFeatures?.isContentTabEnabled(tab)
-    || (tabBtn && tabBtn.classList.contains("hidden"))
-  ) {
+  const hasMappedRows = Array.isArray(state.result?.mapped_table_rows) && state.result.mapped_table_rows.length > 0;
+  const mappedAllowed = hasMappedRows || window.DocuVisionUiFeatures?.isContentTabEnabled("mapped");
+  const tabAllowed = tab === "mapped" ? mappedAllowed : window.DocuVisionUiFeatures?.isContentTabEnabled(tab);
+  if (!tabAllowed || (tabBtn && tabBtn.classList.contains("hidden"))) {
     tab = "text";
   }
   document.querySelectorAll(".content-sub-tab").forEach((b) => {

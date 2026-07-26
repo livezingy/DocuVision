@@ -166,7 +166,6 @@ async def run_tests(test_file: Path | None, lang: str, skip_pipeline: bool, resu
                     files={"file": (test_file.name, fh, mime)},
                     data={
                         "enable_layout": "true",
-                        "enable_ocr":    "true",
                         "enable_table":  "true",
                         "language":      lang,
                     },

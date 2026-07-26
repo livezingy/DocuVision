@@ -17,7 +17,6 @@ def extract_digital_pdf_tables(
     *,
     max_pages: int = 50,
     score_threshold: float = 0.5,
-    table_areas: Optional[List[List[float]]] = None,
     table_template: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Extract tables from born-digital PDF using docuvision-core TableProcessor."""
@@ -28,8 +27,6 @@ def extract_digital_pdf_tables(
         "score_threshold": score_threshold,
         "smart_camelot_fallback_threshold": 0.8,
     }
-    if table_areas:
-        processor_params["table_areas"] = table_areas
 
     processor = TableProcessor(processor_params)
 

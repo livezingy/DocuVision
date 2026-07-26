@@ -73,7 +73,7 @@
 
 ## 后续版本方向（post-v1.4.0）
 
-- **v1.5+**：见 [v1.5-roadmap.md](../architecture/v1.5-roadmap.md) — 可搜索 PDF、PDF 工具箱完整产品化、Batch/HITL/Webhook 持久化、`table_areas` ROI；邮件 IMAP 独立服务。
+- **v1.5+**：见 [v1.5-roadmap.md](../architecture/v1.5-roadmap.md) — 可搜索 PDF、PDF 工具箱完整产品化、Batch/HITL/Webhook 持久化；邮件 IMAP 独立服务。
 - **维护**：Playwright E2E P1/P2（Batch/Reviews/PDF Tools tab）；CI Lite preview + Pro E2E + Phase A v1.4 on PR.
 
 Cloud 验收：[MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md)。

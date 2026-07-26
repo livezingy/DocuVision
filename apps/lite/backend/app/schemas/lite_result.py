@@ -172,6 +172,8 @@ class LiteResult(LiteModel):
     hints: List[LiteHint] = Field(default_factory=list)
     transactions: List[Dict[str, Any]] = Field(default_factory=list)
     mapped_transactions: List[Dict[str, Any]] = Field(default_factory=list)
+    mapped_table_rows: List[Dict[str, Any]] = Field(default_factory=list)
+    table_template: Optional[str] = None
     error: Optional[LiteError] = None
 
 

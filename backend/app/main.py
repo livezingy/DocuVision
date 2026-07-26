@@ -201,7 +201,6 @@ from app.services.ocr_service import OCRService
 from app.services.layout_service import LayoutService
 from app.services.table_service import TableService
 from app.services.formula_service import FormulaService
-from app.services.chart_service import ChartService
 from app.services.seal_service import SealService
 from app.services.kie_qwen_service import QwenDocumentKIEService
 from app.services.export_service import ExportService
@@ -297,7 +296,6 @@ table_service = TableService(
     allow_fullpage_fallback=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
 )
 formula_service = FormulaService(device="gpu" if use_gpu else "cpu")
-chart_service = ChartService(device="gpu" if use_gpu else "cpu")
 seal_service = SealService(device="gpu" if use_gpu else "cpu")
 kie_service = QwenDocumentKIEService()
 
@@ -351,7 +349,7 @@ task_event_history: Dict[str, List[Dict[str, Any]]] = {}
 task_event_counters: Dict[str, int] = {}
 
 logger.info(
-    "Startup strategy | layout=ppstructure(layout-only optional engines off) | table_mode={} | table_fullpage_fallback={} | formula_mode=independent_lazy_roi | chart_mode=independent_lazy_roi | seal_mode=independent_lazy",
+    "Startup strategy | layout=ppstructure(layout-only optional engines off) | table_mode={} | table_fullpage_fallback={} | formula_mode=independent_lazy_roi | seal_mode=independent_lazy",
     "layout_first",
     settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
 )
@@ -520,10 +518,8 @@ class JobStatus(BaseModel):
 
 class ProcessingOptions(BaseModel):
     enable_layout: bool = True
-    enable_ocr: bool = False
     enable_table: bool = True
     enable_formula: bool = False
-    enable_chart: bool = False
     enable_seal: bool = False
     enable_kie: bool = False
     document_type: str = "auto"
@@ -779,10 +775,8 @@ async def analyze_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     enable_layout: bool = Form(True),
-    enable_ocr: bool = Form(False),
     enable_table: bool = Form(True),
     enable_formula: bool = Form(False),
-    enable_chart: bool = Form(False),
     enable_seal: bool = Form(False),
     enable_kie: bool = Form(False),
     document_type: str = Form("auto"),
@@ -818,15 +812,13 @@ async def analyze_document(
     # CRITICAL FIX: FastAPI parses "1"/"0" as True/False for bool Form fields
     # "true"/"false" strings will cause validation errors
     logger.info(
-        "Analyze endpoint received - enable_layout={}, enable_ocr={}, enable_table={}, "
-        "enable_formula={}, enable_chart={}, enable_seal={}, enable_kie={}, document_type={}, "
+        "Analyze endpoint received - enable_layout={}, enable_table={}, "
+        "enable_formula={}, enable_seal={}, enable_kie={}, document_type={}, "
         "table_allow_fullpage_fallback={}, formula_disable_layout={}, formula_disable_preprocess={}, "
         "pipeline_formula_batch_size={}, return_raw={}",
         enable_layout,
-        enable_ocr,
         enable_table,
         enable_formula,
-        enable_chart,
         enable_seal,
         enable_kie,
         document_type,
@@ -854,10 +846,8 @@ async def analyze_document(
 
     options = {
         "enable_layout": enable_layout,
-        "enable_ocr": enable_ocr,
         "enable_table": enable_table,
         "enable_formula": enable_formula,
-        "enable_chart": enable_chart,
         "enable_seal": enable_seal,
         "enable_kie": enable_kie,
         "document_type": document_type,
@@ -1015,7 +1005,6 @@ async def process_document(task_id: str):
             "layout_service": layout_service,
             "table_service": table_service,
             "formula_service": formula_service,
-            "chart_service": chart_service,
             "seal_service": seal_service,
             "kie_service": kie_service,
         },
@@ -1073,10 +1062,9 @@ async def analyze_document_v1(
         content = await file.read()
         f.write(content)
 
-    # Phase 1 uses default options: layout=true, table=true, ocr=false for layout blocks
+    # Phase 1 uses default options: layout=true, table=true for layout blocks
     options = {
         "enable_layout": True,
-        "enable_ocr": False,
         "enable_table": True,
         "enable_kie": enable_kie,
         "document_type": document_type,
@@ -1791,7 +1779,6 @@ def _pipeline_services() -> Dict[str, Any]:
             "layout_service": layout_service,
             "table_service": table_service,
             "formula_service": formula_service,
-            "chart_service": chart_service,
             "seal_service": seal_service,
             "kie_service": kie_service,
         }

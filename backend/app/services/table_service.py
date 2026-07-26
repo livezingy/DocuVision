@@ -1292,7 +1292,6 @@ class TableService:
         layout_elements: Optional[List[Dict[str, Any]]] = None,
         ocr_text_blocks: Optional[List[Dict[str, Any]]] = None,
         allow_fullpage_fallback: Optional[bool] = None,
-        table_areas: Optional[List[List[float]]] = None,
     ) -> Dict[str, Any]:
         """Table extraction API with structured metadata for observability and audits."""
         tables, meta = await self._extract_internal(
@@ -1302,7 +1301,6 @@ class TableService:
             layout_elements=layout_elements,
             ocr_text_blocks=ocr_text_blocks,
             allow_fullpage_fallback=allow_fullpage_fallback,
-            table_areas=table_areas,
         )
         return {
             "tables": tables,
@@ -1317,7 +1315,6 @@ class TableService:
         layout_elements: Optional[List[Dict[str, Any]]] = None,
         ocr_text_blocks: Optional[List[Dict[str, Any]]] = None,
         allow_fullpage_fallback: Optional[bool] = None,
-        table_areas: Optional[List[List[float]]] = None,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Extract tables from document or from layout elements
@@ -1375,7 +1372,6 @@ class TableService:
                     logger.info("Routing born-digital PDF to docuvision-core TableProcessor")
                     core_tables = extract_digital_pdf_tables(
                         file_path,
-                        table_areas=table_areas,
                     )
                     meta.update(
                         {

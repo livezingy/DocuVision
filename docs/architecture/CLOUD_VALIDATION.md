@@ -143,7 +143,7 @@ bash test_data/scripts/run_m1_table_mapping_acceptance.sh
 curl -s -X POST "http://127.0.0.1:8000/api/v1/analyze" \
   -F "file=@$HOME/DocuVision/test_data/testfiles/invoices/sample-invoice.png" \
   -F "document_type=invoice" -F "enable_layout=1" -F "enable_table=1" \
-  -F "enable_kie=1" -F "enable_ocr=0" -F "kie_pages=1"
+  -F "enable_kie=1" -F "kie_pages=1"
 # 轮询 GET /api/v1/tasks/{task_id}
 ```
 

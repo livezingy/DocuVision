@@ -1,6 +1,6 @@
 """Tests for Lite /extract/ocr route pass-through of languages/pages_spec/max_pages."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -18,21 +18,12 @@ def _image_bytes() -> bytes:
     return buf.getvalue()
 
 
-def _fake_lite_result() -> MagicMock:
-    fake = MagicMock()
-    fake.model_dump.return_value = {}
-    return fake
-
-
 def test_extract_ocr_passes_through_languages_pages_max_pages():
     img = _image_bytes()
-    with patch("app.api.routes_extract.extract_ocr_from_image") as mock_ocr, patch(
-        "app.api.routes_extract.detect_file_type", return_value=("image/png", 1)
-    ), patch("app.api.routes_extract.build_lite_result") as mock_build:
+    with patch("app.api.routes_extract.extract_ocr_from_image") as mock_ocr:
         mock_ocr.return_value = {"text_blocks": []}
-        mock_build.return_value = _fake_lite_result()
 
-        client.post(
+        response = client.post(
             "/api/v1/lite/extract/ocr",
             files={"file": ("a.png", img, "image/png")},
             data={
@@ -42,6 +33,7 @@ def test_extract_ocr_passes_through_languages_pages_max_pages():
             },
         )
 
+    assert response.status_code == 200, response.text
     assert mock_ocr.called
     kwargs = mock_ocr.call_args.kwargs
     assert kwargs["languages"] == ["chi_sim", "eng"]
@@ -51,17 +43,15 @@ def test_extract_ocr_passes_through_languages_pages_max_pages():
 
 def test_extract_ocr_defaults_languages_none_when_omitted():
     img = _image_bytes()
-    with patch("app.api.routes_extract.extract_ocr_from_image") as mock_ocr, patch(
-        "app.api.routes_extract.detect_file_type", return_value=("image/png", 1)
-    ), patch("app.api.routes_extract.build_lite_result") as mock_build:
+    with patch("app.api.routes_extract.extract_ocr_from_image") as mock_ocr:
         mock_ocr.return_value = {"text_blocks": []}
-        mock_build.return_value = _fake_lite_result()
 
-        client.post(
+        response = client.post(
             "/api/v1/lite/extract/ocr",
             files={"file": ("a.png", img, "image/png")},
         )
 
+    assert response.status_code == 200, response.text
     kwargs = mock_ocr.call_args.kwargs
     assert kwargs["languages"] is None
     assert kwargs["pages_spec"] is None

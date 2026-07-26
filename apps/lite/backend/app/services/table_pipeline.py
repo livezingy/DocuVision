@@ -127,7 +127,6 @@ def extract_tables_from_pdf(
     param_mode: str = "auto",
     custom_params: Optional[str] = None,
     max_pages: int = 50,
-    table_areas: Optional[str] = None,
     table_template: Optional[str] = None,
 ) -> Dict[str, Any]:
     detected_type, page_count = detect_file_type(file_path)
@@ -146,15 +145,6 @@ def extract_tables_from_pdf(
     processor_params = _build_processor_params(
         table_method, resolved_flavor, score_threshold, param_mode, custom
     )
-    if table_areas:
-        import json
-
-        try:
-            parsed_areas = json.loads(table_areas)
-            if isinstance(parsed_areas, list) and parsed_areas:
-                processor_params["table_areas"] = parsed_areas
-        except json.JSONDecodeError:
-            pass
     processor = TableProcessor(processor_params)
 
     all_tables: List[Dict[str, Any]] = []

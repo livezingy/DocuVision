@@ -83,13 +83,13 @@ kie_query_fields=[{"name":"OurReference","description":"Customer reference line"
 3. `KieManager.get_prompt` 使用合并后的 schema 注入 `{{ schema_json }}`
 4. **禁止** 覆盖或删除内置键
 
-支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`、`financial_report`。
+支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`。
 
 ## 5. 安全
 
 - `description` 最长 200 字符，剥离控制字符
 - 简单 denylist 拦截 instruction-like 注入短语
-- 代码与日志字符串保持英文（见 `007-code-language.mdc`）
+- 代码与日志字符串保持英文（见 `005-code-language.mdc`）
 
 ## 6. 测试与验收
 

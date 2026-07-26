@@ -107,9 +107,15 @@ WarningCode: [scan_detected, low_confidence, engine_fallback, transformer_unavai
   "exports": {},
   "warnings": [],
   "hints": [],
+  "transactions": [],
+  "mapped_transactions": [],
+  "mapped_table_rows": [],
+  "table_template": null,
   "error": null
 }
 ```
+
+> `mapped_table_rows` 与 `table_template`：当请求带 `table_template`（`bank_statement` / `invoice_line_items`）时，pipeline 调用 `apply_table_template` 产出统一 schema 行；前端 Mapped 子 Tab 在有 rows 时自动显示。
 
 ### 6.2 子结构
 
@@ -276,11 +282,13 @@ Smart（`table_method=mixed`）处理流程：
 
 ### 7.5 POST /extract/ocr（阶段 C）
 
-字段：`file`, `mode`, `engine`, `languages`, `with_tables`, `min_confidence`, `async`
+字段：`file`, `mode`, `engine`, `min_confidence`, `languages`（逗号分隔，如 `chi_sim,eng`）, `pages_spec`, `max_pages`（默认 10）。后三个透传至 `extract_ocr_from_image`。
 
 ### 7.6 POST /extract/auto（阶段 C）
 
 统一入口；按文件类型路由至 tables 或 ocr pipeline。
+
+字段（Form）：`file`, `mode`, `engine`, `flavor`, `pages`, `score_threshold`, `param_mode`, `custom_params`, `ocr_engine`, `languages`, `extract_tables`, `extract_text`, `use_transformer`, `table_template`（可选，`bank_statement` / `invoice_line_items`）。`table_template` 触发 `apply_table_template`，结果在 `mapped_table_rows` + `table_template` 字段返回。
 
 ### 7.7 Jobs / Export（阶段 C）
 

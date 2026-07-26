@@ -38,7 +38,6 @@ def test_mixed_runs_camelot_when_pdfplumber_max_score_below_threshold(mock_facto
 
     camelot.extract_tables.assert_called_once()
     call_kwargs = camelot.extract_tables.call_args[0][2]
-    assert "table_areas" not in call_kwargs
     assert call_kwargs["flavor"] == "lattice"
     assert len(results) == 1
     assert results[0]["score"] == 0.9

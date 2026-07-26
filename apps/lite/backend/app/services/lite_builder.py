@@ -127,6 +127,9 @@ def build_lite_result(
 
     transactions, mapped_transactions = _enrich_demo_fields(pipeline_output, tables)
 
+    mapped_table_rows = pipeline_output.get("mapped_table_rows") or []
+    table_template = pipeline_output.get("table_template")
+
     return LiteResult(
         job_id=job_id,
         status=status,
@@ -157,6 +160,8 @@ def build_lite_result(
         hints=hints,
         transactions=transactions,
         mapped_transactions=mapped_transactions,
+        mapped_table_rows=mapped_table_rows,
+        table_template=table_template,
         error=error,
     )
 

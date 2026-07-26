@@ -54,7 +54,7 @@ flowchart LR
 
 - VL 的 schema 与 prompt 模板按类型定义于：`backend/app/services/kie/kie_configs/`（`_registry.yaml` 登记类型）。
 
-`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`、`financial_report`。`auto` 仍跳过 KIE（`skipped_doc_type`）。
+`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`。`auto` 仍跳过 KIE（`skipped_doc_type`）。
 
 ### 4.1 自定义字段（v1.1 Query Fields）
 

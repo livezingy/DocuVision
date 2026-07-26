@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- `enable_ocr` per-block OCR dead config removed from `ProcessingOptions`, `/api/v1/analyze` Form, frontend payload, and tests. Standalone `/api/v1/ocr` endpoint and `OCRService` are unchanged.
+- `chart_step` and `enable_chart` removed from orchestrator pipeline and Pro UI. `ChartService` deleted (no remaining callers).
+- `financial_report` document type removed from KIE registry, orchestrator allow-list, frontend `KIE_DOC_TYPES`, and docs. API callers passing `document_type=financial_report` now hit `unsupported_document_type` (breaking).
+- `table_areas` ROI removed across Pro/Lite/core: orchestrator, `table_service`, `core_table_extractor`, Lite `/extract/auto` Form field, Lite `table_pipeline`, core `TableProcessor`/`CamelotExtractor` params, and dead methods `extract_camelot_lattice`/`extract_camelot_stream`. Lite `/extract/auto` no longer accepts `table_areas` (breaking API change).
+
 ## [1.4.0] — 2026-06-30
 
 Table mapping productization, HITL editable review, PDF Tools nav tab, and batch mapped-row Excel export. See [RELEASE_1.4_NOTES.md](docs/release/RELEASE_1.4_NOTES.md) and [MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md).

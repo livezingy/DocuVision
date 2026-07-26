@@ -4,4 +4,3 @@ types:
   id_card: id_card
   passport: passport
   bank_card: bank_card
-  financial_report: financial_report

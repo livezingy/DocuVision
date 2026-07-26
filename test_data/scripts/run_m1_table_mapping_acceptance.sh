@@ -128,7 +128,6 @@ curl_post_json "$API_ROOT/api/v1/analyze" "$ANALYZE_JSON" \
   -F "enable_layout=0" \
   -F "enable_table=1" \
   -F "enable_kie=0" \
-  -F "enable_ocr=0" \
   -F "table_template=bank_statement"
 
 TASK_ID=$(python3 -c "import json; print(json.load(open('$ANALYZE_JSON'))['task_id'])")

@@ -49,7 +49,6 @@ def _run_pipeline(
     extract_tables: bool = True,
     extract_text: bool = True,
     use_transformer: bool = True,
-    table_areas: Optional[str] = None,
     table_template: Optional[str] = None,
 ):
     detected, page_count = detect_file_type(file_path, mime_type)
@@ -67,7 +66,6 @@ def _run_pipeline(
                 param_mode=param_mode,
                 custom_params=custom_params,
                 max_pages=settings.MAX_PAGES,
-                table_areas=table_areas,
                 table_template=table_template,
             )
             output["detected_file_type"] = detected
@@ -207,11 +205,15 @@ async def extract_ocr(
     mode: ExtractMode = Form(ExtractMode.SMART),
     engine: str = Form("auto"),
     min_confidence: float = Form(0.5),
+    languages: Optional[str] = Form(None),
+    pages_spec: Optional[str] = Form(None),
+    max_pages: int = Form(10),
 ):
     raw = await file.read()
     validate_upload(file, raw)
     job_id = job_store.create()
     upload_path = job_store.save_upload(job_id, file.filename or "upload.png", raw)
+    lang_list = [p.strip() for p in (languages or "").split(",") if p.strip()] or None
     try:
         pipeline_output, elapsed = timed_pipeline(
             extract_ocr_from_image,
@@ -219,6 +221,9 @@ async def extract_ocr(
             mode=mode,
             engine=engine,
             min_confidence=min_confidence,
+            languages=lang_list,
+            pages_spec=pages_spec,
+            max_pages=max_pages,
         )
         detected, page_count = detect_file_type(upload_path, file.content_type)
         pipeline_output["detected_file_type"] = detected
@@ -254,7 +259,6 @@ async def extract_auto(
     extract_tables: bool = Form(True),
     extract_text: bool = Form(True),
     use_transformer: bool = Form(True),
-    table_areas: Optional[str] = Form(None),
     table_template: Optional[str] = Form(None),
 ):
     raw = await file.read()
@@ -278,7 +282,6 @@ async def extract_auto(
             extract_tables,
             extract_text,
             use_transformer,
-            table_areas,
             table_template,
         )
         result = build_lite_result(
@@ -328,6 +331,7 @@ def _background_extract(job_id: str, upload_path: Path, mime_type: str, form: di
             extract_tables_raw if isinstance(extract_tables_raw, bool) else str(extract_tables_raw).lower() == "true",
             extract_text_raw if isinstance(extract_text_raw, bool) else str(extract_text_raw).lower() == "true",
             use_transformer_raw if isinstance(use_transformer_raw, bool) else str(use_transformer_raw).lower() == "true",
+            form.get("table_template"),
         )
         result = build_lite_result(
             job_id=job_id,
@@ -357,6 +361,7 @@ async def create_job(
     extract_tables: bool = Form(True),
     extract_text: bool = Form(True),
     use_transformer: bool = Form(True),
+    table_template: Optional[str] = Form(None),
 ):
     raw = await file.read()
     validate_upload(file, raw)
@@ -375,6 +380,7 @@ async def create_job(
         "extract_tables": extract_tables,
         "extract_text": extract_text,
         "use_transformer": use_transformer,
+        "table_template": table_template,
     }
     background_tasks.add_task(_background_extract, job_id, upload_path, file.content_type or "", form)
     return LiteJobAccepted(

@@ -3,7 +3,7 @@
 Last updated: 2026-06-05  
 关联：[batch_kie.md](batch_kie.md)、[CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)、[batch-ui-roadmap.md](../../docs/architecture/batch-ui-roadmap.md)、[MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md](MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md)（合 `main` 最小集）
 
-> **Shell**：Tencent Cloud Studio 默认 **zsh/bash**（`➜` 提示符）。本文命令均为 bash/zsh；勿粘贴 PowerShell（`$VAR = ...`）。Windows 本地请对照 [008-cloud-testing.mdc](../../.cursor/rules/008-cloud-testing.mdc) 自行转换。
+> **Shell**：Tencent Cloud Studio 默认 **zsh/bash**（`➜` 提示符）。本文命令均为 bash/zsh；勿粘贴 PowerShell（`$VAR = ...`）。Windows 本地请对照 [006-cloud-testing.mdc](../../.cursor/rules/006-cloud-testing.mdc) 自行转换。
 
 ---
 
@@ -81,7 +81,7 @@ export FILE1="$REPO_ROOT/test_data/testfiles/GeneralFiles/filetable.jpg"
 export FILE2="$REPO_ROOT/test_data/testfiles/GeneralFiles/table.jpg"
 test -f "$FILE1" && test -f "$FILE2" && echo "files ok"
 
-export BATCH_OPTS='{"document_type":"auto","enable_layout":true,"enable_ocr":false,"enable_table":true,"enable_kie":false,"kie_pages":"1","layout_engine":"ppstructure"}'
+export BATCH_OPTS='{"document_type":"auto","enable_layout":true,"enable_table":true,"enable_kie":false,"kie_pages":"1","layout_engine":"ppstructure"}'
 
 CREATE_RESP=$(curl -s -X POST "$BATCH_API" \
   -F "name=E2E layout 2jpg" \
@@ -242,7 +242,7 @@ curl -s -X POST "$BATCH_API/$BATCH_ID/cancel" | python3 -m json.tool
 curl -s -o /tmp/analyze_layout_jpg.json -w "HTTP %{http_code}\n" \
   -X POST "$API_ROOT/api/v1/analyze" \
   -F "file=@$REPO_ROOT/test_data/testfiles/GeneralFiles/filetable.jpg" \
-  -F "enable_layout=1" -F "enable_ocr=0" -F "enable_table=1" \
+  -F "enable_layout=1" -F "enable_table=1" \
   -F "enable_kie=0" -F "document_type=auto" -F "kie_pages=all"
 # Expect HTTP 200
 ```

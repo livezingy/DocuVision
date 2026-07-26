@@ -186,7 +186,6 @@ async def table_step(ctx: PipelineContext) -> None:
         layout_elements=layout_elements,
         ocr_text_blocks=ocr_text_blocks,
         allow_fullpage_fallback=allow_fullpage_fallback,
-        table_areas=options.get("table_areas"),
     )
     orchestrator.ensure_not_cancelled(ctx)
 
@@ -331,102 +330,6 @@ async def formula_step(ctx: PipelineContext) -> None:
     await orchestrator.update_progress(ctx, 74, f"Formula recognition completed | Formulas: {formula_count}")
 
 
-async def chart_step(ctx: PipelineContext) -> None:
-    options = ctx["options"]
-    if not options.get("enable_chart", False):
-        return
-
-    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
-    orchestrator.ensure_not_cancelled(ctx)
-    await orchestrator.update_progress(ctx, 75, "Running chart recognition...")
-
-    chart_service = orchestrator.services.get("chart_service")
-    if chart_service is None:
-        logger.warning("Chart step enabled but chart_service is not available; skipping")
-        ctx["result"]["chart_meta"] = {
-            "attempted": True,
-            "succeeded": False,
-            "stage": "service_unavailable",
-            "error_level": "soft",
-            "error_code": "service_unavailable",
-            "error_message": "chart_service is not available",
-        }
-        ctx["result"]["chart_stats"] = {}
-        return
-
-    layout_result = ctx["result"].get("layout", {}) if isinstance(ctx["result"], dict) else {}
-    chart_boxes = _collect_layout_blocks(
-        layout_result,
-        accepted_types={"chart", "flowchart", "figure_table_chart"},
-    )
-    roi_source_image_path = ctx["task"].get("preprocessed_image_path") or ctx["file_path"]
-    logger.info(
-        "Chart ROI mode | layout_chart_boxes={} | roi_source_image={}",
-        len(chart_boxes),
-        roi_source_image_path,
-    )
-
-    # Short-circuit when no layout-detected chart boxes to avoid
-    # unnecessary lazy initialization of optional chart pipelines.
-    if not chart_boxes:
-        ctx["result"]["chart_meta"] = {
-            "attempted": False,
-            "succeeded": False,
-            "stage": "no_layout_chart_boxes",
-            "error_level": "none",
-            "error_code": "",
-            "error_message": "",
-        }
-        ctx["result"]["chart_stats"] = {"chart_count": 0, "layout_chart_box_count": 0}
-        return
-
-    chart_result = await orchestrator.call_maybe_async(
-        chart_service.recognize,
-        ctx["file_path"],
-        layout_chart_boxes=chart_boxes,
-        roi_source_image_path=roi_source_image_path,
-    )
-
-    if not isinstance(chart_result, dict) or not chart_result.get("ok", False):
-        logger.warning(f"Chart recognition skipped or failed: {chart_result}")
-        error_message = "invalid_chart_result"
-        error_level = "soft"
-        error_code = "invalid_result"
-        failure_stage = "inference"
-        if isinstance(chart_result, dict):
-            error_message = str(chart_result.get("error", error_message))
-            error_level = str(chart_result.get("error_level", error_level))
-            error_code = str(chart_result.get("error_code", error_code))
-            failure_stage = str(chart_result.get("failure_stage", failure_stage))
-
-        ctx["result"]["chart_meta"] = {
-            "attempted": True,
-            "succeeded": False,
-            "stage": failure_stage,
-            "error_level": error_level,
-            "error_code": error_code,
-            "error_message": error_message,
-        }
-        ctx["result"]["chart_stats"] = chart_result.get("stats", {}) if isinstance(chart_result, dict) else {}
-        return
-
-    ctx["result"]["chart_unwrapped_results"] = chart_result.get("unwrapped_results", [])
-    ctx["result"]["chart_stats"] = chart_result.get("stats", {})
-    ctx["result"]["chart_stage"] = chart_result.get("stage")
-    ctx["result"]["chart_layout_boxes"] = chart_boxes
-    ctx["result"]["chart_meta"] = {
-        "attempted": True,
-        "succeeded": True,
-        "stage": str(chart_result.get("stage", "single")),
-        "error_level": str(chart_result.get("error_level", "none")),
-        "error_code": str(chart_result.get("error_code", "")),
-        "error_message": "",
-    }
-
-    chart_count = int(chart_result.get("stats", {}).get("chart_count", 0))
-    await orchestrator.update_progress(ctx, 76, f"Chart recognition completed | Charts: {chart_count}")
-
-
 async def seal_step(ctx: PipelineContext) -> None:
     options = ctx["options"]
     if not options.get("enable_seal", False):
@@ -503,7 +406,7 @@ async def kie_step(ctx: PipelineContext) -> None:
     orchestrator.ensure_not_cancelled(ctx)
 
     document_type = str(options.get("document_type", "auto") or "auto").strip().lower()
-    supported_doc_types = {"invoice", "id_card", "receipt", "passport", "bank_card", "financial_report"}
+    supported_doc_types = {"invoice", "id_card", "receipt", "passport", "bank_card"}
 
     query_fields: List[Dict[str, str]] = list(options.get("kie_query_fields") or [])
     merged_schema = options.get("kie_merged_schema")
@@ -1157,7 +1060,6 @@ class DocumentPipelineOrchestrator:
             table_step,
             kie_step,
             formula_step,
-            chart_step,
             seal_step,
             phase1_envelope_step,  # Build Phase 1 Envelope (preprocessing, raw, fused, view, quality)
             finalize_step,

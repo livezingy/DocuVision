@@ -1,6 +1,6 @@
 """Tests for Lite /extract/ocr route pass-through of languages/pages_spec/max_pages."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -18,13 +18,19 @@ def _image_bytes() -> bytes:
     return buf.getvalue()
 
 
+def _fake_lite_result() -> MagicMock:
+    fake = MagicMock()
+    fake.model_dump.return_value = {}
+    return fake
+
+
 def test_extract_ocr_passes_through_languages_pages_max_pages():
     img = _image_bytes()
     with patch("app.api.routes_extract.extract_ocr_from_image") as mock_ocr, patch(
         "app.api.routes_extract.detect_file_type", return_value=("image/png", 1)
     ), patch("app.api.routes_extract.build_lite_result") as mock_build:
         mock_ocr.return_value = {"text_blocks": []}
-        mock_build.return_value = type("R", (), {"model_dump": lambda self: {}})()
+        mock_build.return_value = _fake_lite_result()
 
         client.post(
             "/api/v1/lite/extract/ocr",
@@ -49,7 +55,7 @@ def test_extract_ocr_defaults_languages_none_when_omitted():
         "app.api.routes_extract.detect_file_type", return_value=("image/png", 1)
     ), patch("app.api.routes_extract.build_lite_result") as mock_build:
         mock_ocr.return_value = {"text_blocks": []}
-        mock_build.return_value = type("R", (), {"model_dump": lambda self: {}})()
+        mock_build.return_value = _fake_lite_result()
 
         client.post(
             "/api/v1/lite/extract/ocr",

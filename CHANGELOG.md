@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `batch_export_service._task_kie_fields`: removed dead `quality` branch (`if isinstance(quality, dict): pass` had no effect).
 - Debug artifact download endpoint (`GET /api/v1/jobs/{job_id}/debug/{filename}`): replaced `os.path.abspath(...).startswith(...)` with `Path.is_relative_to` to block sibling-directory traversal (e.g. `./debug2/...`).
 
+### Security
+
+- Webhook registration hardened (breaking). Two-layer gating:
+  - `DOCUVISION_WEBHOOK_ENABLED` (default `false`): when disabled, `GET/POST /api/v1/webhooks` return `404` and `dispatch_event_async` returns `[]` (no outbound POST even for previously registered subscriptions).
+  - `DOCUVISION_WEBHOOK_ADMIN_TOKEN`: when enabled, `GET/POST /api/v1/webhooks` require `X-DocuVision-Admin-Token` header to match. Fail-closed: empty configured token rejects registration with `401` (no open registration when enabled without a token).
+- SSRF guard on webhook registration: URLs whose host resolves to private/loopback ranges (`127.0.0.0/8`, `10.0.0.0/8`, `169.254.0.0/16`, `192.168.0.0/16`, `172.16.0.0/12`, `::1`, `fc00::/7`, `fe80::/10`) are rejected with `400`. Does not defend against DNS rebinding (v1.5+ roadmap).
+
 ### Removed
 
 - `enable_ocr` per-block OCR dead config removed from `ProcessingOptions`, `/api/v1/analyze` Form, frontend payload, and tests. Standalone `/api/v1/ocr` endpoint and `OCRService` are unchanged.

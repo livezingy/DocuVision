@@ -7,6 +7,10 @@ from app.services.webhook_service import WebhookRegistry
 
 @pytest.mark.asyncio
 async def test_dispatch_event_async_posts(monkeypatch) -> None:
+    from app.core import config as config_module
+
+    monkeypatch.setattr(config_module.settings, "WEBHOOK_ENABLED", True)
+
     registry = WebhookRegistry()
     registry.register("https://example.com/hook", ["task.completed"], secret="testsecret")
 

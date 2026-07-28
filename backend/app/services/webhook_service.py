@@ -5,13 +5,65 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import ipaddress
 import json
+import socket
 import uuid
+import urllib.parse
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
+
+
+# Private/loopback networks blocked from webhook registration to prevent SSRF.
+_PRIVATE_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+]
+
+
+def _is_private_target(url: str) -> bool:
+    """Return True if ``url`` host resolves to a private/loopback address.
+
+    Used to block SSRF registrations pointing webhook delivery at internal
+    services. Resolves hostnames (DNS) and checks every resolved address;
+    a single private hit rejects the URL. Does not defend against DNS
+    rebinding (dispatch-time re-resolution) — see v1.5+ roadmap.
+    """
+    parsed = urllib.parse.urlparse(url)
+    host = parsed.hostname
+    if not host:
+        return False
+    # Literal IP host
+    try:
+        ip = ipaddress.ip_address(host)
+        return any(ip in net for net in _PRIVATE_NETWORKS)
+    except ValueError:
+        pass
+    # Hostname: resolve and check each address
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        # Unresolvable: do not block (let dispatch fail naturally); the goal
+        # here is to block *known* private targets, not to enforce DNS health.
+        return False
+    for info in infos:
+        addr = info[4][0]
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            continue
+        if any(ip in net for net in _PRIVATE_NETWORKS):
+            return True
+    return False
 
 
 @dataclass
@@ -34,6 +86,8 @@ class WebhookRegistry:
         events: Optional[List[str]] = None,
         secret: str = "",
     ) -> WebhookSubscription:
+        if _is_private_target(url):
+            raise ValueError("URL targets private network")
         sub = WebhookSubscription(
             subscription_id=str(uuid.uuid4()),
             url=url.strip(),
@@ -70,6 +124,11 @@ class WebhookRegistry:
         max_retries: int = 2,
     ) -> List[Dict[str, Any]]:
         """POST webhook payloads to subscribed URLs."""
+        from app.core.config import settings
+
+        if not settings.WEBHOOK_ENABLED:
+            return []
+
         import httpx
 
         targets = self._targets_for_event(event)

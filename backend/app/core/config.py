@@ -64,6 +64,16 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Webhook (HTTP delivery) — instance-level opt-in + admin auth
+    WEBHOOK_ENABLED: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("DOCUVISION_WEBHOOK_ENABLED", "WEBHOOK_ENABLED"),
+    )
+    WEBHOOK_ADMIN_TOKEN: str = Field(
+        default="",
+        validation_alias=AliasChoices("DOCUVISION_WEBHOOK_ADMIN_TOKEN", "WEBHOOK_ADMIN_TOKEN"),
+    )
+
     # KIE (Qwen2.5-VL) — HuggingFace id or local directory
     KIE_QWEN_MODEL_ID: str = Field(
         default=os.path.expanduser(

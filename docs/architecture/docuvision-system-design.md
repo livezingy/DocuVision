@@ -720,6 +720,27 @@ Phase1 Job-based 端点的 Form 参数与 legacy `POST /api/v1/analyze` 完全�
 - `return_raw=true`：`/api/v1/jobs/{job_id}/result` 返回完整 Envelope（含 `raw`）。
 - `return_raw=false`（默认）：结果中的 `raw` 统一返回空对象 `{}`，避免非调试数据外泄。
 
+### 7.9 Webhook 注册与投递（v1.4 鉴权硬化）
+
+> 权威：`backend/tests/test_webhook_service.py`
+
+Webhook 投递（`task.completed` / `batch.completed` 事件 POST 到注册 URL）受**两层权限**控制：
+
+**第一层：进程级开关**
+- 环境变量 `DOCUVISION_WEBHOOK_ENABLED`，默认 `false`。
+- 关闭时：`GET/POST /api/v1/webhooks` 返回 `404`（与"端点不存在"等价）；`dispatch_event_async` 直接返回 `[]`，已注册订阅也不会外发。
+
+**第二层：注册鉴权**
+- 开启后，`GET/POST /api/v1/webhooks` 要求请求头 `X-DocuVision-Admin-Token` 匹配环境变量 `DOCUVISION_WEBHOOK_ADMIN_TOKEN`。
+- **Fail-closed**：`WEBHOOK_ADMIN_TOKEN` 为空时拒绝注册（401），避免开关开启后无鉴权裸奔。需同时配置 `WEBHOOK_ENABLED=true` 与非空 `WEBHOOK_ADMIN_TOKEN` 才能注册 webhook。
+
+**SSRF 防护**
+- `register` 校验 URL host 不指向私有/环回网段：`127.0.0.0/8`、`10.0.0.0/8`、`169.254.0.0/16`（含云元数据 169.254.169.254）、`192.168.0.0/16`、`172.16.0.0/12`、`::1`、`fc00::/7`、`fe80::/10`。
+- 域名会做 DNS 解析后逐地址检查；命中私有即 `400 URL targets private network`。
+- **已知限制**：不防 DNS rebinding（注册时解析为公网，dispatch 时 DNS 已切到内网）。如需更强防护需 dispatch 前再校验一次（v1.5+ 路线图）。
+
+**投递签名**：订阅时可选 `secret`，投递时附 `X-DocuVision-Signature`（HMAC-SHA256 of body）。`secret` 为空则不签名（与鉴权头 `X-DocuVision-Admin-Token` 是不同字段，勿混用）。
+
 ---
 
 ## 8. 扩展性设计（后续类型接入方式）

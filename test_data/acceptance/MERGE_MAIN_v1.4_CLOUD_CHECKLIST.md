@@ -15,12 +15,13 @@ Related: [CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md), [ME
 | # | Phase | Pass |
 |---|-------|------|
 | 0 | Env | Pro `:8000` + Lite `:8001` health **200**; `/api/v1/health` JSON on Pro |
-| 1 | Phase A v1.4 | Pro pytest **≥57 passed** + core **≥6 passed** (§1) |
+| 1 | Phase A v1.4 | Pro pytest **≥57 passed** + core **≥6 passed** (§1; incl. `test_phase1_analyze_form.py`, `test_webhook_service.py`) |
 | 2 | v1.3.1 regression | [MERGE_MAIN_v1.3.1](./MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md) §3–§6 (CORE-PDF, LITE-PREVIEW, KIE-VAL, STITCH) |
 | 3 | **MAP-TEMPLATE-001** | Single PDF `table_template=bank_statement` → `mapped_table_rows` (§3) |
 | 4 | **MAPPED-BATCH-001** | Batch `mapped_bank_statement_3` → XLSX **MappedRows** (§6) |
 | 5 | Pro UI (no GPU) | `npm run test:unit` + `npm run test:e2e` (§7) |
 | 6 | Lite | `pytest tests/ -q` + `npm run test:e2e:lite` (§8) |
+| 7 | Backend hardening | Webhook 404/401/400/200 chain + Phase1 form parity + searchable 501 + debug traversal (§9) |
 | — | Manual | **PDF-TOOL-001**, **HITL-EDIT-001** ([UI_VERIFICATION_MATRIX.md](./UI_VERIFICATION_MATRIX.md) §2.3) |
 
 ---
@@ -76,7 +77,8 @@ pytest tests/test_kie_pages_parse.py tests/test_kie_field_merge.py \
   tests/test_table_template_analyze.py tests/test_hitl_policy.py \
   tests/test_task_kie_fields_patch.py tests/test_pdf_tools_service.py \
   tests/test_kie_field_metrics.py tests/test_kie_service.py \
-  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
+  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py \
+  tests/test_phase1_analyze_form.py tests/test_webhook_service.py -q
 
 cd "$REPO_ROOT/packages/docuvision-core"
 pytest tests/processing/test_table_stitch.py \
@@ -84,7 +86,7 @@ pytest tests/processing/test_table_stitch.py \
   tests/processing/test_table_result_mapper.py -q
 ```
 
-**Pass**: all `passed` (Pro **≥57** + core **≥6**).
+**Pass**: all `passed` (Pro **≥63** + core **≥6**; +4 Phase1 form + +9 webhook vs v1.4 baseline).
 
 ---
 
@@ -184,6 +186,87 @@ npm run test:e2e:lite
 ```
 
 **Pass**: Lite pytest all green; **LITE-PREVIEW-01** passed.
+
+---
+
+## §9 Backend hardening (v1.4.0-prep additions)
+
+Covers PR #3/#4/#5 merged into `release/v1.4.0-prep`: webhook auth/SSRF, Phase1 form parity, debug traversal, searchable 501.
+
+### 9.1 Webhook service contract (CPU, no server)
+
+```bash
+cd "$REPO_ROOT/backend"
+source ~/docuvision_env/bin/activate
+pytest tests/test_webhook_service.py -q
+```
+
+**Pass**: 9 passed (SSRF 6 cases + dispatch-disabled + dispatch-enabled + public host).
+
+### 9.2 Phase1 form parity contract (CPU, no server)
+
+```bash
+pytest tests/test_phase1_analyze_form.py -q
+```
+
+**Pass**: 4 passed (defaults, engine/formula params, table_template/HITL, auto-KIE).
+
+### 9.3 Webhook endpoint auth chain (needs Pro `:8000`)
+
+```bash
+# Default (WEBHOOK_ENABLED=false) → 404
+curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+  -X POST "$API_ROOT/api/v1/webhooks" -F "url=https://example.com/hook"
+# Expect 404
+
+# Set .env: WEBHOOK_ENABLED=true (no token) → fail-closed 401
+# Restart run.py
+curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+  -X POST "$API_ROOT/api/v1/webhooks" -F "url=https://example.com/hook"
+# Expect 401
+
+# Set .env: WEBHOOK_ENABLED=true, WEBHOOK_ADMIN_TOKEN=secret123 → restart
+# No header → 401
+curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+  -X POST "$API_ROOT/api/v1/webhooks" -F "url=https://example.com/hook"
+# Expect 401
+# Wrong token → 401
+curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+  -X POST "$API_ROOT/api/v1/webhooks" -H "X-DocuVision-Admin-Token: wrong" \
+  -F "url=https://example.com/hook"
+# Expect 401
+# Correct token + private URL → 400
+curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+  -X POST "$API_ROOT/api/v1/webhooks" -H "X-DocuVision-Admin-Token: secret123" \
+  -F "url=http://127.0.0.1:9999/hook"
+# Expect 400
+# Correct token + public URL → 200
+curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+  -X POST "$API_ROOT/api/v1/webhooks" -H "X-DocuVision-Admin-Token: secret123" \
+  -F "url=https://example.com/hook"
+# Expect 200
+```
+
+### 9.4 Searchable PDF 501 + debug traversal (needs Pro `:8000`)
+
+```bash
+# searchable → 501
+curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+  -X POST "$API_ROOT/api/v1/pdf-tools/searchable" \
+  -F "file=@$REPO_ROOT/test_data/testfiles/invoices/sample-invoice.png" -F "text=test"
+# Expect 501
+
+# Debug traversal (needs DEBUG_MODE=true, restart)
+JOB_ID=$(curl -s -X POST "$API_ROOT/api/v1/documents:analyze" \
+  -F "file=@$REPO_ROOT/test_data/testfiles/invoices/sample-invoice.png" \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['job_id'])")
+sleep 30
+curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+  "$API_ROOT/api/v1/jobs/$JOB_ID/debug/..%2F..%2F..%2Fetc%2Fpasswd"
+# Expect 403 (or 404 if route rejects %2F; both mean no leak)
+```
+
+**Pass**: all status codes match expectations.
 
 ---
 

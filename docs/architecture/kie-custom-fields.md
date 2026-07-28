@@ -36,6 +36,7 @@
 enable_kie=1
 document_type=invoice
 kie_query_fields=[{"name":"OurReference","description":"Customer reference line"},{"name":"BookingDate"}]
+table_template=bank_statement
 ```
 
 ### 3.2 多页 PDF（v1.2，`kie_pages`）

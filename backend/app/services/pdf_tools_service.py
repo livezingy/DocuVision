@@ -1,4 +1,4 @@
-"""PDF toolbox: merge, split, metadata, searchable PDF (MVP)."""
+"""PDF toolbox: merge, split, metadata, AcroForm fill (MVP)."""
 
 from __future__ import annotations
 
@@ -71,20 +71,6 @@ def read_pdf_metadata(file_path: str) -> Dict[str, Any]:
     }
     doc.close()
     return info
-
-
-def make_searchable_pdf(input_path: str, output_path: str, text: str = "") -> str:
-    """Embed a minimal text layer (MVP placeholder for OCR spans)."""
-    import fitz
-
-    doc = fitz.open(input_path)
-    if text:
-        page = doc[0]
-        rect = fitz.Rect(72, 72, 400, 100)
-        page.insert_textbox(rect, text, fontsize=8, color=(1, 1, 1))
-    doc.save(output_path)
-    doc.close()
-    return output_path
 
 
 def fill_acroform(input_path: str, output_path: str, field_values: Dict[str, str]) -> str:

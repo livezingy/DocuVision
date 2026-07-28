@@ -50,9 +50,6 @@ def _task_kie_fields(task: BatchTask) -> Dict[str, Any]:
     view = task.result.get("view")
     if isinstance(view, dict) and isinstance(view.get("fields"), dict):
         return view["fields"]
-    quality = task.result.get("quality")
-    if isinstance(quality, dict):
-        pass
     return {}
 
 

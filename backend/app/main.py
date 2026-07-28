@@ -1223,8 +1223,14 @@ async def get_job_debug_file(job_id: str, filename: str):
 
     filepath = os.path.join(settings.DEBUG_OUTPUT_DIR, job_id, filename)
 
-    # Security: prevent directory traversal
-    if not os.path.abspath(filepath).startswith(os.path.abspath(settings.DEBUG_OUTPUT_DIR)):
+    # Security: prevent directory traversal (use resolved path containment,
+    # not startswith, to reject sibling dirs like ./debug2/...)
+    base_dir = Path(settings.DEBUG_OUTPUT_DIR).resolve()
+    try:
+        resolved = Path(filepath).resolve()
+        if not resolved.is_relative_to(base_dir):
+            raise HTTPException(status_code=403, detail="Access denied")
+    except ValueError:
         raise HTTPException(status_code=403, detail="Access denied")
 
     if not os.path.exists(filepath):
@@ -2252,23 +2258,10 @@ async def pdf_tools_metadata(file: UploadFile = File(...)):
 
 @app.post("/api/v1/pdf-tools/searchable")
 async def pdf_tools_searchable(file: UploadFile = File(...), text: str = Form("")):
-    import tempfile
-
-    from app.services.pdf_tools_service import make_searchable_pdf
-
-    suffix = os.path.splitext(file.filename or "")[1] or ".pdf"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
-        in_path = tmp.name
-    out_path = os.path.join(tempfile.gettempdir(), f"searchable_{uuid.uuid4().hex[:8]}.pdf")
-    try:
-        make_searchable_pdf(in_path, out_path, text=text)
-        return FileResponse(out_path, filename="searchable.pdf", media_type="application/pdf")
-    finally:
-        try:
-            os.unlink(in_path)
-        except OSError:
-            pass
+    raise HTTPException(
+        status_code=501,
+        detail="Not Implemented: searchable PDF OCR text layer not yet supported",
+    )
 
 
 @app.post("/api/v1/pdf-tools/form-fill")

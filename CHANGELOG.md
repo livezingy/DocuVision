@@ -7,12 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-06-30
+
+Table mapping productization, HITL editable review, PDF Tools nav tab, batch mapped-row Excel export, and backend hardening (webhook auth/SSRF, Phase1 form parity, dead-config cleanup). See [RELEASE_1.4_NOTES.md](docs/release/RELEASE_1.4_NOTES.md) and [MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md).
+
 ### Added
 
+- Pro **Table mapping** processing mode: `processingMode=table_mapping` + `table_template` (`bank_statement`, `invoice_line_items`) → `mapped_table_rows` UI tab.
+- Document profile **eligibility** hint on upload (`Ready for table mapping` for `pdf_digital`).
+- Pro **Reviews** tab: editable KIE fields, Save (`PATCH /tasks/{id}/kie-fields`), Approve/Reject; **`hitl_policy`** profiles (`full` / `lite` / `off`).
+- Pro **PDF Tools** tab: merge, split, metadata (UI); API stubs remain for searchable / form-fill.
+- Batch manifest set **`mapped_bank_statement_3`**; XLSX **MappedRows** sheet; script `run_batch_mapped_acceptance.ps1` (**MAPPED-BATCH-001**).
 - `POST /api/v1/documents:analyze` (Phase1 Job endpoint) now accepts the full Form parameter set previously only on legacy `POST /api/v1/analyze`: `enable_layout`/`enable_table`/`enable_formula`/`enable_seal`/`enable_kie`, `language`, `ocr_engine`/`layout_engine`/`table_engine`, `table_allow_fullpage_fallback`, formula thresholds (`formula_disable_layout`/`formula_disable_preprocess`/`formula_two_stage_threshold_retry`/`formula_primary_layout_threshold`/`formula_fallback_layout_threshold`/`formula_layout_threshold`/`pipeline_formula_batch_size`), `table_template`, `enable_hitl`. Defaults mirror legacy; `document_type=invoice/receipt/id_card` auto-enables KIE. Non-breaking (all new params optional with legacy-matching defaults).
+- Contract tests: `test_table_template_analyze.py`, `test_hitl_policy.py`, `test_task_kie_fields_patch.py`, `test_pdf_tools_service.py`, `test_phase1_analyze_form.py`, `test_webhook_service.py`; core `test_table_column_mapping.py`, `test_table_result_mapper.py`.
+- `accelerate` dependency for KIE `device_map=auto`; multi-cloud KIE model path discovery; `GET /api/v1/health` for AI Studio `api_serving`.
 
 ### Changed
 
+- `APP_VERSION` default **1.4.0**; Phase A CI extended with v1.4 contract files.
+- Table mapping routes born-digital PDF via `enable_layout=false` + docuvision-core TableProcessor (no KIE / no HITL enqueue on this path).
 - `batch_export_service._task_kie_fields`: removed dead `quality` branch (`if isinstance(quality, dict): pass` had no effect).
 - Debug artifact download endpoint (`GET /api/v1/jobs/{job_id}/debug/{filename}`): replaced `os.path.abspath(...).startswith(...)` with `Path.is_relative_to` to block sibling-directory traversal (e.g. `./debug2/...`).
 
@@ -30,25 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `financial_report` document type removed from KIE registry, orchestrator allow-list, frontend `KIE_DOC_TYPES`, and docs. API callers passing `document_type=financial_report` now hit `unsupported_document_type` (breaking).
 - `table_areas` ROI removed across Pro/Lite/core: orchestrator, `table_service`, `core_table_extractor`, Lite `/extract/auto` Form field, Lite `table_pipeline`, core `TableProcessor`/`CamelotExtractor` params, and dead methods `extract_camelot_lattice`/`extract_camelot_stream`. Lite `/extract/auto` no longer accepts `table_areas` (breaking API change).
 - `POST /api/v1/pdf-tools/searchable` now returns `501 Not Implemented`. The previous `make_searchable_pdf` was a placeholder that inserted the supplied text into a fixed rectangle (not a real OCR text layer) and has been deleted. Searchable PDF remains on the v1.5+ roadmap (breaking).
-
-## [1.4.0] — 2026-06-30
-
-Table mapping productization, HITL editable review, PDF Tools nav tab, and batch mapped-row Excel export. See [RELEASE_1.4_NOTES.md](docs/release/RELEASE_1.4_NOTES.md) and [MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md).
-
-### Added
-
-- Pro **Table mapping** processing mode: `processingMode=table_mapping` + `table_template` (`bank_statement`, `invoice_line_items`) → `mapped_table_rows` UI tab.
-- Document profile **eligibility** hint on upload (`Ready for table mapping` for `pdf_digital`).
-- Pro **Reviews** tab: editable KIE fields, Save (`PATCH /tasks/{id}/kie-fields`), Approve/Reject; **`hitl_policy`** profiles (`full` / `lite` / `off`).
-- Pro **PDF Tools** tab: merge, split, metadata (UI); API stubs remain for searchable / form-fill.
-- Batch manifest set **`mapped_bank_statement_3`**; XLSX **MappedRows** sheet; script `run_batch_mapped_acceptance.ps1` (**MAPPED-BATCH-001**).
-- Contract tests: `test_table_template_analyze.py`, `test_hitl_policy.py`, `test_task_kie_fields_patch.py`, `test_pdf_tools_service.py`; core `test_table_column_mapping.py`, `test_table_result_mapper.py`.
-- `accelerate` dependency for KIE `device_map=auto`; multi-cloud KIE model path discovery; `GET /api/v1/health` for AI Studio `api_serving`.
-
-### Changed
-
-- `APP_VERSION` default **1.4.0**; Phase A CI extended with v1.4 contract files.
-- Table mapping routes born-digital PDF via `enable_layout=false` + docuvision-core TableProcessor (no KIE / no HITL enqueue on this path).
 
 ### Fixed
 

@@ -77,6 +77,44 @@ def test_kie_step_calls_service_and_sets_fields() -> None:
     assert ctx["result"]["kie_fields"]["invoice_no"]["value"] == "INV-001"
 
 
+def test_kie_step_auto_doc_type_returns_legible_error_code() -> None:
+    """auto + enable_kie must skip with a distinct, legible error_code so the
+    UI can tell the user to pick a document_type instead of a generic
+    'unsupported_document_type'. Path-clarity contract (v1.4)."""
+    ctx = {
+        "options": {"enable_kie": True, "document_type": "auto"},
+        "result": {},
+        "orchestrator": _FakeOrchestrator(),
+    }
+
+    asyncio.run(kie_step(ctx))
+
+    meta = ctx["result"]["kie_meta"]
+    assert meta["attempted"] is True
+    assert meta["succeeded"] is False
+    assert meta["error_code"] == "auto_document_type_requires_explicit_choice"
+    assert meta["stage"] == "skipped_auto_doc_type"
+    assert "select a specific" in meta["error_message"]
+
+
+def test_kie_step_unsupported_doc_type_keeps_generic_error_code() -> None:
+    """A genuinely unsupported document_type (not 'auto') keeps the generic
+    unsupported_document_type error_code — distinct from the auto case."""
+    ctx = {
+        "options": {"enable_kie": True, "document_type": "custom"},
+        "result": {},
+        "orchestrator": _FakeOrchestrator(),
+    }
+
+    asyncio.run(kie_step(ctx))
+
+    meta = ctx["result"]["kie_meta"]
+    assert meta["attempted"] is True
+    assert meta["succeeded"] is False
+    assert meta["error_code"] == "unsupported_document_type"
+    assert meta["stage"] == "skipped_doc_type"
+
+
 def test_phase1_envelope_respects_return_raw_false() -> None:
     ctx = {
         "task_id": "job_test",

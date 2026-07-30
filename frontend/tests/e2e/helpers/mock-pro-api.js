@@ -63,6 +63,8 @@ function mockHealthPayload(apiVersion = '1.4.0') {
  * @param {boolean} [options.useMappedResult]
  * @param {string} [options.tableTemplate]
  * @param {string} [options.documentProfileType] pdf_digital | pdf_scan | image
+ * @param {string} [options.suggestedDocumentType] classifier hint shown as non-binding UI suggestion (default 'auto' = hidden)
+ * @param {number} [options.classificationConfidence] 0-1 confidence for the suggestion (default 0 = hidden)
  * @param {string} [options.apiVersion]
  */
 async function installProApiMocks(page, options = {}) {
@@ -70,6 +72,8 @@ async function installProApiMocks(page, options = {}) {
   const tasks = new Map();
   const apiVersion = options.apiVersion ?? '1.4.0';
   const documentProfileType = options.documentProfileType ?? 'pdf_digital';
+  const suggestedDocumentType = options.suggestedDocumentType ?? 'auto';
+  const classificationConfidence = options.classificationConfidence ?? 0;
 
   await page.route(/\/api\/v1\/health$/i, async (route) => {
     await route.fulfill(jsonResponse(mockHealthPayload(apiVersion)));
@@ -101,6 +105,8 @@ async function installProApiMocks(page, options = {}) {
       jsonResponse({
         detected_file_type: documentProfileType,
         suggested_routing: documentProfileType === 'pdf_digital' ? 'docuvision_core' : 'ppstructure',
+        suggested_document_type: suggestedDocumentType,
+        classification_confidence: classificationConfidence,
         file_name: 'sample.pdf',
       }),
     );

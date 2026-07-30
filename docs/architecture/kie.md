@@ -54,7 +54,11 @@ flowchart LR
 
 - VL 的 schema 与 prompt 模板按类型定义于：`backend/app/services/kie/kie_configs/`（`_registry.yaml` 登记类型）。
 
-`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`。`auto` 仍跳过 KIE（`skipped_doc_type`）。
+`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`（单一真源：`KIE_SUPPORTED_DOC_TYPES`，见 [`query_fields.py`](../../backend/app/services/kie/query_fields.py)）。
+
+- `auto` + `enable_kie=true` 跳过 KIE，`kie_meta.error_code = auto_document_type_requires_explicit_choice`（`stage=skipped_auto_doc_type`）——提示用户选择具体类型，而非笼统的 `unsupported_document_type`。
+- 其他非支持类型跳过 KIE，`kie_meta.error_code = unsupported_document_type`（`stage=skipped_doc_type`）。
+- `custom` / `template`（inline schema / `kie_template_id`）**v1.4 未接线**：已从 `KIE_SUPPORTED_DOC_TYPES` 移除，`resolve_custom_schema` 保留为预留（见 [kie-custom-fields.md](./kie-custom-fields.md) §"未接线"）。表映射侧的 `document_type=custom` 标记（`hitl_policy`、`table_step` 兜底）与此无关，仍生效。
 
 ### 4.1 自定义字段（v1.1 Query Fields）
 

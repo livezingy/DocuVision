@@ -1148,6 +1148,7 @@ async function switchToQueueItem(queueItem) {
     }
 
     updateTableMappingEligibility(queueItem);
+    updateDocumentTypeSuggestion(queueItem);
 }
 
 /**
@@ -1442,6 +1443,11 @@ function resetAnalysisOptions() {
     }
     const kieNote = document.getElementById('kieNote');
     if (kieNote) kieNote.classList.add('hidden');
+    const docTypeSuggestion = document.getElementById('documentTypeSuggestion');
+    if (docTypeSuggestion) {
+        docTypeSuggestion.textContent = '';
+        docTypeSuggestion.classList.add('hidden');
+    }
     const kieQueryInput = document.getElementById('optKieQueryFields');
     if (kieQueryInput) kieQueryInput.value = '';
     const optTableTemplate = document.getElementById('optTableTemplate');
@@ -1508,11 +1514,31 @@ async function fetchDocumentProfileForQueueItem(queueItem) {
         queueItem.documentProfile = await response.json();
         if (currentQueueItem === queueItem) {
             updateTableMappingEligibility(queueItem);
+            updateDocumentTypeSuggestion(queueItem);
         }
     } catch (err) {
         console.warn('Document profile pre-scan failed:', err);
         queueItem.documentProfile = null;
     }
+}
+
+// Non-binding hint: surface the classifier's suggested document_type so the
+// user can pick the right KIE mode. This never auto-applies — it only shows
+// text next to the options. Low-confidence or "auto" suggestions are hidden.
+function updateDocumentTypeSuggestion(queueItem) {
+    const el = document.getElementById('documentTypeSuggestion');
+    if (!el) return;
+    const profile = queueItem?.documentProfile;
+    const suggested = String(profile?.suggested_document_type || '').toLowerCase();
+    const confidence = Number(profile?.classification_confidence || 0);
+    if (!suggested || suggested === 'auto' || confidence < 0.4 || !KIE_DOC_TYPES.has(suggested)) {
+        el.textContent = '';
+        el.classList.add('hidden');
+        return;
+    }
+    const pct = Math.round(confidence * 100);
+    el.textContent = `Detected: ${suggested} (${pct}%). Select the matching mode to enable KIE.`;
+    el.classList.remove('hidden');
 }
 
 function isTableMappingRunBlocked(queueItem) {

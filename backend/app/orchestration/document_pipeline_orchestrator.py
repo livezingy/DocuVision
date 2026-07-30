@@ -406,7 +406,9 @@ async def kie_step(ctx: PipelineContext) -> None:
     orchestrator.ensure_not_cancelled(ctx)
 
     document_type = str(options.get("document_type", "auto") or "auto").strip().lower()
-    supported_doc_types = {"invoice", "id_card", "receipt", "passport", "bank_card"}
+    from app.services.kie.query_fields import KIE_SUPPORTED_DOC_TYPES
+
+    supported_doc_types = KIE_SUPPORTED_DOC_TYPES
 
     query_fields: List[Dict[str, str]] = list(options.get("kie_query_fields") or [])
     merged_schema = options.get("kie_merged_schema")
@@ -440,19 +442,37 @@ async def kie_step(ctx: PipelineContext) -> None:
 
     if document_type not in supported_doc_types:
         ctx["result"]["kie_fields"] = {}
+        # Distinguish "auto" (user left default, KIE cannot run without an
+        # explicit type) from genuinely unsupported values. Both skip KIE,
+        # but the error_code must be legible so callers/UI can tell the user
+        # what to fix instead of a generic "unsupported" message.
+        if document_type == "auto":
+            error_code = "auto_document_type_requires_explicit_choice"
+            error_message = (
+                "document_type='auto' cannot run KIE; select a specific "
+                "document_type (invoice/receipt/id_card/passport/bank_card) "
+                "to enable KIE."
+            )
+            stage = "skipped_auto_doc_type"
+        else:
+            error_code = "unsupported_document_type"
+            error_message = f"document_type '{document_type}' is not supported for KIE"
+            stage = "skipped_doc_type"
         ctx["result"]["kie_meta"] = {
             "attempted": True,
             "succeeded": False,
-            "stage": "skipped_doc_type",
-            "error_code": "unsupported_document_type",
-            "error_message": f"document_type '{document_type}' is not supported for KIE",
+            "stage": stage,
+            "error_code": error_code,
+            "error_message": error_message,
         }
         logger.warning(
-            "KIE step skipped | task_id={} | document_type={} | stage=skipped_doc_type | error_code=unsupported_document_type",
+            "KIE step skipped | task_id={} | document_type={} | stage={} | error_code={}",
             ctx.get("task_id", ""),
             document_type,
+            stage,
+            error_code,
         )
-        await orchestrator.update_progress(ctx, 80, f"KIE skipped | unsupported document_type={document_type}")
+        await orchestrator.update_progress(ctx, 80, f"KIE skipped | {error_code} document_type={document_type}")
         return
 
     services = getattr(orchestrator, "services", {}) if hasattr(orchestrator, "services") else {}

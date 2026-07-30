@@ -56,6 +56,8 @@ table_template=bank_statement
 
 ### 3.2 校验与错误码（HTTP 400）
 
+> 权威：`backend/tests/test_kie_query_fields.py`（query_fields 校验）、`backend/tests/test_kie_return_raw_contract.py`（kie_step skip 错误码）
+
 | error_code | 说明 |
 |------------|------|
 | `invalid_json` | `kie_query_fields` 非合法 JSON |
@@ -65,7 +67,8 @@ table_template=bank_statement
 | `duplicate_field` | 与内置 YAML 顶层键冲突 |
 | `too_many_fields` | 超过 20 个 |
 | `query_fields_require_kie` | 提供了 query 字段但未 `enable_kie` |
-| `unsupported_document_type` | `auto` / 非 KIE 类型 |
+| `unsupported_document_type` | 非 KIE 类型（非 `auto`） |
+| `auto_document_type_requires_explicit_choice` | `auto` + `enable_kie`：需选择具体 `document_type` 才能跑 KIE（`stage=skipped_auto_doc_type`） |
 | `unsafe_description` | description 含疑似 prompt 注入片段 |
 
 响应体：`{"detail": {"error_code": "...", "message": "..."}}`
@@ -101,7 +104,7 @@ table_template=bank_statement
 
 v1.2.0 已交付多页 KIE（`kie_pages`）与 Batch UI；与本节相关的下一优先级：
 
-- `document_type=custom` 全量用户 schema（超越 extend-only `kie_query_fields`）
+- `document_type=custom` 全量用户 schema（超越 extend-only `kie_query_fields`）— **v1.4 未接线**：`resolve_custom_schema`（[`schema_templates.py`](../../backend/app/services/kie/schema_templates.py)）已实现 inline + `kie_template_id` 解析，但 `kie_step` 未调用、`/api/v1/analyze` Form 未暴露 `kie_custom_schema` / `kie_template_id`，且 `custom` 已从 `KIE_SUPPORTED_DOC_TYPES` 移除以消除"看似支持实则走不通"的死路径。定制阶段接线时需：① Form 暴露两字段；② `kie_step` 入口接 `resolve_custom_schema` 并跳过 `load_base_schema`；③ 把 `custom` 加回 `KIE_SUPPORTED_DOC_TYPES`。`load_template` 已加固路径穿越。
 - 模板库持久化
 - 通用字段校验引擎（date/currency/regex）— `feature/kie-field-validation`
 - `ValueTyper` / `BaseField` 与 Azure 导出对齐

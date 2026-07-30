@@ -26,8 +26,13 @@ _INJECTION_PATTERNS = (
 
 _DEFAULT_KIE_CONFIG_DIR = Path(__file__).resolve().parent / "kie_configs"
 
+# Single source of truth for document types that support KIE.
+# NOTE: "custom" (inline/template schema) is reserved for v1.5+/customization
+# and is NOT wired into the analyze pipeline in v1.4. Do not add it back here
+# until resolve_custom_schema is connected in kie_step and the analyze Form
+# exposes kie_custom_schema / kie_template_id.
 KIE_SUPPORTED_DOC_TYPES = frozenset(
-    {"invoice", "receipt", "id_card", "passport", "bank_card", "custom"}
+    {"invoice", "receipt", "id_card", "passport", "bank_card"}
 )
 
 

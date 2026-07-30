@@ -65,6 +65,12 @@ def test_table_step_applies_bank_statement_template(tmp_path):
 
 
 def test_analyze_form_accepts_table_template(monkeypatch):
+    # This test imports app.main, which imports paddle/paddlex at top level.
+    # Phase A CI (kie-phase-a.yml) intentionally runs without Paddle, so skip
+    # there; the full env (Cloud / local with paddle) runs it. Mirrors the
+    # env-gating pattern used by test_live_api.py. Not a regression — this
+    # guard aligns the test with its actual environment requirements.
+    pytest.importorskip("paddle")
     from fastapi.testclient import TestClient
 
     from app import main as main_module

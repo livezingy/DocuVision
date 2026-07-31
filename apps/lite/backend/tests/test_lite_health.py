@@ -36,6 +36,8 @@ LITE_RESULT_TOP_KEYS = {
     "hints",
     "transactions",
     "mapped_transactions",
+    "mapped_table_rows",
+    "table_template",
     "error",
 }
 

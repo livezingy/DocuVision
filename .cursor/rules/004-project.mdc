@@ -66,6 +66,7 @@ DocuVision/
 - 改后端/KIE/编排须给**可复制 Cloud 命令 + 期望**（见 006）——针对需服务器/GPU 的部分
 - 多数改动不硬等 Cloud 结果；继续交付并附**建议 pytest 范围**（区分本机可跑 vs Cloud 专属）
 - **硬门槛**（须 Cloud 通过再继续）：KIE/编排/契约字段变更、发版合 main、用户明确要求
+- **Pro e2e 防遗忘**：新增/修改 Pro e2e（`frontend/tests/e2e/*.e2e.js`）须满足其一：① 挂进 CI（扩展 `ci-lite.yml`/`kie-phase-a.yml` path 过滤或加 job）；② 显式登记到 `UI_VERIFICATION_MATRIX.md` 手工桶并标注"CI 不覆盖"。Pro e2e 默认不在 CI 门禁（`ci-lite.yml` 只跑 `test:e2e:lite`），不登记则 broken 测试不会被任何门禁发现（教训：TM e2e 自 2026-07-03 红至 2026-07-31 才被发现）
 
 ## 测试落点（新建/扩展测试前）
 1. 先搜后建：在对应 `tests/` 搜同模块是否已有 `test_*.py`

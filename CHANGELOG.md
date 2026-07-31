@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-07-31
+
 ### Added
 - Lite `POST /api/v1/lite/extract/tables` now accepts `table_template` (`bank_statement` / `invoice_line_items`), forwarding it to `extract_tables_from_pdf`; results return in `mapped_table_rows` + `table_template`. Parity with `POST /extract/auto` (non-breaking, optional param). See [lite-api.md §7.4](docs/architecture/lite-api.md).
+
+### Fixed
+- `apps/lite/backend/tests/test_lite_health.py`: `LITE_RESULT_TOP_KEYS` constant drifted from `LiteResult` schema (missing `mapped_table_rows`, `table_template` added in v1.4.0); `test_lite_result_schema_keys` now passes. Test-only contract alignment.
 
 ## [1.4.0] — 2026-06-30
 

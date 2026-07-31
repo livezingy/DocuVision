@@ -158,6 +158,7 @@ async def extract_tables(
     score_threshold: float = Form(0.5),
     param_mode: str = Form("auto"),
     custom_params: Optional[str] = Form(None),
+    table_template: Optional[str] = Form(None),
 ):
     raw = await file.read()
     validate_upload(file, raw)
@@ -175,6 +176,7 @@ async def extract_tables(
             param_mode=param_mode,
             custom_params=custom_params,
             max_pages=settings.MAX_PAGES,
+            table_template=table_template,
         )
         result = build_lite_result(
             job_id=job_id,

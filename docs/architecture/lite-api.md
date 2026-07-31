@@ -244,7 +244,7 @@ WarningCode: [scan_detected, low_confidence, engine_fallback, transformer_unavai
 
 ### 7.4 POST /extract/tables（阶段 C）
 
-**Request** `multipart/form-data`：`file`, `mode`, `engine`, `flavor`, `pages`, `param_mode`, `custom_params`, `score_threshold`, `async`
+**Request** `multipart/form-data`：`file`, `mode`, `engine`, `flavor`, `pages`, `param_mode`, `custom_params`, `score_threshold`, `async`, `table_template`（可选，`bank_statement` / `invoice_line_items`，触发 `apply_table_template`，结果在 `mapped_table_rows` + `table_template` 字段返回）
 
 **Smart 路由**：
 

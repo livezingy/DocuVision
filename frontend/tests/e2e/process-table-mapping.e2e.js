@@ -10,7 +10,11 @@ async function openProcessingOptions(page) {
 }
 
 async function selectTableMappingMode(page) {
-  await page.locator('#optTableMapping').check();
+  // The radio input is visually hidden by CSS (.option-item input { display: none })
+  // and replaced by a .radio-custom span. .check() requires the input to be
+  // visible, so click the wrapping label instead — this toggles the nested
+  // radio and mirrors real user interaction.
+  await page.locator('label.option-item:has(#optTableMapping)').click();
   await expect(page.locator('#tableMappingSubOptions')).not.toHaveClass(/hidden/);
 }
 

@@ -656,7 +656,7 @@ async def kie_step(ctx: PipelineContext) -> None:
     if policy.should_enqueue(validation, options.get("enable_hitl", True)):
         from app.services.hitl_queue import hitl_queue
 
-        hitl_queue.enqueue(
+        await hitl_queue.enqueue(
             str(ctx.get("task_id", "")),
             str(ctx["task"].get("file_name", "")),
             "kie_validation_failed",

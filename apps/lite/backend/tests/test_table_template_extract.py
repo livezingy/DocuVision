@@ -67,3 +67,36 @@ def test_build_lite_result_passes_mapped_fields():
     )
     assert result.table_template == "invoice_line_items"
     assert result.mapped_table_rows == [{"a": 1}]
+
+
+def test_extract_tables_passes_table_template_to_pipeline():
+    """/extract/tables must forward table_template to extract_tables_from_pdf."""
+    pdf_path = FIXTURES / "sample_bordered.pdf"
+    if not pdf_path.exists():
+        import pytest
+        pytest.skip("sample_bordered.pdf fixture missing")
+
+    rows = [{"date": "2026-01-01", "description": "Open", "amount": "100.00"}]
+    captured = {}
+
+    def _fake_extract(file_path, **kwargs):
+        captured.update(kwargs)
+        return _make_pipeline_output(kwargs.get("table_template"), rows)
+
+    with patch(
+        "app.api.routes_extract.extract_tables_from_pdf", side_effect=_fake_extract
+    ), patch(
+        "app.api.routes_extract.detect_file_type", return_value=("pdf_digital", 1)
+    ):
+        with pdf_path.open("rb") as f:
+            response = client.post(
+                "/api/v1/lite/extract/tables",
+                files={"file": ("sample_bordered.pdf", f, "application/pdf")},
+                data={"mode": "smart", "table_template": "bank_statement"},
+            )
+
+    assert response.status_code == 200, response.text
+    assert captured.get("table_template") == "bank_statement"
+    data = response.json()
+    assert data["table_template"] == "bank_statement"
+    assert data["mapped_table_rows"] == rows

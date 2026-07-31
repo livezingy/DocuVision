@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Lite `POST /api/v1/lite/extract/tables` now accepts `table_template` (`bank_statement` / `invoice_line_items`), forwarding it to `extract_tables_from_pdf`; results return in `mapped_table_rows` + `table_template`. Parity with `POST /extract/auto` (non-breaking, optional param). See [lite-api.md §7.4](docs/architecture/lite-api.md).
+
 ## [1.4.0] — 2026-06-30
 
 Table mapping productization, HITL editable review, PDF Tools nav tab, batch mapped-row Excel export, and backend hardening (webhook auth/SSRF, Phase1 form parity, dead-config cleanup). See [RELEASE_1.4_NOTES.md](docs/release/RELEASE_1.4_NOTES.md) and [MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md).

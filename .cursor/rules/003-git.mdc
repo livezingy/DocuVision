@@ -19,6 +19,11 @@ git 提交记录样例：[type]: [description]。一个具体的例子, docs: �
 - revert: 回退
 - build: 打包
 
+### 提交前确认分支（强制）
+- **commit 前先 `git branch --show-current` 确认当前分支**，再 `git add` / `git commit`。
+- 多分支并行时尤其重要：误在错误分支提交会导致 commit 落错 PR、污染 docs-only PR 或需要历史改写清理。
+- 教训来源：2026-07-31 多分支并行时 test fix 误落在 docs 分支（虽未推送、本地 reset 清理，但属可避免失误）。
+
 ## 分支管理
 - main/master: 主分支，保持稳定可发布状态
 - develop: 开发分支，包含最新开发特性

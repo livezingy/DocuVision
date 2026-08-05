@@ -148,6 +148,40 @@ echo "final status=$FINAL"
     immediately (no pending tasks to run)
 - `GET /api/v1/batch` (list) shows the recovered batch
 
+**Re-verify after a fix (self-contained, no shell env vars needed)** — use this
+when re-running step 4-5 in a fresh shell where `$API_ROOT`/`$BATCH_ID` are not
+set; it picks the batch_id from the list endpoint:
+
+```bash
+python3 -c '
+import json, urllib.request, time
+API = "http://127.0.0.1:8000"
+def get(p): return json.load(urllib.request.urlopen(API + p))
+def post(p):
+    req = urllib.request.Request(API + p, method="POST")
+    return urllib.request.urlopen(req).status
+batches = get("/api/v1/batch")["batches"]
+assert batches, "no batches in store — run section 3 from scratch first"
+bid = batches[0]["batch_id"]
+print("batch_id =", bid)
+b = get("/api/v1/batch/" + bid)
+status = b["status"]
+print("status before resume =", status)
+assert status == "paused", "expected paused, got " + status
+for t in b["tasks"]:
+    ts = t["status"]
+    assert ts in ("pending", "completed", "skipped"), "stuck task " + ts
+print("BATCH-PERSIST-001 recovery pass: batch paused, tasks recoverable")
+code = post("/api/v1/batch/" + bid + "/resume")
+print("resume HTTP", code)
+time.sleep(2)
+final = get("/api/v1/batch/" + bid)["status"]
+print("final status =", final)
+assert final in ("completed", "failed"), "expected finalized, got " + final
+print("BATCH-PERSIST-001 resume pass: finalized as", final)
+'
+```
+
 ---
 
 ## §4 HITL-PERSIST-001 — HITL review survives restart with edited_fields

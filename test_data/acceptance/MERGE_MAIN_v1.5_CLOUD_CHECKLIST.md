@@ -119,12 +119,14 @@ sleep 8   # let startup load_from_db run
 curl -s "$API_ROOT/api/v1/batch/$BATCH_ID" | python3 -c '
 import json, sys
 b = json.load(sys.stdin)
-print("status =", b["status"])
-assert b["status"] == "paused", f"expected paused, got {b[\"status\"]}"
+status = b["status"]
+print("status =", status)
+assert status == "paused", f"expected paused, got {status}"
 tasks = b.get("tasks", [])
 assert len(tasks) >= 1, "tasks missing"
 for t in tasks:
-    assert t["status"] in ("pending", "completed", "skipped"), f"stuck task status {t[\"status\"]}"
+    ts = t["status"]
+    assert ts in ("pending", "completed", "skipped"), f"stuck task status {ts}"
 print("BATCH-PERSIST-001 recovery pass: batch paused, tasks recoverable")
 '
 

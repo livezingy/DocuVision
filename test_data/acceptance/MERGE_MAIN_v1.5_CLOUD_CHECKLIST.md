@@ -20,7 +20,7 @@ Related: [v1.5-roadmap.md](../../docs/architecture/v1.5-roadmap.md), [MERGE_MAIN
 | 1 | Local mock tests | `pytest backend/tests/test_queue_persistence.py -q` **6 passed** (本机或 Cloud 均可，不触 paddle) |
 | 2 | v1.4 regression | [MERGE_MAIN_v1.4](./MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md) §1 (Phase A v1.4 contract tests) green |
 | 3 | **BATCH-PERSIST-001** | create batch → kill :8000 → restart → batch visible; `status!=processing`; path A `paused`+resume 或 path B 已 `completed`/`failed` (§3) |
-| 4 | **HITL-PERSIST-001** | analyze→enqueue→resolve(`edited_fields`)→kill→restart→sqlite 行 `approved` + `edited_fields`/`resolved_at` intact（§4 自包含） |
+| 4 | **HITL-PERSIST-001** | seed pending→load_from_db→resolve(`edited_fields`)→kill→restart→sqlite `approved` + `edited_fields`/`resolved_at` intact（§4；不依赖 KIE 入队） |
 | 5 | Smoke | `GET /api/v1/batch` returns recovered batches; `GET /api/v1/hitl/reviews` returns recovered pending reviews |
 
 ---
@@ -165,73 +165,84 @@ else:
 
 ## §4 HITL-PERSIST-001 — HITL review survives restart with edited_fields
 
-Requires Pro `:8000` running (terminal 1). Self-contained: hardcoded API, `/tmp/review_id.txt`,
-no `$API_ROOT` / `$REPO_ROOT`. Do **not** `rm` the SQLite DB (keep Batch path-B row).
+Self-contained: hardcoded API/DB paths, `/tmp/review_id.txt`. Do **not** `rm` the SQLite DB.
 
-**Sample**: `test_data/testfiles/invoices/invoice_sample_01.pdf` (must trigger HITL enqueue;
-if Step A prints `no review enqueued`, try `sample-invoice.png` or another invoice).
+**Why not analyze→KIE?** HITL enqueue only when `validation_passed=False`. Good invoice
+samples often pass date/currency checks (or extract empty fields → `failed==0` → also
+"passed"), so Cloud GPU analyze is unreliable for this acceptance. Seed a pending
+`hitl_reviews` row, then exercise **resolve + restart persistence** (the v1.5 contract).
 
-### Step A — analyze → enqueue → resolve (terminal 2, :8000 running)
+### Step A0 — stop run.py (terminal 1)
 
 ```bash
-cd /workspace/DocuVision   # Baidu: cd ~/DocuVision
-SAMPLE="/workspace/DocuVision/test_data/testfiles/invoices/invoice_sample_01.pdf"
-# Baidu: SAMPLE="$HOME/DocuVision/test_data/testfiles/invoices/invoice_sample_01.pdf"
-test -f "$SAMPLE" || { echo "missing $SAMPLE"; exit 1; }
+# Ctrl+C  if run.py is running
+```
 
+### Step A1 — seed pending review into SQLite (terminal 2, server STOPPED)
+
+```bash
+cd /workspace/DocuVision
 python3 -c '
-import json, time, urllib.request, urllib.error
+import json, sqlite3, uuid
+from datetime import datetime
 from pathlib import Path
 
-API = "http://127.0.0.1:8000"
-SAMPLE = Path("/workspace/DocuVision/test_data/testfiles/invoices/invoice_sample_01.pdf")
-# Baidu: SAMPLE = Path.home() / "DocuVision/test_data/testfiles/invoices/invoice_sample_01.pdf"
-
-boundary = "----DocuVisionBoundary7MA4YWxk"
-body = b""
-fields = [
-    ("document_type", "invoice"),
-    ("enable_kie", "1"),
-    ("enable_hitl", "1"),
-    ("enable_layout", "0"),
-    ("enable_table", "0"),
-]
-for name, val in fields:
-    body += ("--" + boundary + "\r\n").encode()
-    body += ('Content-Disposition: form-data; name="' + name + '"\r\n\r\n').encode()
-    body += (val + "\r\n").encode()
-data = SAMPLE.read_bytes()
-body += ("--" + boundary + "\r\n").encode()
-body += ('Content-Disposition: form-data; name="file"; filename="' + SAMPLE.name + '"\r\n').encode()
-body += b"Content-Type: application/octet-stream\r\n\r\n"
-body += data + b"\r\n"
-body += ("--" + boundary + "--\r\n").encode()
-req = urllib.request.Request(
-    API + "/api/v1/analyze",
-    data=body,
-    headers={"Content-Type": "multipart/form-data; boundary=" + boundary},
-    method="POST",
+DB = Path("/workspace/DocuVision/backend/data/docuvision.sqlite")
+DB.parent.mkdir(parents=True, exist_ok=True)
+rid = str(uuid.uuid4())
+open("/tmp/review_id.txt", "w").write(rid)
+payload = json.dumps({
+    "validation": {"validation_passed": False, "validation_fields_failed": 1},
+    "fields": {"total": "100"},
+    "hitl_profile": "full",
+})
+conn = sqlite3.connect(str(DB))
+conn.execute(
+    "CREATE TABLE IF NOT EXISTS hitl_reviews ("
+    "review_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, file_name TEXT NOT NULL, "
+    "reason TEXT NOT NULL, payload TEXT NOT NULL DEFAULT \"{}\", "
+    "edited_fields TEXT, status TEXT NOT NULL DEFAULT \"pending\", "
+    "created_at TEXT NOT NULL, resolved_at TEXT)"
 )
-resp = json.load(urllib.request.urlopen(req, timeout=120))
-task_id = resp["task_id"]
-print("task_id =", task_id)
-open("/tmp/task_id.txt", "w").write(task_id)
+conn.execute(
+    "INSERT OR REPLACE INTO hitl_reviews "
+    "(review_id, task_id, file_name, reason, payload, edited_fields, status, created_at, resolved_at) "
+    "VALUES (?, ?, ?, ?, ?, NULL, \"pending\", ?, NULL)",
+    (rid, "seed-task-hitl-persist", "seed-invoice.pdf", "kie_validation_failed",
+     payload, datetime.now().isoformat()),
+)
+conn.commit()
+conn.close()
+print("seeded review_id =", rid)
+print("HITL-PERSIST-001 Step A1 done — start run.py in terminal 1, then Step A2")
+'
+```
 
-for i in range(90):
-    st = json.load(urllib.request.urlopen(API + "/api/v1/tasks/" + task_id, timeout=30))
-    status = st.get("status", "")
-    print("poll", i, status)
-    if status in ("completed", "succeeded", "failed"):
-        break
-    time.sleep(5)
-assert status in ("completed", "succeeded"), "task not completed: " + status
+### Step A2 — start run.py then resolve (terminal 1 start, then terminal 2)
+
+Terminal 1:
+
+```bash
+cd /workspace/DocuVision/backend
+source ~/docuvision_env/bin/activate
+DEBUG=false python run.py
+# Wait for: HitlReviewQueue loaded N review(s) from store  (N >= 1)
+```
+
+Terminal 2 (after load log):
+
+```bash
+python3 -c '
+import json, urllib.request
+
+API = "http://127.0.0.1:8000"
+rid = open("/tmp/review_id.txt").read().strip()
+print("review_id =", rid)
 
 reviews = json.load(urllib.request.urlopen(API + "/api/v1/hitl/reviews?include_payload=1", timeout=30))
-items = reviews.get("reviews") or []
-assert items, "no review enqueued — sample did not trigger HITL; try another invoice"
-rid = items[0]["review_id"]
-print("review_id =", rid)
-open("/tmp/review_id.txt", "w").write(rid)
+ids = [r["review_id"] for r in (reviews.get("reviews") or [])]
+assert rid in ids, "seeded review not in list_pending after load_from_db; ids=" + str(ids)
+print("pending list contains seeded review")
 
 payload = json.dumps({
     "status": "approved",
@@ -246,19 +257,19 @@ req = urllib.request.Request(
 out = json.load(urllib.request.urlopen(req, timeout=30))
 print("resolve =", out)
 assert out.get("status") == "approved"
-print("HITL-PERSIST-001 Step A done — kill run.py in terminal 1, then restart, then run Step C")
+print("HITL-PERSIST-001 Step A2 done — kill run.py in terminal 1, restart, then Step C")
 '
 ```
 
-### Step B — kill + restart (terminal 1)
+### Step B — kill + restart again (terminal 1)
 
 ```bash
-# Ctrl+C to stop run.py, then:
+# Ctrl+C, then:
 DEBUG=false python run.py
-# Wait for log: HitlReviewQueue loaded N review(s) from store  (N >= 1)
+# Wait for: HitlReviewQueue loaded N review(s) from store
 ```
 
-### Step C — verify after restart (terminal 2)
+### Step C — verify after second restart (terminal 2)
 
 ```bash
 python3 -c '
@@ -266,7 +277,6 @@ import json, sqlite3
 from pathlib import Path
 
 DB = Path("/workspace/DocuVision/backend/data/docuvision.sqlite")
-# Baidu: DB = Path.home() / "DocuVision/backend/data/docuvision.sqlite"
 rid = open("/tmp/review_id.txt").read().strip()
 print("review_id =", rid)
 assert DB.is_file(), "sqlite missing: " + str(DB)
@@ -293,10 +303,9 @@ print("HITL-PERSIST-001 PASS: review + edited_fields survived restart, payload p
 ```
 
 **Pass**:
-- After restart, the `hitl_reviews` row exists with `status=approved`
-- `edited_fields` JSON contains `total=999.99` and `invoice_date=2026-07-31`
-- `resolved_at` is non-empty
-- Original `payload` (validation context) is preserved separately from `edited_fields`
+- After Step A2 restart/load, seeded review appears in `GET /api/v1/hitl/reviews`
+- `POST .../resolve` with `corrected_fields` returns `approved`
+- After Step B restart, sqlite row has `status=approved`, `edited_fields` intact, `resolved_at` set, original `payload` preserved
 
 ---
 

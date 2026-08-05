@@ -317,6 +317,13 @@ async def _kie_optional_warmup_background() -> None:
 export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
 
+# Queue persistence store (SQLite). Attached to batch_service now and to the
+# hitl_queue singleton at startup. See docs/architecture/v1.5-roadmap.md.
+from app.services.persistence.queue_store import SqliteQueueStore  # noqa: E402
+
+_queue_store = SqliteQueueStore(db_path=Path(settings.SQLITE_DB_PATH))
+batch_service.attach_store(_queue_store)
+
 
 def _raise_query_fields_http(exc: Exception) -> None:
     from app.services.kie.query_fields import QueryFieldsError
@@ -2202,7 +2209,8 @@ async def resolve_hitl_review(
                     validation["validation_passed"] = True
                     result["kie_validation"] = validation
 
-    item = hitl_queue.resolve(review_id, status=resolved_status)
+    corrected = body.corrected_fields if body and body.corrected_fields is not None else None
+    item = await hitl_queue.resolve(review_id, status=resolved_status, edited_fields=corrected)
     if not item:
         raise HTTPException(status_code=404, detail="Review not found")
     return {"review_id": review_id, "status": item.status, "task_id": item.task_id}
@@ -2436,6 +2444,15 @@ async def startup_event():
             )
     except Exception:
         pass
+    # Queue persistence: rebuild in-memory batch + HITL indexes from SQLite.
+    try:
+        from app.services.hitl_queue import hitl_queue
+
+        hitl_queue.attach_store(_queue_store)
+        hitl_queue.load_from_db()
+        batch_service.load_from_db()
+    except Exception as exc:
+        logger.warning("Queue persistence load failed (non-fatal): {}", exc)
     logger.info("=" * 60)
 
 

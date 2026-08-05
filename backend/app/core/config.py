@@ -114,6 +114,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DOCUVISION_KIE_WARMUP", "KIE_WARMUP"),
     )
 
+    # Queue persistence (Batch + HITL) — single SQLite file.
+    # Path is relative to the backend cwd (i.e. ``backend/data/docuvision.sqlite``
+    # on disk when run via ``python run.py`` from ``backend/``).
+    SQLITE_DB_PATH: str = Field(
+        default="data/docuvision.sqlite",
+        validation_alias=AliasChoices("DOCUVISION_SQLITE_DB_PATH", "SQLITE_DB_PATH"),
+    )
+
 
 # 创建配置实例
 settings = Settings()
@@ -122,4 +130,12 @@ settings = Settings()
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(settings.OUTPUT_DIR, exist_ok=True)
 os.makedirs(settings.DEBUG_OUTPUT_DIR, exist_ok=True)
+# Ensure the SQLite DB parent directory exists (queue persistence).
+try:
+    from pathlib import Path as _Path
+
+    os.makedirs(_Path(settings.SQLITE_DB_PATH).parent, exist_ok=True)
+except Exception:
+    # Avoid crashing startup on misconfigured paths; the store will retry on init.
+    pass
 

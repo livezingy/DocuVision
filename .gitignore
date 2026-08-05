@@ -35,6 +35,9 @@ apps/lite/backend/docs/
 env.bak/
 venv.bak/
 
+# DocuVision Pro runtime data (queue persistence SQLite)
+backend/data/
+
 # PyCharm
 .idea/
 

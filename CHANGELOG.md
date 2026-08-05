@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-05
+
+### Added
+- Pro Queue persistence (Batch + HITL): single-file SQLite (`backend/data/docuvision.sqlite`), `queue_store.py`, `BatchService` / `HitlReviewQueue` `load_from_db` + `_persist`, HITL `edited_fields` / `resolved_at`. See [RELEASE_1.5_NOTES.md](docs/release/RELEASE_1.5_NOTES.md) and [MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md](test_data/acceptance/MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md).
+
+### Fixed
+- `resume_batch` finalizes when no pending tasks remain after restart demotion (avoids stuck `PROCESSING`).
+
+### Changed
+- `APP_VERSION` default **1.5.0**; `hitl_queue.enqueue` / `resolve` are async.
+
 ## [1.4.1] — 2026-07-31
 
 ### Added

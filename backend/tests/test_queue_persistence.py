@@ -156,6 +156,47 @@ def test_batch_service_delete_persists(tmp_path: Path) -> None:
     store.close()
 
 
+@pytest.mark.asyncio
+async def test_batch_service_resume_no_pending_finalizes(tmp_path: Path) -> None:
+    """Resume on a batch with no pending tasks must finalize (not stay PROCESSING).
+
+    Reproduces the crash-then-resume scenario where all tasks finished before
+    the kill but the batch-level final status flip was not persisted.
+    """
+    store = SqliteQueueStore(db_path=tmp_path / "batch.sqlite")
+    svc1 = BatchService(max_concurrent=1)
+    svc1.attach_store(store)
+
+    batch = svc1.create_batch(
+        name="resume-finalize",
+        files=[{"file_path": "/tmp/a.pdf", "file_name": "a.pdf"}],
+    )
+    # Simulate: task completed, but batch crashed mid-flight (status=processing).
+    batch.tasks[0].status = TaskStatus.COMPLETED
+    batch.completed_tasks = 1
+    batch.status = BatchStatus.PROCESSING
+    batch.started_at = datetime.now()
+    svc1._persist(batch)
+
+    # Restart → load demotes batch to paused.
+    svc2 = BatchService(max_concurrent=1)
+    svc2.attach_store(store)
+    svc2.load_from_db()
+    recovered = svc2.get_batch(batch.batch_id)
+    assert recovered.status == BatchStatus.PAUSED
+
+    # Resume with no pending tasks → must finalize, not stay PROCESSING.
+    ok = await svc2.resume_batch(batch.batch_id, process_func=None)
+    assert ok is True
+    final = svc2.get_batch(batch.batch_id)
+    assert final.status == BatchStatus.COMPLETED, f"expected completed, got {final.status}"
+    assert final.completed_at is not None
+    # Persisted to store.
+    row = store.load("batch_jobs", batch.batch_id)
+    assert row["status"] == "completed"
+    store.close()
+
+
 # ---------------------------------------------------------------------------
 # HitlReviewQueue restart recovery
 # ---------------------------------------------------------------------------

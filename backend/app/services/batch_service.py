@@ -518,10 +518,26 @@ class BatchService:
             return False
         
         self._paused_batches.discard(batch_id)
+        pending = [t for t in batch.tasks if t.status == TaskStatus.PENDING]
+        if not pending:
+            # Nothing to resume (e.g. crash happened after all tasks finished
+            # but before the batch-level final status flip). Finalize now
+            # instead of leaving the batch stuck in PROCESSING.
+            if batch_id in self._cancelled_batches:
+                batch.status = BatchStatus.CANCELLED
+            elif batch.failed_tasks == batch.total_tasks:
+                batch.status = BatchStatus.FAILED
+            else:
+                batch.status = BatchStatus.COMPLETED
+            batch.completed_at = datetime.now()
+            await self._persist_async(batch)
+            logger.info(
+                f"Resumed batch {batch_id} with no pending tasks; finalized as {batch.status.value}"
+            )
+            return True
         batch.status = BatchStatus.PROCESSING
         await self._persist_async(batch)
-        pending = [t for t in batch.tasks if t.status == TaskStatus.PENDING]
-        if process_func is not None and pending and batch_id not in self._active_batches:
+        if process_func is not None and batch_id not in self._active_batches:
             max_conc = self._effective_concurrency(batch)
             task = asyncio.create_task(
                 self._process_batch(batch_id, process_func, on_progress, max_concurrent=max_conc)

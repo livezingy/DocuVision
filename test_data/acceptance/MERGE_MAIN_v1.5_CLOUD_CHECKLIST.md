@@ -114,22 +114,23 @@ DEBUG=false python run.py &
 sleep 8   # let startup load_from_db run
 
 # 4. Verify recovery
-curl -s "$API_ROOT/api/v1/batch/$BATCH_ID" | python3 - <<'PY'
+# NOTE: use `python3 -c` (not `python3 - <<PY`) so the pipe feeds stdin to
+# json.load; heredoc would shadow the pipe and break parsing.
+curl -s "$API_ROOT/api/v1/batch/$BATCH_ID" | python3 -c '
 import json, sys
 b = json.load(sys.stdin)
-assert b["batch_id"] == str(b["batch_id"])
 print("status =", b["status"])
-# After restart, a processing batch must be demoted to paused.
-assert b["status"] == "paused", f"expected paused, got {b['status']}"
+assert b["status"] == "paused", f"expected paused, got {b[\"status\"]}"
 tasks = b.get("tasks", [])
 assert len(tasks) >= 1, "tasks missing"
 for t in tasks:
-    # A task that was mid-processing must be demoted to pending.
-    assert t["status"] in ("pending", "completed", "skipped"), f"unexpected task status {t['status']}"
+    assert t["status"] in ("pending", "completed", "skipped"), f"stuck task status {t[\"status\"]}"
 print("BATCH-PERSIST-001 recovery pass: batch paused, tasks recoverable")
-PY
+'
 
-# 5. Manual resume should continue processing (no auto GPU resume by design)
+# 5. Manual resume should continue processing (no auto GPU resume by design).
+# If all tasks already finished before the crash, resume finalizes the batch
+# to completed/failed immediately (no pending tasks to run).
 curl -s -X POST "$API_ROOT/api/v1/batch/$BATCH_ID/resume" >/dev/null
 sleep 10
 FINAL=$(curl -s "$API_ROOT/api/v1/batch/$BATCH_ID" | python3 -c "import json,sys; print(json.load(sys.stdin)['status'])")
@@ -139,7 +140,10 @@ echo "final status=$FINAL"
 **Pass**:
 - After restart, `GET /api/v1/batch/{id}` returns the batch with `status=paused`
 - Tasks recoverable (no `processing` task stuck)
-- `POST /resume` returns 200 and batch eventually reaches `completed`/`failed`
+- `POST /resume` returns 200 and batch reaches `completed`/`failed`:
+  - If tasks were still pending → `_process_batch` runs them and finalizes
+  - If all tasks already finished before the crash → resume finalizes
+    immediately (no pending tasks to run)
 - `GET /api/v1/batch` (list) shows the recovered batch
 
 ---
@@ -191,22 +195,26 @@ DEBUG=false python run.py &
 sleep 8
 
 # 5. Verify the resolved review survived with edited_fields intact
-# (resolved reviews are NOT in list_pending; query the store directly)
-sqlite3 "$REPO_ROOT/backend/data/docuvision.sqlite" \
-  "SELECT review_id, status, edited_fields, resolved_at FROM hitl_reviews WHERE review_id='$REVIEW_ID';" \
-  | tee /dev/stderr | python3 - <<'PY'
-import sys, json
-line = sys.stdin.read().strip()
+# (resolved reviews are NOT in list_pending; query the store directly).
+# Write sqlite output to a temp file, then parse with python (avoids
+# heredoc-vs-pipe stdin conflict).
+ROW=$(sqlite3 "$REPO_ROOT/backend/data/docuvision.sqlite" \
+  "SELECT review_id, status, edited_fields, resolved_at FROM hitl_reviews WHERE review_id='$REVIEW_ID';")
+echo "sqlite row: $ROW"
+export ROW
+python3 -c '
+import json, os
+line = os.environ["ROW"].strip()
 assert line, "review row missing after restart — persistence failed"
 parts = line.split("|")
-status, edited = parts[1], parts[2]
-assert status.strip() == "approved", f"expected approved, got {status}"
+status, edited, resolved_at = parts[1].strip(), parts[2].strip(), parts[3].strip()
+assert status == "approved", f"expected approved, got {status}"
 edited_json = json.loads(edited)
 assert edited_json.get("total") == "999.99", edited_json
 assert edited_json.get("invoice_date") == "2026-07-31", edited_json
-assert parts[3].strip() != "", "resolved_at empty"
+assert resolved_at != "", "resolved_at empty"
 print("HITL-PERSIST-001 pass: review + edited_fields survived restart")
-PY
+'
 ```
 
 **Pass**:

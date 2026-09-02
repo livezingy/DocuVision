@@ -272,3 +272,30 @@ class TestViewLayerAggregation:
     def test_view_processing_status_skip_seal(self):
         for elem in VIEW["seals"]:
             assert elem["processing_status"] == "skip_seal"
+
+
+# ===========================================================================
+# P0-B: reading_order surfaced in the view layer (enables frontend overlay)
+# ===========================================================================
+
+class TestViewLayerReadingOrder:
+    def test_every_view_element_has_reading_order(self):
+        for page in VIEW["pages"]:
+            for elem in page["elements"]:
+                assert "reading_order" in elem, f"missing reading_order on {elem.get('id')}"
+                assert isinstance(elem["reading_order"], int)
+
+    def test_reading_order_monotonic_within_page(self):
+        for page in VIEW["pages"]:
+            orders = [elem["reading_order"] for elem in page["elements"]]
+            assert orders == sorted(orders), f"reading_order not monotonic on page {page.get('page_num')}"
+
+    def test_reading_order_starts_at_zero(self):
+        first_page = VIEW["pages"][0]
+        orders = [elem["reading_order"] for elem in first_page["elements"]]
+        assert orders[0] == 0
+
+    def test_all_elements_covered(self):
+        # 10 layout elements → 10 view elements total across pages
+        total = sum(len(p["elements"]) for p in VIEW["pages"])
+        assert total == len(ALL_ELEMENTS)

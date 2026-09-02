@@ -199,6 +199,7 @@ const overlayLayerVisibility = {
     figure: true,
     header_footer: true,
     list: true,
+    readingOrder: true,
 };
 
 /**
@@ -3008,7 +3009,15 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
             const confidencePercent = rawConf > 1 ? rawConf : rawConf * 100;
             const bboxStr = `${x1.toFixed(0)}, ${y1.toFixed(0)}, ${w.toFixed(0)} × ${h.toFixed(0)}`;
 
-            const tooltipData = { role, content: text, displayContent, bbox: bboxStr, confidence: confidencePercent };
+            // GLM trial P0-C: reading-order overlay. The /blocks endpoint
+            // surfaces reading_order from the envelope view layer; we draw a
+            // small badge at the top-left of each region so multi-column
+            // reading sequence is visible at a glance. Gated by the
+            // readingOrder overlay toggle (off = hide numbers, keep boxes).
+            const readingOrder = Number(block.reading_order);
+            const hasReadingOrder = !isNaN(readingOrder) && readingOrder > 0;
+
+            const tooltipData = { role, content: text, displayContent, bbox: bboxStr, confidence: confidencePercent, readingOrder: hasReadingOrder ? readingOrder : null };
 
             const rect = document.createElementNS(svgNS, 'rect');
             rect.setAttribute('x', x1);
@@ -3026,6 +3035,27 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
             rect.style.pointerEvents = 'auto';
             rect.style.cursor = 'pointer';
             svg.appendChild(rect);
+
+            // Reading-order badge (P0-C). Drawn after the rect so it sits
+            // on top; pointer-events disabled so it never steals rect clicks.
+            if (hasReadingOrder && overlayLayerVisibility.readingOrder !== false) {
+                const badgeFontSize = Math.max(12, Math.min(w, h) * 0.12);
+                const label = document.createElementNS(svgNS, 'text');
+                label.setAttribute('x', x1 + 4);
+                label.setAttribute('y', y1 + badgeFontSize + 2);
+                label.setAttribute('font-size', badgeFontSize);
+                label.setAttribute('font-family', 'Inter, system-ui, sans-serif');
+                label.setAttribute('font-weight', '700');
+                label.setAttribute('fill', colors.stroke);
+                label.setAttribute('stroke', '#ffffff');
+                label.setAttribute('stroke-width', '0.4');
+                label.setAttribute('paint-order', 'stroke');
+                label.classList.add('svg-reading-order-badge');
+                label.dataset.elementType = type;
+                label.style.pointerEvents = 'none';
+                label.textContent = String(readingOrder);
+                svg.appendChild(label);
+            }
         });
 
         if (lastRenderedAnalysisResult) {
@@ -3144,11 +3174,15 @@ function initAnnotationInteractions() {
             if (!raw) return;
             try {
                 const d = JSON.parse(raw);
+                const readingOrderLine = d.readingOrder
+                    ? `<div class="tooltip-line"><strong>Reading order:</strong> ${d.readingOrder}</div>`
+                    : '';
                 globalTooltip.innerHTML = `
                     <div class="tooltip-line"><strong>Role:</strong> ${esc(d.role)}</div>
                     <div class="tooltip-line"><strong>BBox:</strong> ${esc(d.bbox)}</div>
                     <div class="tooltip-line"><strong>Content:</strong> ${d.displayContent ? esc(d.displayContent) : '(empty)'}</div>
                     <div class="tooltip-line"><strong>Confidence:</strong> ${Number(d.confidence || 0).toFixed(1)}%</div>
+                    ${readingOrderLine}
                 `;
 
                 const vr = rect.getBoundingClientRect();
@@ -4733,41 +4767,138 @@ function updateContentTables(result) {
 }
 
 /**
- * Update Content Figures view
+ * Fetch an image URL through the trial-key auth bridge and return an object
+ * URL. Falls back to the raw URL on any error so a missing key still shows
+ * a broken-image placeholder rather than throwing. The object URL is
+ * revoked after the <img> errors or after a generous TTL.
+ */
+function fetchAuthedImage(url, imgEl) {
+    if (!url) return Promise.resolve(null);
+    return fetch(url)
+        .then(function (res) {
+            if (!res.ok) return null;
+            return res.blob();
+        })
+        .then(function (blob) {
+            if (!blob) return null;
+            const objUrl = URL.createObjectURL(blob);
+            if (imgEl) {
+                imgEl.dataset.objUrl = objUrl;
+                imgEl.addEventListener('error', function () {
+                    if (imgEl.dataset.objUrl) {
+                        URL.revokeObjectURL(imgEl.dataset.objUrl);
+                        delete imgEl.dataset.objUrl;
+                    }
+                }, { once: true });
+            }
+            return objUrl;
+        })
+        .catch(function () { return null; });
+}
+
+/**
+ * Update Content Figures view.
+ *
+ * Primary source is result.figures (the P0-2 crop export: items with
+ * crop_url). When crops are absent, falls back to layout figure elements so
+ * the tab is never empty when the detector saw a figure but export was
+ * disabled or failed. Split-figure integrity warnings from the backend are
+ * surfaced per-card.
  */
 function updateContentFigures(result) {
     const contentFiguresList = document.getElementById('contentFiguresList');
     if (!contentFiguresList) return;
 
-    const layout = result.layout || {};
-    const elements = layout.elements || [];
-    const figures = elements.filter(el => el.type === 'figure' || el.type === 'figure_caption');
+    const figuresExport = result.figures || {};
+    const cropItems = Array.isArray(figuresExport.items) ? figuresExport.items : [];
+    const warnings = Array.isArray(figuresExport.warnings) ? figuresExport.warnings : [];
+    const warningIds = new Set();
+    warnings.forEach(function (w) {
+        (w.ids || []).forEach(function (id) { warningIds.add(id); });
+    });
 
-    if (figures.length === 0) {
-        contentFiguresList.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">No figures detected</div>';
+    // Layout elements used only for caption fallback (matched by id).
+    const layout = result.layout || {};
+    const layoutElements = layout.elements || [];
+    const layoutById = {};
+    layoutElements.forEach(function (el) { if (el.id) layoutById[el.id] = el; });
+
+    const hasCrops = cropItems.length > 0;
+    if (!hasCrops) {
+        const layoutFigs = layoutElements.filter(el => el.type === 'figure' || el.type === 'figure_caption');
+        if (layoutFigs.length === 0) {
+            const errs = Array.isArray(figuresExport.errors) ? figuresExport.errors : [];
+            const msg = errs.length
+                ? `Figure export failed: ${escapeHtml(errs[0].reason || 'unknown error')}`
+                : 'No figures detected';
+            contentFiguresList.innerHTML = `<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">${msg}</div>`;
+            return;
+        }
+        // No crops (export off / failed) but layout saw figures — show captions.
+        let html = '';
+        layoutFigs.forEach((figure, index) => {
+            html += '<div class="figure-card">';
+            html += '<div class="figure-card-header">';
+            html += `<span class="figure-name">Figure ${index + 1}${figure.page ? ` (Page ${figure.page})` : ''}</span>`;
+            if (figure.confidence !== undefined) {
+                html += `<span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(figure.confidence * 100).toFixed(1)}%</span>`;
+            }
+            html += '</div>';
+            html += '<div class="figure-preview">';
+            if (figure.text) {
+                html += `<p style="color: var(--text-secondary); font-style: italic;">${escapeHtml(normalizeTextForDisplay(figure.text))}</p>`;
+            } else {
+                html += '<p style="color: var(--text-tertiary);">Figure detected (no caption available)</p>';
+            }
+            html += '</div></div>';
+        });
+        contentFiguresList.innerHTML = html;
         return;
     }
 
+    // Render crops with lazy auth-loaded images.
     let html = '';
-    figures.forEach((figure, index) => {
+    if (warnings.length > 0) {
+        html += `<div class="figure-warnings-banner" style="margin-bottom:10px;padding:8px 12px;border-radius:6px;background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.35);font-size:0.8rem;color:var(--text-secondary);">`
+            + `⚠ ${warnings.length} possible split-figure warning(s) — see per-card flags.</div>`;
+    }
+    cropItems.forEach((item, index) => {
+        const warned = warningIds.has(item.id);
+        const captionEl = layoutById[item.id];
+        const caption = captionEl && captionEl.text ? normalizeTextForDisplay(captionEl.text) : '';
         html += '<div class="figure-card">';
         html += '<div class="figure-card-header">';
-        html += `<span class="figure-name">Figure ${index + 1}${figure.page ? ` (Page ${figure.page})` : ''}</span>`;
-        if (figure.confidence !== undefined) {
-            html += `<span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(figure.confidence * 100).toFixed(1)}%</span>`;
+        html += `<span class="figure-name">Figure ${index + 1}${item.page ? ` (Page ${item.page})` : ''}</span>`;
+        if (item.confidence !== undefined) {
+            html += `<span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(item.confidence * 100).toFixed(1)}%</span>`;
+        }
+        if (warned) {
+            html += `<span style="font-size: 0.7rem; color: #f59e0b; margin-left:6px;">⚠ possible split</span>`;
         }
         html += '</div>';
         html += '<div class="figure-preview">';
-        if (figure.text) {
-            html += `<p style="color: var(--text-secondary); font-style: italic;">${escapeHtml(normalizeTextForDisplay(figure.text))}</p>`;
-        } else {
-            html += '<p style="color: var(--text-tertiary);">Figure detected (no caption available)</p>';
+        // Placeholder while the authed image loads; swapped after fetch.
+        html += `<img class="figure-crop-img" data-crop-url="${item.crop_url || ''}" alt="Figure ${index + 1} crop" style="max-width:100%;height:auto;border-radius:6px;border:1px solid var(--border-primary);background:var(--bg-secondary);" />`;
+        if (caption) {
+            html += `<p style="color: var(--text-secondary); font-style: italic; margin-top:6px;">${escapeHtml(caption)}</p>`;
         }
-        html += '</div>';
-        html += '</div>';
+        if (item.width_px && item.height_px) {
+            html += `<p style="font-size:0.7rem;color:var(--text-tertiary);margin-top:4px;">${item.width_px} × ${item.height_px}px</p>`;
+        }
+        html += '</div></div>';
     });
-
     contentFiguresList.innerHTML = html;
+
+    // Lazy-load each crop through the trial-key auth bridge.
+    const imgs = contentFiguresList.querySelectorAll('img.figure-crop-img');
+    imgs.forEach(function (img) {
+        const url = img.dataset.cropUrl;
+        if (!url) return;
+        fetchAuthedImage(url, img).then(function (objUrl) {
+            if (objUrl) img.src = objUrl;
+            else img.alt = 'Figure crop unavailable';
+        });
+    });
 }
 
 /**

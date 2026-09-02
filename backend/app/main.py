@@ -1647,6 +1647,10 @@ async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int
                 "content": text,
                 "content_truncated": text[:content_limit],
                 "processing_status": elem.get("processing_status", "succeeded"),
+                # GLM trial P0-B: surface the envelope reading_order so the
+                # frontend can render a reading-order overlay for multi-column
+                # pages. Non-breaking: absent in legacy fallback below.
+                "reading_order": elem.get("reading_order", 0),
             })
     else:
         # Fallback: read from legacy result layout elements

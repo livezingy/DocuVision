@@ -123,4 +123,22 @@
   }
 
   if (trialKey) showKeyActive();
+
+  /* ---------- public helper for <img src> auth (GLM trial P0-A) ----------
+   *
+   * <img> tags do not go through the fetch wrapper above, so API-key-
+   * guarded image URLs (figure crops) would 401. The middleware accepts
+   * ?key= for HTTP too (see trial_auth._api_key_from_scope), so we append
+   * it here. Returns the URL unchanged when no key is configured.
+   */
+  window.appendTrialKey = function (url) {
+    if (!trialKey || !url) return url;
+    try {
+      var u = new URL(url, window.location.href);
+      if (!u.searchParams.get("key")) u.searchParams.set("key", trialKey);
+      return u.toString();
+    } catch (e) {
+      return url;
+    }
+  };
 })();

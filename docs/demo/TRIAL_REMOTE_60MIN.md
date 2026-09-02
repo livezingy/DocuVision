@@ -58,6 +58,12 @@ key set, disk OK. Fix any FAIL before the call.
 5. Same for `architecture_diagram.pdf`; a text-only PDF → `figures` omitted or zero
 6. `enable_figure_export=false` form run → no figures key
 7. Path traversal: `GET .../figures/..%2F..%2Frun` → 400
+8. **UI (P0-A)**: Figures tab shows cropped PNG thumbnails (not just captions);
+   split-figure warnings appear as `⚠ possible split` per card + banner
+9. **UI (P0-C)**: document canvas shows reading-order numbers at each region's
+   top-left; tooltip includes "Reading order: N"; multi-column page numbers
+   should progress column-by-column (if they jump across columns, the
+   detector's reading order is wrong — state this honestly to the client)
 
 ### P0-3 Samples
 1. `python scripts/trial/generate_trial_samples.py` prints 3 `[ok]` lines

@@ -31,6 +31,20 @@ class Settings(BaseSettings):
     OUTPUT_DIR: str = "./outputs"
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
 
+    # Trial hardening (GLM trial P0-1)
+    # Empty key = auth disabled (local dev keeps previous open behaviour).
+    # Non-empty key = every /api/v1/* route requires X-API-Key (ws: ?key=).
+    TRIAL_API_KEY: str = Field(
+        default="",
+        validation_alias=AliasChoices("DOCUVISION_TRIAL_API_KEY", "TRIAL_API_KEY"),
+    )
+    # Comma-separated CORS origin allowlist; "*" keeps the legacy wide-open
+    # default for local dev. Set an explicit list when exposing the trial.
+    CORS_ORIGINS: str = Field(
+        default="*",
+        validation_alias=AliasChoices("DOCUVISION_CORS_ORIGINS", "CORS_ORIGINS"),
+    )
+
     # OCR
     OCR_LANG: str = "ch"  # ch, en, multi
 

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (GLM trial — `feat/glm-trial`)
+- Trial hardening: API-key middleware (`DOCUVISION_TRIAL_API_KEY`, HTTP `X-API-Key` / WS `?key=`), configurable CORS allowlist (`DOCUVISION_CORS_ORIGINS`), enforced `MAX_FILE_SIZE` (413) on all four upload endpoints, frontend key bridge (`shared/trial-key.js`). See [TRIAL_REMOTE_60MIN.md](docs/demo/TRIAL_REMOTE_60MIN.md) §3 P0-1.
+- Figure crop export + integrity checks: `figure_service.py`, pipeline `figure_step`, `result.figures` / `envelope.figures` + `quality.figure_*`, routes `GET /tasks/{id}/figures[/{figure_id}]`, option `enable_figure_export`. §3 P0-2.
+- Trial sample generator (`scripts/trial/generate_trial_samples.py`): multi-column techdoc with merged-cell symbol table, flowchart and architecture diagram PDFs into `test_data/testfiles/trial/`.
+- Ground-truth diff: `app/services/trial/gt_diff.py` (CLI + HTML report), routes `POST /api/v1/trial/gt-diff/{task_id}` + `GET .../report`. §3 P1-4.
+- Symbol survival benchmark (`scripts/trial/symbol_benchmark.py`, GPU): PP-OCR vs Qwen2.5-VL. §3 P1-5.
+- Trial ops scripts: `trial_preflight.py` (readiness gate), `trial_reset.py` (data wipe between prospects); `.GLM/` assistant rules.
+
+### Fixed
+- `MAX_FILE_SIZE` was configured but never enforced; now wired into `/ocr`, `/upload`, `/analyze`, `/documents:analyze`.
+
 ## [1.5.0] — 2026-08-05
 
 ### Added

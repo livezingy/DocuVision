@@ -81,3 +81,4 @@ New features: add **contract tests** first; extend `MERGE_MAIN_v*.md` only at re
 
 - [demo/TRIAL_DEMO.md](demo/TRIAL_DEMO.md)
 - [demo/SAMPLES.md](demo/SAMPLES.md)
+- [demo/TRIAL_REMOTE_60MIN.md](demo/TRIAL_REMOTE_60MIN.md) — remote 1-hour diagnostic trial (GLM `feat/glm-trial`): bring-up, timeboxed script, cloud acceptance criteria

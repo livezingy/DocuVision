@@ -1084,4 +1084,7 @@ GET /api/v1/jobs/{job_id}/debug
 | 前端字段 | view 层字段即渲染字段；读取 `preprocessing.coordinate_space` 选择展示图像，坐标叠加逻辑统一 |
 | 调试模式 | 服务级开关（`DEBUG_MODE` 环境变量），开启后自动写 `backend/debug/{job_id}/`，不混入 API 响应 |
 | 兜底 | 文本 block 无 `content` 时写入空字符串，不中断流水线 |
+| 试用鉴权 | `DOCUVISION_TRIAL_API_KEY` 非空时全 `/api/v1/*` 鉴权（HTTP `X-API-Key`、WS `?key=`；`/health` `/docs` 开放）；CORS 由 `DOCUVISION_CORS_ORIGINS` 白名单化（`feat/glm-trial`） |
+| 图形导出 | `figure_step`（layout 后）裁剪 figure/chart 区域：PDF 按 2x 栅格、图像按预处理空间；`result.figures`/`envelope.figures` + `quality.figure_*`；几何切分/嵌套告警 `warnings[]`；`enable_figure_export` 可关（`feat/glm-trial`） |
+| GT 对比 | `POST /api/v1/trial/gt-diff/{task_id}` 字段/单元格级 diff（match/missing/wrong），HTML 报告 `GET .../report`；CLI `python -m app.services.trial.gt_diff`（`feat/glm-trial`） |
 | 扩展方式 | block 引擎注册表 + payload 多态 + 开关预留 |

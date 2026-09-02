@@ -1791,7 +1791,7 @@ async function startProcessing() {
         lastHealthPayload.kie &&
         !lastHealthPayload.kie.model_loaded
     ) {
-        showNotification('首次 KIE 将加载 Qwen 模型，可能需数十秒，请耐心等待进度。', 'info');
+        showNotification('First KIE run loads the Qwen model and may take tens of seconds. Watch the progress bar.', 'info');
     }
     // If another item is already processing, queue this one instead of starting
     const activeProcessing = document.querySelector('.queue-item.processing');
@@ -3607,7 +3607,7 @@ function updateContentFields(result) {
     const meta = result.kie_meta || {};
     const metaBits = [];
     if (meta.succeeded === false) {
-        metaBits.push('KIE 未完成');
+        metaBits.push('KIE incomplete');
         if (meta.error_message) {
             metaBits.push(String(meta.error_message));
         } else if (meta.error_code) {
@@ -3615,10 +3615,10 @@ function updateContentFields(result) {
         }
     } else {
         if (meta.confidence_avg != null && !Number.isNaN(Number(meta.confidence_avg))) {
-            metaBits.push('平均置信度 ' + Number(meta.confidence_avg).toFixed(2));
+            metaBits.push('Avg confidence ' + Number(meta.confidence_avg).toFixed(2));
         }
         if (meta.items_count != null) {
-            metaBits.push('明细行 ' + String(meta.items_count));
+            metaBits.push('Line items ' + String(meta.items_count));
         }
     }
     fieldsMeta.textContent = metaBits.join(' · ');

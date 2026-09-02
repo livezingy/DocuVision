@@ -232,10 +232,22 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS Configuration
+# Trial API-key authentication (GLM trial P0-1).
+# MUST be added BEFORE the CORS middleware add_middleware() call below:
+# Starlette runs the middleware added LAST as the OUTERMOST layer, so CORS
+# sits OUTSIDE the auth middleware — it answers OPTIONS preflights directly
+# and decorates 401 responses from the inner auth middleware with CORS
+# headers. Empty DOCUVISION_TRIAL_API_KEY keeps the previous open
+# local-dev behaviour.
+from app.core.trial_auth import TrialAuthMiddleware
+
+app.add_middleware(TrialAuthMiddleware, api_key=settings.TRIAL_API_KEY)
+
+# CORS Configuration (origins configurable via DOCUVISION_CORS_ORIGINS)
+_cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins or ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -480,6 +492,10 @@ class QualityLayer(BaseModel):
     seal_error_code: str = ""
     seal_error_message: str = ""
     seal_recognition_rate: float = 0.0
+    # Figure crop export metrics (GLM trial P0-2)
+    figure_count: int = 0
+    figure_cropped_count: int = 0
+    figure_integrity_warning_count: int = 0
     kie_attempted: bool = False
     kie_stage: str = ""
     kie_error_code: str = ""
@@ -510,6 +526,10 @@ class JobEnvelope(BaseModel):
     fused: FusedLayer = FusedLayer()
     view: ViewLayer = ViewLayer()
     quality: QualityLayer = QualityLayer()
+    # Figure crop exports (GLM trial P0-2): present only when figure regions
+    # were detected/cropped or integrity warnings fired; crop files are
+    # served by GET /api/v1/tasks/{task_id}/figures/{figure_id}.
+    figures: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
 
 
@@ -528,6 +548,7 @@ class ProcessingOptions(BaseModel):
     enable_table: bool = True
     enable_formula: bool = False
     enable_seal: bool = False
+    enable_figure_export: bool = True
     enable_kie: bool = False
     document_type: str = "auto"
     language: str = "en"
@@ -569,9 +590,36 @@ class HitlResolveModel(BaseModel):
     corrected_fields: Optional[Dict[str, Any]] = None
 
 
+class TrialGtDiffModel(BaseModel):
+    """Ground-truth payload for the trial diagnostic endpoint (GLM trial P1-4)."""
+    fields: Dict[str, Any] = {}
+    tables: List[List[List[Any]]] = []  # list of tables; each = rows of cells
+    case_sensitive: bool = False
+
+
 # ============================================
 # API Routes - Core (P1)
 # ============================================
+
+def _enforce_max_upload_size(content: bytes, filename: str = "") -> None:
+    """Enforce settings.MAX_FILE_SIZE on in-memory uploads (GLM trial P0-1).
+
+    The limit existed in config but was never wired; this closes the gap for
+    every upload endpoint without changing their response contracts.
+    """
+    limit = int(settings.MAX_FILE_SIZE)
+    if limit <= 0:
+        return
+    if len(content) > limit:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"File exceeds maximum upload size "
+                f"({len(content) / (1024 * 1024):.1f}MB > {limit / (1024 * 1024):.0f}MB)"
+                + (f": {filename}" if filename else "")
+            ),
+        )
+
 
 @app.get("/")
 async def root():
@@ -692,6 +740,7 @@ async def ocr_recognize(
 
     with open(file_path, "wb") as f:
         content = await file.read()
+        _enforce_max_upload_size(content, file.filename or "")
         f.write(content)
 
     try:
@@ -742,6 +791,7 @@ async def upload_file(file: UploadFile = File(...)):
 
     with open(file_path, "wb") as f:
         content = await file.read()
+        _enforce_max_upload_size(content, file.filename or "")
         f.write(content)
 
     # Create minimal task entry for preview purposes
@@ -785,6 +835,7 @@ async def analyze_document(
     enable_table: bool = Form(True),
     enable_formula: bool = Form(False),
     enable_seal: bool = Form(False),
+    enable_figure_export: bool = Form(True),
     enable_kie: bool = Form(False),
     document_type: str = Form("auto"),
     language: str = Form("en"),
@@ -849,11 +900,13 @@ async def analyze_document(
 
     with open(file_path, "wb") as f:
         content = await file.read()
+        _enforce_max_upload_size(content, file.filename or "")
         f.write(content)
 
     options = {
         "enable_layout": enable_layout,
         "enable_table": enable_table,
+        "enable_figure_export": enable_figure_export,
         "enable_formula": enable_formula,
         "enable_seal": enable_seal,
         "enable_kie": enable_kie,
@@ -1039,6 +1092,7 @@ async def analyze_document_v1(
     enable_table: bool = Form(True),
     enable_formula: bool = Form(False),
     enable_seal: bool = Form(False),
+    enable_figure_export: bool = Form(True),
     enable_kie: bool = Form(False),
     document_type: str = Form("auto"),
     language: str = Form("en"),
@@ -1095,11 +1149,13 @@ async def analyze_document_v1(
 
     with open(file_path, "wb") as f:
         content = await file.read()
+        _enforce_max_upload_size(content, file.filename or "")
         f.write(content)
 
     options = {
         "enable_layout": enable_layout,
         "enable_table": enable_table,
+        "enable_figure_export": enable_figure_export,
         "enable_formula": enable_formula,
         "enable_seal": enable_seal,
         "enable_kie": enable_kie,
@@ -1642,6 +1698,85 @@ async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int
         "blocks": blocks,
     }
 
+
+
+@app.get("/api/v1/tasks/{task_id}/figures")
+async def list_task_figures(task_id: str):
+    """List figure crops for a task (GLM trial P0-2)."""
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    result = task.get("result") or {}
+    figures = result.get("figures")
+    if not isinstance(figures, dict):
+        figures = {"figure_count": 0, "items": []}
+    return figures
+
+
+@app.get("/api/v1/tasks/{task_id}/figures/{figure_id}")
+async def get_task_figure_crop(task_id: str, figure_id: str):
+    """Serve a single cropped figure PNG (GLM trial P0-2).
+
+    Figure crops live under OUTPUT_DIR/{task_id}/figures/. figure_id is the
+    layout element id (e.g. p1_e3); only a safe basename is accepted to
+    prevent path traversal.
+    """
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Path-traversal guard: accept [A-Za-z0-9_-] ids only.
+    import re as _re
+
+    if not _re.fullmatch(r"[A-Za-z0-9_\-]+", figure_id or ""):
+        raise HTTPException(status_code=400, detail="Invalid figure id")
+
+    crop_path = os.path.join(settings.OUTPUT_DIR, task_id, "figures", f"{figure_id}.png")
+    if not os.path.isfile(crop_path):
+        raise HTTPException(status_code=404, detail="Figure crop not found")
+    return FileResponse(crop_path, media_type="image/png")
+
+
+@app.post("/api/v1/trial/gt-diff/{task_id}")
+async def trial_gt_diff(task_id: str, body: TrialGtDiffModel):
+    """Run a ground-truth diff against a completed task (GLM trial P1-4).
+
+    The client (or operator) supplies expected values; the endpoint returns
+    a field/cell-level accuracy report and persists a self-contained HTML
+    report served at GET /api/v1/trial/gt-diff/{task_id}/report.
+    """
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.get("status") not in ("succeeded", "completed"):
+        raise HTTPException(status_code=400, detail="Task not completed yet")
+
+    from app.services.trial.gt_diff import run_diff
+
+    report_dir = os.path.join(settings.OUTPUT_DIR, task_id)
+    html_path = os.path.join(report_dir, "gt_diff_report.html")
+    report = run_diff(
+        body.model_dump(),
+        task.get("result") or {},
+        job_id=task_id,
+        output_html_path=html_path,
+        case_sensitive=body.case_sensitive,
+    )
+    report["report_url"] = f"/api/v1/trial/gt-diff/{task_id}/report"
+    return report
+
+
+@app.get("/api/v1/trial/gt-diff/{task_id}/report")
+async def trial_gt_diff_report_file(task_id: str):
+    """Serve the generated HTML accuracy report (GLM trial P1-4)."""
+    import re as _re
+
+    if not _re.fullmatch(r"[A-Za-z0-9_\-]+", task_id or ""):
+        raise HTTPException(status_code=400, detail="Invalid task id")
+    path = os.path.join(settings.OUTPUT_DIR, task_id, "gt_diff_report.html")
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Report not generated yet")
+    return FileResponse(path, media_type="text/html")
 
 
 @app.get("/api/v1/tasks/{task_id}/page-image/{page_num}")

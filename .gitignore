@@ -255,8 +255,11 @@ test_data/**/*.tif
 !test_data/
 !test_data/**/
 
-# User-requested: never track these folders
-scripts/
+# User-requested: never track these folders (scripts/* instead of scripts/
+# so the trial/ exception below can re-include; same ignore effect otherwise)
+scripts/*
+!scripts/trial/
+!scripts/trial/**
 !packages/docuvision-core/scripts/
 !packages/docuvision-core/scripts/**
 !test_data/scripts/

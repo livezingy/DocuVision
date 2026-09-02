@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `MAX_FILE_SIZE` was configured but never enforced; now wired into `/ocr`, `/upload`, `/analyze`, `/documents:analyze`.
+- pytest collection interrupted on `test_api_contract_smoke.py` / `test_api_pipeline.py`: those legacy manual scripts use top-level `from _sample_paths import ...` while package-mode collection (tests/__init__.py) only puts `backend/` on sys.path. `tests/conftest.py` now inserts the tests dir into sys.path; the scripts collect 0 items harmlessly and stay runnable via `python tests/test_api_pipeline.py`.
 
 ## [1.5.0] — 2026-08-05
 

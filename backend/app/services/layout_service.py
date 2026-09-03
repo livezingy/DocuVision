@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from loguru import logger
 import os
 import inspect
+import asyncio
 import multiprocessing
 import queue as _queue_module
 import paddle
@@ -536,7 +537,7 @@ class PPStructureEngine(BaseLayoutEngine):
 
         return {
             "engine": "PP-StructureV3",
-            "total_pages": len(page_layouts),
+            "total_pages": page_count,
             "elements": all_elements,
             "page_layouts": page_layouts,
             "summary": self._get_document_summary(all_elements)
@@ -1321,6 +1322,65 @@ def _compute_document_summary(elements: List[Dict]) -> Dict[str, Any]:
     }
 
 
+def _truncate_error(err: str, limit: int = 400) -> str:
+    """Keep worker/page error strings short enough for JSON and logs."""
+    text = (err or "").strip() or "unknown error"
+    if len(text) > limit:
+        return text[:limit] + "..."
+    return text
+
+
+def _build_pdf_layout_result(
+    page_count: int,
+    all_elements: List[Dict[str, Any]],
+    page_layouts: List[Dict[str, Any]],
+    failed_pages: List[int],
+    failed_page_errors: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """Assemble a multi-page layout dict.
+
+    ``total_pages`` is the PDF page count, not the number of successful
+    pages. Using ``len(page_layouts)`` hid full-document failures as
+    ``total_pages=0``.
+    """
+    return {
+        "engine": "PP-StructureV3",
+        "total_pages": page_count,
+        "elements": all_elements,
+        "page_layouts": page_layouts,
+        "summary": _compute_document_summary(all_elements),
+        "failed_pages": failed_pages,
+        "failed_page_errors": failed_page_errors or [],
+    }
+
+
+def _invoke_worker_command(engine, cmd: str, file_path: str):
+    """Dispatch one worker command, sync or async depending on the method.
+
+    ``_analyze_image`` / ``_analyze_pdf`` are coroutines and must be driven
+    with ``asyncio.run``. ``_analyze_image_layout_only`` is synchronous.
+    Wrapping a sync call in ``asyncio.run(...)`` evaluates the call first
+    (so inference may run) then raises ``ValueError: a coroutine was
+    expected`` — every PDF page was recorded as failed.
+
+    Official: ``asyncio.run`` requires a coroutine object
+    (https://docs.python.org/3.11/library/asyncio-runner.html#asyncio.run).
+    """
+    if cmd == "analyze_image_layout":
+        fn = engine._analyze_image_layout_only
+    elif cmd == "analyze_image":
+        fn = engine._analyze_image
+    elif cmd == "analyze":
+        ext = os.path.splitext(file_path)[1].lower()
+        fn = engine._analyze_pdf if ext == ".pdf" else engine._analyze_image
+    else:
+        raise ValueError(f"Unknown PPStructureV3 worker command: {cmd}")
+
+    if inspect.iscoroutinefunction(fn):
+        return asyncio.run(fn(file_path))
+    return fn(file_path)
+
+
 # ---------------------------------------------------------------------------
 # Subprocess worker helpers
 # ---------------------------------------------------------------------------
@@ -1367,20 +1427,8 @@ def _ppstructure_worker_main(use_gpu: bool, lang: str, req_q, res_q):
         #   ('analyze', path)             — legacy whole-file call (PDF or image)
         #   ('analyze_image', path)        — single image (one PDF page rasterized by main)
         #   ('analyze_image_layout', path) — single image, layout-only (no preprocess meta)
-        if cmd not in ('analyze', 'analyze_image', 'analyze_image_layout'):
-            continue
-
         try:
-            if cmd == 'analyze_image_layout':
-                result = asyncio.run(engine._analyze_image_layout_only(file_path))
-            elif cmd == 'analyze_image':
-                result = asyncio.run(engine._analyze_image(file_path))
-            else:
-                ext = os.path.splitext(file_path)[1].lower()
-                if ext == '.pdf':
-                    result = asyncio.run(engine._analyze_pdf(file_path))
-                else:
-                    result = asyncio.run(engine._analyze_image(file_path))
+            result = _invoke_worker_command(engine, cmd, file_path)
             res_q.put(('ok', result))
         except Exception as e:
             import traceback as _tb
@@ -1569,6 +1617,7 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
         all_elements: List[Dict[str, Any]] = []
         page_layouts: List[Dict[str, Any]] = []
         failed_pages: List[int] = []
+        failed_page_errors: List[Dict[str, Any]] = []
 
         try:
             for page_num in range(page_count):
@@ -1596,10 +1645,14 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
                     page_layout["page"] = page_num + 1
                     page_layouts.append(page_layout)
                 except Exception as e:
+                    err_text = _truncate_error(str(e))
                     logger.warning(
-                        f"PPStructureV3 page {page_num + 1}/{page_count} skipped: {e}"
+                        f"PPStructureV3 page {page_num + 1}/{page_count} skipped: {err_text}"
                     )
                     failed_pages.append(page_num + 1)
+                    failed_page_errors.append(
+                        {"page": page_num + 1, "error": err_text}
+                    )
                 finally:
                     if os.path.exists(img_path):
                         try:
@@ -1614,17 +1667,15 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
                 f"PPStructureV3 skipped {len(failed_pages)}/{page_count} page(s): {failed_pages}"
             )
 
-        return {
-            "engine": "PP-StructureV3",
-            "total_pages": len(page_layouts),
-            "elements": all_elements,
-            "page_layouts": page_layouts,
-            "summary": _compute_document_summary(all_elements),
-            "failed_pages": failed_pages,
-        }
+        return _build_pdf_layout_result(
+            page_count,
+            all_elements,
+            page_layouts,
+            failed_pages,
+            failed_page_errors,
+        )
 
     async def analyze(self, file_path: str) -> Dict[str, Any]:
-        import asyncio
         loop = asyncio.get_event_loop()
         ext = os.path.splitext(file_path)[1].lower()
         if ext == '.pdf':

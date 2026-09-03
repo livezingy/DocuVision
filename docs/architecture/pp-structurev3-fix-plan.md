@@ -208,3 +208,4 @@ P1 = 影响 JD 硬指标（caption/header），但依赖官方 postprocessing �
 - 若所有页都超时，返回空 layout + 全 `failed_pages`，下游 table_step 得空 layout → 空表。属可接受降级（优于整本失败）。
 - 主进程承担光栅化（CPU 2× 渲染），主进程需有 PyMuPDF（已确认 `main.py` 等多处用 `fitz`）。
 - `failed_pages` 为新增结果字段，下游若做严格 schema 校验需知晓（envelope_builder 未强校验，向后兼容）。
+- **系统性 worker 故障会伪装成「全部坏页跳过」**：Cloud 验证 03 时 `status=completed` 但 `failed_pages=[1..36]`、`elements=0`。根因是 worker 对同步方法 `_analyze_image_layout_only` 调用 `asyncio.run`，且模块级未 `import asyncio`，每页立刻 `NameError`（[asyncio.run 官方要求 coroutine](https://docs.python.org/3.11/library/asyncio-runner.html#asyncio.run)）。已改为 `_invoke_worker_command`（`inspect.iscoroutinefunction` 分发）；`total_pages` 改为 PDF 页数（不再用成功页数，避免全失败时显示 0）；结果增加 `failed_page_errors` 便于下次不翻日志也能看失败原因。

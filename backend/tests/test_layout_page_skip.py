@@ -107,3 +107,48 @@ def test_total_pages_counts_pdf_not_successes() -> None:
 def test_truncate_error_caps_length() -> None:
     assert _truncate_error("x" * 500, limit=10) == "xxxxxxxxxx..."
     assert _truncate_error("") == "unknown error"
+
+
+# ---------------------------------------------------------------------------
+# _call_engine must not pass predict kwargs (PaddleX issue #17446)
+# ---------------------------------------------------------------------------
+
+class _FakePPStructureV3:
+    """Records predict call kwargs to verify no overrides are passed."""
+
+    def __init__(self) -> None:
+        self.predict_calls: list = []
+
+    def predict(self, img_path: str, **kwargs):
+        self.predict_calls.append((img_path, kwargs))
+        return [{"parsing_res_list": [], "table_res_list": []}]
+
+
+class _FakePPStructureEngine:
+    """Minimal stand-in for PPStructureEngine exposing _call_engine."""
+
+    def __init__(self, engine) -> None:
+        self._engine = engine
+        self._is_v3 = True
+
+    def _save_visualization_outputs(self, result, vis_src_path):
+        pass  # no-op for tests
+
+    # Delegate to the real method on the module-level class.
+    def _call_engine(self, img_path: str, vis_src_path=None):
+        # Reuse the actual PPStructureEngine._call_engine via the module.
+        return _layout_mod.PPStructureEngine._call_engine(self, img_path, vis_src_path)
+
+
+def test_call_engine_does_not_pass_predict_kwargs() -> None:
+    """Passing use_doc_orientation_classify=False at predict time triggers
+    PaddleX issue #17446 (empty detections → 1D boxes → IndexError).
+    The init-time use_doc_unwarping=False already covers that setting.
+    """
+    inner = _FakePPStructureV3()
+    wrapper = _FakePPStructureEngine(inner)
+    wrapper._call_engine("/tmp/page.png")
+    assert len(inner.predict_calls) == 1
+    img_path, kwargs = inner.predict_calls[0]
+    assert img_path == "/tmp/page.png"
+    assert kwargs == {}, f"predict must not receive overrides, got {kwargs}"

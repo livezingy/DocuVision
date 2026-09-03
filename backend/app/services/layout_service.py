@@ -457,25 +457,24 @@ class PPStructureEngine(BaseLayoutEngine):
         return flat[:4]
 
     def _call_engine(self, img_path: str, vis_src_path: Optional[str] = None):
-        """Call engine with version-compatible method"""
+        """Call engine with version-compatible method.
+
+        Do NOT pass ``use_doc_orientation_classify`` / ``use_doc_unwarping`` as
+        predict kwargs. ``use_doc_unwarping=False`` is already set in
+        ``_init_engine`` init_params, and passing
+        ``use_doc_orientation_classify=False`` at predict time triggers a
+        PaddleX code path that produces empty layout detections (1D boxes
+        array), causing ``IndexError: too many indices for array`` in NMS
+        (PaddleOCR issue #17446, unfixed in paddleocr 3.3.2 / paddlex 3.3.12).
+        The first failed predict also corrupts the pipeline's internal
+        state, so a retry without kwargs on the same instance still fails.
+        Calling ``predict(img_path)`` with no overrides (using init-time
+        defaults) avoids the bug entirely — confirmed by Cloud diagnostic
+        comparing predict-with-kwargs (fails) vs predict-without-kwargs
+        (succeeds) on the same page image.
+        """
         if hasattr(self, '_is_v3') and self._is_v3:
-            predict_kwargs = {
-                "use_doc_orientation_classify": False,
-                "use_doc_unwarping": False,
-            }
-            try:
-                result = self._engine.predict(img_path, **predict_kwargs)
-            except TypeError:
-                result = self._engine.predict(img_path)
-            except Exception as e:
-                err = str(e)
-                if "too many indices" in err or "1-dimensional" in err:
-                    logger.warning(
-                        f"PPStructureV3 predict failed with shape error; retrying without preprocess kwargs: {e}"
-                    )
-                    result = self._engine.predict(img_path)
-                else:
-                    raise
+            result = self._engine.predict(img_path)
         else:
             # PPStructure (2.x) uses direct call
             result = self._engine(img_path)

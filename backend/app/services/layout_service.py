@@ -1457,8 +1457,7 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
             msg = self._res_q.get(timeout=self._init_timeout_seconds())
         except _queue_module.Empty:
             logger.error(
-                "PPStructureV3 worker did not respond within %ss",
-                self._init_timeout_seconds(),
+                f"PPStructureV3 worker did not respond within {self._init_timeout_seconds()}s"
             )
             self._kill_worker()
             return

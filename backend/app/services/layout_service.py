@@ -1,5 +1,11 @@
 """
-Layout Analysis Service - Multi-engine support with PP-Structure (Primary) and LayoutParser (Fallback)
+Layout Analysis Service - PP-StructureV3 (single layout engine).
+
+Note: An earlier design advertised a LayoutParser fallback engine, but it was
+never implemented and a same-family DL fallback offers little value (GPU/CUDA
+failures are correlated across DL engines). The multi-engine fallback path has
+been removed; only PP-StructureV3 is registered. See
+docs/architecture/pp-structurev3-fix-plan.md for rationale.
 """
 
 from typing import Dict, Any, List, Optional
@@ -633,6 +639,21 @@ class PPStructureEngine(BaseLayoutEngine):
             result_dict["preprocessed_image_width"] = preprocessed_w
             result_dict["preprocessed_image_height"] = preprocessed_h
         return result_dict
+
+    def _analyze_image_layout_only(self, img_path: str) -> Dict[str, Any]:
+        """Single-image layout inference WITHOUT preprocessing metadata extraction.
+
+        Used by the subprocess page-by-page PDF driver so that the multi-page
+        result stays behaviorally identical to the former whole-PDF
+        ``_analyze_pdf`` path (which never emitted ``preprocessed_image_path``
+        / ``angle_deg`` / ``input_size`` fields).  Avoids leaking per-page
+        preprocessed PNGs and keeps downstream envelope_builder behavior stable.
+        """
+        result = self._call_engine(img_path, vis_src_path=img_path)
+        elements = self._parse_result(result, 1)
+        page_layout = _compute_page_summary(elements)
+        page_layout["page"] = 1
+        return {"elements": elements, "page_layout": page_layout}
 
     def _parse_result(self, result: List[Dict], page_num: int) -> List[Dict[str, Any]]:
         """
@@ -1269,25 +1290,35 @@ class PPStructureEngine(BaseLayoutEngine):
         return result
 
     def _get_page_summary(self, elements: List[Dict]) -> Dict[str, int]:
-        summary = {}
-        for elem in elements:
-            elem_type = elem['type']
-            summary[elem_type] = summary.get(elem_type, 0) + 1
-        return summary
+        return _compute_page_summary(elements)
 
     def _get_document_summary(self, elements: List[Dict]) -> Dict[str, Any]:
-        type_counts = {}
-        for elem in elements:
-            elem_type = elem['type']
-            type_counts[elem_type] = type_counts.get(elem_type, 0) + 1
+        return _compute_document_summary(elements)
 
-        return {
-            "total_elements": len(elements),
-            "type_counts": type_counts,
-            "has_tables": type_counts.get('table', 0) > 0,
-            "has_figures": type_counts.get('figure', 0) > 0,
-            "has_formulas": type_counts.get('equation', 0) > 0
-        }
+
+def _compute_page_summary(elements: List[Dict]) -> Dict[str, int]:
+    """Count element types for a single page (module-level, worker/main agnostic)."""
+    summary: Dict[str, int] = {}
+    for elem in elements:
+        elem_type = elem['type']
+        summary[elem_type] = summary.get(elem_type, 0) + 1
+    return summary
+
+
+def _compute_document_summary(elements: List[Dict]) -> Dict[str, Any]:
+    """Aggregate element-type counts across the whole document."""
+    type_counts: Dict[str, int] = {}
+    for elem in elements:
+        elem_type = elem['type']
+        type_counts[elem_type] = type_counts.get(elem_type, 0) + 1
+
+    return {
+        "total_elements": len(elements),
+        "type_counts": type_counts,
+        "has_tables": type_counts.get('table', 0) > 0,
+        "has_figures": type_counts.get('figure', 0) > 0,
+        "has_formulas": type_counts.get('equation', 0) > 0,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1332,15 +1363,24 @@ def _ppstructure_worker_main(use_gpu: bool, lang: str, req_q, res_q):
             break
 
         cmd, file_path = item
-        if cmd != 'analyze':
+        # Commands:
+        #   ('analyze', path)             — legacy whole-file call (PDF or image)
+        #   ('analyze_image', path)        — single image (one PDF page rasterized by main)
+        #   ('analyze_image_layout', path) — single image, layout-only (no preprocess meta)
+        if cmd not in ('analyze', 'analyze_image', 'analyze_image_layout'):
             continue
 
         try:
-            ext = os.path.splitext(file_path)[1].lower()
-            if ext == '.pdf':
-                result = asyncio.run(engine._analyze_pdf(file_path))
-            else:
+            if cmd == 'analyze_image_layout':
+                result = asyncio.run(engine._analyze_image_layout_only(file_path))
+            elif cmd == 'analyze_image':
                 result = asyncio.run(engine._analyze_image(file_path))
+            else:
+                ext = os.path.splitext(file_path)[1].lower()
+                if ext == '.pdf':
+                    result = asyncio.run(engine._analyze_pdf(file_path))
+                else:
+                    result = asyncio.run(engine._analyze_image(file_path))
             res_q.put(('ok', result))
         except Exception as e:
             import traceback as _tb
@@ -1371,7 +1411,21 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
         except Exception:
             return 120
 
-    _INFER_TIMEOUT = 180  # seconds to wait per inference
+    _INFER_TIMEOUT = 120  # default per-page inference timeout (seconds)
+
+    def _page_timeout_seconds(self) -> int:
+        """Per-page inference timeout, configurable via env APP_LAYOUT_PAGE_TIMEOUT."""
+        raw = os.environ.get("APP_LAYOUT_PAGE_TIMEOUT", "").strip()
+        if raw.isdigit():
+            return max(30, int(raw))
+        try:
+            from app.core.config import settings
+            val = getattr(settings, "LAYOUT_PAGE_TIMEOUT", None)
+            if val is not None:
+                return max(30, int(val))
+        except Exception:
+            pass
+        return self._INFER_TIMEOUT
 
     def __init__(self, use_gpu: bool = False, lang: str = "en"):
         self._use_gpu = use_gpu
@@ -1381,6 +1435,7 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
         self._req_q = None
         self._res_q = None
         self._ready = False
+        self._infer_timeout = self._page_timeout_seconds()
         self._start_worker()
 
     # ------------------------------------------------------------------
@@ -1444,19 +1499,30 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
     # Inference
     # ------------------------------------------------------------------
 
-    def _call_worker(self, file_path: str) -> Dict[str, Any]:
-        """Blocking call sent to the worker subprocess (runs in thread executor)."""
+    def _call_worker(self, file_path: str, cmd: str = 'analyze') -> Dict[str, Any]:
+        """Blocking call sent to the worker subprocess (runs in thread executor).
+
+        Args:
+            file_path: Path to PDF (legacy whole-file) or image.
+            cmd: Worker command — ``analyze`` (whole file), ``analyze_image``
+                (single image with preprocessing metadata), or
+                ``analyze_image_layout`` (single image, layout-only).
+        """
         if not self.is_ready():
             raise RuntimeError("PPStructureV3 subprocess worker is not running")
 
-        self._req_q.put(('analyze', file_path))
+        self._req_q.put((cmd, file_path))
 
         try:
-            msg = self._res_q.get(timeout=self._INFER_TIMEOUT)
+            msg = self._res_q.get(timeout=self._infer_timeout)
         except _queue_module.Empty:
-            logger.error(f"PPStructureV3 worker timed out after {self._INFER_TIMEOUT}s — restarting")
+            logger.error(
+                f"PPStructureV3 worker timed out after {self._infer_timeout}s (cmd={cmd}) — restarting"
+            )
             self._restart_worker()
-            raise RuntimeError("PPStructureV3 worker timed out; worker restarted for next request")
+            raise RuntimeError(
+                f"PPStructureV3 worker timed out after {self._infer_timeout}s; worker restarted"
+            )
 
         if msg[0] == 'ok':
             return msg[1]
@@ -1471,9 +1537,9 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
                     raise RuntimeError(f"PPStructureV3 worker restart failed. Original: {error_msg}")
 
                 # Retry once with the fresh worker
-                self._req_q.put(('analyze', file_path))
+                self._req_q.put((cmd, file_path))
                 try:
-                    msg2 = self._res_q.get(timeout=self._INFER_TIMEOUT)
+                    msg2 = self._res_q.get(timeout=self._infer_timeout)
                 except _queue_module.Empty:
                     self._restart_worker()
                     raise RuntimeError("PPStructureV3 worker timed out on retry; restarted")
@@ -1487,10 +1553,86 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
 
         raise RuntimeError(f"PPStructureV3 worker unexpected response: {msg}")
 
+    def _call_worker_pdf_page_by_page(self, pdf_path: str) -> Dict[str, Any]:
+        """Drive the worker one PDF page at a time from the main process.
+
+        Rasterization happens in the main process; each page image is sent to
+        the worker with the ``analyze_image_layout`` command and a per-page
+        timeout. A page that times out or errors is recorded in
+        ``failed_pages`` and skipped so the remaining pages still get a layout
+        result — instead of failing the whole document on a single bad page.
+        """
+        import fitz
+        from PIL import Image
+
+        doc = fitz.open(pdf_path)
+        page_count = len(doc)
+        all_elements: List[Dict[str, Any]] = []
+        page_layouts: List[Dict[str, Any]] = []
+        failed_pages: List[int] = []
+
+        try:
+            for page_num in range(page_count):
+                page = doc[page_num]
+                mat = fitz.Matrix(2, 2)
+                pix = page.get_pixmap(matrix=mat)
+                img_path = f"{pdf_path}_layout_{page_num}.png"
+
+                # Ensure RGB (3 channels); PPStructureV3 expects RGB, not RGBA.
+                if pix.alpha:
+                    img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
+                    img = img.convert("RGB")
+                    img.save(img_path)
+                else:
+                    pix.save(img_path)
+
+                try:
+                    page_result = self._call_worker(img_path, cmd='analyze_image_layout')
+                    elements = page_result.get("elements", []) or []
+                    for el in elements:
+                        el["page"] = page_num + 1
+                    all_elements.extend(elements)
+
+                    page_layout = page_result.get("page_layout", {}) or {}
+                    page_layout["page"] = page_num + 1
+                    page_layouts.append(page_layout)
+                except Exception as e:
+                    logger.warning(
+                        f"PPStructureV3 page {page_num + 1}/{page_count} skipped: {e}"
+                    )
+                    failed_pages.append(page_num + 1)
+                finally:
+                    if os.path.exists(img_path):
+                        try:
+                            os.remove(img_path)
+                        except Exception:
+                            pass
+        finally:
+            doc.close()
+
+        if failed_pages:
+            logger.warning(
+                f"PPStructureV3 skipped {len(failed_pages)}/{page_count} page(s): {failed_pages}"
+            )
+
+        return {
+            "engine": "PP-StructureV3",
+            "total_pages": len(page_layouts),
+            "elements": all_elements,
+            "page_layouts": page_layouts,
+            "summary": _compute_document_summary(all_elements),
+            "failed_pages": failed_pages,
+        }
+
     async def analyze(self, file_path: str) -> Dict[str, Any]:
         import asyncio
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._call_worker, file_path)
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext == '.pdf':
+            # Page-by-page driver: per-page timeout, skip bad pages, never
+            # fail the whole document on a single slow/bad page.
+            return await loop.run_in_executor(None, self._call_worker_pdf_page_by_page, file_path)
+        return await loop.run_in_executor(None, self._call_worker, file_path, 'analyze')
 
 
 class LayoutService:
@@ -1542,39 +1684,39 @@ class LayoutService:
         fallback: bool = True
     ) -> Dict[str, Any]:
         """
-        Analyze document layout
+        Analyze document layout.
+
+        Only PP-StructureV3 is registered as a layout engine. The ``engine``
+        and ``fallback`` parameters are kept for backward compatibility with
+        callers (e.g. the orchestrator), but with a single engine there is no
+        fallback path; a failure raises directly.
 
         Args:
             file_path: Path to PDF or image file
-            engine: Specific engine to use (ppstructure, layoutparser)
-            fallback: Whether to try fallback engines on failure
+            engine: Specific engine name; only ``ppstructure`` is supported.
+            fallback: Kept for API compatibility; no-op with a single engine.
 
         Returns:
             Layout analysis result dictionary
         """
-        engines_to_try = []
+        del fallback  # no alternative layout engine to fall back to
 
-        if engine and engine in self.engines:
-            engines_to_try.append(engine)
-        else:
-            # Default order: ppstructure -> layoutparser
-            for eng in ["ppstructure", "layoutparser"]:
-                if eng in self.engines:
-                    engines_to_try.append(eng)
+        if engine and engine not in self.engines:
+            raise RuntimeError(
+                f"Requested layout engine '{engine}' is not available. "
+                f"Available: {list(self.engines.keys())}"
+            )
 
-        last_error = None
+        eng_name = engine or self.default_engine
+        if eng_name not in self.engines:
+            # No layout engine registered at all.
+            raise RuntimeError(
+                f"No layout engine available (requested='{engine}', "
+                f"registered={list(self.engines.keys())})"
+            )
 
-        for eng_name in engines_to_try:
-            try:
-                eng = self.engines[eng_name]
-                logger.info(f"Trying layout analysis with {eng.get_name()}...")
-                result = await eng.analyze(file_path)
-                result["engine_used"] = eng_name
-                return result
-            except Exception as e:
-                logger.warning(f"{eng_name} failed: {e}")
-                last_error = e
-                if not fallback:
-                    raise
-
-        raise RuntimeError(f"All layout engines failed. Last error: {last_error}")
+        eng = self.engines[eng_name]
+        logger.info(f"Trying layout analysis with {eng.get_name()}...")
+        result = await eng.analyze(file_path)
+        result["engine_used"] = eng_name
+        return result

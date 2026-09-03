@@ -1123,166 +1123,17 @@ class PPStructureTableEngine(BaseTableEngine):
             return {}
 
 
-class CamelotTableEngine(BaseTableEngine):
-    """
-    Fallback Table Engine - Camelot
-
-    Advantages:
-    - Excellent for text-based PDFs (not scanned)
-    - Stream and Lattice modes
-    - Handles complex table structures
-    - Pure Python, no ML models needed
-    """
-
-    def __init__(self):
-        self._ready = False
-        self._init_engine()
-
-    def _init_engine(self):
-        try:
-            import camelot
-            self._ready = True
-            logger.info("Camelot Table engine initialized successfully")
-        except ImportError as e:
-            logger.warning(f"Camelot not installed: {e}")
-            self._ready = False
-        except Exception as e:
-            logger.warning(f"Camelot initialization failed: {e}")
-            self._ready = False
-
-    def is_ready(self) -> bool:
-        return self._ready
-
-    def get_name(self) -> str:
-        return "Camelot"
-
-    async def extract(self, file_path: str) -> List[Dict[str, Any]]:
-        if not self._ready:
-            raise RuntimeError("Camelot engine not ready")
-
-        import camelot
-
-        ext = os.path.splitext(file_path)[1].lower()
-
-        if ext != '.pdf':
-            raise ValueError("Camelot only supports PDF files")
-
-        all_tables = []
-
-        try:
-            # Try lattice mode first (for tables with borders)
-            tables = camelot.read_pdf(file_path, pages='all', flavor='lattice')
-
-            if len(tables) == 0:
-                # Try stream mode (for tables without borders)
-                tables = camelot.read_pdf(file_path, pages='all', flavor='stream')
-
-            for idx, table in enumerate(tables):
-                df = table.df
-
-                table_dict = {
-                    "id": f"table_{idx + 1}",
-                    "page": table.page,
-                    "engine": "Camelot",
-                    "bbox": {
-                        "x": table._bbox[0] if table._bbox else 0,
-                        "y": table._bbox[1] if table._bbox else 0,
-                        "width": table._bbox[2] - table._bbox[0] if table._bbox else 0,
-                        "height": table._bbox[3] - table._bbox[1] if table._bbox else 0
-                    },
-                    "data": df.values.tolist(),
-                    "rows": len(df),
-                    "columns": len(df.columns),
-                    "accuracy": table.accuracy,
-                    "whitespace": table.whitespace
-                }
-                all_tables.append(table_dict)
-
-        except Exception as e:
-            logger.warning(f"Camelot extraction failed: {e}")
-            raise
-
-        return all_tables
-
-
-class TabulaTableEngine(BaseTableEngine):
-    """
-    Alternative Table Engine - Tabula-py
-
-    Advantages:
-    - Good for simple tables
-    - Fast processing
-    - Based on tabula-java
-    """
-
-    def __init__(self):
-        self._ready = False
-        self._init_engine()
-
-    def _init_engine(self):
-        try:
-            import tabula
-            self._ready = True
-            logger.info("Tabula Table engine initialized successfully")
-        except ImportError as e:
-            logger.warning(f"Tabula-py not installed: {e}")
-            self._ready = False
-        except Exception as e:
-            logger.warning(f"Tabula initialization failed: {e}")
-            self._ready = False
-
-    def is_ready(self) -> bool:
-        return self._ready
-
-    def get_name(self) -> str:
-        return "Tabula"
-
-    async def extract(self, file_path: str) -> List[Dict[str, Any]]:
-        if not self._ready:
-            raise RuntimeError("Tabula engine not ready")
-
-        import tabula
-
-        ext = os.path.splitext(file_path)[1].lower()
-
-        if ext != '.pdf':
-            raise ValueError("Tabula only supports PDF files")
-
-        all_tables = []
-
-        try:
-            dfs = tabula.read_pdf(file_path, pages='all', multiple_tables=True)
-
-            for idx, df in enumerate(dfs):
-                if df.empty:
-                    continue
-
-                table_dict = {
-                    "id": f"table_{idx + 1}",
-                    "page": 1,  # Tabula doesn't provide page info easily
-                    "engine": "Tabula",
-                    "data": df.fillna('').values.tolist(),
-                    "columns_header": df.columns.tolist(),
-                    "rows": len(df),
-                    "columns": len(df.columns)
-                }
-                all_tables.append(table_dict)
-
-        except Exception as e:
-            logger.warning(f"Tabula extraction failed: {e}")
-            raise
-
-        return all_tables
-
-
 class TableService:
     """
-    Table Extraction Service with multi-engine support
+    Table Extraction Service.
 
-    Supports automatic fallback:
-    1. PP-Structure-Table (Primary - Recommended for images/scanned PDFs)
-    2. Camelot (Fallback - Good for text-based PDFs)
-    3. Tabula (Alternative)
+    Only PP-Structure-Table is registered as a table engine for the
+    image/scanned-PDF path. Born-digital PDFs are routed earlier to the
+    docuvision-core TableProcessor (pdfplumber + camelot, see
+    core_table_extractor), which is the complementary multi-strategy path.
+    An earlier design advertised Camelot/Tabula as fallback engines here,
+    but they were never enabled and do not help on scanned inputs; the
+    dead code has been removed.
     """
 
     def __init__(self, use_gpu: bool = False, allow_fullpage_fallback: bool = False):
@@ -1294,20 +1145,12 @@ class TableService:
 
     def _init_engines(self):
         """Initialize all available table engines"""
-        # Primary: PP-Structure-Table
+        # Primary: PP-Structure-Table (only registered table engine).
+        # Camelot/Tabula fallback removed: they cannot process scanned/image
+        # inputs (the only inputs that reach this engine after born-digital
+        # PDFs are routed to docuvision-core TableProcessor upstream).
         pp_engine = PPStructureTableEngine(use_gpu=self._use_gpu, lazy_init=True)
         self.engines["ppstructure"] = pp_engine
-
-        # PaddleOCR-only version: Camelot and Tabula disabled
-        # Fallback: Camelot
-        # camelot_engine = CamelotTableEngine()
-        # if camelot_engine.is_ready():
-        #     self.engines["camelot"] = camelot_engine
-
-        # Alternative: Tabula
-        # tabula_engine = TabulaTableEngine()
-        # if tabula_engine.is_ready():
-        #     self.engines["tabula"] = tabula_engine
 
         logger.info(
             "Available table engines: {} | allow_fullpage_fallback={}",
@@ -1402,8 +1245,9 @@ class TableService:
 
         Args:
             file_path: Path to PDF or image file (used as fallback if layout_elements not provided)
-            engine: Specific engine to use (ppstructure, camelot, tabula)
-            fallback: Whether to try fallback engines on failure
+            engine: Specific engine to use; only ``ppstructure`` is registered
+                (born-digital PDFs are routed to docuvision-core upstream)
+            fallback: Kept for API compatibility; no-op with a single engine
             layout_elements: Optional list of layout elements from Layout Service (preferred method)
             ocr_text_blocks: Optional list of OCR text blocks for table reconstruction
             allow_fullpage_fallback: Override service-level fallback strategy

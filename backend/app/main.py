@@ -698,17 +698,14 @@ async def list_engines():
             "available": layout_service.get_available_engines(),
             "default": "ppstructure",
             "engines": {
-                "ppstructure": {"name": "PP-StructureV3", "is_primary": True},
-                "layoutparser": {"name": "LayoutParser", "is_primary": False}
+                "ppstructure": {"name": "PP-StructureV3", "is_primary": True}
             }
         },
         "table": {
             "available": table_service.get_available_engines(),
             "default": "ppstructure",
             "engines": {
-                "ppstructure": {"name": "PP-Structure-Table", "is_primary": True},
-                "camelot": {"name": "Camelot", "is_primary": False},
-                "tabula": {"name": "Tabula", "is_primary": False}
+                "ppstructure": {"name": "PP-Structure-Table", "is_primary": True}
             }
         },
         "seal": {

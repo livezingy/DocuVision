@@ -183,3 +183,28 @@ P1 = 影响 JD 硬指标（caption/header），但依赖官方 postprocessing �
 - F3 A 档：bbox 邻接阈值对 caption 在图侧边的不规则版面会漏绑 → 阈值可配置，且不阻塞主流程（caption 缺失不报错）。
 - F4：无线表多级表头模型层漏 span → 解析层无法补救，需人工复核，如实告知。
 - 整体：本地无 Paddle 栈，纯逻辑单测用 mock parsing_res_list，可能与真实 PP-StructureV3 输出结构有偏差 → Cloud 验证阶段用真实样本校准 mock。
+
+---
+
+## 附：layout 超时机制与多引擎清理（2026-09-03）
+
+不在 F1–F4 范围，但同属 `layout_service.py`，一并记录。
+
+### 背景
+- 三样本验证时 `03_paper_arxiv-mamba_multicolumn_glyph-tables.pdf`（36 页多栏论文）整本超时：`PPStructureSubprocessEngine._INFER_TIMEOUT=180s` 覆盖整个 PDF，累计推理 >180s → `All layout engines failed`。
+- "多引擎兜底"名不副实：`LayoutService.analyze` 声称 `ppstructure → layoutparser` fallback，但 `layoutparser` 从未实现/注册；`TableService` 声称 `camelot/tabula` fallback，但被注释禁用且对扫描件无效。真正在跑的互补多引擎是 `core_table_extractor`（pdfplumber+camelot，born-digital 路径），保留。
+
+### 改动
+1. **单页超时 + 跳过坏页**：`PPStructureSubprocessEngine.analyze` 对 PDF 改为主进程逐页光栅化 → 每页发 `analyze_image_layout` 命令给 worker → 单页超时（默认 120s，env `APP_LAYOUT_PAGE_TIMEOUT` 可配）→ 坏页记入 `failed_pages` 跳过，不阻断整本。结果新增 `failed_pages: List[int]` 字段。
+2. **A 层清理**：`LayoutService.analyze` 去掉 `layoutparser` fallback 循环，单引擎直连；`fallback` 参数保留为 no-op（调用方兼容）。
+3. **B 层清理**：删除 `CamelotTableEngine`/`TabulaTableEngine` 类与 `_init_engines` 注释；`TableService` 只注册 `ppstructure`。
+4. **API/UI 对齐**：`/api/v1/engines` 的 `layout.engines`/`table.engines` 只留 `ppstructure`；前端下拉去掉 `LayoutParser` 选项。
+
+### 官方依据
+- 无（工程改动，非 PaddleOCR API 适配）。
+
+### 风险/限制
+- 逐页队列通信开销略增（每页一次 put/get），相比推理时间可忽略。
+- 若所有页都超时，返回空 layout + 全 `failed_pages`，下游 table_step 得空 layout → 空表。属可接受降级（优于整本失败）。
+- 主进程承担光栅化（CPU 2× 渲染），主进程需有 PyMuPDF（已确认 `main.py` 等多处用 `fitz`）。
+- `failed_pages` 为新增结果字段，下游若做严格 schema 校验需知晓（envelope_builder 未强校验，向后兼容）。

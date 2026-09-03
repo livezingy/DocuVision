@@ -1314,8 +1314,7 @@ function initEngineSelectors() {
     if (layoutSelect) {
         layoutSelect.addEventListener('change', () => {
             const engineNames = {
-                'ppstructure': 'PP-StructureV2',
-                'layoutparser': 'LayoutParser'
+                'ppstructure': 'PP-StructureV3'
             };
             showNotification(`Layout engine changed to ${engineNames[layoutSelect.value]}`, 'info');
         });

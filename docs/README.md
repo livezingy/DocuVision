@@ -22,6 +22,8 @@ Read in this order when onboarding to the codebase:
 6. [architecture/batch-ui-roadmap.md](architecture/batch-ui-roadmap.md) — Batch UI roadmap
 7. [architecture/v1.5-roadmap.md](architecture/v1.5-roadmap.md) — post-v1.4 long-tail (searchable PDF, batch persistence)
 8. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
+9. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
+10. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
 
 ## Validation and QA
 

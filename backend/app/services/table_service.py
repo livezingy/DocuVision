@@ -987,6 +987,19 @@ class PPStructureTableEngine(BaseTableEngine):
         """
         Extract HTML table structure information including rowspan/colspan for frontend rendering.
         Only extracts from <table> tags, ignoring any other content.
+
+        F4: preserve multi-level header relationships.
+        - Rows inside <thead> are header rows (cells flagged is_header regardless
+          of <th> vs <td>, since PP-StructureV3/SLANeXt often writes headers as <td>).
+        - When <thead> is absent, apply a heuristic: the first up-to-3 rows where
+          >=50% of cells are empty or short (<=20 chars) are treated as header rows.
+        - Output ``header_rows`` (count) and ``header_span_map`` (per-header-cell
+          span tree) so downstream can reconstruct multi-level header hierarchy
+          instead of the flat ``data`` array which loses that structure.
+
+        Official basis: SLANeXt outputs HTML with native <thead>/<th rowspan>/
+        <th colspan> for multi-level headers
+        (https://paddlepaddle.github.io/PaddleOCR/main/en/version3.x/pipeline_usage/table_recognition_v2.html).
         """
         try:
             from bs4 import BeautifulSoup
@@ -998,18 +1011,70 @@ class PPStructureTableEngine(BaseTableEngine):
             if not table:
                 return {}
 
-            structure = {
+            structure: Dict[str, Any] = {
                 'rows': [],
-                'has_merged_cells': False
+                'has_merged_cells': False,
+                'header_rows': 0,
+                'header_span_map': [],
             }
 
             rows = table.find_all('tr')
+            if not rows:
+                return structure
+
+            # F4: determine header rows.
+            # 1) Explicit <thead>: every row inside thead is a header row.
+            thead = table.find('thead')
+            header_row_indices: set = set()
+            if thead is not None:
+                # A row is a header row if it is inside <thead>. Match by identity
+                # against the full row list to get the correct row index.
+                thead_rows = thead.find_all('tr')
+                thead_row_ids = {id(r) for r in thead_rows}
+                for r_idx, row in enumerate(rows):
+                    if id(row) in thead_row_ids:
+                        header_row_indices.add(r_idx)
+
+            # 2) Heuristic fallback when no <thead>: first up to 3 rows where
+            #    ALL cells are short text (<=20 chars, empty counts as short).
+            #    A body row typically has at least one long cell, so this stops
+            #    at the first body row. Catches PP-StructureV3 output that writes
+            #    headers as <td> without <thead>.
+            if not header_row_indices:
+                max_header_probe = 3
+                for r_idx, row in enumerate(rows):
+                    if r_idx >= max_header_probe:
+                        break
+                    cells = row.find_all(['td', 'th'])
+                    if not cells:
+                        continue
+                    all_short = True
+                    for cell in cells:
+                        cell_copy = BeautifulSoup(str(cell), 'html.parser')
+                        for nested_table in cell_copy.find_all('table'):
+                            nested_table.decompose()
+                        text = ' '.join(cell_copy.get_text(separator=' ', strip=True).split())
+                        if len(text) > 20:
+                            all_short = False
+                            break
+                    if all_short:
+                        header_row_indices.add(r_idx)
+                    else:
+                        # Stop at first non-header row: headers are leading rows.
+                        break
+
+            structure['header_rows'] = len(header_row_indices)
+
             for row_idx, row in enumerate(rows):
-                row_info = {
-                    'cells': []
+                row_info: Dict[str, Any] = {
+                    'cells': [],
+                    'is_header_row': row_idx in header_row_indices,
                 }
                 cells = row.find_all(['td', 'th'])
 
+                # Track the column cursor for header_span_map (account for
+                # colspan/rowspan of preceding cells in the same row).
+                col_cursor = 0
                 for cell in cells:
                     # Remove nested tables from cell content
                     cell_copy = BeautifulSoup(str(cell), 'html.parser')
@@ -1020,17 +1085,33 @@ class PPStructureTableEngine(BaseTableEngine):
                     # Normalize whitespace
                     cell_text = ' '.join(cell_text.split())
 
+                    rowspan = int(cell.get('rowspan', 1))
+                    colspan = int(cell.get('colspan', 1))
+                    is_header = (row_idx in header_row_indices) or (cell.name == 'th')
+
                     cell_info = {
                         'text': cell_text,
-                        'is_header': cell.name == 'th',
-                        'rowspan': int(cell.get('rowspan', 1)),
-                        'colspan': int(cell.get('colspan', 1))
+                        'is_header': is_header,
+                        'rowspan': rowspan,
+                        'colspan': colspan,
                     }
 
-                    if cell_info['rowspan'] > 1 or cell_info['colspan'] > 1:
+                    if rowspan > 1 or colspan > 1:
                         structure['has_merged_cells'] = True
 
+                    # F4: record header span tree for multi-level header
+                    # reconstruction downstream.
+                    if is_header and (rowspan > 1 or colspan > 1):
+                        structure['header_span_map'].append({
+                            'row': row_idx,
+                            'col': col_cursor,
+                            'rowspan': rowspan,
+                            'colspan': colspan,
+                            'text': cell_text,
+                        })
+
                     row_info['cells'].append(cell_info)
+                    col_cursor += colspan
 
                 # Only add row if it has cells
                 if row_info['cells']:

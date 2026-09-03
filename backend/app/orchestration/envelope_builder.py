@@ -192,6 +192,10 @@ class EnvelopeBuilder:
                     "processing_status": "succeeded",
                     "source": "pp_structure_v3",
                     "confidence": _as_confidence(elem.get("confidence")),
+                    # F1: carry official reading order (block_order) from layout
+                    # so the view layer can restore Enhanced XYCut order instead
+                    # of a naive counter. None when the engine did not assign one.
+                    "reading_order": elem.get("reading_order"),
                     "payload": {
                         "text": original_text,
                         "confidence": _as_confidence(elem.get("confidence")),
@@ -284,11 +288,20 @@ class EnvelopeBuilder:
                 # Map block type to view kind
                 kind = self._map_block_type_to_kind(block_type)
 
+                # F1: prefer official reading order (block_order) carried from
+                # layout; fall back to a per-page counter when absent.
+                block_reading_order = block.get("reading_order")
+                if block_reading_order is not None:
+                    view_reading_order = int(block_reading_order)
+                else:
+                    view_reading_order = reading_order_counter
+                    reading_order_counter += 1
+
                 view_element = {
                     "id": block.get("block_id"),
                     "kind": kind,
                     "polygon": polygon_view,
-                    "reading_order": reading_order_counter,
+                    "reading_order": view_reading_order,
                     "source": block.get("source", "pp_structure_v3"),
                     "processing_status": block.get("processing_status", "succeeded"),
                     "payload": block.get("payload", {}),

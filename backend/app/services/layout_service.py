@@ -18,19 +18,42 @@ import numpy as np
 class BaseLayoutEngine(ABC):
     """Abstract base class for Layout Analysis engines"""
 
-    # Layout element type mapping
+    # Layout element type mapping (F2: aligned to official PP-DocLayout-L 23
+    # categories, see docs/architecture/pp-structurev3-official-findings.md §2).
     LAYOUT_TYPES = {
         'text': 'Text',
-        'title': 'Title',
+        'paragraph_title': 'Paragraph Title',
+        'doc_title': 'Document Title',
+        'title': 'Title',  # legacy alias kept for backward compat
+        'abstract': 'Abstract',
+        'content': 'Content',
         'figure': 'Figure',
         'figure_caption': 'Figure Caption',
+        'figure_title': 'Figure Title',
+        'figure_table_chart_title': 'Figure/Table/Chart Title',
         'table': 'Table',
         'table_caption': 'Table Caption',
         'header': 'Header',
+        'header_image': 'Header Image',
         'footer': 'Footer',
+        'footer_image': 'Footer Image',
+        'footnote': 'Footnote',
+        'aside_text': 'Aside Text',
         'reference': 'Reference',
-        'equation': 'Equation',
-        'list': 'List'
+        'reference_content': 'Reference Content',
+        'algorithm': 'Algorithm',
+        'formula': 'Formula',
+        'equation': 'Equation',  # legacy alias kept for backward compat
+        'formula_number': 'Formula Number',
+        'inline_formula': 'Inline Formula',
+        'display_formula': 'Display Formula',
+        'chart': 'Chart',
+        'image': 'Image',
+        'picture': 'Picture',
+        'seal': 'Seal',
+        'number': 'Page Number',
+        'list': 'List',
+        'flowchart': 'Flowchart',
     }
 
     @abstractmethod
@@ -722,12 +745,21 @@ class PPStructureEngine(BaseLayoutEngine):
                     content = block.get('content', '')
                     block_text = block.get('text', '')
                     block_index = block.get('index', idx)
+                    # F1: prefer official `block_order` (Enhanced XYCut reading
+                    # order) over detection `index`. Falls back to idx when the
+                    # field is absent (older PaddleOCR versions).
+                    block_order = block.get('block_order', None)
                 else:
                     element_type = str(getattr(block, 'label', 'unknown')).lower()
                     bbox = getattr(block, 'bbox', [])
                     content = getattr(block, 'content', '')
                     block_text = getattr(block, 'text', '')
                     block_index = getattr(block, 'index', idx)
+                    block_order = getattr(block, 'order_index', None)
+                    if block_order is None:
+                        # dict-style fallback (LayoutParsingResultV2 exposes
+                        # both attribute and dict access depending on version)
+                        block_order = block.get('block_order', None) if isinstance(block, dict) else None
 
                 block_text_str = str(block_text or "")
                 content_str = str(content or "")
@@ -764,6 +796,9 @@ class PPStructureEngine(BaseLayoutEngine):
                     "bbox": bbox_dict,
                     "polygon_preprocessed": polygon_prep,
                     "confidence": float(_block_score) if _block_score is not None else 0.0,
+                    # F1: carry official reading order (block_order) downstream.
+                    # None when the engine did not assign one (e.g. image/figure_title).
+                    "reading_order": int(block_order) if block_order is not None else None,
                 }
 
                 if isinstance(content, str) and content.strip():
@@ -778,7 +813,15 @@ class PPStructureEngine(BaseLayoutEngine):
 
                 elements.append(element)
 
-            elements.sort(key=lambda e: (e['bbox']['y'], e['bbox']['x']))
+            # F1: sort by official reading order (block_order) when present,
+            # falling back to (y, x) bbox order. See _layout_order.py + findings §1.
+            from app.services._layout_order import sort_elements_by_reading_order, has_reading_order
+            if has_reading_order(elements):
+                elements = sort_elements_by_reading_order(elements)
+                logger.info(f"Page {page_num}: sorted {len(elements)} elements by reading_order (block_order)")
+            else:
+                elements.sort(key=lambda e: (e['bbox']['y'], e['bbox']['x']))
+                logger.info(f"Page {page_num}: sorted {len(elements)} elements by (y, x) fallback (no block_order)")
             elements = self._deduplicate_elements(elements)
             logger.info(
                 f"Page {page_num}: Parsed {len(elements)} elements from parsing_res_list "

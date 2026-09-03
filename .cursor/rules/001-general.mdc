@@ -54,4 +54,5 @@ alwaysApply: true
 - 004-project（always）：项目目标、事实、工作流、目录卫生、文档同步
 - 005-code-language（always）：代码语言编码（语言权威）
 - 006-cloud-testing（按需）：Cloud 验证速查
+- 007-official-source-first（always）：官方依据优先（改代码/选 API 先查官方文档源码）
 - SKILLS.md：投标/试用/定制操作流程

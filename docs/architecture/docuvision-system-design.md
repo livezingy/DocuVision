@@ -445,8 +445,9 @@ fused 层各 block 的 `processing_status` 字段：
 
 1. **坐标变换**（唯一允许发生坐标转换的地方）：`USE_DOC_UNWARPING=False` 时调用 `apply_inverse_rotation()`，将所有 block 的 `polygon_preprocessed` 一次性转换为 original 坐标
 2. **字段重命名**：`block_id`→`id`、`type`→`kind`、`polygon_preprocessed`→`polygon`、`width_preprocessed`→`width`
-3. **丢弃调试信息**：`provenance`、`crop_offset`、`bbox_preprocessed` 不写入 view
-4. **文档级聚合**：从 `pages[].elements` 聚合出 `tables[]`、`paragraphs[]`、`figures[]` 等跨页数组
+3. **阅读顺序赋值**（F1）：优先用 fused block 携带的 `reading_order`（来自 PP-StructureV3 `block_order`，Enhanced XYCut），缺失时回退到 per-page 递增计数器。多栏文档不再被朴素 `(y,x)` 排序错排
+4. **丢弃调试信息**：`provenance`、`crop_offset`、`bbox_preprocessed` 不写入 view
+5. **文档级聚合**：从 `pages[].elements` 聚合出 `tables[]`、`paragraphs[]`、`figures[]` 等跨页数组
 
 **严禁在 fusion.py 或引擎适配层中做坐标变换**；fused 层的 `_preprocessed` 后缀字段名是对这一约束的显式提醒。
 
@@ -458,8 +459,9 @@ fused 层各 block 的 `processing_status` 字段：
 
 **fused 层：**
 - `bbox_preprocessed` 字段是 `[x_min, y_min, x_max, y_max]` 轴对齐矩形；`polygon_preprocessed` 是四点多边形，两者均来自 PP-StructureV3，**在任何配置下都不做逆变换**
+- `reading_order` 字段（F1 新增）携带 PP-StructureV3 `parsing_res_list` 的 `block_order`（Enhanced XYCut 阅读顺序）；引擎未分配时为 `None`，view 层回退到计数器。依据 [PP-StructureV3 文档](https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/pipeline_usage/PP-StructureV3.en.md)（list order is the reading order）
 - `provenance` 字段当前为**全 block 结构化记录**（包含 `primary_source`、`merge_strategy`、`status`、`block_type` 等），用于审计每个 block 的处理路径
-- 新增引擎类型时，只扩展 `payload` schema，`block_id`/`type`/`bbox_preprocessed`/`polygon_preprocessed`/`processing_status`/`source`/`confidence`/`provenance` 八个公共字段**不允许改动**
+- 新增引擎类型时，只扩展 `payload` schema，`block_id`/`type`/`bbox_preprocessed`/`polygon_preprocessed`/`processing_status`/`source`/`confidence`/`provenance` 八个公共字段**不允许改动**（`reading_order` 为可选携带字段，不破坏该约束）
 
 **view 层：**
 - `pages[].width` / `pages[].height` 的含义随 `coordinate_space` 变化：`"original"` 时为原图尺寸，`"preprocessed"` 时为预处理图尺寸；前端在渲染时需以此为归一化基准
@@ -787,6 +789,8 @@ BLOCK_ENGINE_MAP = {
 }
 ```
 
+> **LAYOUT_TYPES 对齐说明（F2）**：`layout_service.LAYOUT_TYPES` 已对齐官方 PP-DocLayout-L 23 类（[模型卡](https://huggingface.co/PaddlePaddle/PP-DocLayout-L)），补全 `footnote`/`abstract`/`algorithm`/`formula_number`/`aside_text`/`chart`/`seal` 等，拆分 `title`→`paragraph_title`+`doc_title`。原 `type` 字段保留 PP-StructureV3 原始 label（不泛化），`type_name` 给人类可读名。详见 [pp-structurev3-official-findings.md](pp-structurev3-official-findings.md) §2。
+
 ### 8.2 各类型扩展后的 payload 示例
 
 **formula：**
@@ -847,7 +851,7 @@ BLOCK_ENGINE_MAP = {
 
 - 前端默认只读 **view 层**，不直接消费 fused 或 raw
 - 文本渲染：`view.pages[].elements[kind=text/title/paragraph].payload.text`
-- 表格渲染：`view.pages[].elements[kind=table].payload.html` 或 `cells`
+- 表格渲染：`view.pages[].elements[kind=table].payload.html` 或 `cells`；多级表头关系见 `tables[*].html_structure`（F4 新增 `header_rows` 表头行数 + `header_span_map` 多级表头 span 树 + `is_header` 对 `<thead>` 内 `<td>` 也为 true，依据 [Table Recognition v2](https://paddlepaddle.github.io/PaddleOCR/main/en/version3.x/pipeline_usage/table_recognition_v2.html)）
 - 坐标渲染：`view.pages[].elements[].polygon`（坐标空间由 `preprocessing.coordinate_space` 决定；叠加到对应展示图像上，逻辑与坐标空间无关）
 - 字段渲染：**以 `view.fields` 为规范数据源**（文档级 KIE）；任务轮询结果中若存在 **`result.kie_fields`**，与 `view.fields` 同源，前端实现可 **优先取 `kie_fields` 再回退 `view.fields`**（与当前 `frontend/app.js` 中 `pickKieFieldsMap` 一致）
 - 展示元信息：可使用 `result.kie_meta`（如平均置信度、明细行数）

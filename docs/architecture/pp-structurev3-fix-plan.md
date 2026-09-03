@@ -10,7 +10,7 @@
 |----|--------|----------|--------|----------|-----------|------|
 | F1 | parsing_res_list 阅读顺序未用 `block_order` | findings §1 | P0 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
 | F2 | LAYOUT_TYPES 漏 12 类，footnote 缺失 | findings §2 | P0 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
-| F3 | figure_caption 与 figure 未关联 | findings §3 | P1 | ✅ 纯逻辑 | 推理验证 | ⏳ 待实施 |
+| F3 | figure_caption 与 figure 未关联 | findings §3 | P1 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
 | F4 | 表头关系层级丢失 | findings §4 | P1 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
 
 P0 = 影响 JD 硬指标（阅读顺序/footnote），且改的是纯解析逻辑，本机可测。

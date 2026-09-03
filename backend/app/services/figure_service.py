@@ -45,6 +45,24 @@ FIGURE_LABELS: frozenset = frozenset(
     }
 )
 
+# Layout labels treated as captions that can be bound to nearby
+# figure/table regions. Mirrors PP-DocLayout-L categories (F2) and
+# envelope_builder _TEXT_BLOCK_LABELS caption subset.
+CAPTION_LABELS: frozenset = frozenset(
+    {
+        "figure_caption",
+        "figure_title",
+        "figure_table_chart_title",
+    }
+)
+
+TABLE_CAPTION_LABELS: frozenset = frozenset(
+    {
+        "table_caption",
+        "figure_table_chart_title",
+    }
+)
+
 # Minimum crop size (px). Smaller boxes are almost always noise.
 MIN_CROP_PX = 8
 
@@ -55,6 +73,16 @@ def _figure_elements(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     for elem in elements or []:
         etype = str(elem.get("type") or "").lower().strip()
         if etype in FIGURE_LABELS:
+            out.append(elem)
+    return out
+
+
+def _caption_elements(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Select layout elements whose type maps to a figure caption."""
+    out: List[Dict[str, Any]] = []
+    for elem in elements or []:
+        etype = str(elem.get("type") or "").lower().strip()
+        if etype in CAPTION_LABELS:
             out.append(elem)
     return out
 
@@ -112,6 +140,70 @@ def _containment_ratio(a: Tuple[float, float, float, float], b: Tuple[float, flo
     inter = ix * iy
     area_b = max(0.0, (b[2] - b[0]) * (b[3] - b[1]))
     return inter / area_b if area_b > 0 else 0.0
+
+
+def _v_gap(a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]) -> float:
+    """Absolute vertical gap between two boxes (0 if overlapping, positive if apart)."""
+    return max(0.0, max(a[1], b[1]) - min(a[3], b[3]))
+
+
+def _bind_captions(
+    figures: List[Dict[str, Any]],
+    all_elements: List[Dict[str, Any]],
+    *,
+    h_overlap_min: float = 0.5,
+    v_gap_max_ratio: float = 0.5,
+) -> None:
+    """Bind caption elements to nearby figure/table regions in-place.
+
+    Simplified reimplementation of PaddleX ``update_vision_child_blocks``
+    (PaddleOCR 3.0 Report §3). For each figure, find the nearest caption
+    element on the same page that satisfies:
+    - horizontal overlap >= ``h_overlap_min`` (caption horizontally
+      overlaps the figure region)
+    - vertical gap < ``v_gap_max_ratio`` * max(figure_height, caption_height)
+      (caption is close to the figure, above or below)
+
+    The caption text and id are written to the figure dict as
+    ``caption`` and ``caption_id``.
+
+    A caption is consumed by the first figure that binds it; subsequent
+    figures will not reuse it (one-to-one binding).
+    """
+    captions = _caption_elements(all_elements)
+    if not captions or not figures:
+        return
+
+    consumed: set = set()
+    for fig in figures:
+        fig_page = int(fig.get("page", 1) or 1)
+        fig_box = _bbox_tuple(fig)
+        fig_h = fig_box[3] - fig_box[1]
+        best_caption = None
+        best_gap = float("inf")
+
+        for cap in captions:
+            cap_id = cap.get("id")
+            if cap_id in consumed:
+                continue
+            if int(cap.get("page", 1) or 1) != fig_page:
+                continue
+            cap_box = _bbox_tuple(cap)
+            if _h_overlap_ratio(fig_box, cap_box) < h_overlap_min:
+                continue
+            gap = _v_gap(fig_box, cap_box)
+            cap_h = cap_box[3] - cap_box[1]
+            threshold = v_gap_max_ratio * max(fig_h, cap_h) if max(fig_h, cap_h) > 0 else 50.0
+            if gap > threshold:
+                continue
+            if gap < best_gap:
+                best_gap = gap
+                best_caption = cap
+
+        if best_caption is not None:
+            consumed.add(best_caption.get("id"))
+            fig["caption"] = best_caption.get("text") or ""
+            fig["caption_id"] = best_caption.get("id")
 
 
 def detect_split_warnings(
@@ -235,6 +327,10 @@ class FigureService:
             if not figures:
                 return result
 
+            # F3: bind caption elements to figures before cropping so the
+            # result carries caption text alongside each figure crop.
+            _bind_captions(figures, elements)
+
             os.makedirs(output_dir, exist_ok=True)
 
             ext = os.path.splitext(file_path)[1].lower()
@@ -275,6 +371,9 @@ class FigureService:
                             "width_px": crop.width,
                             "height_px": crop.height,
                             "crop_path": crop_path,
+                            # F3: caption bound by _bind_captions (may be absent).
+                            "caption": elem.get("caption") or "",
+                            "caption_id": elem.get("caption_id") or "",
                             # Served by GET /api/v1/tasks/{task_id}/figures/{figure_id}
                             # (route accepts the bare element id; .png is
                             # appended server-side and dots are rejected by

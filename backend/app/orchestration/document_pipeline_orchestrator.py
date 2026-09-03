@@ -187,6 +187,8 @@ async def figure_step(ctx: PipelineContext) -> None:
                     "bbox": item.get("bbox"),
                     "width_px": item.get("width_px"),
                     "height_px": item.get("height_px"),
+                    "caption": item.get("caption") or "",
+                    "caption_id": item.get("caption_id") or "",
                     "crop_url": item.get("crop_url"),
                 }
                 for item in figures_result.get("figures", [])

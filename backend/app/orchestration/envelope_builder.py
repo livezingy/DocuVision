@@ -578,10 +578,10 @@ class EnvelopeBuilder:
             return "table"
         elif t in {
             "figure", "image", "chart", "picture",
-            "figure_table_chart",
+            "figure_table_chart", "flowchart",
         }:
             return "figure"
-        elif t in {"formula", "inline_formula", "equation", "formula_body"}:
+        elif t in {"formula", "inline_formula", "equation", "formula_body", "display_formula"}:
             return "formula"
         elif t in {"seal", "stamp"}:
             return "seal"

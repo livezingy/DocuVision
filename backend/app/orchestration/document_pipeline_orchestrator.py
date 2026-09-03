@@ -176,6 +176,7 @@ async def figure_step(ctx: PipelineContext) -> None:
         public = {
             "figure_count": figures_result.get("figure_count", 0),
             "cropped_count": figures_result.get("cropped_count", 0),
+            "merged_count": figures_result.get("merged_count", 0),
             "warnings": figures_result.get("warnings", []),
             "errors": figures_result.get("errors", []),
             "items": [
@@ -190,6 +191,10 @@ async def figure_step(ctx: PipelineContext) -> None:
                     "caption": item.get("caption") or "",
                     "caption_id": item.get("caption_id") or "",
                     "crop_url": item.get("crop_url"),
+                    # Merged-crop fields (absent for normal figure crops).
+                    "is_merged": item.get("is_merged", False),
+                    "merged_from": item.get("merged_from") or [],
+                    "split_kind": item.get("split_kind") or "",
                 }
                 for item in figures_result.get("figures", [])
             ],

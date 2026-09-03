@@ -16,6 +16,7 @@ import pytest
 from app.services.figure_service import (
     FIGURE_LABELS,
     FigureService,
+    _detect_bbox_space_mismatch,
     detect_split_warnings,
 )
 
@@ -208,6 +209,213 @@ class TestIntegrityWarnings:
         assert split["merged_bbox"]["x"] == 100
         assert split["merged_bbox"]["width"] == 400
         assert split["merged_bbox"]["height"] == 515
+
+
+class TestBboxSpaceMismatch:
+    """Coordinate-space self-check: flag bboxes that exceed the raster."""
+
+    def _fig(self, fid, page, x, y, w, h, etype="figure"):
+        return {
+            "id": fid,
+            "page": page,
+            "type": etype,
+            "bbox": {"x": x, "y": y, "width": w, "height": h},
+        }
+
+    def _pages(self, page_no, w, h):
+        # pages dict maps page_no -> (img_sentinel, width, height)
+        return {page_no: (None, w, h)}
+
+    def test_in_bounds_no_warning(self):
+        figs = [self._fig("p1_e1", 1, 100, 100, 500, 400)]  # max x=600, y=500
+        pages = self._pages(1, 1191, 1684)
+        assert _detect_bbox_space_mismatch(figs, pages) == []
+
+    def test_over_width_warns(self):
+        # bbox max x = 1300 > raster width 1191 (tolerance 3)
+        figs = [self._fig("p1_e1", 1, 100, 100, 1200, 400)]
+        pages = self._pages(1, 1191, 1684)
+        warnings = _detect_bbox_space_mismatch(figs, pages)
+        assert len(warnings) == 1
+        w = warnings[0]
+        assert w["kind"] == "bbox_space_mismatch"
+        assert w["page"] == 1
+        assert w["id"] == "p1_e1"
+        assert w["over_w"] is True
+        assert w["over_h"] is False
+        assert w["raster"] == {"width": 1191, "height": 1684}
+
+    def test_over_height_warns(self):
+        # bbox max y = 1800 > raster height 1684
+        figs = [self._fig("p1_e2", 1, 100, 100, 400, 1700)]
+        pages = self._pages(1, 1191, 1684)
+        warnings = _detect_bbox_space_mismatch(figs, pages)
+        assert len(warnings) == 1
+        assert warnings[0]["over_h"] is True
+        assert warnings[0]["over_w"] is False
+
+    def test_swapped_dims_flagged(self):
+        # Rotated-space signature: over width but height fits -> swapped
+        figs = [self._fig("p1_e3", 1, 100, 100, 1600, 1000)]  # max x=1700>1191, y=1100<1684
+        pages = self._pages(1, 1191, 1684)
+        warnings = _detect_bbox_space_mismatch(figs, pages)
+        assert len(warnings) == 1
+        assert warnings[0]["swapped_dims"] is True
+
+    def test_missing_page_skipped(self):
+        # page not in pages dict -> no warning (reported as error elsewhere)
+        figs = [self._fig("p9_e1", 9, 100, 100, 500, 400)]
+        pages = self._pages(1, 1191, 1684)
+        assert _detect_bbox_space_mismatch(figs, pages) == []
+
+    def test_tolerance_allows_small_overflow(self):
+        # 2px overflow within 3px tolerance -> no warning
+        figs = [self._fig("p1_e1", 1, 100, 100, 1090, 400)]  # max x=1190, raster 1191
+        pages = self._pages(1, 1191, 1684)
+        assert _detect_bbox_space_mismatch(figs, pages) == []
+
+
+class TestNoSilentPageFallback:
+    """crop_figures must NOT fall back to page 1 when page_no is missing.
+
+    Previously `source = pages.get(page_no) or pages.get(1)` silently cropped
+    every page-mismatched figure from page 1's raster, producing many
+    identical crops. Now a missing page surfaces as a per-figure error.
+    """
+
+    def test_missing_page_records_error_not_page1_crop(self, sample_pdf, tmp_path):
+        layout = {
+            "elements": [
+                _fig_elem("p9_e1", 9, 200, 400, 560, 400),  # page 9 not rendered
+            ]
+        }
+        out_dir = str(tmp_path / "figures")
+        res = FigureService().crop_figures(
+            file_path=sample_pdf,
+            layout_result=layout,
+            output_dir=out_dir,
+            task_id="t1",
+        )
+        # No crop produced for the missing-page figure
+        assert res["cropped_count"] == 0
+        assert res["figure_count"] == 1
+        # An error must be recorded mentioning page 9 and rendered pages
+        assert res["errors"], "expected a per-figure error for missing page"
+        err = res["errors"][0]
+        assert "page 9" in err["reason"]
+        assert "rendered pages" in err["reason"]
+        # And a bbox_space_mismatch warning is NOT raised for it (page absent)
+        assert not any(w["kind"] == "bbox_space_mismatch" for w in res["warnings"])
+
+
+class TestMergedCrop:
+    """F-merge: crop_figures consumes split warnings and emits a merged crop."""
+
+    def test_vertical_split_produces_merged_crop(self, sample_pdf, tmp_path):
+        # Two stacked figure halves that detect_split_warnings flags as a
+        # vertical split (same x-extent, small gap). crop_figures must emit a
+        # third "merged_figure" item covering the union bbox.
+        layout = {
+            "elements": [
+                _fig_elem("a", 1, 200, 200, 400, 300),
+                _fig_elem("b", 1, 200, 515, 400, 300),
+            ]
+        }
+        out_dir = str(tmp_path / "figures")
+        result = FigureService().crop_figures(
+            file_path=sample_pdf, layout_result=layout, output_dir=out_dir, task_id="tm1"
+        )
+        # Two original halves + one merged crop.
+        assert result["figure_count"] == 2
+        assert result["cropped_count"] == 2
+        assert result.get("merged_count") == 1
+        merged = [f for f in result["figures"] if f.get("is_merged")]
+        assert len(merged) == 1
+        m = merged[0]
+        assert m["type"] == "merged_figure"
+        assert set(m["merged_from"]) == {"a", "b"}
+        assert m["split_kind"] == "possible_vertical_split"
+        # Merged bbox is the union: x=200, y=200, w=400, h=615 (300+gap15+300).
+        assert m["bbox"]["x"] == 200
+        assert m["bbox"]["width"] == 400
+        assert m["bbox"]["height"] == 615
+        assert os.path.isfile(m["crop_path"])
+        assert m["crop_url"] == "/api/v1/tasks/tm1/figures/merged_a_b"
+
+    def test_original_halves_kept_as_fallback(self, sample_pdf, tmp_path):
+        layout = {
+            "elements": [
+                _fig_elem("a", 1, 200, 200, 400, 300),
+                _fig_elem("b", 1, 200, 515, 400, 300),
+            ]
+        }
+        result = FigureService().crop_figures(
+            file_path=sample_pdf, layout_result=layout,
+            output_dir=str(tmp_path / "f"), task_id="tm2",
+        )
+        # Both original halves remain in the figures list (fallback).
+        ids = [f["id"] for f in result["figures"]]
+        assert "a" in ids and "b" in ids
+        assert "merged_a_b" in ids
+
+    def test_nested_regions_not_merged(self, sample_pdf, tmp_path):
+        # A caption/inner box fully inside a figure is nested_regions, NOT a
+        # split — must not produce a merged crop.
+        layout = {
+            "elements": [
+                _fig_elem("outer", 1, 200, 200, 400, 400),
+                _fig_elem("inner", 1, 250, 250, 100, 100),
+            ]
+        }
+        result = FigureService().crop_figures(
+            file_path=sample_pdf, layout_result=layout,
+            output_dir=str(tmp_path / "f"), task_id="tm3",
+        )
+        assert result.get("merged_count", 0) == 0
+        assert not any(f.get("is_merged") for f in result["figures"])
+
+    def test_far_apart_no_merge(self, sample_pdf, tmp_path):
+        layout = {
+            "elements": [
+                _fig_elem("a", 1, 100, 100, 200, 100),
+                _fig_elem("b", 1, 100, 1200, 200, 100),
+            ]
+        }
+        result = FigureService().crop_figures(
+            file_path=sample_pdf, layout_result=layout,
+            output_dir=str(tmp_path / "f"), task_id="tm4",
+        )
+        assert result.get("merged_count", 0) == 0
+
+    def test_merged_crop_in_pipeline_step(self, sample_pdf, tmp_path, monkeypatch):
+        import asyncio
+
+        from app.core.config import settings as _settings
+        from app.orchestration.document_pipeline_orchestrator import figure_step
+
+        monkeypatch.setattr(_settings, "OUTPUT_DIR", str(tmp_path))
+        layout = {
+            "elements": [
+                _fig_elem("a", 1, 200, 200, 400, 300),
+                _fig_elem("b", 1, 200, 515, 400, 300),
+            ]
+        }
+        ctx = {
+            "orchestrator": _StubOrchestrator(),
+            "task_id": "stepTm",
+            "task": {"file_path": sample_pdf},
+            "file_path": sample_pdf,
+            "result": {"layout": layout, "document_info": {}},
+            "options": {},
+        }
+        asyncio.run(figure_step(ctx))
+        figures = ctx["result"]["figures"]
+        assert figures["merged_count"] == 1
+        merged_items = [i for i in figures["items"] if i["is_merged"]]
+        assert len(merged_items) == 1
+        assert set(merged_items[0]["merged_from"]) == {"a", "b"}
+        # Disk paths must not leak into the API-facing dict.
+        assert "crop_path" not in merged_items[0]
 
 
 # ---------------------------------------------------------------------------

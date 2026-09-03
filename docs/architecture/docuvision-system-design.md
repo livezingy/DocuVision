@@ -790,6 +790,8 @@ BLOCK_ENGINE_MAP = {
 ```
 
 > **LAYOUT_TYPES 对齐说明（F2）**：`layout_service.LAYOUT_TYPES` 已对齐官方 PP-DocLayout-L 23 类（[模型卡](https://huggingface.co/PaddlePaddle/PP-DocLayout-L)），补全 `footnote`/`abstract`/`algorithm`/`formula_number`/`aside_text`/`chart`/`seal` 等，拆分 `title`→`paragraph_title`+`doc_title`。原 `type` 字段保留 PP-StructureV3 原始 label（不泛化），`type_name` 给人类可读名。详见 [pp-structurev3-official-findings.md](pp-structurev3-official-findings.md) §2。
+>
+> **`_map_block_type_to_kind` 对齐说明（F2-edge）**：`envelope_builder._map_block_type_to_kind` 已显式覆盖 `LAYOUT_TYPES` 全部 label，含遗留/别名 `flowchart`→`figure`、`display_formula`→`formula`、`figure_title`→`figure_title`。此前 `flowchart`/`display_formula` 走 else 透传返回原 label，导致不进 `view.figures[]`/`view.formulas[]` 跨页聚合（且 `flowchart` 与 `figure_service.FIGURE_LABELS` 不一致）。现已显式纳入分支，`footnote`→`footer` 不泛化为 paragraph。本机单测 48/48 绿（`test_envelope_builder.py::TestMapBlockTypeToKindEdgeLabels`）。
 
 ### 8.2 各类型扩展后的 payload 示例
 
@@ -851,7 +853,11 @@ BLOCK_ENGINE_MAP = {
 
 - 前端默认只读 **view 层**，不直接消费 fused 或 raw
 - 文本渲染：`view.pages[].elements[kind=text/title/paragraph].payload.text`
-- 表格渲染：`view.pages[].elements[kind=table].payload.html` 或 `cells`；多级表头关系见 `tables[*].html_structure`（F4 新增 `header_rows` 表头行数 + `header_span_map` 多级表头 span 树 + `is_header` 对 `<thead>` 内 `<td>` 也为 true，依据 [Table Recognition v2](https://paddlepaddle.github.io/PaddleOCR/main/en/version3.x/pipeline_usage/table_recognition_v2.html)）
+- 表格渲染（**权威：`html_structure`**）：前端 `renderTableCard`（`frontend/app.js`）按三档优先级渲染：
+  1. **`tables[*].html_structure`（权威）** — 含 `rows[].cells[].{text,is_header,rowspan,colspan}`，逐格输出 `<th>/<td>` + rowspan/colspan 属性，thead/tbody 按 `is_header` 自动切换。F4 新增 `header_rows`（表头行数）+ `header_span_map`（多级表头 span 树）+ `is_header` 对 `<thead>` 内 `<td>` 也为 true。依据 [Table Recognition v2](https://paddlepaddle.github.io/PaddleOCR/main/en/version3.x/pipeline_usage/table_recognition_v2.html)
+  2. `tables[*].html`（回退） — DOMParser 解析、清理嵌套 table
+  3. `tables[*].data`（最后回退） — 二维数组，带列数/一致性校验
+- **表格导出（CSV/Excel）以 `data` 为源**：后端 `TableService.to_csv/to_excel` 与 Batch `/batch/{id}/export.csv` 均消费 `table['data']`（展平二维数组，合并格为空占位）。前端单表 "Export CSV" 按钮（`app.js` `renderTableCard`）当前为占位 no-op（`convertToCSV` 已定义未接线），单表导出走后端路径。`data` 不参与渲染权威，仅作导出与渲染末位回退
 - 坐标渲染：`view.pages[].elements[].polygon`（坐标空间由 `preprocessing.coordinate_space` 决定；叠加到对应展示图像上，逻辑与坐标空间无关）
 - 字段渲染：**以 `view.fields` 为规范数据源**（文档级 KIE）；任务轮询结果中若存在 **`result.kie_fields`**，与 `view.fields` 同源，前端实现可 **优先取 `kie_fields` 再回退 `view.fields`**（与当前 `frontend/app.js` 中 `pickKieFieldsMap` 一致）
 - 展示元信息：可使用 `result.kie_meta`（如平均置信度、明细行数）
@@ -1089,6 +1095,6 @@ GET /api/v1/jobs/{job_id}/debug
 | 调试模式 | 服务级开关（`DEBUG_MODE` 环境变量），开启后自动写 `backend/debug/{job_id}/`，不混入 API 响应 |
 | 兜底 | 文本 block 无 `content` 时写入空字符串，不中断流水线 |
 | 试用鉴权 | `DOCUVISION_TRIAL_API_KEY` 非空时全 `/api/v1/*` 鉴权（HTTP `X-API-Key`、WS `?key=`；`/health` `/docs` 开放）；CORS 由 `DOCUVISION_CORS_ORIGINS` 白名单化（`feat/glm-trial`） |
-| 图形导出 | `figure_step`（layout 后）裁剪 figure/chart 区域：PDF 按 2x 栅格、图像按预处理空间；`result.figures`/`envelope.figures` + `quality.figure_*`；几何切分/嵌套告警 `warnings[]`；`enable_figure_export` 可关（`feat/glm-trial`） |
+| 图形导出 | `figure_step`（layout 后）裁剪 figure/chart 区域：PDF 按 2x 栅格、图像按预处理空间；`result.figures`/`envelope.figures` + `quality.figure_*`；几何切分/嵌套告警 `warnings[]`；**F5：切分告警消费 `merged_bbox` 重裁合并图**（`is_merged=true`+`merged_from`，保留原半图作 fallback，`nested_regions` 不合并）；`enable_figure_export` 可关（`feat/glm-trial`） |
 | GT 对比 | `POST /api/v1/trial/gt-diff/{task_id}` 字段/单元格级 diff（match/missing/wrong），HTML 报告 `GET .../report`；CLI `python -m app.services.trial.gt_diff`（`feat/glm-trial`） |
 | 扩展方式 | block 引擎注册表 + payload 多态 + 开关预留 |

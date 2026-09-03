@@ -1,6 +1,6 @@
 # PP-StructureV3 修复规划
 
-> **Status**: in-progress — F1/F2/F4 已实施（2026-09-03，本机纯逻辑单测 18/18 绿，待 Cloud 验证）；F3 待实施。基于 [pp-structurev3-official-findings.md](pp-structurev3-official-findings.md) 的官方依据。
+> **Status**: in-progress — F1/F2/F3/F4 已实施 + F5（figure 合并裁剪）已实施（2026-09-03，本机纯逻辑单测 23/23 绿，待 Cloud 验证）。基于 [pp-structurev3-official-findings.md](pp-structurev3-official-findings.md) 的官方依据。
 > **权威**: 实施时以代码为准；本规划用于拆解任务、定优先级、给可验证目标。
 > **前置约束**: 本地未装 Paddle 栈（见 `004-project.mdc`），所有涉及 `import paddle`/`import paddlex`/推理的验证在 Cloud Studio GPU 跑；本地可跑纯逻辑单测与契约 mock。
 
@@ -12,6 +12,7 @@
 | F2 | LAYOUT_TYPES 漏 12 类，footnote 缺失 | findings §2 | P0 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
 | F3 | figure_caption 与 figure 未关联 | findings §3 | P1 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
 | F4 | 表头关系层级丢失 | findings §4 | P1 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
+| F5 | figure 切分只告警不合并裁剪 | JD 硬指标 | P0 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
 
 P0 = 影响 JD 硬指标（阅读顺序/footnote），且改的是纯解析逻辑，本机可测。
 P1 = 影响 JD 硬指标（caption/header），但依赖官方 postprocessing 或需谨慎改 HTML 解析。
@@ -210,3 +211,25 @@ P1 = 影响 JD 硬指标（caption/header），但依赖官方 postprocessing �
 - `failed_pages` 为新增结果字段，下游若做严格 schema 校验需知晓（envelope_builder 未强校验，向后兼容）。
 - **系统性 worker 故障会伪装成「全部坏页跳过」**：Cloud 验证 03 时 `status=completed` 但 `failed_pages=[1..36]`、`elements=0`。根因是 worker 对同步方法 `_analyze_image_layout_only` 调用 `asyncio.run`，且模块级未 `import asyncio`，每页立刻 `NameError`（[asyncio.run 官方要求 coroutine](https://docs.python.org/3.11/library/asyncio-runner.html#asyncio.run)）。已改为 `_invoke_worker_command`（`inspect.iscoroutinefunction` 分发）；`total_pages` 改为 PDF 页数（不再用成功页数，避免全失败时显示 0）；结果增加 `failed_page_errors` 便于下次不翻日志也能看失败原因。
 - **predict kwargs 触发 PaddleX #17446**：修完 asyncio 后 36 页仍全失败，错误变为 `IndexError: too many indices for array: array is 1-dimensional`。Cloud 诊断脚本（A/B/C/D 四组对比）确认：直接 `pipeline.predict(img_path)` 不带 kwargs → 全部 GPU 路径成功；`_call_engine` 带 `use_doc_orientation_classify=False` predict kwargs → 触发空检测 → 1D boxes → NMS 崩溃（[issue #17446](https://github.com/PaddlePaddle/PaddleOCR/issues/17446)，paddleocr 3.3.2 未修，PR #17685 关闭未合并）。第一次 predict 崩溃还污染 pipeline 内部状态，导致 retry 不带 kwargs 也失败。修复：`_call_engine` 不再传 predict kwargs，`use_doc_unwarping=False` 已在 init_params 设定。
+
+---
+
+## F5 — figure 切分合并裁剪（JD 硬指标）
+
+### 现状
+- `figure_service.detect_split_warnings` 已产出 `merged_bbox`（垂直/水平切分的并集框），但 `crop_figures` **未消费** —— 客户拿到的仍是两张半图。JD 明确要求 "must not be cropped in the middle or divided incorrectly"。
+
+### 修复
+- `crop_figures` 裁完各 figure 后，对 `possible_vertical_split` / `possible_horizontal_split` 用 `merged_bbox` 重裁一张合并图，追加到 `result["figures"]`，标 `is_merged=true` + `merged_from=[id_a,id_b]` + `split_kind`。
+- `nested_regions`（caption 在 figure 内）**不合并** —— 那是嵌套非切分。
+- **保留原两张半图作 fallback** —— 避免误合并（两个独立小图恰好上下紧邻）时丢失原图。
+- 新增 `result["merged_count"]` 字段；orchestrator `figure_step` item 投影补 `is_merged`/`merged_from`/`split_kind` 到达 API。
+
+### 验证
+- **本机纯逻辑单测**（`test_figure_service.py::TestMergedCrop`，5 项）：垂直切分产合并图、原半图保留、nested 不合并、远距离不合并、pipeline step 投影含 merged 字段。本机 23/23 绿。
+- **Cloud 推理验证**：`02_datasheet_ti-lm358`（schematic）+ `03_paper_arxiv-mamba`（含图）。期望：被检测为切分的 figure 在 `result.figures.items` 中出现 `is_merged=true` 项，`crop_url` 可下载完整图。
+
+### 风险/限制
+- 误合并：两个独立图恰好上下紧邻（同列、小 gap）会被合并成一张。缓解：保留原半图 fallback，前端可按 `merged_from` 回退；后续可加"合并后宽高比异常"过滤。
+- 跨页切分：`merged_bbox` 跨页无意义，当前按同页 `page_no` 取 raster，跨页块不会触发合并（`detect_split_warnings` 按 `by_page` 分组，跨页不配对）。
+- `merged_a_b.png` 文件名含下划线，figure 路由 traversal guard 拒点号不拒下划线，已确认可访问。

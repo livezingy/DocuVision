@@ -288,6 +288,57 @@ def detect_split_warnings(
     return warnings
 
 
+def _detect_bbox_space_mismatch(
+    figures: List[Dict[str, Any]],
+    pages: Dict[int, Tuple[Any, int, int]],
+    *,
+    tolerance_px: float = 3.0,
+) -> List[Dict[str, Any]]:
+    """Detect figure bboxes that exceed the rendered raster dimensions.
+
+    A bbox whose max x/y is larger than the page raster (beyond a small
+    tolerance) indicates the bbox lives in a different coordinate space
+    than the crop raster -- e.g. PPStructureV3 returned preprocessed-space
+    (rotated/unwarped) boxes while cropping uses the un-rotated 2x raster.
+    This is the leading cause of "all figures show the same wrong image":
+    the wrong-space bbox maps to a fixed region across pages.
+
+    Returns:
+        Warnings: [{"kind", "page", "id", "bbox_max", "raster": {width,height}}]
+    """
+    warnings: List[Dict[str, Any]] = []
+    for fig in figures:
+        page_no = int(fig.get("page", 1) or 1)
+        source = pages.get(page_no)
+        if source is None:
+            # Reported separately as a per-figure error in crop_figures.
+            continue
+        _, width, height = source
+        x1, y1, x2, y2 = _bbox_tuple(fig)
+        over_w = x2 > width + tolerance_px
+        over_h = y2 > height + tolerance_px
+        # Swapped-dims signal: width/height of bbox exceed raster in one
+        # axis but fit the other -- typical of a 90-degree rotation.
+        swapped = (over_w and y2 <= height + tolerance_px) or (
+            over_h and x2 <= width + tolerance_px
+        )
+        if over_w or over_h:
+            warnings.append(
+                {
+                    "kind": "bbox_space_mismatch",
+                    "page": page_no,
+                    "id": fig.get("id"),
+                    "bbox": fig.get("bbox"),
+                    "bbox_max": {"x": round(x2, 1), "y": round(y2, 1)},
+                    "raster": {"width": int(width), "height": int(height)},
+                    "over_w": bool(over_w),
+                    "over_h": bool(over_h),
+                    "swapped_dims": bool(swapped),
+                }
+            )
+    return warnings
+
+
 # ---------------------------------------------------------------------------
 # Cropping
 # ---------------------------------------------------------------------------
@@ -346,9 +397,16 @@ class FigureService:
             for elem in figures:
                 try:
                     page_no = int(elem.get("page", 1) or 1)
-                    source = pages.get(page_no) or pages.get(1)
+                    # No silent fallback to page 1: a missing/wrong page_no
+                    # must surface as an error (per-figure) instead of
+                    # cropping all such figures from page 1's raster, which
+                    # previously produced many identical crops silently.
+                    source = pages.get(page_no)
                     if source is None:
-                        raise RuntimeError(f"no raster source for page {page_no}")
+                        raise RuntimeError(
+                            f"no raster source for page {page_no} "
+                            f"(rendered pages: {sorted(pages.keys())})"
+                        )
                     img, width, height = source
                     box = _clamp_box(_bbox_tuple(elem), width, height)
                     if box[2] - box[0] < MIN_CROP_PX or box[3] - box[1] < MIN_CROP_PX:
@@ -392,11 +450,129 @@ class FigureService:
             page_height = 0
             for source in pages.values():
                 page_height = max(page_height, source[2])
-            result["warnings"] = detect_split_warnings(figures, page_height)
+            split_warnings = detect_split_warnings(figures, page_height)
+            # Coordinate-space self-check: flag any figure bbox that exceeds
+            # its page raster dimensions, which signals the bbox lives in a
+            # different space (e.g. rotated preprocessed space) than the
+            # crop raster -- the leading cause of identical wrong crops.
+            bbox_warnings = _detect_bbox_space_mismatch(figures, pages)
+            result["warnings"] = split_warnings + bbox_warnings
+            if bbox_warnings:
+                logger.warning(
+                    "figure_service: {} bbox/raster space mismatch warning(s) "
+                    "(first: {})",
+                    len(bbox_warnings),
+                    bbox_warnings[0],
+                )
+
+            # Consume split warnings: re-crop a merged image for vertical /
+            # horizontal splits so the caller gets one whole diagram instead
+            # of two halves. nested_regions is a caption-inside-figure case,
+            # NOT a split — skipped to avoid merging a caption into the crop.
+            # The original half-crops are kept as fallback so a false-positive
+            # merge (two independent figures stacked) can still be recovered
+            # downstream by inspecting merged_from.
+            self._crop_merged_splits(
+                result=result,
+                warnings=result["warnings"],
+                pages=pages,
+                output_dir=output_dir,
+                api_prefix=api_prefix,
+                task_id=task_id,
+            )
+            # cropped_count reflects individual figure crops only; merged
+            # crops are reported separately via merged_count.
+            result["merged_count"] = sum(
+                1 for f in result["figures"] if f.get("is_merged")
+            )
         except Exception as exc:  # noqa: BLE001 — service must never fail the pipeline
             logger.warning("figure_service: crop_figures failed: {}", exc)
             result["errors"].append({"id": None, "reason": str(exc)})
         return result
+
+    def _crop_merged_splits(
+        self,
+        *,
+        result: Dict[str, Any],
+        warnings: List[Dict[str, Any]],
+        pages: Dict[int, Tuple[Any, int, int]],
+        output_dir: str,
+        api_prefix: str,
+        task_id: str,
+    ) -> None:
+        """Re-crop a single merged image for each split-figure warning.
+
+        Only ``possible_vertical_split`` and ``possible_horizontal_split``
+        are consumed; ``nested_regions`` is a caption/inner box inside a
+        figure and must NOT be merged. The merged crop is appended to
+        ``result["figures"]`` with ``is_merged=True`` and ``merged_from``
+        listing the original half-figure ids, so downstream can prefer the
+        merged crop while still recovering the halves via ``merged_from``.
+
+        Best-effort: per-merge errors are recorded in ``result["errors"]``
+        and never propagate.
+        """
+        split_kinds = {"possible_vertical_split", "possible_horizontal_split"}
+        for w in warnings or []:
+            if w.get("kind") not in split_kinds:
+                continue
+            page_no = int(w.get("page", 1) or 1)
+            source = pages.get(page_no) or pages.get(1)
+            if source is None:
+                result["errors"].append(
+                    {"id": None, "reason": f"merged crop skipped: no raster for page {page_no}"}
+                )
+                continue
+            img, width, height = source
+            mb = w.get("merged_bbox") or {}
+            box = _clamp_box(
+                (float(mb.get("x", 0)), float(mb.get("y", 0)),
+                 float(mb.get("x", 0)) + float(mb.get("width", 0)),
+                 float(mb.get("y", 0)) + float(mb.get("height", 0))),
+                width,
+                height,
+            )
+            if box[2] - box[0] < MIN_CROP_PX or box[3] - box[1] < MIN_CROP_PX:
+                result["errors"].append(
+                    {"id": None, "reason": "merged crop skipped: degenerate merged_bbox"}
+                )
+                continue
+            ids = w.get("ids") or []
+            merged_id = "merged_" + "_".join(str(i) for i in ids) if ids else f"merged_p{page_no}"
+            try:
+                crop = img.crop((int(box[0]), int(box[1]), int(box[2]), int(box[3])))
+                crop_path = os.path.join(output_dir, f"{merged_id}.png")
+                crop.save(crop_path, format="PNG")
+                result["figures"].append(
+                    {
+                        "id": merged_id,
+                        "page": page_no,
+                        "type": "merged_figure",
+                        "confidence": 0.0,
+                        "bbox": {
+                            "x": float(mb.get("x", 0)),
+                            "y": float(mb.get("y", 0)),
+                            "width": float(mb.get("width", 0)),
+                            "height": float(mb.get("height", 0)),
+                        },
+                        "width_px": crop.width,
+                        "height_px": crop.height,
+                        "crop_path": crop_path,
+                        "caption": "",
+                        "caption_id": "",
+                        "crop_url": (
+                            f"{api_prefix}/{task_id}/figures/{merged_id}" if task_id else None
+                        ),
+                        "is_merged": True,
+                        "merged_from": ids,
+                        "split_kind": w.get("kind"),
+                    }
+                )
+            except Exception as exc:  # noqa: BLE001 — per-merge isolation
+                logger.warning("figure_service: merged crop failed for {}: {}", ids, exc)
+                result["errors"].append(
+                    {"id": None, "reason": f"merged crop failed for {ids}: {exc}"}
+                )
 
     def _render_pdf_pages(
         self, file_path: str, figures: List[Dict[str, Any]]

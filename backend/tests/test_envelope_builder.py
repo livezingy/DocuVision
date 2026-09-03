@@ -299,3 +299,48 @@ class TestViewLayerReadingOrder:
         # 10 layout elements → 10 view elements total across pages
         total = sum(len(p["elements"]) for p in VIEW["pages"])
         assert total == len(ALL_ELEMENTS)
+
+
+# ===========================================================================
+# F2-edge: flowchart / display_formula must map to figure / formula kind
+# (previously fell through to else passthrough, missing cross-page aggregation)
+# ===========================================================================
+
+class TestMapBlockTypeToKindEdgeLabels:
+    """flowchart and display_formula were relying on the else-passthrough,
+    which returned the raw label as kind and skipped view.figures[] /
+    view.formulas[] aggregation. They are now explicitly mapped."""
+
+    def test_flowchart_maps_to_figure(self):
+        assert builder._map_block_type_to_kind("flowchart") == "figure"
+
+    def test_display_formula_maps_to_formula(self):
+        assert builder._map_block_type_to_kind("display_formula") == "formula"
+
+    def test_flowchart_aggregated_into_view_figures(self):
+        elems = [_elem("fc1", "flowchart", text="")]
+        fused = builder.build_fused_layer(_make_layout_result(elems))
+        pre = builder.build_preprocessing_metadata(_make_layout_result(elems), use_doc_unwarping=False)
+        view = builder.build_view_layer(fused, pre)
+        assert len(view["figures"]) == 1, "flowchart must aggregate into view.figures[]"
+        assert view["figures"][0]["kind"] == "figure"
+
+    def test_display_formula_aggregated_into_view_formulas(self):
+        elems = [_elem("df1", "display_formula", text="")]
+        fused = builder.build_fused_layer(_make_layout_result(elems))
+        pre = builder.build_preprocessing_metadata(_make_layout_result(elems), use_doc_unwarping=False)
+        view = builder.build_view_layer(fused, pre)
+        assert len(view["formulas"]) == 1, "display_formula must aggregate into view.formulas[]"
+        assert view["formulas"][0]["kind"] == "formula"
+
+    def test_existing_figure_labels_unchanged(self):
+        for label in ("figure", "image", "chart", "picture", "figure_table_chart"):
+            assert builder._map_block_type_to_kind(label) == "figure"
+
+    def test_existing_formula_labels_unchanged(self):
+        for label in ("formula", "inline_formula", "equation", "formula_body"):
+            assert builder._map_block_type_to_kind(label) == "formula"
+
+    def test_footnote_still_maps_to_footer_not_paragraph(self):
+        # Regression guard: footnote must NOT be generalized to paragraph.
+        assert builder._map_block_type_to_kind("footnote") == "footer"

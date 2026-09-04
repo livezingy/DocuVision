@@ -260,6 +260,7 @@ test_data/**/*.tif
 scripts/*
 !scripts/trial/
 !scripts/trial/**
+!scripts/aistudio_setup.sh
 !packages/docuvision-core/scripts/
 !packages/docuvision-core/scripts/**
 !test_data/scripts/

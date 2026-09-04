@@ -19,11 +19,11 @@ See [v1.6-roadmap.md](../architecture/v1.6-roadmap.md).
 - Table CSV/Excel: confidence banner, caption line, Excel-formula cell prefix (`=`/`+`/`@` / non-numeric `-`).
 - Trial hardening: API-key middleware, CORS allowlist, `MAX_FILE_SIZE` enforced; GT diff; trial samples / ops scripts.
 
-## Planned (this tag, not in the open commit)
+## Added (this tag)
 
-- Pro single-task ZIP pack of tables + figure PNGs + `manifest.json`.
-- Sidebar **ZIP** button next to JSON / CSV / Markdown / Word.
-- Local mock tests for the pack builder; Cloud gate **PACK-ZIP-001**.
+- Pro single-task ZIP pack: `GET /api/v1/tasks/{id}/export/zip` (`include=tables,figures,json`, default `tables,figures`). `manifest.json` + `tables/` + `figures/` (merged crops under `figures/merged/`). Oversize → 413 (`MAX_PACK_BYTES` 256MB).
+- Sidebar **ZIP** button in right-panel Export Results (same row as JSON / CSV / Markdown / Word).
+- Tests: `backend/tests/test_pack_export_service.py` (local, no paddle). Cloud gate **PACK-ZIP-001**.
 
 ## Changed
 

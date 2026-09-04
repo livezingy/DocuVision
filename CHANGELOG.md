@@ -10,10 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Target tag: **v1.6.0**. Baseline branch: `fix/pp-structurev3-layout-first-tables-figures`.
 Artifact pack (Download ZIP) is developed on `feature/v1.6-artifact-pack`. See [v1.6-roadmap.md](docs/architecture/v1.6-roadmap.md).
 
-### Planned
-- Pro single-task artifact pack: `GET /api/v1/tasks/{id}/export/zip` and sidebar **ZIP** button (tables + figure crops). Not in the v1.6.0-open commit.
-
-### Added (baseline already on this train)
+### Added
+- Pro single-task artifact pack: `GET /api/v1/tasks/{id}/export/zip` (`include=tables,figures,json`) and sidebar **ZIP** button. Layout: `manifest.json` + `tables/` + `figures/` (`is_merged` under `figures/merged/`). Builder: `pack_export_service.py`. Tests: `backend/tests/test_pack_export_service.py`.
 - Trial hardening: API-key middleware (`DOCUVISION_TRIAL_API_KEY`, HTTP `X-API-Key` / WS `?key=`), configurable CORS allowlist (`DOCUVISION_CORS_ORIGINS`), enforced `MAX_FILE_SIZE` (413) on all four upload endpoints, frontend key bridge (`shared/trial-key.js`). See [TRIAL_REMOTE_60MIN.md](docs/demo/TRIAL_REMOTE_60MIN.md) §3 P0-1.
 - Figure crop export + integrity checks: `figure_service.py`, pipeline `figure_step`, `result.figures` / `envelope.figures` + `quality.figure_*`, routes `GET /tasks/{id}/figures[/{figure_id}]`, option `enable_figure_export`. Split-figure merge veto, caption binding (F3), crop-to-detection-box (no pad).
 - Layout-first tables via PP-StructureV3; reading order from `block_order`; `LAYOUT_TYPES` expanded to 23 classes; multi-level table headers (F1/F2/F4). Per-page layout timeout with bad-page skip.

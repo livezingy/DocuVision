@@ -122,10 +122,12 @@ const API_BASE_URL = 'http://localhost:8000/api/v1';
 - Markdown: `/api/v1/tasks/{id}/export/markdown`
 - Word: `/api/v1/tasks/{id}/export/docx`
 - Excel: `/api/v1/tasks/{id}/export/xlsx`
+- ZIP: `/api/v1/tasks/{id}/export/zip` (tables + figure crops; optional `?include=tables,figures,json`)
 
 **相关代码**:
 - 导出按钮: `initExportButtons()`
-- 导出处理: `exportResults()`（侧栏 JSON/CSV/Markdown/DOCX/XLSX 走 `/tasks/{id}/export/{format}`）
+- 导出处理: `exportResults()`（侧栏 JSON/CSV/Markdown/DOCX/XLSX/ZIP 走 `/tasks/{id}/export/{format}`）
+- 侧栏 ZIP：右栏 Export Results 第 5 个按钮，下载 `{task_id}_pack.zip`（`manifest.json` + `tables/` + `figures/`）
 - 侧栏 CSV：`ExportService.to_csv`，每表分隔行 `=== Table {n} (Page {p}) confidence={pct}% ===`，下一行可选 `Caption: …`；`+`/`=` 等公式前缀会加 `'` 以免 Excel `#NAME?`
 - Tables 卡片 Export CSV：`downloadCurrentTableCsv()`，仅当前表，文件名 `table_{nn}_p{page}.csv`；卡片 header 显示 `table.caption`
 - Figures 轮播不含 `is_merged` 项；告警条提供 View merged crop；卡片 header 可显示短 caption

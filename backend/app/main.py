@@ -204,6 +204,7 @@ from app.services.formula_service import FormulaService
 from app.services.seal_service import SealService
 from app.services.kie_qwen_service import QwenDocumentKIEService
 from app.services.export_service import ExportService
+from app.services.pack_export_service import PackTooLargeError, build_task_pack_zip
 from app.services.batch_service import BatchService, BatchStatus
 from app.services.batch_export_service import (
     build_batch_xlsx_bytes,
@@ -1861,8 +1862,13 @@ async def get_page_image(task_id: str, page_num: int = 1):
 
 
 @app.get("/api/v1/tasks/{task_id}/export/{format}")
-async def export_result(task_id: str, format: str):
-    """Export results in various formats"""
+async def export_result(task_id: str, format: str, include: str = ""):
+    """Export results in various formats.
+
+    ``format=zip`` builds a tables + figures artifact pack. Optional
+    ``include`` is a comma list: ``tables``, ``figures``, ``json``
+    (default ``tables,figures``).
+    """
     task = tasks.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -1891,8 +1897,21 @@ async def export_result(task_id: str, format: str):
         elif format == "azure":
             azure_format = await export_service.to_structured_json(result)
             return JSONResponse(content=azure_format)
+        elif format == "zip":
+            zip_path = await build_task_pack_zip(result, task_id, include=include)
+            return FileResponse(
+                zip_path,
+                filename=f"{task_id}_pack.zip",
+                media_type="application/zip",
+            )
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
+    except PackTooLargeError as e:
+        raise HTTPException(status_code=413, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Export failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

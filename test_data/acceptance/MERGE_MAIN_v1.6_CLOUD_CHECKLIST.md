@@ -22,7 +22,7 @@ Related: [v1.6-roadmap.md](../../docs/architecture/v1.6-roadmap.md), [RELEASE_1.
 | 3 | **PACK-ZIP-001** | completed analyze with layout + figures → `GET /api/v1/tasks/{id}/export/zip` HTTP **200**, file header `PK`, namelist contains `manifest.json` + `tables/` + `figures/` |
 | 4 | UI (optional) | Analysis right-panel **ZIP** button triggers a browser download (`*_pack.zip`) |
 
-ZIP implementation is **not** in the train-open commit. Rows 1 / 3 / 4 stay pending until `feature/v1.6-artifact-pack` lands the builder.
+ZIP builder is on this branch. Row 1 is local-runnable. Rows 3 / 4 need Cloud `:8000` + GPU analyze.
 
 ---
 

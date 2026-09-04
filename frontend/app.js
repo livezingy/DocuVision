@@ -3318,19 +3318,19 @@ function renderTableCard(table, index, total) {
     const rows = table.rows || tableData.length || 0;
     const columns = table.columns || (tableData[0] ? tableData[0].length : 0);
     const page = table.page || '?';
-    const confidence = table.confidence || 0;
+    const confidencePct = tableConfidencePct(table);
     const tableHtml = table.html || null;
     const htmlStructure = table.html_structure || null;
 
     let html = '<div class="table-card">';
     html += '<div class="table-card-header">';
     html += `<span class="table-name">Table ${index + 1}${total > 1 ? ` of ${total}` : ''}${page !== '?' ? ` (Page ${page})` : ''}`;
-    if (confidence > 0) {
-        html += ` <span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(confidence * 100).toFixed(1)}%</span>`;
+    if (confidencePct > 0) {
+        html += ` <span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${confidencePct}%</span>`;
     }
     html += '</span>';
     html += '<div class="table-actions">';
-    html += '<button class="table-action-btn" title="Export CSV">';
+    html += '<button type="button" class="table-action-btn" title="Export CSV">';
     html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
     html += '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>';
     html += '<polyline points="7 10 12 15 17 10"></polyline>';
@@ -3933,6 +3933,72 @@ function convertToMarkdown(data) {
     md += data.keywords.map(k => `- ${k}`).join('\n');
 
     return md;
+}
+
+/**
+ * Table confidence as a 0-100 integer.
+ * Prefers table.confidence (layout detector, typically 0-1); falls back to table.score.
+ * Values in [0, 1] are ratios; values > 1 are treated as already-percent.
+ */
+function tableConfidencePct(table) {
+    let raw = table && table.confidence;
+    if (raw == null) raw = table && table.score;
+    const val = Number(raw);
+    if (!Number.isFinite(val)) return 0;
+    if (val >= 0 && val <= 1) return Math.round(val * 100);
+    return Math.round(val);
+}
+
+function formatTableExportTitle(index1, table) {
+    const page = table && table.page != null ? table.page : '?';
+    return `Table ${index1} (Page ${page}) confidence=${tableConfidencePct(table)}%`;
+}
+
+function formatTableCsvBanner(index1, table) {
+    return `=== ${formatTableExportTitle(index1, table)} ===`;
+}
+
+function escapeCsvCell(cell) {
+    const s = cell == null ? '' : String(cell);
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+}
+
+function buildSingleTableCsv(table, index1) {
+    const lines = [formatTableCsvBanner(index1, table)];
+    const rows = (table && table.data) || [];
+    for (let i = 0; i < rows.length; i++) {
+        const row = Array.isArray(rows[i]) ? rows[i] : [rows[i]];
+        lines.push(row.map(escapeCsvCell).join(','));
+    }
+    return lines.join('\r\n');
+}
+
+function singleTableCsvFilename(index1, page) {
+    const n = String(index1).padStart(2, '0');
+    const p = page == null || page === '' ? '?' : page;
+    return `table_${n}_p${p}.csv`;
+}
+
+function downloadCurrentTableCsv() {
+    const tables = window.currentTables || [];
+    const idx = typeof window.currentTableIndex === 'number' ? window.currentTableIndex : 0;
+    const table = tables[idx];
+    if (!table) return;
+    const n = idx + 1;
+    const csv = buildSingleTableCsv(table, n);
+    downloadFile('\uFEFF' + csv, singleTableCsvFilename(n, table.page), 'text/csv;charset=utf-8');
+}
+
+function bindTableCardCsvExport(root) {
+    if (!root || root.dataset.csvExportBound === '1') return;
+    root.dataset.csvExportBound = '1';
+    root.addEventListener('click', function (e) {
+        const btn = e.target.closest('.table-action-btn');
+        if (!btn) return;
+        e.preventDefault();
+        downloadCurrentTableCsv();
+    });
 }
 
 /**
@@ -4674,7 +4740,8 @@ function updateContentTables(result) {
                 data: el.data || [],
                 rows: el.rows || 0,
                 columns: el.columns || 0,
-                confidence: typeof el.confidence === 'number' ? el.confidence : 0,
+                confidence: typeof el.confidence === 'number' ? el.confidence : null,
+                score: el.score,
                 bbox: el.bbox || null,
             }));
         }
@@ -4694,7 +4761,8 @@ function updateContentTables(result) {
         page: table.page || table.page_number || '?',
         rows: table.rows || 0,
         columns: table.columns || 0,
-        confidence: table.confidence || 0
+        confidence: typeof table.confidence === 'number' ? table.confidence : null,
+        score: table.score
     }));
 
     window.currentTableIndex = 0;
@@ -4763,6 +4831,8 @@ function updateContentTables(result) {
 
         updateContentNavButtons();
     }
+
+    bindTableCardCsvExport(contentTableList);
 }
 
 /**
@@ -4824,7 +4894,8 @@ function updateContentFigures(result) {
 
     const hasCrops = cropItems.length > 0;
     if (!hasCrops) {
-        const layoutFigs = layoutElements.filter(el => el.type === 'figure' || el.type === 'figure_caption');
+        const layoutFigTypes = new Set(['figure', 'image', 'chart', 'figure_table_chart', 'picture', 'flowchart']);
+        const layoutFigs = layoutElements.filter(el => layoutFigTypes.has(String(el.type || '').toLowerCase()));
         if (layoutFigs.length === 0) {
             const errs = Array.isArray(figuresExport.errors) ? figuresExport.errors : [];
             const msg = errs.length
@@ -4833,7 +4904,8 @@ function updateContentFigures(result) {
             contentFiguresList.innerHTML = `<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">${msg}</div>`;
             return;
         }
-        // No crops (export off / failed) but layout saw figures — show captions.
+        // No crops (export off / failed) but layout saw figures — headers only,
+        // never OCR/caption body text on the card.
         let html = '';
         layoutFigs.forEach((figure, index) => {
             html += '<div class="figure-card">';
@@ -4844,11 +4916,7 @@ function updateContentFigures(result) {
             }
             html += '</div>';
             html += '<div class="figure-preview">';
-            if (figure.text) {
-                html += `<p style="color: var(--text-secondary); font-style: italic;">${escapeHtml(normalizeTextForDisplay(figure.text))}</p>`;
-            } else {
-                html += '<p style="color: var(--text-tertiary);">Figure detected (no caption available)</p>';
-            }
+            html += '<p style="color: var(--text-tertiary);">Figure detected (crop unavailable)</p>';
             html += '</div></div>';
         });
         contentFiguresList.innerHTML = html;
@@ -4865,7 +4933,6 @@ function updateContentFigures(result) {
         crop_url: item.crop_url || '',
         width_px: item.width_px || 0,
         height_px: item.height_px || 0,
-        caption: '',
         warned: warningIds.has(item.id),
         is_merged: !!item.is_merged,
         merged_from: item.merged_from || null,
@@ -4989,7 +5056,7 @@ function renderFigureCard(item, index, total) {
     html += '</span>';
     html += '</div>';
     html += '<div class="figure-preview">';
-    html += `<img class="figure-crop-img" data-crop-url="${item.crop_url || ''}" alt="Figure ${index + 1} crop" style="max-width:100%;height:auto;border-radius:6px;border:1px solid var(--border-primary);background:var(--bg-secondary);" />`;
+    html += `<img class="figure-crop-img" data-crop-url="${item.crop_url || ''}" alt="Figure ${index + 1} crop" />`;
     if (item.width_px && item.height_px) {
         html += `<p style="font-size:0.7rem;color:var(--text-tertiary);margin-top:4px;">${item.width_px} × ${item.height_px}px</p>`;
     }

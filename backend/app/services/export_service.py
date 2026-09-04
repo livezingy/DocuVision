@@ -12,6 +12,39 @@ import io
 from app.core.config import settings
 
 
+def table_confidence_pct(table: Dict[str, Any]) -> int:
+    """Return table confidence as a 0-100 integer.
+
+    Prefers ``confidence`` (layout detector score mapped by layout_service,
+    typically 0-1). Falls back to ``score``. Values in [0, 1] are ratios;
+    values greater than 1 are treated as already-percent.
+    """
+    raw = table.get("confidence")
+    if raw is None:
+        raw = table.get("score")
+    if raw is None:
+        return 0
+    try:
+        val = float(raw)
+    except (TypeError, ValueError):
+        return 0
+    if 0.0 <= val <= 1.0:
+        return int(round(val * 100.0))
+    return int(round(val))
+
+
+def format_table_export_title(index_1based: int, table: Dict[str, Any]) -> str:
+    """Human-readable table title including page and confidence percent."""
+    page = table.get("page", "?")
+    pct = table_confidence_pct(table)
+    return f"Table {index_1based} (Page {page}) confidence={pct}%"
+
+
+def format_table_csv_banner(index_1based: int, table: Dict[str, Any]) -> str:
+    """CSV separator line placed above each table body."""
+    return f"=== {format_table_export_title(index_1based, table)} ==="
+
+
 class ExportService:
     """
     Export Service for multiple output formats
@@ -82,8 +115,7 @@ class ExportService:
             
             for idx, table in enumerate(tables):
                 if 'data' in table and table['data']:
-                    # Write table header
-                    writer.writerow([f"=== Table {idx + 1} (Page {table.get('page', '?')}) ==="])
+                    writer.writerow([format_table_csv_banner(idx + 1, table)])
                     
                     # Write table data
                     for row in table['data']:
@@ -177,8 +209,8 @@ class ExportService:
             md_lines.append("")
             
             for idx, table in enumerate(tables):
-                md_lines.append(f"### Table {idx + 1}")
-                md_lines.append(f"_Page {table.get('page', '?')} | {table.get('rows', '?')} rows × {table.get('columns', '?')} columns_")
+                md_lines.append(f"### {format_table_export_title(idx + 1, table)}")
+                md_lines.append(f"_{table.get('rows', '?')} rows × {table.get('columns', '?')} columns_")
                 md_lines.append("")
                 
                 data = table.get('data', [])
@@ -314,10 +346,9 @@ class ExportService:
             doc.add_heading('Extracted Tables', level=1)
             
             for idx, table_data in enumerate(tables):
-                doc.add_heading(f'Table {idx + 1}', level=2)
+                doc.add_heading(format_table_export_title(idx + 1, table_data), level=2)
                 
                 meta_p = doc.add_paragraph()
-                meta_p.add_run(f'Page {table_data.get("page", "?")} | ')
                 meta_p.add_run(f'{table_data.get("rows", "?")} rows × {table_data.get("columns", "?")} columns')
                 
                 data = table_data.get('data', [])
@@ -414,7 +445,11 @@ class ExportService:
                         df = pd.DataFrame(data)
                     
                     sheet_name = f"Table_{idx + 1}"
-                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+                    df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=1)
+                    worksheet = writer.sheets.get(sheet_name)
+                    if worksheet is None:
+                        worksheet = writer.book[sheet_name]
+                    worksheet.cell(row=1, column=1, value=format_table_export_title(idx + 1, table))
         
         logger.info(f"Exported Excel to {output_path}")
         return output_path

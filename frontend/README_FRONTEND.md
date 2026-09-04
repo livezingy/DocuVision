@@ -125,7 +125,9 @@ const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 **相关代码**:
 - 导出按钮: `initExportButtons()`
-- 导出处理: `exportResults()`
+- 导出处理: `exportResults()`（侧栏 JSON/CSV/Markdown/DOCX/XLSX 走 `/tasks/{id}/export/{format}`）
+- 侧栏 CSV：`ExportService.to_csv`，每表分隔行 `=== Table {n} (Page {p}) confidence={pct}% ===`
+- Tables 卡片 Export CSV：`downloadCurrentTableCsv()`，仅当前表，文件名 `table_{nn}_p{page}.csv`
 
 ### 5. 批处理 (`initBatchProcessing()`)
 

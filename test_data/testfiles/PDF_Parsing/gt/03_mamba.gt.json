@@ -1,0 +1,2215 @@
+{
+ "schema": "docuvision.gt/1.0",
+ "provenance": {
+  "arxiv_id": "2312.00752",
+  "arxiv_version": "v1",
+  "pdf_file": "03_paper_arxiv-mamba_multicolumn_glyph-tables.pdf",
+  "pdf_sha256": "adf70ed1803c85b1899dec3e21f3af0b124411439e8654b840ea65f7b9f52b2e",
+  "pdf_pages": 36,
+  "generated": "2026-09-04",
+  "generator": "test_data/scripts/gt_build_arxiv.py",
+  "official_pdf_url": "https://arxiv.org/pdf/2312.00752v1",
+  "official_pdf_sha256": "83044ebdd02276f922b6d0915a344f0c501fc7c214d1b88622c33971bb149199",
+  "html_twin_available": false,
+  "notes": [
+   "Tier A: verbatim authoring source (arXiv HTML).",
+   "Tier A- (stored as A, source=official_pdf_textlayer): verbatim",
+   "  printed caption text from the official arXiv PDF -- deterministic",
+   "  pdfTeX text layer, no OCR; still spot-check once.",
+   "Tier B: page/bbox alignment on the sample, or geometrically",
+   "  reconstructed table grids -- MUST be human-locked on first use.",
+   "Tier C: drawing-cluster heuristics -- advisory only.",
+   "Body paragraph text is NOT stored; printed truth is read live",
+   "from the sample PDF text layer at diff time."
+  ]
+ },
+ "tables": [
+  {
+   "table_no": 1,
+   "caption": "Table 1: (Selective Copying.) Accuracy for combinations of architectures and inner sequence layers.",
+   "src_page": 11,
+   "src_bbox": [
+    71.69,
+    203.29,
+    233.57,
+    234.17
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 11,
+    "match_score": 1.0,
+    "bbox": [
+     71.69,
+     203.29,
+     233.57,
+     234.17
+    ],
+    "trust": "B"
+   },
+   "region": "above",
+   "cells": [
+    [
+     "Model",
+     "Arch.",
+     "Layer",
+     "Acc."
+    ],
+    [
+     "S4",
+     "No gate S4",
+     "",
+     "18.3"
+    ],
+    [
+     "-",
+     "No gate S6",
+     "",
+     "97.0"
+    ],
+    [
+     "H3",
+     "H3",
+     "S4",
+     "57.0"
+    ],
+    [
+     "Hyena",
+     "H3",
+     "Hyena 30.1",
+     ""
+    ],
+    [
+     "-",
+     "H3",
+     "S6",
+     "99.7"
+    ],
+    [
+     "-",
+     "Mamba",
+     "S4",
+     "56.4"
+    ],
+    [
+     "-",
+     "Mamba",
+     "Hyena 28.4",
+     ""
+    ],
+    [
+     "Mamba Mamba",
+     "",
+     "S6",
+     "99.8"
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 9,
+   "n_cols": 4,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 2,
+   "caption": "Table 2: (Induction Heads.) Models are trained on sequence length 28 = 256, and tested on increasing sequence lengths of 26 = 64 up to 220 = 1048576. Full numbers in Table 11.",
+   "src_page": 11,
+   "src_bbox": [
+    292.05,
+    201.7,
+    561.6,
+    234.15
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 11,
+    "match_score": 1.0,
+    "bbox": [
+     292.05,
+     201.7,
+     561.6,
+     234.15
+    ],
+    "trust": "B"
+   },
+   "region": "above",
+   "cells": [
+    [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "Random",
+     ""
+    ],
+    [
+     "0.2",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "Train Length",
+     ""
+    ],
+    [
+     "0.0",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "102",
+     "103",
+     "",
+     "104",
+     "105",
+     "",
+     "106"
+    ],
+    [
+     "",
+     "",
+     "",
+     "Test Sequence Length",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 5,
+   "n_cols": 8,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 3,
+   "caption": "Table 3: (Zero-shot Evaluations.) Best results for each size in bold. We compare against open source LMs with various tokenizers, trained for up to 300B tokens. Pile refers to the validation split, comparing only against models trained on the same dataset and tokenizer (GPT-NeoX-20B). For each model size, Mamba is best-in-class on every single evaluation result, and generally matches baselines at twice the model size.",
+   "src_page": 12,
+   "src_bbox": [
+    71.73,
+    161.63,
+    562.59,
+    203.57
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 12,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     161.63,
+     562.59,
+     203.57
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "Model",
+     "Token. Pile",
+     "",
+     "LAMBADA LAMBADA HellaSwag PIQA Arc-E Arc-C WinoGrande Average",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "",
+     "ppl ↓",
+     "ppl ↓",
+     "acc ↑",
+     "acc ↑",
+     "acc ↑ acc ↑",
+     "",
+     "acc ↑",
+     "acc ↑",
+     "acc ↑"
+    ],
+    [
+     "Hybrid H3-130M GPT2",
+     "",
+     "—",
+     "89.48",
+     "25.77",
+     "31.7",
+     "64.2",
+     "44.4",
+     "24.2",
+     "50.6",
+     "40.1"
+    ],
+    [
+     "Pythia-160M",
+     "NeoX",
+     "29.64",
+     "38.10",
+     "33.0",
+     "30.2",
+     "61.4",
+     "43.2",
+     "24.1",
+     "51.9",
+     "40.6"
+    ],
+    [
+     "Mamba-130M",
+     "NeoX",
+     "10.56 16.07",
+     "",
+     "44.3",
+     "35.3",
+     "64.5",
+     "48.0",
+     "24.3",
+     "51.9",
+     "44.7"
+    ],
+    [
+     "Hybrid H3-360M GPT2",
+     "",
+     "—",
+     "12.58",
+     "48.0",
+     "41.5",
+     "68.1",
+     "51.4",
+     "24.7",
+     "54.1",
+     "48.0"
+    ],
+    [
+     "Pythia-410M",
+     "NeoX",
+     "9.95",
+     "10.84",
+     "51.4",
+     "40.6",
+     "66.9",
+     "52.1",
+     "24.6",
+     "53.8",
+     "48.2"
+    ],
+    [
+     "Mamba-370M",
+     "NeoX",
+     "8.28",
+     "8.14",
+     "55.6",
+     "46.5",
+     "69.5",
+     "55.1",
+     "28.0",
+     "55.3",
+     "50.0"
+    ],
+    [
+     "Pythia-1B",
+     "NeoX",
+     "7.82",
+     "7.92",
+     "56.1",
+     "47.2",
+     "70.7",
+     "57.0",
+     "27.1",
+     "53.5",
+     "51.9"
+    ],
+    [
+     "Mamba-790M",
+     "NeoX",
+     "7.33",
+     "6.02",
+     "62.7",
+     "55.1",
+     "72.1",
+     "61.2",
+     "29.5",
+     "56.1",
+     "57.1"
+    ],
+    [
+     "GPT-Neo 1.3B",
+     "GPT2",
+     "—",
+     "7.50",
+     "57.2",
+     "48.9",
+     "71.1",
+     "56.2",
+     "25.9",
+     "54.9",
+     "52.4"
+    ],
+    [
+     "Hybrid H3-1.3B",
+     "GPT2",
+     "—",
+     "11.25",
+     "49.6",
+     "52.6",
+     "71.3",
+     "59.2",
+     "28.1",
+     "56.9",
+     "53.0"
+    ],
+    [
+     "OPT-1.3B",
+     "OPT",
+     "—",
+     "6.64",
+     "58.0",
+     "53.7",
+     "72.4",
+     "56.7",
+     "29.6",
+     "59.5",
+     "55.0"
+    ],
+    [
+     "Pythia-1.4B",
+     "NeoX",
+     "7.51",
+     "6.08",
+     "61.7",
+     "52.1",
+     "71.0",
+     "60.5",
+     "28.5",
+     "57.2",
+     "55.2"
+    ],
+    [
+     "RWKV-1.5B",
+     "NeoX",
+     "7.70",
+     "7.04",
+     "56.4",
+     "52.5",
+     "72.4",
+     "60.5",
+     "29.4",
+     "54.6",
+     "54.3"
+    ],
+    [
+     "Mamba-1.4B",
+     "NeoX",
+     "6.80",
+     "5.04",
+     "64.9",
+     "59.1",
+     "74.2",
+     "65.5",
+     "32.8",
+     "61.5",
+     "59.7"
+    ],
+    [
+     "GPT-Neo 2.7B",
+     "GPT2",
+     "—",
+     "5.63",
+     "62.2",
+     "55.8",
+     "72.1",
+     "61.1",
+     "30.2",
+     "57.6",
+     "56.5"
+    ],
+    [
+     "Hybrid H3-2.7B",
+     "GPT2",
+     "—",
+     "7.92",
+     "55.7",
+     "59.7",
+     "73.3",
+     "65.6",
+     "32.3",
+     "61.4",
+     "58.0"
+    ],
+    [
+     "OPT-2.7B",
+     "OPT",
+     "—",
+     "5.12",
+     "63.6",
+     "60.6",
+     "74.8",
+     "60.8",
+     "31.3",
+     "61.0",
+     "58.7"
+    ],
+    [
+     "Pythia-2.8B",
+     "NeoX",
+     "6.73",
+     "5.04",
+     "64.7",
+     "59.3",
+     "74.0",
+     "64.1",
+     "32.9",
+     "59.7",
+     "59.1"
+    ],
+    [
+     "RWKV-3B",
+     "NeoX",
+     "7.00",
+     "5.24",
+     "63.9",
+     "59.6",
+     "73.7",
+     "67.8",
+     "33.1",
+     "59.6",
+     "59.6"
+    ],
+    [
+     "Mamba-2.8B",
+     "NeoX",
+     "6.22",
+     "4.23",
+     "69.2",
+     "66.1",
+     "75.2",
+     "69.7",
+     "36.3",
+     "63.5",
+     "63.3"
+    ],
+    [
+     "GPT-J-6B",
+     "GPT2",
+     "–",
+     "4.10",
+     "68.3",
+     "66.3",
+     "75.4",
+     "67.0",
+     "36.6",
+     "64.1",
+     "63.0"
+    ],
+    [
+     "OPT-6.7B",
+     "OPT",
+     "–",
+     "4.25",
+     "67.7",
+     "67.2",
+     "76.3",
+     "65.6",
+     "34.9",
+     "65.5",
+     "62.9"
+    ],
+    [
+     "Pythia-6.9B",
+     "NeoX",
+     "6.51",
+     "4.45",
+     "67.1",
+     "64.0",
+     "75.2",
+     "67.3",
+     "35.5",
+     "61.3",
+     "61.7"
+    ],
+    [
+     "RWKV-7.4B",
+     "NeoX",
+     "6.31",
+     "4.38",
+     "67.2",
+     "65.5",
+     "76.1",
+     "67.8",
+     "37.5",
+     "61.0",
+     "62.5"
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 26,
+   "n_cols": 11,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 4,
+   "caption": "Table 4: (SC09) Automated metrics for unconditional generation on a challenging dataset of ﬁxed-length speech clips. (Top to Bottom) Autoregressive baselines, non-autoregressive baselines, Mamba, and dataset metrics.",
+   "src_page": 15,
+   "src_bbox": [
+    71.69,
+    71.66,
+    317.34,
+    113.45
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 15,
+    "match_score": 1.0,
+    "bbox": [
+     71.69,
+     71.66,
+     317.34,
+     113.45
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "length"
+    ],
+    [
+     "Model",
+     "Params NLL ↓",
+     "",
+     "FID ↓",
+     "IS ↑",
+     "mIS ↑",
+     "AM ↓",
+     "blocks"
+    ],
+    [
+     "SampleRNN 35.0M",
+     "",
+     "2.042",
+     "8.96",
+     "1.71",
+     "3.02",
+     "1.76",
+     ""
+    ],
+    [
+     "WaveNet",
+     "4.2M",
+     "1.925",
+     "5.08",
+     "2.27",
+     "5.80",
+     "1.47",
+     "because"
+    ],
+    [
+     "SaShiMi",
+     "5.8M",
+     "1.873",
+     "1.99",
+     "5.13",
+     "42.57",
+     "0.74",
+     ""
+    ],
+    [
+     "WaveGAN",
+     "19.1M",
+     "-",
+     "2.03",
+     "4.90",
+     "36.10",
+     "0.80",
+     ""
+    ],
+    [
+     "DiffWave",
+     "24.1M",
+     "-",
+     "1.92",
+     "5.26",
+     "51.21",
+     "0.68",
+     ""
+    ],
+    [
+     "+ SaShiMi 23.0M",
+     "",
+     "-",
+     "1.42",
+     "5.94",
+     "69.17",
+     "0.59",
+     ""
+    ],
+    [
+     "Mamba",
+     "6.1M",
+     "1.852",
+     "0.94",
+     "6.26",
+     "88.54",
+     "0.52",
+     ""
+    ],
+    [
+     "Mamba",
+     "24.3M",
+     "1.860",
+     "0.67",
+     "7.33 144.9 0.36",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Train",
+     "-",
+     "-",
+     "0.00",
+     "8.56",
+     "292.5",
+     "0.16",
+     ""
+    ],
+    [
+     "Test",
+     "-",
+     "-",
+     "0.02",
+     "8.33",
+     "257.6",
+     "0.19",
+     ""
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 12,
+   "n_cols": 8,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 5,
+   "caption": "Table 5: (SC09 Model Ablations) Models with 6M parameters. In SaShiMi’s U-Net backbone, there are 8 center blocks operat- ing on sequence length 1000, sandwiched on each side by 8 outer blocks on sequence length 4000, sandwiched by 8 outer blocks on sequence length 16000 (40 blocks total). The architecture of the 8 center blocks are ablated independently of the rest. Note that Transformers (MHA+MLP) were not tested in the more im- portant outer blocks because of eﬃciency constraints.",
+   "src_page": 15,
+   "src_bbox": [
+    321.42,
+    71.66,
+    561.77,
+    157.28
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 15,
+    "match_score": 1.0,
+    "bbox": [
+     321.42,
+     71.66,
+     561.77,
+     157.28
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "Outer",
+     "Center",
+     "NLL ↓",
+     "FID ↓",
+     "IS ↑",
+     "mIS ↑",
+     "AM ↓"
+    ],
+    [
+     "S4+MLP MHA+MLP 1.859",
+     "",
+     "",
+     "1.45",
+     "5.06",
+     "47.03",
+     "0.70"
+    ],
+    [
+     "S4+MLP S4+MLP",
+     "",
+     "1.867",
+     "1.43",
+     "5.42",
+     "53.54",
+     "0.65"
+    ],
+    [
+     "S4+MLP Mamba",
+     "",
+     "1.859",
+     "1.42",
+     "5.71",
+     "56.51",
+     "0.64"
+    ],
+    [
+     "Mamba",
+     "MHA+MLP 1.850",
+     "",
+     "1.37",
+     "5.63",
+     "58.23",
+     "0.62"
+    ],
+    [
+     "Mamba",
+     "S4+MLP",
+     "1.853",
+     "1.07",
+     "6.05",
+     "73.34",
+     "0.55"
+    ],
+    [
+     "Mamba",
+     "Mamba",
+     "1.852",
+     "0.94",
+     "6.26 88.54 0.52",
+     "",
+     ""
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 7,
+   "n_cols": 7,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 6,
+   "caption": "Table 6: (Ablations: Architecture and SSM layer.) The Mamba block performs similarly to H3 while being simpler. In the inner layer, there is little diﬀerence among diﬀerent parameterizations of LTI models, while selective SSMs (S6) provide a large improvement. More speciﬁcally, the S4 (real) variant is S4D-Real and the S4 (complex) variant is S4D-Lin.",
+   "src_page": 16,
+   "src_bbox": [
+    71.73,
+    71.68,
+    562.58,
+    102.49
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 16,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     71.68,
+     562.58,
+     102.49
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "Model Arch. SSM Layer",
+     "",
+     "",
+     "Perplexity",
+     "Model",
+     "Arch.",
+     "SSM Layer",
+     "Perplexity"
+    ],
+    [
+     "Hyena",
+     "H3",
+     "Hyena",
+     "10.24",
+     "-",
+     "Mamba Hyena",
+     "",
+     "10.75"
+    ],
+    [
+     "H3",
+     "H3",
+     "S4 (complex) 10.30",
+     "",
+     "-",
+     "Mamba S4 (complex) 10.54",
+     "",
+     ""
+    ],
+    [
+     "-",
+     "H3",
+     "S4 (real)",
+     "10.34",
+     "-",
+     "Mamba S4 (real)",
+     "",
+     "10.56"
+    ],
+    [
+     "-",
+     "H3",
+     "S6",
+     "8.95",
+     "Mamba Mamba S6",
+     "",
+     "",
+     "8.69"
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 5,
+   "n_cols": 8,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 7,
+   "caption": "Table 7: (Ablations: Selective parameters.) ∆is the most im- portant parameter (Theorem 1), but using multiple selective pa- rameters together synergizes.",
+   "src_page": 16,
+   "src_bbox": [
+    71.73,
+    197.22,
+    318.31,
+    228.16
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 16,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     197.22,
+     318.31,
+     228.16
+    ],
+    "trust": "B"
+   },
+   "region": "above",
+   "cells": [
+    [
+     "Model Arch. SSM Layer",
+     "",
+     "",
+     "Perplexity",
+     "Model"
+    ],
+    [
+     "Hyena",
+     "H3",
+     "Hyena",
+     "10.24",
+     "-"
+    ],
+    [
+     "H3",
+     "H3",
+     "S4 (complex) 10.30",
+     "",
+     "-"
+    ],
+    [
+     "-",
+     "H3",
+     "S4 (real)",
+     "10.34",
+     "-"
+    ],
+    [
+     "-",
+     "H3",
+     "S6",
+     "8.95",
+     ""
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 5,
+   "n_cols": 5,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 8,
+   "caption": "Table 8: (Ablations: Parameterization of A.) The more standard initializations based on S4D-Lin (Gu, Gupta, et al. 2022) perform worse than S4D-Real or a random initializa- tion, when the SSM is selective.",
+   "src_page": 16,
+   "src_bbox": [
+    340.95,
+    197.67,
+    562.98,
+    239.6
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 16,
+    "match_score": 1.0,
+    "bbox": [
+     340.95,
+     197.67,
+     562.98,
+     239.6
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "𝑨𝑛Initialization Field",
+     "",
+     "Perplexity"
+    ],
+    [
+     "𝑨𝑛= −1 2 + 𝑛𝑖",
+     "Complex 9.16",
+     ""
+    ],
+    [
+     "𝑨𝑛= −1/2",
+     "Real",
+     "8.85"
+    ],
+    [
+     "𝑨𝑛= −(𝑛+ 1)",
+     "Real",
+     "8.71"
+    ],
+    [
+     "𝑨𝑛∼exp(N (0, 1))",
+     "Real",
+     "8.71"
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 5,
+   "n_cols": 3,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 9,
+   "caption": "Table 9: (Ablations: Expressivity of ∆.) The selection mechanism of ∆constructs it with a projection of the input. Project- ing it even to dim. 1 provides a large in- crease in performance; increasing it fur- ther provides further improvements at the cost of a modest increase in parameters. State size ﬁxed to 푁= 16.",
+   "src_page": 17,
+   "src_bbox": [
+    71.67,
+    71.52,
+    230.19,
+    159.08
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 17,
+    "match_score": 1.0,
+    "bbox": [
+     71.67,
+     71.52,
+     230.19,
+     159.08
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "Size of Δ proj. Params (M) Perplexity"
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 1,
+   "n_cols": 1,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 10,
+   "caption": "Table 10: (Ablations: SSM state dimension.) (Top) Constant B and C (Bottom) Selective B and C. Increasing the SSM state dimension 푁, which can be viewed as an expansion factor on the dimension of the recurrent state, can signiﬁcantly improve performance for a negligible cost in parameters/FLOPs, but only when B and C are also selective. Size of ∆projection ﬁxed to 64.",
+   "src_page": 17,
+   "src_bbox": [
+    243.09,
+    74.18,
+    561.77,
+    128.64
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 17,
+    "match_score": 1.0,
+    "bbox": [
+     243.09,
+     74.18,
+     561.77,
+     128.64
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "State dimension 𝑁",
+     "Params (M) Perplexity",
+     ""
+    ],
+    [
+     "1",
+     "367.1",
+     "9.88"
+    ],
+    [
+     "2",
+     "367.4",
+     "9.86"
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 3,
+   "n_cols": 3,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 11,
+   "caption": "Table 11: (Induction heads.) Models are trained on sequence length 28 = 256, and tested on various sequence lengths of 26 = 64 up to 220 = 1048576. \u0013 denotes perfect generalization accuracy, while \u0017 denotes out of memory.",
+   "src_page": 29,
+   "src_bbox": [
+    71.73,
+    70.1,
+    561.6,
+    93.39
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 29,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     70.1,
+     561.6,
+     93.39
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "Model",
+     "Params",
+     "",
+     "",
+     "",
+     "",
+     "Test Accuracy (%) at Seqence Length",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "",
+     "26",
+     "27",
+     "28",
+     "29",
+     "210",
+     "211",
+     "212",
+     "213",
+     "214",
+     "215",
+     "216",
+     "217",
+     "218",
+     "219",
+     "220"
+    ],
+    [
+     "MHA-Abs",
+     "137K",
+     "✓",
+     "99.6 100.0 58.6 26.6 18.8 9.8",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "10.9 7.8",
+     "",
+     "✗",
+     "✗",
+     "✗",
+     "✗",
+     "✗",
+     "✗"
+    ],
+    [
+     "MHA-RoPE 137K",
+     "",
+     "✓",
+     "✓",
+     "100.0 83.6 31.3 18.4 8.6",
+     "",
+     "",
+     "",
+     "",
+     "9.0",
+     "5.5",
+     "✗",
+     "✗",
+     "✗",
+     "✗",
+     "✗",
+     "✗"
+    ],
+    [
+     "MHA-xPos",
+     "137K",
+     "✓",
+     "✓",
+     "100.0 99.6 67.6 25.4 7.0",
+     "",
+     "",
+     "",
+     "",
+     "9.0",
+     "7.8",
+     "✗",
+     "✗",
+     "✗",
+     "✗",
+     "✗",
+     "✗"
+    ],
+    [
+     "H3",
+     "153K",
+     "✓",
+     "✓",
+     "100.0 80.9 39.5 23.8 14.8 8.2",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "5.9",
+     "6.6",
+     "8.2",
+     "4.7",
+     "8.2",
+     "6.3",
+     "7.4"
+    ],
+    [
+     "Hyena",
+     "69M∗",
+     "97.7 ✓",
+     "",
+     "100.0 ✓",
+     "",
+     "44.1 12.5 6.6",
+     "",
+     "",
+     "5.1",
+     "7.0",
+     "5.9",
+     "6.6",
+     "6.6",
+     "5.9",
+     "6.3",
+     "9.8"
+    ],
+    [
+     "Mamba",
+     "74K",
+     "✓",
+     "✓",
+     "100.0 ✓",
+     "",
+     "✓",
+     "✓",
+     "✓",
+     "✓",
+     "✓",
+     "✓",
+     "✓",
+     "✓",
+     "✓",
+     "✓",
+     "✓"
+    ],
+    [
+     "∗Most of the parameters are in learnable positional encodings.",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 9,
+   "n_cols": 17,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 12,
+   "caption": "Table 12: (Scaling Law Model Sizes.) Our model sizes and hyperparameters for scaling experiments. (Model dimension and number of heads applies only to Transformer models.)",
+   "src_page": 30,
+   "src_bbox": [
+    71.73,
+    71.67,
+    561.6,
+    91.53
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 30,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     71.67,
+     561.6,
+     91.53
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "",
+     "",
+     "Params n_layers d_model n_heads / d_head Training steps Learning Rate Batch Size",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "Tokens"
+    ],
+    [
+     "",
+     "",
+     "125M",
+     "12",
+     "768",
+     "12 / 64",
+     "4800",
+     "6e-4",
+     "0.5M tokens 2.5B",
+     ""
+    ],
+    [
+     "",
+     "",
+     "350M",
+     "24",
+     "1024",
+     "16 / 64",
+     "13500",
+     "3e-4",
+     "0.5M tokens 7B",
+     ""
+    ],
+    [
+     "",
+     "",
+     "760M",
+     "24",
+     "1536",
+     "16 / 96",
+     "29000",
+     "2.5e-4",
+     "0.5M tokens 15B",
+     ""
+    ],
+    [
+     "",
+     "",
+     "1.3B",
+     "24",
+     "2048",
+     "32 / 64",
+     "50000",
+     "2e-4",
+     "0.5M tokens 26B",
+     ""
+    ],
+    [
+     "",
+     "• gradient clip value 1.0",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "• weight decay 0.1",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "• no dropout",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "• linear learning rate warmup with cosine decay",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "By default, the peak learning rate is the GPT3 specification.",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 10,
+   "n_cols": 10,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 13,
+   "caption": "Table 13: (Great Apes DNA Classiﬁcation.) Accuracy after ﬁne-tuning on sequences of length 210 = 1024 up to 220 = 1048576 using pretrained models of the same context length. Random guessing is 20%.",
+   "src_page": 34,
+   "src_bbox": [
+    71.73,
+    70.1,
+    561.6,
+    91.59
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 34,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     70.1,
+     561.6,
+     91.59
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "Model",
+     "Params",
+     "",
+     "Accuracy (%) at Seqence Length",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "",
+     "210",
+     "",
+     "212",
+     "214",
+     "216",
+     "218",
+     "220"
+    ],
+    [
+     "HyenaDNA 1.4M",
+     "",
+     "28.04 28.43 41.17 42.22 31.10 54.87",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Mamba",
+     "1.4M",
+     "31.47 27.50 27.66 40.72 42.41 71.67",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Mamba",
+     "7M",
+     "30.00 29.01 31.48 43.73 56.60 81.31",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 5,
+   "n_cols": 9,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 14,
+   "caption": "Table 14: YouTubeMix length scaling sequence lengths and batch sizes.",
+   "src_page": 34,
+   "src_bbox": [
+    187.0,
+    195.46,
+    446.33,
+    204.43
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 34,
+    "match_score": 1.0,
+    "bbox": [
+     187.0,
+     195.46,
+     446.33,
+     204.43
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "",
+     "Seqence length Batch size Tokens / batch",
+     ""
+    ],
+    [
+     "468 × 2048 = 958464 1",
+     "",
+     "958464"
+    ],
+    [
+     "234 × 2048 = 479232 2",
+     "",
+     "958464"
+    ],
+    [
+     "117 × 2048 = 239616 4",
+     "",
+     "958464"
+    ],
+    [
+     "59 × 2048 = 120832 8",
+     "",
+     "966656"
+    ],
+    [
+     "",
+     "30 × 2048 = 61440 16",
+     "983040"
+    ],
+    [
+     "",
+     "15 × 2048 = 30720 32",
+     "983040"
+    ],
+    [
+     "",
+     "8 × 2048 = 16384 64",
+     "1048576"
+    ],
+    [
+     "",
+     "4 × 2048 = 8192 128",
+     "1048576"
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 9,
+   "n_cols": 3,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  },
+  {
+   "table_no": 15,
+   "caption": "Table 15: (Memory benchmark.) Mamba’s memory footprint is comparable to the most optimized Transformer. Results for 125M models.",
+   "src_page": 36,
+   "src_bbox": [
+    71.73,
+    71.52,
+    561.6,
+    91.53
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 36,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     71.52,
+     561.6,
+     91.53
+    ],
+    "trust": "B"
+   },
+   "region": "below",
+   "cells": [
+    [
+     "Batch size Transformer (w/ FlashAttention-2) Mamba",
+     "",
+     ""
+    ],
+    [
+     "1",
+     "4.6GB",
+     "4.8GB"
+    ],
+    [
+     "2",
+     "5.2GB",
+     "5.8GB"
+    ],
+    [
+     "4",
+     "6.9GB",
+     "7.3GB"
+    ],
+    [
+     "8",
+     "11.5GB",
+     "12.3GB"
+    ],
+    [
+     "16",
+     "20.7GB",
+     "23.1GB"
+    ],
+    [
+     "32",
+     "34.5GB",
+     "38.2GB"
+    ]
+   ],
+   "header_rows": 0,
+   "n_rows": 7,
+   "n_cols": 3,
+   "grid_trust": "B",
+   "grid_source": "pdf_word_geometry"
+  }
+ ],
+ "figures": [
+  {
+   "fig_no": 1,
+   "caption": "Figure 1: (Overview.) Structured SSMs independently map each channel (e.g. 퐷= 5) of an input 푥to output 푦through a higher dimensional latent state ℎ(e.g. 푁= 4). Prior SSMs avoid materializing this large eﬀective state (퐷푁, times batch size 퐵and sequence length 퐿) through clever alternate computation paths requiring time-invariance: the (∆, A, B, C) parameters are constant across time. Our selection mechanism adds back input-dependent dynamics, which also requires a careful hardware-aware algorithm to only materialize the expanded states in more eﬃcient levels of the GPU memory hierarchy.",
+   "src_page": 3,
+   "src_bbox": [
+    72.0,
+    264.11,
+    561.77,
+    318.71
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 3,
+    "match_score": 1.0,
+    "bbox": [
+     72.0,
+     264.06,
+     561.77,
+     316.95
+    ],
+    "trust": "B"
+   }
+  },
+  {
+   "fig_no": 2,
+   "caption": "Figure 2: (Left) The standard version of the Copying task involves constant spacing between input and output elements and is easily solved by time-invariant models such as linear recurrences and global convolutions. (Right Top) The Selective Copying task has random spacing in between inputs and requires time-varying models that can selectively remember or ignore inputs depending on their content. (Right Bottom) The Induction Heads task is an example of associative recall that requires retrieving an answer based on context, a key ability for LLMs.",
+   "src_page": 6,
+   "src_bbox": [
+    72.0,
+    202.28,
+    561.84,
+    255.08
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 6,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     200.46,
+     562.98,
+     253.33
+    ],
+    "trust": "B"
+   }
+  },
+  {
+   "fig_no": 3,
+   "caption": "Figure 3: (Architecture.) Our simpliﬁed block design combines the H3 block, which is the basis of most SSM architectures, with the ubiquitous MLP block of modern neural networks. Instead of interleaving these two blocks, we simply repeat the Mamba block homogenously. Compared to the H3 block, Mamba replaces the ﬁrst multiplicative gate with an activation function. Compared to the MLP block, Mamba adds an SSM to the main branch. For 휎we use the SiLU / Swish activation (Hendrycks and Gimpel 2016; Ramachandran, Zoph, and Quoc V Le 2017).",
+   "src_page": 8,
+   "src_bbox": [
+    72.0,
+    255.93,
+    562.3,
+    308.74
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 8,
+    "match_score": 1.0,
+    "bbox": [
+     72.0,
+     254.09,
+     562.24,
+     306.98
+    ],
+    "trust": "B"
+   }
+  },
+  {
+   "fig_no": 4,
+   "caption": "Figure 4: (Scaling Laws.) Models of size ≈125푀to ≈1.3퐵parameters, trained on the Pile. Mamba scales better than all other attention-free models and is the ﬁrst to match the performance of a very strong “Transformer++” recipe that has now become standard, particularly as the sequence length grows.",
+   "src_page": 12,
+   "src_bbox": [
+    72.0,
+    193.17,
+    561.77,
+    225.85
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 11,
+    "match_score": 1.0,
+    "bbox": [
+     72.0,
+     369.64,
+     562.59,
+     400.61
+    ],
+    "trust": "B"
+   }
+  },
+  {
+   "fig_no": 5,
+   "caption": "Figure 5: (DNA Scaling Laws.) Pretraining on the HG38 (human genome) dataset. (Left) Fixing short context length 210 = 1024 and increasing size from ≈200퐾to ≈40푀parameters, Mamba scales better than baselines. (Right) Fixing model size and increasing sequence lengths while keeping tokens/batch and total training tokens ﬁxed. Unlike baselines, the selection mechanism of Mamba facilitates better performance with increasing context length.",
+   "src_page": 14,
+   "src_bbox": [
+    72.0,
+    190.17,
+    561.6,
+    237.03
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 13,
+    "match_score": 1.0,
+    "bbox": [
+     72.0,
+     191.93,
+     561.6,
+     235.34
+    ],
+    "trust": "B"
+   }
+  },
+  {
+   "fig_no": 6,
+   "caption": "Figure 6: (Great Apes DNA Classiﬁcation.) Accuracy after ﬁne-tuning on sequences of length 210 = 1024 up to 220 = 1048576 using pretrained models of the same context length. Nu- merical results in Table 13.",
+   "src_page": 14,
+   "src_bbox": [
+    72.0,
+    384.78,
+    313.32,
+    426.62
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 14,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     205.4,
+     313.43,
+     247.24
+    ],
+    "trust": "B"
+   }
+  },
+  {
+   "fig_no": 7,
+   "caption": "Figure 7: (Audio Pretraining.) Mamba improves performance over prior state-of-the-art (Sashimi) in autoregressive audio mod- eling, while improving up to minute-long context or million- length sequences (controlling for computation).",
+   "src_page": 14,
+   "src_bbox": [
+    321.69,
+    384.78,
+    563.01,
+    426.62
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 14,
+    "match_score": 1.0,
+    "bbox": [
+     321.69,
+     205.31,
+     563.12,
+     247.24
+    ],
+    "trust": "B"
+   }
+  },
+  {
+   "fig_no": 8,
+   "caption": "Figure 8: (Eﬃciency Benchmarks.) (Left) Training: our eﬃcient scan is 40× faster than a standard implementation. (Right) Inference: as a recurrent model, Mamba can achieve 5× higher throughput than Transformers.",
+   "src_page": 16,
+   "src_bbox": [
+    72.0,
+    189.82,
+    562.21,
+    211.54
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 15,
+    "match_score": 1.0,
+    "bbox": [
+     72.0,
+     491.75,
+     562.66,
+     513.19
+    ],
+    "trust": "B"
+   }
+  },
+  {
+   "fig_no": 9,
+   "caption": "Figure 9: (Scaling laws: extra ablations.) (Left) Instead of (Right) Instead of",
+   "src_page": 32,
+   "src_bbox": [
+    169.87,
+    195.11,
+    463.73,
+    204.34
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 31,
+    "match_score": 1.0,
+    "bbox": [
+     175.41,
+     193.36,
+     458.19,
+     204.54
+    ],
+    "trust": "B"
+   }
+  },
+  {
+   "fig_no": 10,
+   "caption": "Figure 10: (Audio Pretraining (YouTubeMix) Ablations.) As a uniformly-sampled “continuous” signal modality, audio wave- forms actually beneﬁt from LTI models which have matching inductive bias. (Left) Homogenous models (all blocks have the same parameterization) (Right) Only the center U-Net blocks are ablated; the outer blocks are Mamba-S4. Purple line is same as ﬁgure on left.",
+   "src_page": 35,
+   "src_bbox": [
+    72.0,
+    347.71,
+    563.01,
+    389.55
+   ],
+   "trust": "A",
+   "source": "official_pdf_textlayer",
+   "align": {
+    "pdf_page": 35,
+    "match_score": 1.0,
+    "bbox": [
+     71.73,
+     193.59,
+     563.12,
+     226.6
+    ],
+    "trust": "B"
+   }
+  }
+ ],
+ "sections": [
+  {
+   "level": 1,
+   "text": "1",
+   "pdf_page": 1,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 1,
+   "text": "2",
+   "pdf_page": 2,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 1,
+   "text": "3",
+   "pdf_page": 5,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "3.3.1",
+   "pdf_page": 6,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "3.3.2",
+   "pdf_page": 7,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "3.5.1",
+   "pdf_page": 8,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "3.5.2",
+   "pdf_page": 8,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 1,
+   "text": "4",
+   "pdf_page": 10,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.1.1",
+   "pdf_page": 10,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.1.2",
+   "pdf_page": 10,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.2.1",
+   "pdf_page": 11,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.2.2",
+   "pdf_page": 12,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.3.1",
+   "pdf_page": 13,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.3.2",
+   "pdf_page": 13,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.3.3",
+   "pdf_page": 13,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.4.1",
+   "pdf_page": 14,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.4.2",
+   "pdf_page": 14,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.6.1",
+   "pdf_page": 15,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 3,
+   "text": "4.6.2",
+   "pdf_page": 16,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 1,
+   "text": "5",
+   "pdf_page": 16,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 1,
+   "text": "6",
+   "pdf_page": 17,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 1,
+   "text": "References",
+   "pdf_page": 17,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 2,
+   "text": "71.67",
+   "pdf_page": 34,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  },
+  {
+   "level": 2,
+   "text": "81.31",
+   "pdf_page": 34,
+   "trust": "B",
+   "source": "pdf_bold_span"
+  }
+ ],
+ "figure_regions": [
+  {
+   "pdf_page": 3,
+   "bbox": [
+    52.05,
+    52.17,
+    583.08,
+    317.69
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  },
+  {
+   "pdf_page": 6,
+   "bbox": [
+    58.3,
+    63.59,
+    627.63,
+    277.09
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  },
+  {
+   "pdf_page": 8,
+   "bbox": [
+    73.58,
+    0.53,
+    566.63,
+    277.87
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  },
+  {
+   "pdf_page": 11,
+   "bbox": [
+    292.32,
+    72.88,
+    561.61,
+    198.49
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  },
+  {
+   "pdf_page": 11,
+   "bbox": [
+    75.65,
+    249.38,
+    557.95,
+    361.02
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  },
+  {
+   "pdf_page": 13,
+   "bbox": [
+    75.65,
+    72.86,
+    557.95,
+    184.73
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  },
+  {
+   "pdf_page": 14,
+   "bbox": [
+    72.0,
+    72.86,
+    561.6,
+    184.74
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  },
+  {
+   "pdf_page": 15,
+   "bbox": [
+    322.92,
+    374.96,
+    555.48,
+    483.01
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  },
+  {
+   "pdf_page": 31,
+   "bbox": [
+    75.65,
+    72.86,
+    557.95,
+    184.65
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  },
+  {
+   "pdf_page": 35,
+   "bbox": [
+    72.0,
+    72.86,
+    559.12,
+    184.79
+   ],
+   "trust": "C",
+   "source": "drawing_cluster"
+  }
+ ],
+ "build_warnings": [
+  "Table 9: degenerate grid (p17); verify region manually",
+  "PDF-only arXiv submission: table grids are geometric reconstructions on the SAMPLE printed layer (Tier B); multi-level header spans are NOT recovered; human lock required before first scored diff."
+ ]
+}

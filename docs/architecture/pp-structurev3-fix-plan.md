@@ -232,7 +232,8 @@ P1 = 影响 JD 硬指标（caption/header），但依赖官方 postprocessing �
 - **Cloud 推理验证**：`02_datasheet_ti-lm358`（schematic）+ `03_paper_arxiv-mamba`（含图）。期望：被检测为切分的 figure 在 `result.figures.items` 中出现 `is_merged=true` 项，`crop_url` 可下载完整图。
 
 ### 风险/限制
-- 误合并：两个独立图恰好上下紧邻（同列、小 gap）会被合并成一张。缓解：保留原半图 fallback，前端可按 `merged_from` 回退；后续可加"合并后宽高比异常"过滤。
+- 误合并：两个独立图恰好上下紧邻（同列、小 gap）会被合并成一张。缓解：保留原半图 fallback；**不同 `caption_id`/`caption` 否决合并**；两者高度均 ≥ 页高 20% 且为真实 gap（非 NMS overlap）也不合并。前端默认轮播不含 `is_merged`，由告警条按需查看。
+- 真 NMS 切分（两半重叠、无各自 caption）仍会合并。若两半都很高且中间有 gap，可能漏合并——属可接受权衡。
 - 跨页切分：`merged_bbox` 跨页无意义，当前按同页 `page_no` 取 raster，跨页块不会触发合并（`detect_split_warnings` 按 `by_page` 分组，跨页不配对）。
 - `merged_a_b.png` 文件名含下划线，figure 路由 traversal guard 拒点号不拒下划线，已确认可访问。
 

@@ -34,15 +34,47 @@ def table_confidence_pct(table: Dict[str, Any]) -> int:
 
 
 def format_table_export_title(index_1based: int, table: Dict[str, Any]) -> str:
-    """Human-readable table title including page and confidence percent."""
+    """Human-readable table title including page, confidence, and caption."""
     page = table.get("page", "?")
     pct = table_confidence_pct(table)
-    return f"Table {index_1based} (Page {page}) confidence={pct}%"
+    base = f"Table {index_1based} (Page {page}) confidence={pct}%"
+    caption = str(table.get("caption") or "").strip()
+    if not caption:
+        return base
+    if len(caption) > 160:
+        caption = caption[:157] + "..."
+    return f"{base} — {caption}"
 
 
 def format_table_csv_banner(index_1based: int, table: Dict[str, Any]) -> str:
-    """CSV separator line placed above each table body."""
-    return f"=== {format_table_export_title(index_1based, table)} ==="
+    """CSV separator line placed above each table body (no caption)."""
+    page = table.get("page", "?")
+    pct = table_confidence_pct(table)
+    return f"=== Table {index_1based} (Page {page}) confidence={pct}% ==="
+
+
+def excel_safe_cell(value: Any) -> Any:
+    """Prefix Excel-formula-like text so CSV/XLSX open as literals.
+
+    Excel treats cells starting with ``=``, ``+``, ``@`` (and non-numeric
+    ``-``) as formulas. Academic tables often use ``+``/``-`` as class
+    labels, which then display as ``#NAME?``. Numbers such as ``-0.5``
+    are left unchanged. Markdown/HTML exporters must not call this.
+    """
+    if value is None:
+        return ""
+    s = value if isinstance(value, str) else str(value)
+    if not s:
+        return s
+    first = s[0]
+    if first in ("=", "+", "@", "\t", "\r"):
+        return "'" + s
+    if first == "-":
+        try:
+            float(s.replace(",", ""))
+        except ValueError:
+            return "'" + s
+    return s
 
 
 class ExportService:
@@ -116,10 +148,11 @@ class ExportService:
             for idx, table in enumerate(tables):
                 if 'data' in table and table['data']:
                     writer.writerow([format_table_csv_banner(idx + 1, table)])
-                    
-                    # Write table data
+                    caption = str(table.get("caption") or "").strip()
+                    if caption:
+                        writer.writerow([excel_safe_cell(f"Caption: {caption}")])
                     for row in table['data']:
-                        writer.writerow(row)
+                        writer.writerow([excel_safe_cell(c) for c in row])
                     
                     # Separator between tables
                     writer.writerow([])
@@ -428,21 +461,16 @@ class ExportService:
                     data = table['data']
                     
                     if len(data) > 1:
-                        # First row as header
-                        header = data[0]
+                        header = [excel_safe_cell(c) for c in data[0]]
                         num_cols = len(header)
-                        
-                        # 确保所有行都有相同的列数
                         normalized_data = []
                         for row in data[1:]:
-                            # 如果行数少于列数，用空字符串填充
-                            # 如果行数多于列数，截断
-                            normalized_row = (row + [''] * num_cols)[:num_cols]
+                            safe_row = [excel_safe_cell(c) for c in row]
+                            normalized_row = (safe_row + [''] * num_cols)[:num_cols]
                             normalized_data.append(normalized_row)
-                        
                         df = pd.DataFrame(normalized_data, columns=header)
                     else:
-                        df = pd.DataFrame(data)
+                        df = pd.DataFrame([[excel_safe_cell(c) for c in row] for row in data])
                     
                     sheet_name = f"Table_{idx + 1}"
                     df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=1)

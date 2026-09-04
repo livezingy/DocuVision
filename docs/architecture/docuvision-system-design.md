@@ -859,8 +859,8 @@ BLOCK_ENGINE_MAP = {
   1. **`tables[*].html_structure`（权威）** — 含 `rows[].cells[].{text,is_header,rowspan,colspan}`，逐格输出 `<th>/<td>` + rowspan/colspan 属性，thead/tbody 按 `is_header` 自动切换。F4 新增 `header_rows`（表头行数）+ `header_span_map`（多级表头 span 树）+ `is_header` 对 `<thead>` 内 `<td>` 也为 true。依据 [Table Recognition v2](https://paddlepaddle.github.io/PaddleOCR/main/en/version3.x/pipeline_usage/table_recognition_v2.html)
   2. `tables[*].html`（回退） — DOMParser 解析、清理嵌套 table
   3. `tables[*].data`（最后回退） — 二维数组，带列数/一致性校验
-- **表格导出（CSV/Excel）以 `data` 为源**：侧栏 Export CSV 走 `ExportService.to_csv`（全部表集合；每表前一行 `=== Table {n} (Page {p}) confidence={pct}% ===`。`confidence` 为 layout 检测分，0–1 转百分数；缺失则回退 `score`。权威：`backend/tests/test_export_service.py`）。Markdown 表标题与 DOCX heading、XLSX 各表 sheet 第 1 行使用同一标题（无 `===` 包裹）。Tables 卡片 `.table-action-btn` 下载**当前这一张** CSV（文件名 `table_{nn}_p{page}.csv`，首行同 banner）。Batch `/batch/{id}/export.csv` 与 Lite 导出本批未改。`data` 不参与渲染权威，仅作导出与渲染末位回退
-- **Figures Tab**：卡片只显示 crop 图（`.figure-preview img`：`max-width:100%; height:auto; object-fit:contain`；过高则预览区 `max-height:70vh` + `overflow-y:auto`），**不**渲染 OCR/caption 正文。裁切使用 layout 检测框原样（不 pad）
+- **表格导出（CSV/Excel）以 `data` 为源**：侧栏 Export CSV 走 `ExportService.to_csv`（全部表集合；每表前一行 `=== Table {n} (Page {p}) confidence={pct}% ===`，下一行可选 `Caption: …`。`confidence` 为 layout 检测分，0–1 转百分数；缺失则回退 `score`。以 `=`/`+`/`@` 或非数字 `-` 开头的单元格加 `'` 前缀，避免 Excel `#NAME?`。权威：`backend/tests/test_export_service.py`）。Markdown/DOCX 表标题与 XLSX A1 使用 `format_table_export_title`（含 caption）。Tables 卡片 `.table-action-btn` 下载**当前这一张** CSV（文件名 `table_{nn}_p{page}.csv`，首行同 banner）。Batch `/batch/{id}/export.csv` 与 Lite 导出本批未改。`data` 不参与渲染权威，仅作导出与渲染末位回退
+- **Figures Tab**：卡片只显示 crop 图（`.figure-preview img`：`max-width:100%; height:auto; object-fit:contain`；过高则预览区 `max-height:70vh` + `overflow-y:auto`）。caption 只出现在卡片 header，不进预览正文。裁切用检测框原样（不 pad）。`is_merged` 项不进默认轮播，由告警条 “View merged crop” 按需打开。独立图若已绑不同 caption、或垂直方向两者都像完整图（高 ≥ 页高 20% 且为真实 gap）则不合并。Preview overlay 的 reading-order **角标仅画在 text 层**；figure/table 框只在悬浮框显示序号
 - 坐标渲染：`view.pages[].elements[].polygon`（坐标空间由 `preprocessing.coordinate_space` 决定；叠加到对应展示图像上，逻辑与坐标空间无关）
 - 字段渲染：**以 `view.fields` 为规范数据源**（文档级 KIE）；任务轮询结果中若存在 **`result.kie_fields`**，与 `view.fields` 同源，前端实现可 **优先取 `kie_fields` 再回退 `view.fields`**（与当前 `frontend/app.js` 中 `pickKieFieldsMap` 一致）
 - 展示元信息：可使用 `result.kie_meta`（如平均置信度、明细行数）
@@ -1100,6 +1100,6 @@ GET /api/v1/jobs/{job_id}/debug
 | 调试模式 | 服务级开关（`DEBUG_MODE` 环境变量），开启后自动写 `backend/debug/{job_id}/`，不混入 API 响应 |
 | 兜底 | 文本 block 无 `content` 时写入空字符串，不中断流水线 |
 | 试用鉴权 | `DOCUVISION_TRIAL_API_KEY` 非空时全 `/api/v1/*` 鉴权（HTTP `X-API-Key`、WS `?key=`；`/health` `/docs` 开放）；CORS 由 `DOCUVISION_CORS_ORIGINS` 白名单化（`feat/glm-trial`） |
-| 图形导出 | `figure_step`（layout 后）裁剪 figure/chart 区域：PDF 按 2x 栅格、图像按预处理空间；裁切用检测框原样（不 pad）；`result.figures`/`envelope.figures` + `quality.figure_*`；几何切分/嵌套告警 `warnings[]`；**F5：切分告警消费 `merged_bbox` 重裁合并图**（`is_merged=true`+`merged_from`，保留原半图作 fallback，`nested_regions` 不合并）；`enable_figure_export` 可关（`feat/glm-trial`） |
+| 图形导出 | `figure_step`（layout 后）裁剪 figure/chart 区域：PDF 按 2x 栅格、图像按预处理空间；裁切用检测框原样（不 pad）；`result.figures`/`envelope.figures` + `quality.figure_*`；几何切分/嵌套告警 `warnings[]`；**F5：切分告警消费 `merged_bbox` 重裁合并图**（`is_merged=true`+`merged_from`，保留原半图作 fallback；不同 caption 或「完整图+真实 gap」不合并；`nested_regions` 不合并；UI 默认轮播不含 merged）；`enable_figure_export` 可关（`feat/glm-trial`） |
 | GT 对比 | `POST /api/v1/trial/gt-diff/{task_id}` 字段/单元格级 diff（match/missing/wrong），HTML 报告 `GET .../report`；CLI `python -m app.services.trial.gt_diff`（`feat/glm-trial`） |
 | 扩展方式 | block 引擎注册表 + payload 多态 + 开关预留 |

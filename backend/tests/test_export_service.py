@@ -13,6 +13,7 @@ import pytest
 
 from app.services.export_service import (
     ExportService,
+    excel_safe_cell,
     format_table_csv_banner,
     format_table_export_title,
     table_confidence_pct,
@@ -74,6 +75,31 @@ class TestTableBannerFormat:
         table = _table(page=3, score=0.5)
         assert format_table_csv_banner(2, table) == "=== Table 2 (Page 3) confidence=50% ==="
 
+    def test_title_appends_caption(self):
+        table = _table(page=16, confidence=0.87)
+        table["caption"] = "Table 1: Ablation results"
+        assert format_table_export_title(1, table) == (
+            "Table 1 (Page 16) confidence=87% — Table 1: Ablation results"
+        )
+        assert format_table_csv_banner(1, table) == "=== Table 1 (Page 16) confidence=87% ==="
+
+
+class TestExcelSafeCell:
+    def test_plus_prefixed_text(self):
+        assert excel_safe_cell("+Accuracy") == "'+Accuracy"
+
+    def test_equals_formula(self):
+        assert excel_safe_cell("=SUM(1)") == "'=SUM(1)"
+
+    def test_numeric_minus_kept(self):
+        assert excel_safe_cell("-0.5") == "-0.5"
+
+    def test_text_minus_prefixed(self):
+        assert excel_safe_cell("-Accuracy") == "'-Accuracy"
+
+    def test_plain_unchanged(self):
+        assert excel_safe_cell("hello") == "hello"
+
 
 class TestExportCsvAndMarkdown:
     def test_csv_banner_per_table(self, tmp_path, monkeypatch):
@@ -93,6 +119,20 @@ class TestExportCsvAndMarkdown:
         assert "=== Table 2 (Page 3) confidence=50% ===" in text
         assert "H1" in text and "a" in text
 
+    def test_csv_escapes_plus_and_writes_caption(self, tmp_path, monkeypatch):
+        from app.core.config import settings as _settings
+
+        monkeypatch.setattr(_settings, "OUTPUT_DIR", str(tmp_path))
+        svc = ExportService()
+        table = _table(page=16, confidence=0.87, data=[["H", "+pos"], ["a", "b"]])
+        table["caption"] = "Table 1: Ablation results"
+        path = asyncio.run(svc.to_csv({"tables": [table]}, "t-plus"))
+        text = open(path, encoding="utf-8-sig").read()
+        assert "=== Table 1 (Page 16) confidence=87% ===" in text
+        assert "Caption: Table 1: Ablation results" in text
+        assert "'+pos" in text
+        assert "### " not in text
+
     def test_markdown_heading_includes_confidence(self, tmp_path, monkeypatch):
         from app.core.config import settings as _settings
 
@@ -100,6 +140,16 @@ class TestExportCsvAndMarkdown:
         svc = ExportService()
         md = asyncio.run(svc.to_markdown({"tables": [_table(page=16, confidence=0.87)]}))
         assert "### Table 1 (Page 16) confidence=87%" in md
+
+    def test_markdown_heading_includes_caption(self, tmp_path, monkeypatch):
+        from app.core.config import settings as _settings
+
+        monkeypatch.setattr(_settings, "OUTPUT_DIR", str(tmp_path))
+        svc = ExportService()
+        table = _table(page=16, confidence=0.87)
+        table["caption"] = "Table 1: Ablation results"
+        md = asyncio.run(svc.to_markdown({"tables": [table]}))
+        assert "### Table 1 (Page 16) confidence=87% — Table 1: Ablation results" in md
 
 
 class TestExportExcel:

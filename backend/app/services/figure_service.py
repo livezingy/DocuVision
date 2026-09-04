@@ -206,6 +206,33 @@ def _bind_captions(
             fig["caption_id"] = best_caption.get("id")
 
 
+def _distinct_bound_captions(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
+    """True when two figures already bound different captions (independent figs)."""
+    id_a = str(a.get("caption_id") or "").strip()
+    id_b = str(b.get("caption_id") or "").strip()
+    if id_a and id_b and id_a != id_b:
+        return True
+    cap_a = str(a.get("caption") or "").strip()
+    cap_b = str(b.get("caption") or "").strip()
+    return bool(cap_a and cap_b and cap_a != cap_b)
+
+
+# Stacked/side-by-side regions taller than this fraction of the page, with a
+# real gap (not NMS overlap), are treated as complete figures — not halves.
+COMPLETE_FIG_H_RATIO = 0.20
+
+
+def _both_complete_looking(
+    box_a: Tuple[float, float, float, float],
+    box_b: Tuple[float, float, float, float],
+    page_height: float,
+) -> bool:
+    if page_height <= 0:
+        return False
+    min_h = page_height * COMPLETE_FIG_H_RATIO
+    return (box_a[3] - box_a[1]) >= min_h and (box_b[3] - box_b[1]) >= min_h
+
+
 def detect_split_warnings(
     figure_boxes: List[Dict[str, Any]],
     page_height: float,
@@ -219,6 +246,10 @@ def detect_split_warnings(
     vertical overlap.
     - nested_regions: one box almost fully contains the other (info-level;
     often a caption box inside a figure).
+
+    Independent figures are not merged when they already have distinct
+    bound captions, or when a vertical pair both look complete (height
+    >= 20% of page) and are separated by a real gap (not NMS overlap).
 
     Args:
         figure_boxes: list of {"id", "page", "bbox": {x,y,width,height}}
@@ -244,6 +275,8 @@ def detect_split_warnings(
                 id_a, box_a = boxes[i]
                 id_b, box_b = boxes[j]
                 kind = None
+                v_gap = 0.0
+                h_gap = 0.0
                 # Containment first: a caption/inner box inside a figure is
                 # nesting, not a split.
                 if (
@@ -270,6 +303,17 @@ def detect_split_warnings(
                             and 0 <= h_gap <= gap_limit
                         ):
                             kind = "possible_horizontal_split"
+                if kind in {"possible_vertical_split", "possible_horizontal_split"}:
+                    item_a = items[i]
+                    item_b = items[j]
+                    if _distinct_bound_captions(item_a, item_b):
+                        kind = None
+                    elif (
+                        kind == "possible_vertical_split"
+                        and v_gap >= 0
+                        and _both_complete_looking(box_a, box_b, page_height)
+                    ):
+                        kind = None
                 if kind:
                     m = _merged_box(box_a, box_b)
                     warnings.append(

@@ -3010,9 +3010,11 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
 
             // GLM trial P0-C: reading-order overlay. The /blocks endpoint
             // surfaces reading_order from the envelope view layer; we draw a
-            // small badge at the top-left of each region so multi-column
-            // reading sequence is visible at a glance. Gated by the
-            // readingOrder overlay toggle (off = hide numbers, keep boxes).
+            // small badge at the top-left of text/title regions so
+            // multi-column reading sequence is visible. Figure/table boxes
+            // keep the number in the tooltip only (PaddleX often leaves
+            // image block_order as None, so a badge would be a fallback
+            // counter). Gated by the readingOrder overlay toggle.
             const readingOrder = Number(block.reading_order);
             const hasReadingOrder = !isNaN(readingOrder) && readingOrder > 0;
 
@@ -3037,7 +3039,8 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
 
             // Reading-order badge (P0-C). Drawn after the rect so it sits
             // on top; pointer-events disabled so it never steals rect clicks.
-            if (hasReadingOrder && overlayLayerVisibility.readingOrder !== false) {
+            const overlayLayer = getOverlayLayerType(type);
+            if (hasReadingOrder && overlayLayerVisibility.readingOrder !== false && overlayLayer === 'text') {
                 const badgeFontSize = Math.max(12, Math.min(w, h) * 0.12);
                 const label = document.createElementNS(svgNS, 'text');
                 label.setAttribute('x', x1 + 4);
@@ -3319,6 +3322,7 @@ function renderTableCard(table, index, total) {
     const columns = table.columns || (tableData[0] ? tableData[0].length : 0);
     const page = table.page || '?';
     const confidencePct = tableConfidencePct(table);
+    const tableCaption = String(table.caption || '').trim();
     const tableHtml = table.html || null;
     const htmlStructure = table.html_structure || null;
 
@@ -3329,6 +3333,9 @@ function renderTableCard(table, index, total) {
         html += ` <span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${confidencePct}%</span>`;
     }
     html += '</span>';
+    if (tableCaption) {
+        html += `<span class="table-caption-label" title="${escapeHtml(tableCaption)}" style="font-size:0.75rem;color:var(--text-secondary);font-weight:400;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(tableCaption)}</span>`;
+    }
     html += '<div class="table-actions">';
     html += '<button type="button" class="table-action-btn" title="Export CSV">';
     html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
@@ -3949,23 +3956,35 @@ function tableConfidencePct(table) {
     return Math.round(val);
 }
 
-function formatTableExportTitle(index1, table) {
+function formatTableCsvBanner(index1, table) {
     const page = table && table.page != null ? table.page : '?';
-    return `Table ${index1} (Page ${page}) confidence=${tableConfidencePct(table)}%`;
+    return `=== Table ${index1} (Page ${page}) confidence=${tableConfidencePct(table)}% ===`;
 }
 
-function formatTableCsvBanner(index1, table) {
-    return `=== ${formatTableExportTitle(index1, table)} ===`;
+function excelSafeCell(cell) {
+    const s = cell == null ? '' : String(cell);
+    if (!s) return s;
+    const first = s.charAt(0);
+    if (first === '=' || first === '+' || first === '@' || first === '\t' || first === '\r') {
+        return "'" + s;
+    }
+    if (first === '-') {
+        const n = Number(s.replace(/,/g, ''));
+        if (!Number.isFinite(n)) return "'" + s;
+    }
+    return s;
 }
 
 function escapeCsvCell(cell) {
-    const s = cell == null ? '' : String(cell);
+    const s = excelSafeCell(cell);
     if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
 }
 
 function buildSingleTableCsv(table, index1) {
     const lines = [formatTableCsvBanner(index1, table)];
+    const cap = table && table.caption ? String(table.caption).trim() : '';
+    if (cap) lines.push(escapeCsvCell('Caption: ' + cap));
     const rows = (table && table.data) || [];
     for (let i = 0; i < rows.length; i++) {
         const row = Array.isArray(rows[i]) ? rows[i] : [rows[i]];
@@ -4742,6 +4761,7 @@ function updateContentTables(result) {
                 columns: el.columns || 0,
                 confidence: typeof el.confidence === 'number' ? el.confidence : null,
                 score: el.score,
+                caption: el.caption || el.text || '',
                 bbox: el.bbox || null,
             }));
         }
@@ -4762,7 +4782,8 @@ function updateContentTables(result) {
         rows: table.rows || 0,
         columns: table.columns || 0,
         confidence: typeof table.confidence === 'number' ? table.confidence : null,
-        score: table.score
+        score: table.score,
+        caption: table.caption || ''
     }));
 
     window.currentTableIndex = 0;
@@ -4889,8 +4910,6 @@ function updateContentFigures(result) {
     // Layout elements used only for caption fallback (matched by id).
     const layout = result.layout || {};
     const layoutElements = layout.elements || [];
-    const layoutById = {};
-    layoutElements.forEach(function (el) { if (el.id) layoutById[el.id] = el; });
 
     const hasCrops = cropItems.length > 0;
     if (!hasCrops) {
@@ -4926,25 +4945,45 @@ function updateContentFigures(result) {
     // Render crops with lazy auth-loaded images.
     // Page-by-page navigation mirrors the Tables Tab so multi-figure docs are
     // browsable one card at a time instead of as a long fused list.
-    window.currentFigures = cropItems.map((item, index) => ({
+    // Gallery shows original crops only. Merged reconstructions stay in the
+    // API payload and are offered from the warning banner (false-positive
+    // stacked-figure merges must not occupy a carousel slot).
+    const allMapped = cropItems.map((item, index) => ({
         id: item.id || `figure_${index + 1}`,
         page: item.page || '?',
         confidence: item.confidence || 0,
         crop_url: item.crop_url || '',
         width_px: item.width_px || 0,
         height_px: item.height_px || 0,
+        caption: item.caption || '',
         warned: warningIds.has(item.id),
         is_merged: !!item.is_merged,
         merged_from: item.merged_from || null,
         split_kind: item.split_kind || '',
         index: index
     }));
+    window.mergedFigures = allMapped.filter(function (f) { return f.is_merged; });
+    window.currentFigures = allMapped.filter(function (f) { return !f.is_merged; });
     window.currentFigureIndex = 0;
+    window.viewingMergedIndex = null;
+
+    if (window.currentFigures.length === 0) {
+        contentFiguresList.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">No figures detected</div>';
+        return;
+    }
 
     let html = '';
-    if (warnings.length > 0) {
-        html += `<div class="figure-warnings-banner" style="margin-bottom:10px;padding:8px 12px;border-radius:6px;background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.35);font-size:0.8rem;color:var(--text-secondary);">`
-            + `⚠ ${warnings.length} possible split-figure warning(s) — see per-card flags.</div>`;
+    const splitWarnings = warnings.filter(function (w) {
+        return w.kind === 'possible_vertical_split' || w.kind === 'possible_horizontal_split';
+    });
+    if (splitWarnings.length > 0 || window.mergedFigures.length > 0) {
+        html += '<div class="figure-warnings-banner" id="figureMergedBanner" style="margin-bottom:10px;padding:8px 12px;border-radius:6px;background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.35);font-size:0.8rem;color:var(--text-secondary);">';
+        html += `⚠ ${splitWarnings.length || window.mergedFigures.length} possible split-figure warning(s). Gallery shows original crops only.`;
+        window.mergedFigures.forEach(function (m, i) {
+            html += ` <button type="button" class="figure-view-merged-btn" data-merged-index="${i}" style="margin-left:8px;padding:4px 8px;font-size:0.75rem;cursor:pointer;">View merged crop (Page ${m.page})</button>`;
+        });
+        html += ' <button type="button" class="figure-back-originals-btn" hidden style="margin-left:8px;padding:4px 8px;font-size:0.75rem;cursor:pointer;">Back to originals</button>';
+        html += '</div>';
     }
     if (window.currentFigures.length > 1) {
         html += '<div class="figure-navigation" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md);">';
@@ -4959,8 +4998,8 @@ function updateContentFigures(result) {
     html += renderFigureCard(window.currentFigures[0], 0, window.currentFigures.length);
     contentFiguresList.innerHTML = html;
 
-    // Lazy-load the visible card's crop through the trial-key auth bridge.
     function loadFigureCardImage(cardEl) {
+        if (!cardEl) return;
         const img = cardEl.querySelector('img.figure-crop-img');
         if (!img) return;
         const url = img.dataset.cropUrl;
@@ -4970,9 +5009,40 @@ function updateContentFigures(result) {
             else img.alt = 'Figure crop unavailable';
         });
     }
+
+    function paintVisibleFigure() {
+        const figureCard = contentFiguresList.querySelector('.figure-card');
+        if (!figureCard) return;
+        const backBtn = contentFiguresList.querySelector('.figure-back-originals-btn');
+        if (window.viewingMergedIndex != null && window.mergedFigures[window.viewingMergedIndex]) {
+            const m = window.mergedFigures[window.viewingMergedIndex];
+            figureCard.outerHTML = renderFigureCard(m, 0, 1);
+            if (backBtn) backBtn.hidden = false;
+        } else {
+            const figs = window.currentFigures;
+            const i = window.currentFigureIndex || 0;
+            figureCard.outerHTML = renderFigureCard(figs[i], i, figs.length);
+            if (backBtn) backBtn.hidden = true;
+        }
+        loadFigureCardImage(contentFiguresList.querySelector('.figure-card'));
+    }
+
     loadFigureCardImage(contentFiguresList.querySelector('.figure-card'));
 
-    // Navigation event listeners (mirror updateContentTables).
+    contentFiguresList.querySelectorAll('.figure-view-merged-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            window.viewingMergedIndex = Number(btn.dataset.mergedIndex);
+            paintVisibleFigure();
+        });
+    });
+    const backOriginalsBtn = contentFiguresList.querySelector('.figure-back-originals-btn');
+    if (backOriginalsBtn) {
+        backOriginalsBtn.addEventListener('click', function () {
+            window.viewingMergedIndex = null;
+            paintVisibleFigure();
+        });
+    }
+
     if (window.currentFigures.length > 1) {
         const prevBtn = document.getElementById('contentPrevFigureBtn');
         const nextBtn = document.getElementById('contentNextFigureBtn');
@@ -4982,16 +5052,9 @@ function updateContentFigures(result) {
             prevBtn.addEventListener('click', () => {
                 if (window.currentFigureIndex > 0) {
                     window.currentFigureIndex--;
-                    currentIndexSpan.textContent = window.currentFigureIndex + 1;
-                    const figureCard = contentFiguresList.querySelector('.figure-card');
-                    if (figureCard) {
-                        figureCard.outerHTML = renderFigureCard(
-                            window.currentFigures[window.currentFigureIndex],
-                            window.currentFigureIndex,
-                            window.currentFigures.length
-                        );
-                        loadFigureCardImage(contentFiguresList.querySelector('.figure-card'));
-                    }
+                    window.viewingMergedIndex = null;
+                    if (currentIndexSpan) currentIndexSpan.textContent = window.currentFigureIndex + 1;
+                    paintVisibleFigure();
                     updateFigureNavButtons();
                 }
             });
@@ -5001,16 +5064,9 @@ function updateContentFigures(result) {
             nextBtn.addEventListener('click', () => {
                 if (window.currentFigureIndex < window.currentFigures.length - 1) {
                     window.currentFigureIndex++;
-                    currentIndexSpan.textContent = window.currentFigureIndex + 1;
-                    const figureCard = contentFiguresList.querySelector('.figure-card');
-                    if (figureCard) {
-                        figureCard.outerHTML = renderFigureCard(
-                            window.currentFigures[window.currentFigureIndex],
-                            window.currentFigureIndex,
-                            window.currentFigures.length
-                        );
-                        loadFigureCardImage(contentFiguresList.querySelector('.figure-card'));
-                    }
+                    window.viewingMergedIndex = null;
+                    if (currentIndexSpan) currentIndexSpan.textContent = window.currentFigureIndex + 1;
+                    paintVisibleFigure();
                     updateFigureNavButtons();
                 }
             });
@@ -5041,19 +5097,24 @@ function updateContentFigures(result) {
 function renderFigureCard(item, index, total) {
     const page = item.page || '?';
     const confidence = item.confidence || 0;
+    const cap = String(item.caption || '').trim();
     let html = '<div class="figure-card">';
     html += '<div class="figure-card-header">';
     html += `<span class="figure-name">Figure ${index + 1}${total > 1 ? ` of ${total}` : ''}${page !== '?' ? ` (Page ${page})` : ''}`;
     if (confidence > 0) {
         html += ` <span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(confidence * 100).toFixed(1)}%</span>`;
     }
-    if (item.warned) {
+    if (item.warned && !item.is_merged) {
         html += ` <span style="font-size: 0.7rem; color: #f59e0b; margin-left:6px;">⚠ possible split</span>`;
     }
     if (item.is_merged) {
-        html += ` <span style="font-size: 0.7rem; color: var(--text-tertiary); margin-left:6px;">(merged)</span>`;
+        html += ` <span style="font-size: 0.7rem; color: var(--text-tertiary); margin-left:6px;">(merged reconstruction)</span>`;
     }
     html += '</span>';
+    if (cap) {
+        const short = cap.length > 80 ? cap.slice(0, 77) + '...' : cap;
+        html += `<span class="figure-caption-label" title="${escapeHtml(cap)}" style="font-size:0.75rem;color:var(--text-secondary);font-weight:400;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(short)}</span>`;
+    }
     html += '</div>';
     html += '<div class="figure-preview">';
     html += `<img class="figure-crop-img" data-crop-url="${item.crop_url || ''}" alt="Figure ${index + 1} crop" />`;

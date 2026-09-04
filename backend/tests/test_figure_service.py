@@ -237,6 +237,26 @@ class TestIntegrityWarnings:
         assert split["merged_bbox"]["width"] == 400
         assert split["merged_bbox"]["height"] == 515
 
+    def test_distinct_captions_not_treated_as_split(self):
+        boxes = [
+            {**self._box("a", 100, 100, 400, 300), "caption_id": "c1", "caption": "Fig 1"},
+            {**self._box("b", 100, 315, 400, 300), "caption_id": "c2", "caption": "Fig 2"},
+        ]
+        warnings = detect_split_warnings(boxes, page_height=1684)
+        assert not any(w["kind"] == "possible_vertical_split" for w in warnings)
+
+    def test_complete_looking_gapped_stack_not_split(self):
+        # 400px > 20% of 1684, real gap (not NMS overlap) → independent figures.
+        boxes = [self._box("a", 100, 100, 400, 400), self._box("b", 100, 515, 400, 400)]
+        warnings = detect_split_warnings(boxes, page_height=1684)
+        assert not any(w["kind"] == "possible_vertical_split" for w in warnings)
+
+    def test_nms_overlap_still_split_when_tall(self):
+        # Overlapping halves (v_gap < 0) still count as NMS split even if tall.
+        boxes = [self._box("a", 100, 100, 400, 400), self._box("b", 100, 400, 400, 400)]
+        warnings = detect_split_warnings(boxes, page_height=1684)
+        assert any(w["kind"] == "possible_vertical_split" for w in warnings)
+
 
 class TestBboxSpaceMismatch:
     """Coordinate-space self-check: flag bboxes that exceed the raster."""
@@ -413,6 +433,31 @@ class TestMergedCrop:
             output_dir=str(tmp_path / "f"), task_id="tm4",
         )
         assert result.get("merged_count", 0) == 0
+
+    def test_distinct_captions_skip_merged_crop(self, sample_pdf, tmp_path):
+        layout = {
+            "elements": [
+                _fig_elem("a", 1, 200, 200, 400, 300),
+                _fig_elem("b", 1, 200, 515, 400, 300),
+                {
+                    "id": "c1", "page": 1, "type": "figure_caption",
+                    "bbox": {"x": 200, "y": 505, "width": 400, "height": 8},
+                    "text": "Figure 1: Top",
+                },
+                {
+                    "id": "c2", "page": 1, "type": "figure_caption",
+                    "bbox": {"x": 200, "y": 820, "width": 400, "height": 8},
+                    "text": "Figure 2: Bottom",
+                },
+            ]
+        }
+        result = FigureService().crop_figures(
+            file_path=sample_pdf, layout_result=layout,
+            output_dir=str(tmp_path / "f"), task_id="tm_cap",
+        )
+        assert result.get("merged_count", 0) == 0
+        assert not any(f.get("is_merged") for f in result["figures"])
+        assert result["cropped_count"] == 2
 
     def test_merged_crop_in_pipeline_step(self, sample_pdf, tmp_path, monkeypatch):
         import asyncio

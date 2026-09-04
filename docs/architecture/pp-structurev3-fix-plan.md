@@ -13,6 +13,8 @@
 | F3 | figure_caption 与 figure 未关联 | findings §3 | P1 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
 | F4 | 表头关系层级丢失 | findings §4 | P1 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
 | F5 | figure 切分只告警不合并裁剪 | JD 硬指标 | P0 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
+| F6 | Pro 表格 born-digital 路由产生伪表 | findings §3 | P0 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
+| F7 | element id 跨页重复致 crop 覆盖 | 工程改动 | P0 | ✅ 纯逻辑 | 推理验证 | ✅ 已实施 |
 
 P0 = 影响 JD 硬指标（阅读顺序/footnote），且改的是纯解析逻辑，本机可测。
 P1 = 影响 JD 硬指标（caption/header），但依赖官方 postprocessing 或需谨慎改 HTML 解析。
@@ -233,3 +235,56 @@ P1 = 影响 JD 硬指标（caption/header），但依赖官方 postprocessing �
 - 误合并：两个独立图恰好上下紧邻（同列、小 gap）会被合并成一张。缓解：保留原半图 fallback，前端可按 `merged_from` 回退；后续可加"合并后宽高比异常"过滤。
 - 跨页切分：`merged_bbox` 跨页无意义，当前按同页 `page_no` 取 raster，跨页块不会触发合并（`detect_split_warnings` 按 `by_page` 分组，跨页不配对）。
 - `merged_a_b.png` 文件名含下划线，figure 路由 traversal guard 拒点号不拒下划线，已确认可访问。
+
+---
+
+## F6 — Pro 表格全部走 PP-StructureV3（移除 born-digital 路由）
+
+### 现状（`backend/app/services/table_service.py`）
+- `_extract_internal` 对 `.pdf` 且 engine in `(None/auto/docuvision_core/core/mixed)` 时，先 `detect_file_type` 判断 `PDF_DIGITAL`，是则走 `core_table_extractor.extract_digital_pdf_tables`（pdfplumber/camelot text 流）并提前 return。
+- 该分支绕过 layout 的 16 个 table 块（含 SLANeXt HTML），text 流策略把双栏正文/参考文献当表，产生大量伪表（03_paper_arxiv-mamba 实测 20 表大半为空/错页）。
+
+### 官方依据
+- PP-StructureV3 `parsing_res_list` 已含 table 块 bbox + `table_res_list` 的 `pred_html`（SLANeXt 表格识别 HTML），见 [PP-StructureV3.en.md](https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/pipeline_usage/PP-StructureV3.en.md)。
+- `_extract_from_layout_elements` 已存在，消费 layout table 块 HTML 转 `data`/`html_structure`，是 layout-first 的正确路径。
+
+### 修复
+- 移除 `_extract_internal` 的 born-digital 提前 return 分支（`table_service.py` 约 1355-1378 行）。
+- 流程直接走到 `if layout_elements and (not engine or engine == "ppstructure"):` → `_extract_from_layout_elements`。
+- 保留 `core_table_extractor.py` 文件不删（仅移除调用）；Lite 的 `table_pipeline.py` 独立不受影响。
+- 更新 `TableService`/`_extract_internal` docstring 删除"born-digital routed to docuvision-core"过时描述。
+
+### 验证
+- **本机纯逻辑单测**（`test_table_pseudo_filter.py`，6 项）：空表/小表丢弃、真表保留、Table/Figure caption 剥离、真表头不误剥。待 Cloud 跑（本机无 bs4）。
+- **Cloud 推理验证**：`03_paper_arxiv-mamba`。期望 `result.tables` ≈16（layout table 块数），无 2×2 空表，无参考文献整页表；`table_extraction_meta.strategy=layout_first`、`engine_used=ppstructure`。
+
+### 风险/限制
+- layout 模型对扫描件/无线表检出率低于 pdfplumber text 流。缓解：保留 `allow_fullpage_fallback` 分支（layout 零表格块时回退全页策略），且本次仅 Pro 生效，Lite 仍走 core。
+- camelot stream 全废后无线表召回可能下降，需 `02_datasheet_ti-lm358` 回归；若召回显著下降，评估在 layout ROI 内补跑 camelot（而非全页 text 流）。
+
+---
+
+## F7 — element id 跨页唯一（worker 协议带 page_num）
+
+### 现状（`backend/app/services/layout_service.py`）
+- `_analyze_image_layout_only` 硬编码 `_parse_result(result, 1)`，36 页所有 element id 都是 `p1_e*`。
+- 主进程 `_call_worker_pdf_page_by_page` 只回填 `el["page"]`，不回填 `el["id"]` → 跨页 id 重复。
+- `figure_service.crop_figures` 用 `fig_id.png` 存 crop，同 id 多页互相覆盖，磁盘只剩最后一页的图。
+
+### 官方依据
+- 无（工程改动，非 PaddleOCR API 适配）。
+
+### 修复
+- `_analyze_image_layout_only` 接受 `page_num` 参数，传给 `_parse_result`，并设 `page_layout["page"] = page_num`。
+- worker 协议扩展为 3-tuple `(cmd, file_path, page_num)`，兼容旧 2-tuple（`page_num=None` 回退 page=1）。
+- `_invoke_worker_command` / `_ppstructure_worker_main` / `_call_worker` / `_call_worker_pdf_page_by_page` 同步改。
+- `figure_service.crop_figures` 加 `seen_crop_ids` 防御层：同 id 多页时第二张加 `_p{N}` 后缀，避免 crop 覆盖并记 warning。
+
+### 验证
+- **本机纯逻辑单测**（`test_layout_page_id.py`，3 项）：id 带 `p{N}_` 前缀、跨页唯一、table 元素也带页码。待 Cloud 跑。
+- **本机纯逻辑单测**（`test_figure_service.py::test_duplicate_id_across_pages_suffixed`）：同 id 两页 → 第二张 id 加 `_p2` 后缀，两 crop 文件并存。待 Cloud 跑（本机无 fitz）。
+- **Cloud 推理验证**：`03_paper_arxiv-mamba`。期望 `figures.items` 11 张 id 全局唯一，crop 各不相同。
+
+### 风险/限制
+- worker 解包兼容旧 2-tuple，但若有外部进程直接 put req_q 用旧格式，page_num=None 回退 page=1 行为不变（向后兼容）。
+- id 格式从 `p1_e*` 变为 `p{N}_e*`，`crop_url` 路径随之变化；trial 阶段无外部缓存依赖，无影响。

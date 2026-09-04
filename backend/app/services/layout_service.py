@@ -640,7 +640,7 @@ class PPStructureEngine(BaseLayoutEngine):
             result_dict["preprocessed_image_height"] = preprocessed_h
         return result_dict
 
-    def _analyze_image_layout_only(self, img_path: str) -> Dict[str, Any]:
+    def _analyze_image_layout_only(self, img_path: str, page_num: int = 1) -> Dict[str, Any]:
         """Single-image layout inference WITHOUT preprocessing metadata extraction.
 
         Used by the subprocess page-by-page PDF driver so that the multi-page
@@ -648,11 +648,15 @@ class PPStructureEngine(BaseLayoutEngine):
         ``_analyze_pdf`` path (which never emitted ``preprocessed_image_path``
         / ``angle_deg`` / ``input_size`` fields).  Avoids leaking per-page
         preprocessed PNGs and keeps downstream envelope_builder behavior stable.
+
+        ``page_num`` is the 1-based page number; it flows into element ids
+        (``p{page_num}_e{n}``) and ``page`` fields so multi-page PDFs produce
+        globally-unique ids instead of every page reusing ``p1_e*``.
         """
         result = self._call_engine(img_path, vis_src_path=img_path)
-        elements = self._parse_result(result, 1)
+        elements = self._parse_result(result, page_num)
         page_layout = _compute_page_summary(elements)
-        page_layout["page"] = 1
+        page_layout["page"] = page_num
         return {"elements": elements, "page_layout": page_layout}
 
     def _parse_result(self, result: List[Dict], page_num: int) -> List[Dict[str, Any]]:
@@ -1353,7 +1357,7 @@ def _build_pdf_layout_result(
     }
 
 
-def _invoke_worker_command(engine, cmd: str, file_path: str):
+def _invoke_worker_command(engine, cmd: str, file_path: str, page_num: Optional[int] = None):
     """Dispatch one worker command, sync or async depending on the method.
 
     ``_analyze_image`` / ``_analyze_pdf`` are coroutines and must be driven
@@ -1362,11 +1366,20 @@ def _invoke_worker_command(engine, cmd: str, file_path: str):
     (so inference may run) then raises ``ValueError: a coroutine was
     expected`` — every PDF page was recorded as failed.
 
+    ``page_num`` (1-based) is forwarded to ``_analyze_image_layout_only`` so
+    element ids and page fields carry the real page number instead of the
+    hardcoded 1 that caused cross-page id collisions (every page reusing
+    ``p1_e*``) and crop-file overwrites.
+
     Official: ``asyncio.run`` requires a coroutine object
     (https://docs.python.org/3.11/library/asyncio-runner.html#asyncio.run).
     """
     if cmd == "analyze_image_layout":
         fn = engine._analyze_image_layout_only
+        # Forward page_num so multi-page PDFs get unique element ids.
+        if page_num is not None:
+            return fn(file_path, page_num)
+        return fn(file_path)
     elif cmd == "analyze_image":
         fn = engine._analyze_image
     elif cmd == "analyze":
@@ -1421,13 +1434,20 @@ def _ppstructure_worker_main(use_gpu: bool, lang: str, req_q, res_q):
         if not isinstance(item, tuple) or item[0] == 'stop':
             break
 
-        cmd, file_path = item
-        # Commands:
+        # Commands (2-tuple, legacy):
         #   ('analyze', path)             — legacy whole-file call (PDF or image)
         #   ('analyze_image', path)        — single image (one PDF page rasterized by main)
         #   ('analyze_image_layout', path) — single image, layout-only (no preprocess meta)
+        # Commands (3-tuple, page-aware):
+        #   ('analyze_image_layout', path, page_num) — single image with 1-based page
+        #     number forwarded to _analyze_image_layout_only so element ids are unique.
+        if len(item) == 3:
+            cmd, file_path, page_num = item
+        else:
+            cmd, file_path = item
+            page_num = None
         try:
-            result = _invoke_worker_command(engine, cmd, file_path)
+            result = _invoke_worker_command(engine, cmd, file_path, page_num)
             res_q.put(('ok', result))
         except Exception as e:
             import traceback as _tb
@@ -1545,7 +1565,7 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
     # Inference
     # ------------------------------------------------------------------
 
-    def _call_worker(self, file_path: str, cmd: str = 'analyze') -> Dict[str, Any]:
+    def _call_worker(self, file_path: str, cmd: str = 'analyze', page_num: Optional[int] = None) -> Dict[str, Any]:
         """Blocking call sent to the worker subprocess (runs in thread executor).
 
         Args:
@@ -1553,11 +1573,16 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
             cmd: Worker command — ``analyze`` (whole file), ``analyze_image``
                 (single image with preprocessing metadata), or
                 ``analyze_image_layout`` (single image, layout-only).
+            page_num: 1-based page number forwarded to
+                ``_analyze_image_layout_only`` so element ids are unique across
+                a multi-page PDF. None keeps the legacy 2-tuple wire format.
         """
         if not self.is_ready():
             raise RuntimeError("PPStructureV3 subprocess worker is not running")
 
-        self._req_q.put((cmd, file_path))
+        # 3-tuple carries page_num; 2-tuple stays legacy-compatible.
+        request = (cmd, file_path, page_num) if page_num is not None else (cmd, file_path)
+        self._req_q.put(request)
 
         try:
             msg = self._res_q.get(timeout=self._infer_timeout)
@@ -1583,7 +1608,7 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
                     raise RuntimeError(f"PPStructureV3 worker restart failed. Original: {error_msg}")
 
                 # Retry once with the fresh worker
-                self._req_q.put((cmd, file_path))
+                self._req_q.put(request)
                 try:
                     msg2 = self._res_q.get(timeout=self._infer_timeout)
                 except _queue_module.Empty:
@@ -1634,8 +1659,16 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
                     pix.save(img_path)
 
                 try:
-                    page_result = self._call_worker(img_path, cmd='analyze_image_layout')
+                    # Forward the 1-based page number so the worker produces
+                    # globally-unique element ids (p{N}_e{M}) instead of every
+                    # page reusing p1_e* which caused crop-file overwrites.
+                    page_result = self._call_worker(
+                        img_path, cmd='analyze_image_layout', page_num=page_num + 1
+                    )
                     elements = page_result.get("elements", []) or []
+                    # Defensive: worker now sets page correctly from page_num,
+                    # but keep this overwrite in case a legacy worker (2-tuple
+                    # wire format, page_num dropped) returns page=1.
                     for el in elements:
                         el["page"] = page_num + 1
                     all_elements.extend(elements)

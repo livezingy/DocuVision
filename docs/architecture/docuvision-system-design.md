@@ -58,6 +58,8 @@
 > - 第二步职责边界已落地：当缺少 layout 输入且 fallback 关闭时，table 路径明确告警并快速返回空表结果。
 > - 第三步已落地：`table_service.extract_with_meta()` 输出结构化 `meta`（path/reason/fallback_activated/engine_used），orchestrator 将其写入 `result.table_extraction_meta.service`。
 > - 第三步验证已完成：新增 `backend/tests/test_table_strategy_meta.py`，覆盖 `extract_with_meta` 包装、`meta.path/reason` 语义以及 `get_strategy_info()` 默认策略。
+> - 后续增量（F6，2026-09-04）：Pro 表格**全部走 PP-StructureV3 layout-first**，移除 born-digital 路由（`detect_file_type` + `core_table_extractor` 提前 return 分支）。原因：pdfplumber/camelot text 流策略在双栏论文/参考文献页产生大量伪表（03_paper_arxiv-mamba 实测 20 表大半为空/错页），而 layout 的 16 个 table 块（含 SLANeXt HTML）被闲置。移除后流程直接走 `_extract_from_layout_elements`。Lite 的 `table_pipeline.py` 独立不受影响。`core_table_extractor.py` 文件保留不删。
+> - 后续增量（F7，2026-09-04）：element id 跨页唯一。`_analyze_image_layout_only` 接受 `page_num` 参数，worker 协议扩展为 3-tuple `(cmd, file_path, page_num)`（兼容旧 2-tuple）。修复前 36 页所有 element id 都是 `p1_e*`，导致 `figure_service` crop 文件互相覆盖。同步加 `seen_crop_ids` 防御层：同 id 多页时第二张加 `_p{N}` 后缀。
 > - 后续增量（v1.2）：`EnvelopeBuilder` 已实现全 block `provenance` 记录（text/table/vision/formula/seal 均有结构化来源信息）；`inline_formula` 已并入 `view.formulas` 聚合。
 > - 后续增量（v1.3）：`processing_status` 兜底已全覆盖，新增 `no_ocr_empty`（文本空内容兜底）与 `passthrough_unknown_type`（未知类型兜底）；并补齐对应单测。
 > - 后续增量（v1.4）：`formula_recognition` 已完成失败分级（`error_level/error_code/failure_stage`）与质量统计细化（`formula_blocks_failed/formula_recognition_rate`、attempt/stage/error 元信息）。
@@ -1054,6 +1056,8 @@ GET /api/v1/jobs/{job_id}/debug
 | 测试 | Phase A 37 项；Cloud MP + H-Batch + UI 冒烟 — [MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.2_CLOUD_CHECKLIST.md) |
 
 **v1.3 已交付（P0）**：Pro born-digital → `docuvision-core` 表格路由；跨页 stitch MVP；Lite Batch API；KIE 字段校验 + YAML 模板 API；Batch Excel（v1.2.1+）。详见 [RELEASE_1.3.0_NOTES.md](../release/RELEASE_1.3.0_NOTES.md)。
+
+> **F6 更新（2026-09-04）**：Pro 表格 born-digital 路由已**移除**。Pro 全部走 PP-StructureV3 layout-first（`_extract_from_layout_elements` 消费 layout table 块 HTML），不再判断 `PDF_DIGITAL`、不再调用 `core_table_extractor`。原因见 [pp-structurev3-fix-plan.md](./pp-structurev3-fix-plan.md) §F6。Lite 的 `table_pipeline.py` 仍走 core，独立不受影响。下表 `pdf_digital` 行的 "core TableProcessor" 描述对 Pro 已失效（保留作历史记录，Pro 实际走 layout-first）。
 
 **post-v1.3 优先级（v1.4 主线）**：垂直表格列映射（bank_statement / invoice_line_items）、自动 `document_type` 产品化、HITL Review UI、Webhook HTTP 投递；邮件 IMAP 建议独立服务/n8n。**v1.5+**：可搜索 PDF、PDF 工具箱产品化、Batch 持久化。身份证精度走 `bugfix/*` / patch。
 

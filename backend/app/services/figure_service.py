@@ -384,6 +384,14 @@ class FigureService:
 
             os.makedirs(output_dir, exist_ok=True)
 
+            # Track figure ids seen so far to defend against id collisions
+            # (same id on multiple pages). The layout worker now stamps ids
+            # with the real page number, but this guard prevents silent
+            # crop-file overwrites if a regression ever reintroduces
+            # duplicate ids (e.g. a legacy worker using the 2-tuple wire
+            # format with page_num dropped).
+            seen_crop_ids: set = set()
+
             ext = os.path.splitext(file_path)[1].lower()
             if ext == ".pdf":
                 pages = self._render_pdf_pages(file_path, figures)
@@ -416,6 +424,19 @@ class FigureService:
                         continue
                     crop = img.crop((int(box[0]), int(box[1]), int(box[2]), int(box[3])))
                     fig_id = str(elem.get("id") or f"p{page_no}_fig")
+                    # Defense against id collision: if the same fig_id was
+                    # already cropped (e.g. duplicate ids across pages from a
+                    # legacy worker), suffix with the page number so the new
+                    # crop does not overwrite the previous file. The
+                    # collision is logged so a regression is visible.
+                    if fig_id in seen_crop_ids:
+                        logger.warning(
+                            "figure_service: duplicate figure id {} on page {} — "
+                            "suffixing crop filename to avoid overwrite",
+                            fig_id, page_no,
+                        )
+                        fig_id = f"{fig_id}_p{page_no}"
+                    seen_crop_ids.add(fig_id)
                     filename = f"{fig_id}.png"
                     crop_path = os.path.join(output_dir, filename)
                     crop.save(crop_path, format="PNG")

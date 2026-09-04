@@ -90,6 +90,31 @@ class TestCropFiguresPdf:
         pages = {f["page"] for f in result["figures"]}
         assert pages == {1, 2}
 
+    def test_duplicate_id_across_pages_suffixed(self, sample_pdf, tmp_path):
+        """Defense: if two figures share an id (legacy worker regression),
+        the second crop is suffixed with the page number so it does not
+        overwrite the first crop file."""
+        layout = {
+            "elements": [
+                _fig_elem("p1_e0", 1, 100, 100, 200, 150),
+                _fig_elem("p1_e0", 2, 100, 100, 200, 150),  # same id, page 2
+            ]
+        }
+        result = FigureService().crop_figures(
+            file_path=sample_pdf, layout_result=layout,
+            output_dir=str(tmp_path / "f"), task_id="t_dup",
+        )
+        assert result["cropped_count"] == 2
+        ids = [f["id"] for f in result["figures"]]
+        # Second figure id must be suffixed to avoid collision.
+        assert ids[0] == "p1_e0"
+        assert ids[1] == "p1_e0_p2"
+        # Both crop files must exist on disk (no overwrite).
+        assert os.path.isfile(os.path.join(str(tmp_path / "f"), "p1_e0.png"))
+        assert os.path.isfile(os.path.join(str(tmp_path / "f"), "p1_e0_p2.png"))
+        # crop_url reflects the suffixed id.
+        assert result["figures"][1]["crop_url"] == "/api/v1/tasks/t_dup/figures/p1_e0_p2"
+
     def test_bbox_clamped_to_page_bounds(self, sample_pdf, tmp_path):
         layout = {"elements": [_fig_elem("p1_e0", 1, PIX_W - 10, PIX_H - 10, 500, 500)]}
         result = FigureService().crop_figures(

@@ -4856,48 +4856,149 @@ function updateContentFigures(result) {
     }
 
     // Render crops with lazy auth-loaded images.
+    // Page-by-page navigation mirrors the Tables Tab so multi-figure docs are
+    // browsable one card at a time instead of as a long fused list.
+    window.currentFigures = cropItems.map((item, index) => ({
+        id: item.id || `figure_${index + 1}`,
+        page: item.page || '?',
+        confidence: item.confidence || 0,
+        crop_url: item.crop_url || '',
+        width_px: item.width_px || 0,
+        height_px: item.height_px || 0,
+        caption: (layoutById[item.id] && layoutById[item.id].text)
+            ? normalizeTextForDisplay(layoutById[item.id].text) : '',
+        warned: warningIds.has(item.id),
+        is_merged: !!item.is_merged,
+        merged_from: item.merged_from || null,
+        split_kind: item.split_kind || '',
+        index: index
+    }));
+    window.currentFigureIndex = 0;
+
     let html = '';
     if (warnings.length > 0) {
         html += `<div class="figure-warnings-banner" style="margin-bottom:10px;padding:8px 12px;border-radius:6px;background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.35);font-size:0.8rem;color:var(--text-secondary);">`
             + `⚠ ${warnings.length} possible split-figure warning(s) — see per-card flags.</div>`;
     }
-    cropItems.forEach((item, index) => {
-        const warned = warningIds.has(item.id);
-        const captionEl = layoutById[item.id];
-        const caption = captionEl && captionEl.text ? normalizeTextForDisplay(captionEl.text) : '';
-        html += '<div class="figure-card">';
-        html += '<div class="figure-card-header">';
-        html += `<span class="figure-name">Figure ${index + 1}${item.page ? ` (Page ${item.page})` : ''}</span>`;
-        if (item.confidence !== undefined) {
-            html += `<span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(item.confidence * 100).toFixed(1)}%</span>`;
-        }
-        if (warned) {
-            html += `<span style="font-size: 0.7rem; color: #f59e0b; margin-left:6px;">⚠ possible split</span>`;
-        }
+    if (window.currentFigures.length > 1) {
+        html += '<div class="figure-navigation" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md);">';
+        html += '<button class="figure-nav-btn" id="contentPrevFigureBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+        html += 'Previous</button>';
+        html += `<span style="color: var(--text-primary); font-weight: 500;">Figure <span id="contentCurrentFigureIndex">1</span> of ${window.currentFigures.length}</span>`;
+        html += '<button class="figure-nav-btn" id="contentNextFigureBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
+        html += 'Next<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"></polyline></svg></button>';
         html += '</div>';
-        html += '<div class="figure-preview">';
-        // Placeholder while the authed image loads; swapped after fetch.
-        html += `<img class="figure-crop-img" data-crop-url="${item.crop_url || ''}" alt="Figure ${index + 1} crop" style="max-width:100%;height:auto;border-radius:6px;border:1px solid var(--border-primary);background:var(--bg-secondary);" />`;
-        if (caption) {
-            html += `<p style="color: var(--text-secondary); font-style: italic; margin-top:6px;">${escapeHtml(caption)}</p>`;
-        }
-        if (item.width_px && item.height_px) {
-            html += `<p style="font-size:0.7rem;color:var(--text-tertiary);margin-top:4px;">${item.width_px} × ${item.height_px}px</p>`;
-        }
-        html += '</div></div>';
-    });
+    }
+    html += renderFigureCard(window.currentFigures[0], 0, window.currentFigures.length);
     contentFiguresList.innerHTML = html;
 
-    // Lazy-load each crop through the trial-key auth bridge.
-    const imgs = contentFiguresList.querySelectorAll('img.figure-crop-img');
-    imgs.forEach(function (img) {
+    // Lazy-load the visible card's crop through the trial-key auth bridge.
+    function loadFigureCardImage(cardEl) {
+        const img = cardEl.querySelector('img.figure-crop-img');
+        if (!img) return;
         const url = img.dataset.cropUrl;
         if (!url) return;
         fetchAuthedImage(url, img).then(function (objUrl) {
             if (objUrl) img.src = objUrl;
             else img.alt = 'Figure crop unavailable';
         });
-    });
+    }
+    loadFigureCardImage(contentFiguresList.querySelector('.figure-card'));
+
+    // Navigation event listeners (mirror updateContentTables).
+    if (window.currentFigures.length > 1) {
+        const prevBtn = document.getElementById('contentPrevFigureBtn');
+        const nextBtn = document.getElementById('contentNextFigureBtn');
+        const currentIndexSpan = document.getElementById('contentCurrentFigureIndex');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (window.currentFigureIndex > 0) {
+                    window.currentFigureIndex--;
+                    currentIndexSpan.textContent = window.currentFigureIndex + 1;
+                    const figureCard = contentFiguresList.querySelector('.figure-card');
+                    if (figureCard) {
+                        figureCard.outerHTML = renderFigureCard(
+                            window.currentFigures[window.currentFigureIndex],
+                            window.currentFigureIndex,
+                            window.currentFigures.length
+                        );
+                        loadFigureCardImage(contentFiguresList.querySelector('.figure-card'));
+                    }
+                    updateFigureNavButtons();
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (window.currentFigureIndex < window.currentFigures.length - 1) {
+                    window.currentFigureIndex++;
+                    currentIndexSpan.textContent = window.currentFigureIndex + 1;
+                    const figureCard = contentFiguresList.querySelector('.figure-card');
+                    if (figureCard) {
+                        figureCard.outerHTML = renderFigureCard(
+                            window.currentFigures[window.currentFigureIndex],
+                            window.currentFigureIndex,
+                            window.currentFigures.length
+                        );
+                        loadFigureCardImage(contentFiguresList.querySelector('.figure-card'));
+                    }
+                    updateFigureNavButtons();
+                }
+            });
+        }
+
+        function updateFigureNavButtons() {
+            if (prevBtn) {
+                prevBtn.disabled = window.currentFigureIndex === 0;
+                prevBtn.style.opacity = window.currentFigureIndex === 0 ? '0.5' : '1';
+                prevBtn.style.cursor = window.currentFigureIndex === 0 ? 'not-allowed' : 'pointer';
+            }
+            if (nextBtn) {
+                nextBtn.disabled = window.currentFigureIndex === window.currentFigures.length - 1;
+                nextBtn.style.opacity = window.currentFigureIndex === window.currentFigures.length - 1 ? '0.5' : '1';
+                nextBtn.style.cursor = window.currentFigureIndex === window.currentFigures.length - 1 ? 'not-allowed' : 'pointer';
+            }
+        }
+
+        updateFigureNavButtons();
+    }
+}
+
+/**
+ * Render a single figure card (used by updateContentFigures pagination).
+ * Mirrors renderTableCard so the Figures Tab browses one card at a time
+ * instead of a fused long list.
+ */
+function renderFigureCard(item, index, total) {
+    const page = item.page || '?';
+    const confidence = item.confidence || 0;
+    let html = '<div class="figure-card">';
+    html += '<div class="figure-card-header">';
+    html += `<span class="figure-name">Figure ${index + 1}${total > 1 ? ` of ${total}` : ''}${page !== '?' ? ` (Page ${page})` : ''}`;
+    if (confidence > 0) {
+        html += ` <span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(confidence * 100).toFixed(1)}%</span>`;
+    }
+    if (item.warned) {
+        html += ` <span style="font-size: 0.7rem; color: #f59e0b; margin-left:6px;">⚠ possible split</span>`;
+    }
+    if (item.is_merged) {
+        html += ` <span style="font-size: 0.7rem; color: var(--text-tertiary); margin-left:6px;">(merged)</span>`;
+    }
+    html += '</span>';
+    html += '</div>';
+    html += '<div class="figure-preview">';
+    html += `<img class="figure-crop-img" data-crop-url="${item.crop_url || ''}" alt="Figure ${index + 1} crop" style="max-width:100%;height:auto;border-radius:6px;border:1px solid var(--border-primary);background:var(--bg-secondary);" />`;
+    if (item.caption) {
+        html += `<p style="color: var(--text-secondary); font-style: italic; margin-top:6px;">${escapeHtml(item.caption)}</p>`;
+    }
+    if (item.width_px && item.height_px) {
+        html += `<p style="font-size:0.7rem;color:var(--text-tertiary);margin-top:4px;">${item.width_px} × ${item.height_px}px</p>`;
+    }
+    html += '</div></div>';
+    return html;
 }
 
 /**

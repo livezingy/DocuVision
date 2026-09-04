@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from loguru import logger
 import os
 import io
+import re
 
 
 class BaseTableEngine(ABC):
@@ -339,6 +340,54 @@ class PPStructureTableEngine(BaseTableEngine):
                                     table['columns'] = max(len(row) for row in table['data']) if table['data'] else 0
                     except Exception as e:
                         logger.warning(f"Table {table_idx}: Failed to parse HTML from content: {e}")
+
+            # Pseudo-table filter + caption strip (layout-first defense).
+            # Even though Pro now consumes layout table blocks (not pdfplumber
+            # text-stream pseudo-tables), PP-DocLayout can still mis-detect
+            # small rules/axis lines as tables. Drop empty or tiny (<3x3)
+            # tables, and strip a leading "Table N:" / "Figure N:" caption
+            # row that SLANeXt occasionally includes as the first table row.
+            table_data = table.get('data') or []
+            if table_data:
+                nonempty_cells = sum(
+                    1 for row in table_data for c in (row or [])
+                    if c and str(c).strip()
+                )
+                row_count = len(table_data)
+                col_count = max((len(r) for r in table_data), default=0)
+                if nonempty_cells == 0 or (row_count < 3 and col_count < 3):
+                    logger.info(
+                        f"Table {table_idx}: dropped pseudo-table "
+                        f"(empty/tiny, {row_count}x{col_count})"
+                    )
+                    continue
+
+                # Caption strip: a single leading row that matches
+                # "Table N:" / "Figure N:" is a caption that SLANeXt
+                # included as the first row, not real table data. Only strip
+                # when the row has <= 2 cells (caption is usually a single
+                # spanned cell) to avoid stripping real header rows.
+                first_row = table_data[0] if table_data else []
+                if first_row and len(first_row) <= 2:
+                    first_text = ' '.join(
+                        str(c) for c in first_row if c
+                    ).strip()
+                    if re.match(
+                        r'^(Table|Figure)\s+\d+[:.]',
+                        first_text,
+                        re.IGNORECASE,
+                    ):
+                        table['caption'] = first_text
+                        table['data'] = table_data[1:]
+                        if table.get('data'):
+                            table['rows'] = len(table['data'])
+                            table['columns'] = max(
+                                len(r) for r in table['data']
+                            ) if table['data'] else 0
+                        logger.info(
+                            f"Table {table_idx}: stripped caption row -> "
+                            f"{first_text[:50]}"
+                        )
 
             # Only add table if it has data or HTML
             if table.get('data') or table.get('html'):
@@ -1191,10 +1240,14 @@ class TableService:
     """
     Table Extraction Service.
 
-    Only PP-Structure-Table is registered as a table engine for the
-    image/scanned-PDF path. Born-digital PDFs are routed earlier to the
-    docuvision-core TableProcessor (pdfplumber + camelot, see
-    core_table_extractor), which is the complementary multi-strategy path.
+    Only PP-Structure-Table is registered as a table engine. Pro routes
+    all PDFs (born-digital and scanned) through the PP-StructureV3
+    layout-first path: layout detection supplies table region bboxes and
+    SLANeXt HTML, and this service parses that HTML into rows/data. The
+    former docuvision-core born-digital branch (pdfplumber + camelot
+    text-stream) is removed because its text-stream strategy produced
+    pseudo-tables on two-column papers and reference pages. Lite keeps
+    its own core-based table_pipeline; this service is Pro-only.
     An earlier design advertised Camelot/Tabula as fallback engines here,
     but they were never enabled and do not help on scanned inputs; the
     dead code has been removed.
@@ -1309,8 +1362,10 @@ class TableService:
 
         Args:
             file_path: Path to PDF or image file (used as fallback if layout_elements not provided)
-            engine: Specific engine to use; only ``ppstructure`` is registered
-                (born-digital PDFs are routed to docuvision-core upstream)
+            engine: Specific engine to use; only ``ppstructure`` is registered.
+                Pro routes all PDFs (born-digital and scanned) through the
+                PP-StructureV3 layout-first path; the former docuvision-core
+                born-digital branch is removed.
             fallback: Kept for API compatibility; no-op with a single engine
             layout_elements: Optional list of layout elements from Layout Service (preferred method)
             ocr_text_blocks: Optional list of OCR text blocks for table reconstruction
@@ -1349,32 +1404,12 @@ class TableService:
             effective_allow_fullpage_fallback,
         )
 
-        ext = os.path.splitext(file_path)[1].lower()
-        use_core = engine in (None, "auto", "docuvision_core", "core", "mixed")
-        if ext == ".pdf" and use_core:
-            try:
-                from app.services.file_type_detector import DetectedFileType, detect_file_type
-                from app.services.core_table_extractor import extract_digital_pdf_tables
-
-                detected, _page_count = detect_file_type(file_path)
-                if detected == DetectedFileType.PDF_DIGITAL:
-                    logger.info("Routing born-digital PDF to docuvision-core TableProcessor")
-                    core_tables = extract_digital_pdf_tables(
-                        file_path,
-                    )
-                    meta.update(
-                        {
-                            "strategy": "pdf_digital_core",
-                            "path": "docuvision_core",
-                            "reason": "born_digital_pdf",
-                            "engine_used": "docuvision_core",
-                            "tables_returned": len(core_tables),
-                        }
-                    )
-                    return core_tables, meta
-            except Exception as core_exc:
-                logger.warning(f"docuvision-core table path failed, falling back to layout: {core_exc}")
-
+        # Pro policy: all tables come from PP-StructureV3 layout detection.
+        # The former born-digital branch (docuvision-core pdfplumber/camelot
+        # text-stream) is removed because its text-stream strategy produced
+        # many pseudo-tables on two-column papers and reference pages, while
+        # the layout table blocks (with SLANeXt HTML) were discarded. Lite
+        # keeps its own core-based table_pipeline; this change is Pro-only.
         # If layout elements are provided and using PP-Structure, extract from layout (preferred method)
         if layout_elements and (not engine or engine == "ppstructure"):
             if "ppstructure" in self.engines:

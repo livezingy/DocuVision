@@ -341,56 +341,16 @@ class PPStructureTableEngine(BaseTableEngine):
                     except Exception as e:
                         logger.warning(f"Table {table_idx}: Failed to parse HTML from content: {e}")
 
-            # Pseudo-table filter + caption strip (layout-first defense).
-            # Even though Pro now consumes layout table blocks (not pdfplumber
-            # text-stream pseudo-tables), PP-DocLayout can still mis-detect
-            # small rules/axis lines as tables. Drop empty or tiny (<3x3)
-            # tables, and strip a leading "Table N:" / "Figure N:" caption
-            # row that SLANeXt occasionally includes as the first table row.
-            table_data = table.get('data') or []
-            if table_data:
-                nonempty_cells = sum(
-                    1 for row in table_data for c in (row or [])
-                    if c and str(c).strip()
+            if not self._keep_layout_table(table):
+                logger.info(
+                    f"Table {table_idx}: dropped pseudo-table "
+                    f"(empty/tiny or html-only with no parsed cells)"
                 )
-                row_count = len(table_data)
-                col_count = max((len(r) for r in table_data), default=0)
-                if nonempty_cells == 0 or (row_count < 3 and col_count < 3):
-                    logger.info(
-                        f"Table {table_idx}: dropped pseudo-table "
-                        f"(empty/tiny, {row_count}x{col_count})"
-                    )
-                    continue
+                continue
 
-                # Caption strip: a single leading row that matches
-                # "Table N:" / "Figure N:" is a caption that SLANeXt
-                # included as the first row, not real table data. Only strip
-                # when the row has <= 2 cells (caption is usually a single
-                # spanned cell) to avoid stripping real header rows.
-                first_row = table_data[0] if table_data else []
-                if first_row and len(first_row) <= 2:
-                    first_text = ' '.join(
-                        str(c) for c in first_row if c
-                    ).strip()
-                    if re.match(
-                        r'^(Table|Figure)\s+\d+[:.]',
-                        first_text,
-                        re.IGNORECASE,
-                    ):
-                        table['caption'] = first_text
-                        table['data'] = table_data[1:]
-                        if table.get('data'):
-                            table['rows'] = len(table['data'])
-                            table['columns'] = max(
-                                len(r) for r in table['data']
-                            ) if table['data'] else 0
-                        logger.info(
-                            f"Table {table_idx}: stripped caption row -> "
-                            f"{first_text[:50]}"
-                        )
+            self._strip_leading_caption_row(table)
 
-            # Only add table if it has data or HTML
-            if table.get('data') or table.get('html'):
+            if table.get('data'):
                 tables.append(table)
             else:
                 logger.warning(f"Table {table_idx}: No data or HTML found in layout element")
@@ -399,6 +359,52 @@ class PPStructureTableEngine(BaseTableEngine):
         self._bind_table_captions(tables, layout_elements)
 
         return tables
+
+    @staticmethod
+    def _keep_layout_table(table: Dict[str, Any]) -> bool:
+        """Return False for empty/tiny layout tables.
+
+        ``_html_to_data`` may yield a grid of empty strings, or fail and leave
+        only ``html``. Either case is a pseudo-table (header rule / axis line)
+        and must not be kept just because HTML is present.
+        """
+        data = table.get("data") or []
+        if not data:
+            return False
+        nonempty = sum(
+            1 for row in data for c in (row or []) if c and str(c).strip()
+        )
+        if nonempty == 0:
+            return False
+        row_count = len(data)
+        col_count = max((len(r) for r in data), default=0)
+        if row_count < 3 and col_count < 3:
+            return False
+        return True
+
+    @staticmethod
+    def _strip_leading_caption_row(table: Dict[str, Any]) -> None:
+        """Move a leading Table/Figure caption row onto ``table.caption``.
+
+        After colspan expansion a single caption cell becomes
+        ``['Table 1: ...', '', '']``. Count nonempty cells, not raw width,
+        so a spanned caption is still stripped.
+        """
+        data = table.get("data") or []
+        if not data or not data[0]:
+            return
+        nonempty = [str(c).strip() for c in data[0] if c and str(c).strip()]
+        if not nonempty or len(nonempty) > 2:
+            return
+        first_text = " ".join(nonempty)
+        if not re.match(r"^(Table|Figure)\s+\d+[:.]", first_text, re.IGNORECASE):
+            return
+        table["caption"] = first_text
+        table["data"] = data[1:]
+        if table.get("data"):
+            table["rows"] = len(table["data"])
+            table["columns"] = max(len(r) for r in table["data"]) if table["data"] else 0
+        logger.info(f"stripped caption row -> {first_text[:50]}")
 
     @staticmethod
     def _bind_table_captions(

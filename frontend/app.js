@@ -4865,8 +4865,7 @@ function updateContentFigures(result) {
         crop_url: item.crop_url || '',
         width_px: item.width_px || 0,
         height_px: item.height_px || 0,
-        caption: (layoutById[item.id] && layoutById[item.id].text)
-            ? normalizeTextForDisplay(layoutById[item.id].text) : '',
+        caption: '',
         warned: warningIds.has(item.id),
         is_merged: !!item.is_merged,
         merged_from: item.merged_from || null,
@@ -4991,9 +4990,6 @@ function renderFigureCard(item, index, total) {
     html += '</div>';
     html += '<div class="figure-preview">';
     html += `<img class="figure-crop-img" data-crop-url="${item.crop_url || ''}" alt="Figure ${index + 1} crop" style="max-width:100%;height:auto;border-radius:6px;border:1px solid var(--border-primary);background:var(--bg-secondary);" />`;
-    if (item.caption) {
-        html += `<p style="color: var(--text-secondary); font-style: italic; margin-top:6px;">${escapeHtml(item.caption)}</p>`;
-    }
     if (item.width_px && item.height_px) {
         html += `<p style="font-size:0.7rem;color:var(--text-tertiary);margin-top:4px;">${item.width_px} × ${item.height_px}px</p>`;
     }

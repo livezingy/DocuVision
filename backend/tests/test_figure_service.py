@@ -15,6 +15,7 @@ import pytest
 
 from app.services.figure_service import (
     FIGURE_LABELS,
+    CROP_PAD_RATIO,
     FigureService,
     _detect_bbox_space_mismatch,
     detect_split_warnings,
@@ -70,10 +71,16 @@ class TestCropFiguresPdf:
         assert result["cropped_count"] == 1
         item = result["figures"][0]
         assert item["id"] == "p1_e2"
-        assert item["width_px"] == 560 and item["height_px"] == 400
+        # Crop is padded around the tight layout box (CROP_PAD_RATIO).
+        assert item["width_px"] >= 560 and item["height_px"] >= 400
         assert os.path.isfile(item["crop_path"])
         assert item["crop_url"] == "/api/v1/tasks/t1/figures/p1_e2"
         assert result["errors"] == []
+        # 8% pad each side on a 560x400 box, not clamped (page is larger).
+        expected_w = int(560 + 2 * 560 * CROP_PAD_RATIO)
+        expected_h = int(400 + 2 * 400 * CROP_PAD_RATIO)
+        assert item["width_px"] == expected_w
+        assert item["height_px"] == expected_h
 
     def test_multi_page_pdf(self, sample_pdf, tmp_path):
         layout = {

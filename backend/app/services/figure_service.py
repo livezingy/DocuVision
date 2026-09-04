@@ -66,6 +66,25 @@ TABLE_CAPTION_LABELS: frozenset = frozenset(
 # Minimum crop size (px). Smaller boxes are almost always noise.
 MIN_CROP_PX = 8
 
+# PP-DocLayout figure boxes are tight detection boxes; crops that use the
+# raw box lose ~5% of the diagram around the edges (axis labels, legends).
+# Expand each side by this fraction of the box size before clamping.
+CROP_PAD_RATIO = 0.08
+
+
+def _expand_box(
+    box: Tuple[float, float, float, float],
+    width: int,
+    height: int,
+    *,
+    pad_ratio: float = CROP_PAD_RATIO,
+) -> Tuple[float, float, float, float]:
+    """Grow a crop box on all sides, then clamp to the raster."""
+    x1, y1, x2, y2 = box
+    pad_x = max(0.0, (x2 - x1) * pad_ratio)
+    pad_y = max(0.0, (y2 - y1) * pad_ratio)
+    return _clamp_box((x1 - pad_x, y1 - pad_y, x2 + pad_x, y2 + pad_y), width, height)
+
 
 def _figure_elements(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Select layout elements whose type maps to a figure region."""
@@ -416,7 +435,7 @@ class FigureService:
                             f"(rendered pages: {sorted(pages.keys())})"
                         )
                     img, width, height = source
-                    box = _clamp_box(_bbox_tuple(elem), width, height)
+                    box = _expand_box(_bbox_tuple(elem), width, height)
                     if box[2] - box[0] < MIN_CROP_PX or box[3] - box[1] < MIN_CROP_PX:
                         result["errors"].append(
                             {"id": elem.get("id"), "reason": "degenerate_bbox_after_clamp"}
@@ -546,7 +565,7 @@ class FigureService:
                 continue
             img, width, height = source
             mb = w.get("merged_bbox") or {}
-            box = _clamp_box(
+            box = _expand_box(
                 (float(mb.get("x", 0)), float(mb.get("y", 0)),
                  float(mb.get("x", 0)) + float(mb.get("width", 0)),
                  float(mb.get("y", 0)) + float(mb.get("height", 0))),

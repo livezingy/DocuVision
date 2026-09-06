@@ -27,6 +27,7 @@ alwaysApply: true
 - 结论先行，再给理由，不要先铺垫背景
 - 遇到模糊需求，先给最合理的方案，再问要不要调整
 - 不要问"你确定要这样吗"，除非命中下方红线
+- 长对话 Context 过高或开始混乱、用户又下新命令时：建议开新对话并给出可粘贴约束（权威见 `008-context-handoff.mdc`）
 
 ## 自主边界（红线，auto-accept 下也必须先问）
 - 删除文件、目录或 git 历史（本轮明确授权的除外）
@@ -55,4 +56,5 @@ alwaysApply: true
 - 005-code-language（always）：代码语言编码（语言权威）
 - 006-cloud-testing（按需）：Cloud 验证速查
 - 007-official-source-first（always）：官方依据优先（改代码/选 API 先查官方文档源码）
+- 008-context-handoff（always）：长对话 Context ≥ 90% 或已混乱时建议开新对话
 - SKILLS.md：投标/试用/定制操作流程

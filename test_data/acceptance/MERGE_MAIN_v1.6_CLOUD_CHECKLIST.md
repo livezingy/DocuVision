@@ -1,7 +1,7 @@
 # feature/v1.6-artifact-pack — Cloud Studio acceptance checklist
 
-Last updated: 2026-09-05
-Target tag: **`v1.6.0`** (pending — train opened; tag after this gate)
+Last updated: 2026-09-06
+Target tag: **`v1.6.0`** (cut 2026-09-06 — Cloud **PACK-ZIP-001** passed)
 Shell: **zsh/bash** (Tencent) / bash (Baidu)
 
 Related: [v1.6-roadmap.md](../../docs/architecture/v1.6-roadmap.md), [RELEASE_1.6_NOTES.md](../../docs/release/RELEASE_1.6_NOTES.md), [MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md](./MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md)
@@ -22,7 +22,7 @@ Related: [v1.6-roadmap.md](../../docs/architecture/v1.6-roadmap.md), [RELEASE_1.
 | 3 | **PACK-ZIP-001** | completed analyze with layout + figures → `GET /api/v1/tasks/{id}/export/zip` HTTP **200**, file header `PK`, namelist contains `manifest.json` + `tables/` + `figures/` |
 | 4 | UI (optional) | Analysis right-panel **ZIP** button triggers a browser download (`*_pack.zip`) |
 
-ZIP builder is on this branch. Row 1 is local-runnable. Rows 3 / 4 need Cloud `:8000` + GPU analyze.
+Gate **passed** 2026-09-06 (operator confirmed Cloud **PACK-ZIP-001**). Local mock: `test_pack_export_service.py` 11 passed.
 
 ---
 

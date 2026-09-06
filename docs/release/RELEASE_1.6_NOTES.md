@@ -1,14 +1,14 @@
 # Release 1.6.0 notes
 
-**Tag**: `v1.6.0` (pending — train opened 2026-09-05, not tagged)
-**Date opened**: 2026-09-05
-**Train**: Figure/layout baseline (already on `fix/pp-structurev3-layout-first-tables-figures`) + Pro artifact pack (Download ZIP)
+**Tag**: `v1.6.0`
+**Date**: 2026-09-06
+**Train**: Figure/layout baseline + Pro artifact pack (Download ZIP)
 
-> This file is **in progress**, not a frozen release snapshot. Do not treat it as shipped until the tag exists.
+> Frozen snapshot at tag `v1.6.0`. Do not edit after release.
 
 ## Summary
 
-v1.6.0 is a SemVer **minor**. The baseline already on this train includes figure crop export, layout-first PP-StructureV3 tables, caption binding, and trial hardening. The remaining product increment is a single-task **artifact pack** (`GET /api/v1/tasks/{id}/export/zip` + sidebar ZIP button) developed on `feature/v1.6-artifact-pack`.
+v1.6.0 is a SemVer **minor**. It ships figure crop export, layout-first PP-StructureV3 tables, caption binding, trial hardening, and a single-task **artifact pack** (`GET /api/v1/tasks/{id}/export/zip` + sidebar ZIP button) from `feature/v1.6-artifact-pack`.
 
 See [v1.6-roadmap.md](../architecture/v1.6-roadmap.md).
 
@@ -36,17 +36,18 @@ See [v1.6-roadmap.md](../architecture/v1.6-roadmap.md).
 - Table-region screenshots, formula/seal image export
 - Redis / multi-replica (still post-1.6)
 - Searchable PDF, AcroForm, mail bridge (remain on [v1.5-roadmap.md](../architecture/v1.5-roadmap.md))
-- Git tag `v1.6.0` and GitHub Release — cut after ZIP lands and the Cloud gate passes
+- Single-task `tasks` dict persistence (still in-memory; ZIP/figures 404 after restart)
 
-## Verification
+## Verification (hard gate passed 2026-09-06)
 
 | Layer | Status |
 |-------|--------|
 | Version identity | `APP_VERSION` = `1.6.0` |
-| ZIP pack | pending `feature/v1.6-artifact-pack` |
+| Local mock | `pytest backend/tests/test_pack_export_service.py` — **11 passed** |
+| Cloud **PACK-ZIP-001** | passed (operator confirmed 2026-09-06) |
 | Cloud gate | [MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md) |
 
 ## Upgrade / migration
 
-- Non-breaking additive train. Integrators that parse `/health` `api_version` will see `1.6.0` before ZIP exists if they deploy the open commit.
+- Non-breaking additive train. Restart `python run.py` after pull so `/health` `api_version` is `1.6.0`.
 - Trial auth still off unless `DOCUVISION_TRIAL_API_KEY` is set.

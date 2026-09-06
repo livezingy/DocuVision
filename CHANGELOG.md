@@ -5,10 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v1.6.0 train (tag pending)
+## [Unreleased]
 
-Target tag: **v1.6.0**. Baseline branch: `fix/pp-structurev3-layout-first-tables-figures`.
-Artifact pack (Download ZIP) is developed on `feature/v1.6-artifact-pack`. See [v1.6-roadmap.md](docs/architecture/v1.6-roadmap.md).
+## [1.6.0] — 2026-09-06
+
+See [RELEASE_1.6_NOTES.md](docs/release/RELEASE_1.6_NOTES.md) and [v1.6-roadmap.md](docs/architecture/v1.6-roadmap.md).
 
 ### Added
 - Pro single-task artifact pack: `GET /api/v1/tasks/{id}/export/zip` (`include=tables,figures,json`) and sidebar **ZIP** button. Layout: `manifest.json` + `tables/` + `figures/` (`is_merged` under `figures/merged/`). Builder: `pack_export_service.py`. Tests: `backend/tests/test_pack_export_service.py`.
@@ -21,7 +22,7 @@ Artifact pack (Download ZIP) is developed on `feature/v1.6-artifact-pack`. See [
 - Trial ops scripts: `trial_preflight.py` (readiness gate), `trial_reset.py` (data wipe between prospects); `.GLM/` assistant rules.
 
 ### Changed
-- `APP_VERSION` default **1.6.0** (`/health` `api_version`). Tag `v1.6.0` is **not** cut in this commit.
+- `APP_VERSION` default **1.6.0** (`/health` `api_version`).
 
 ### Fixed
 - `MAX_FILE_SIZE` was configured but never enforced; now wired into `/ocr`, `/upload`, `/analyze`, `/documents:analyze`.

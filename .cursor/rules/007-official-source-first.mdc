@@ -1,0 +1,29 @@
+---
+description: 解决问题或改代码时优先查官方文档/源码，给出参考对象
+globs:
+alwaysApply: true
+---
+
+# 官方依据优先（Official-source-first）
+
+## 原则
+设计功能、修 bug、选 API、定参数时，**先从官方文档或官方源码找依据**，再决定方案。不要凭记忆或惯例直接给结论。
+
+## 必做步骤
+1. **先查官方源**：库/框架的官方文档、官方仓库源码、官方 issue/讨论、官方技术报告。优先级：官方源码 > 官方文档 > 官方 issue > 第三方博客/教程。
+2. **给出参考对象**：方案中必须标注依据来源——官方文档段名/URL、源码文件:行号、issue 编号、技术报告 §节。无依据的"我觉得"不算方案。
+3. **核对版本**：引用前确认依据对应**当前使用的版本**（见 `004-project.mdc` 技术栈：paddleocr 3.3.2 / paddlex 3.3.12 / paddlepaddle-gpu 3.3.0）。跨版本 API 差异时显式标注版本边界。
+4. **区分"官方支持"与"本项目现状"**：官方有能力 ≠ 本项目已用对。修复前先看本项目代码实际调用了哪个 API、传了哪些参数，再对照官方能力找落差。
+
+## 适用范围
+- 改业务代码、定 API 参数、选解析策略、排查引擎行为时**强制**。
+- 纯机械操作（git pull/push、格式化、重命名）不强制。
+- 查不到官方依据时**如实说明**"未找到官方依据，以下为推测"，不得伪称有依据。
+
+## 反例（禁止）
+- ❌ "PP-OCR 应该支持特殊字符"——未查字典机制就下结论。
+- ❌ "用 index 字段做阅读顺序"——未核对官方字段名（实际是 `block_order`）。
+- ✅ "PP-OCR 默认 `ppocr_keys_v1.txt` 不含 ✓⊗●○，依据 [Text Recognition 文档](https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version2.x/ppocr/model_train/recognition.en.md) §字典机制；Qwen2.5-VL 原生支持，依据 [Qwen2.5-VL Technical Report](https://arxiv.org/pdf/2502.13923) §OCR 数据"。
+
+## 落盘
+查到的官方依据若涉及长期参考（如 PP-StructureV3 能力边界、Qwen2.5-VL 字形支持），写入 `docs/architecture/` 对应 living doc，避免重复检索。

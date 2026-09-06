@@ -1555,7 +1555,7 @@ body.show-analysis .analyzed-region {
 .figure-card {
     background: var(--bg-tertiary);
     border-radius: var(--radius-md);
-    overflow: hidden;
+    overflow: visible;
     border: 1px solid var(--border-subtle);
 }
 
@@ -1576,16 +1576,21 @@ body.show-analysis .analyzed-region {
 
 .figure-preview {
     padding: 16px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     background: var(--bg-primary);
+    text-align: center;
+    max-height: 70vh;
+    overflow-y: auto;
 }
 
 .figure-preview img {
+    display: block;
     max-width: 100%;
-    max-height: 400px;
+    height: auto;
+    object-fit: contain;
+    margin: 0 auto;
     border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
 }
 
 /* 文本视图 */

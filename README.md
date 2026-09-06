@@ -19,15 +19,40 @@ The web UI is a static single-page app under `frontend/` (no Node build). Layout
 
 ### Examples
 
+Recording plan and pending filenames: [docs/architecture/media/README.md](docs/architecture/media/README.md).
+
+**Layout analysis**
+
 ![DocuVision process image with table](docs/architecture/media/DocVision_table.gif)
+
+**Receipt KIE**
 
 ![DocuVision process receipt](docs/architecture/media/DocVision_receipt.gif)
 
+**Invoice KIE**
+
 ![DocuVision process invoice](docs/architecture/media/DocVision_Invoice.gif)
+
+**Table mapping — bank statement** *(pending record: `M1_pro_map_bank_statement.gif`)*
+
+<!-- ![Table mapping bank statement](docs/architecture/media/M1_pro_map_bank_statement.gif) -->
+
+**Table mapping — invoice line items** *(pending record: `M2_pro_map_invoice_line_items.gif`)*
+
+<!-- ![Table mapping invoice line items](docs/architecture/media/M2_pro_map_invoice_line_items.gif) -->
+
+**Batch → Excel MappedRows** *(pending record: `M3_pro_batch_mapped_excel.gif`)*
+
+<!-- ![Batch MappedRows Excel](docs/architecture/media/M3_pro_batch_mapped_excel.gif) -->
+
+**HITL Reviews** *(pending record: `M4_pro_hitl_review.gif`)*
+
+<!-- ![HITL review edit and approve](docs/architecture/media/M4_pro_hitl_review.gif) -->
 
 ### Lite (CPU) — demo GIFs
 
-CPU-friendly table extraction(For text-based PDF with Camelot or PDFPlumber) and OCR API(For scanned PDF with Tesseract or EasyOCR). 
+CPU-friendly table extraction (born-digital PDF via Camelot / pdfplumber) and OCR (scanned PDF via Tesseract / EasyOCR).
+
 ![DocuVision Lite](docs/architecture/media/DocVision_Lite.gif)
 
 ## Repository layout

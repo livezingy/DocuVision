@@ -1,5 +1,11 @@
 """
-Layout Analysis Service - Multi-engine support with PP-Structure (Primary) and LayoutParser (Fallback)
+Layout Analysis Service - PP-StructureV3 (single layout engine).
+
+Note: An earlier design advertised a LayoutParser fallback engine, but it was
+never implemented and a same-family DL fallback offers little value (GPU/CUDA
+failures are correlated across DL engines). The multi-engine fallback path has
+been removed; only PP-StructureV3 is registered. See
+docs/architecture/pp-structurev3-fix-plan.md for rationale.
 """
 
 from typing import Dict, Any, List, Optional
@@ -7,6 +13,7 @@ from abc import ABC, abstractmethod
 from loguru import logger
 import os
 import inspect
+import asyncio
 import multiprocessing
 import queue as _queue_module
 import paddle
@@ -18,19 +25,42 @@ import numpy as np
 class BaseLayoutEngine(ABC):
     """Abstract base class for Layout Analysis engines"""
 
-    # Layout element type mapping
+    # Layout element type mapping (F2: aligned to official PP-DocLayout-L 23
+    # categories, see docs/architecture/pp-structurev3-official-findings.md §2).
     LAYOUT_TYPES = {
         'text': 'Text',
-        'title': 'Title',
+        'paragraph_title': 'Paragraph Title',
+        'doc_title': 'Document Title',
+        'title': 'Title',  # legacy alias kept for backward compat
+        'abstract': 'Abstract',
+        'content': 'Content',
         'figure': 'Figure',
         'figure_caption': 'Figure Caption',
+        'figure_title': 'Figure Title',
+        'figure_table_chart_title': 'Figure/Table/Chart Title',
         'table': 'Table',
         'table_caption': 'Table Caption',
         'header': 'Header',
+        'header_image': 'Header Image',
         'footer': 'Footer',
+        'footer_image': 'Footer Image',
+        'footnote': 'Footnote',
+        'aside_text': 'Aside Text',
         'reference': 'Reference',
-        'equation': 'Equation',
-        'list': 'List'
+        'reference_content': 'Reference Content',
+        'algorithm': 'Algorithm',
+        'formula': 'Formula',
+        'equation': 'Equation',  # legacy alias kept for backward compat
+        'formula_number': 'Formula Number',
+        'inline_formula': 'Inline Formula',
+        'display_formula': 'Display Formula',
+        'chart': 'Chart',
+        'image': 'Image',
+        'picture': 'Picture',
+        'seal': 'Seal',
+        'number': 'Page Number',
+        'list': 'List',
+        'flowchart': 'Flowchart',
     }
 
     @abstractmethod
@@ -427,25 +457,24 @@ class PPStructureEngine(BaseLayoutEngine):
         return flat[:4]
 
     def _call_engine(self, img_path: str, vis_src_path: Optional[str] = None):
-        """Call engine with version-compatible method"""
+        """Call engine with version-compatible method.
+
+        Do NOT pass ``use_doc_orientation_classify`` / ``use_doc_unwarping`` as
+        predict kwargs. ``use_doc_unwarping=False`` is already set in
+        ``_init_engine`` init_params, and passing
+        ``use_doc_orientation_classify=False`` at predict time triggers a
+        PaddleX code path that produces empty layout detections (1D boxes
+        array), causing ``IndexError: too many indices for array`` in NMS
+        (PaddleOCR issue #17446, unfixed in paddleocr 3.3.2 / paddlex 3.3.12).
+        The first failed predict also corrupts the pipeline's internal
+        state, so a retry without kwargs on the same instance still fails.
+        Calling ``predict(img_path)`` with no overrides (using init-time
+        defaults) avoids the bug entirely — confirmed by Cloud diagnostic
+        comparing predict-with-kwargs (fails) vs predict-without-kwargs
+        (succeeds) on the same page image.
+        """
         if hasattr(self, '_is_v3') and self._is_v3:
-            predict_kwargs = {
-                "use_doc_orientation_classify": False,
-                "use_doc_unwarping": False,
-            }
-            try:
-                result = self._engine.predict(img_path, **predict_kwargs)
-            except TypeError:
-                result = self._engine.predict(img_path)
-            except Exception as e:
-                err = str(e)
-                if "too many indices" in err or "1-dimensional" in err:
-                    logger.warning(
-                        f"PPStructureV3 predict failed with shape error; retrying without preprocess kwargs: {e}"
-                    )
-                    result = self._engine.predict(img_path)
-                else:
-                    raise
+            result = self._engine.predict(img_path)
         else:
             # PPStructure (2.x) uses direct call
             result = self._engine(img_path)
@@ -507,7 +536,7 @@ class PPStructureEngine(BaseLayoutEngine):
 
         return {
             "engine": "PP-StructureV3",
-            "total_pages": len(page_layouts),
+            "total_pages": page_count,
             "elements": all_elements,
             "page_layouts": page_layouts,
             "summary": self._get_document_summary(all_elements)
@@ -610,6 +639,25 @@ class PPStructureEngine(BaseLayoutEngine):
             result_dict["preprocessed_image_width"] = preprocessed_w
             result_dict["preprocessed_image_height"] = preprocessed_h
         return result_dict
+
+    def _analyze_image_layout_only(self, img_path: str, page_num: int = 1) -> Dict[str, Any]:
+        """Single-image layout inference WITHOUT preprocessing metadata extraction.
+
+        Used by the subprocess page-by-page PDF driver so that the multi-page
+        result stays behaviorally identical to the former whole-PDF
+        ``_analyze_pdf`` path (which never emitted ``preprocessed_image_path``
+        / ``angle_deg`` / ``input_size`` fields).  Avoids leaking per-page
+        preprocessed PNGs and keeps downstream envelope_builder behavior stable.
+
+        ``page_num`` is the 1-based page number; it flows into element ids
+        (``p{page_num}_e{n}``) and ``page`` fields so multi-page PDFs produce
+        globally-unique ids instead of every page reusing ``p1_e*``.
+        """
+        result = self._call_engine(img_path, vis_src_path=img_path)
+        elements = self._parse_result(result, page_num)
+        page_layout = _compute_page_summary(elements)
+        page_layout["page"] = page_num
+        return {"elements": elements, "page_layout": page_layout}
 
     def _parse_result(self, result: List[Dict], page_num: int) -> List[Dict[str, Any]]:
         """
@@ -722,12 +770,21 @@ class PPStructureEngine(BaseLayoutEngine):
                     content = block.get('content', '')
                     block_text = block.get('text', '')
                     block_index = block.get('index', idx)
+                    # F1: prefer official `block_order` (Enhanced XYCut reading
+                    # order) over detection `index`. Falls back to idx when the
+                    # field is absent (older PaddleOCR versions).
+                    block_order = block.get('block_order', None)
                 else:
                     element_type = str(getattr(block, 'label', 'unknown')).lower()
                     bbox = getattr(block, 'bbox', [])
                     content = getattr(block, 'content', '')
                     block_text = getattr(block, 'text', '')
                     block_index = getattr(block, 'index', idx)
+                    block_order = getattr(block, 'order_index', None)
+                    if block_order is None:
+                        # dict-style fallback (LayoutParsingResultV2 exposes
+                        # both attribute and dict access depending on version)
+                        block_order = block.get('block_order', None) if isinstance(block, dict) else None
 
                 block_text_str = str(block_text or "")
                 content_str = str(content or "")
@@ -764,6 +821,9 @@ class PPStructureEngine(BaseLayoutEngine):
                     "bbox": bbox_dict,
                     "polygon_preprocessed": polygon_prep,
                     "confidence": float(_block_score) if _block_score is not None else 0.0,
+                    # F1: carry official reading order (block_order) downstream.
+                    # None when the engine did not assign one (e.g. image/figure_title).
+                    "reading_order": int(block_order) if block_order is not None else None,
                 }
 
                 if isinstance(content, str) and content.strip():
@@ -778,7 +838,15 @@ class PPStructureEngine(BaseLayoutEngine):
 
                 elements.append(element)
 
-            elements.sort(key=lambda e: (e['bbox']['y'], e['bbox']['x']))
+            # F1: sort by official reading order (block_order) when present,
+            # falling back to (y, x) bbox order. See _layout_order.py + findings §1.
+            from app.services._layout_order import sort_elements_by_reading_order, has_reading_order
+            if has_reading_order(elements):
+                elements = sort_elements_by_reading_order(elements)
+                logger.info(f"Page {page_num}: sorted {len(elements)} elements by reading_order (block_order)")
+            else:
+                elements.sort(key=lambda e: (e['bbox']['y'], e['bbox']['x']))
+                logger.info(f"Page {page_num}: sorted {len(elements)} elements by (y, x) fallback (no block_order)")
             elements = self._deduplicate_elements(elements)
             logger.info(
                 f"Page {page_num}: Parsed {len(elements)} elements from parsing_res_list "
@@ -1226,25 +1294,103 @@ class PPStructureEngine(BaseLayoutEngine):
         return result
 
     def _get_page_summary(self, elements: List[Dict]) -> Dict[str, int]:
-        summary = {}
-        for elem in elements:
-            elem_type = elem['type']
-            summary[elem_type] = summary.get(elem_type, 0) + 1
-        return summary
+        return _compute_page_summary(elements)
 
     def _get_document_summary(self, elements: List[Dict]) -> Dict[str, Any]:
-        type_counts = {}
-        for elem in elements:
-            elem_type = elem['type']
-            type_counts[elem_type] = type_counts.get(elem_type, 0) + 1
+        return _compute_document_summary(elements)
 
-        return {
-            "total_elements": len(elements),
-            "type_counts": type_counts,
-            "has_tables": type_counts.get('table', 0) > 0,
-            "has_figures": type_counts.get('figure', 0) > 0,
-            "has_formulas": type_counts.get('equation', 0) > 0
-        }
+
+def _compute_page_summary(elements: List[Dict]) -> Dict[str, int]:
+    """Count element types for a single page (module-level, worker/main agnostic)."""
+    summary: Dict[str, int] = {}
+    for elem in elements:
+        elem_type = elem['type']
+        summary[elem_type] = summary.get(elem_type, 0) + 1
+    return summary
+
+
+def _compute_document_summary(elements: List[Dict]) -> Dict[str, Any]:
+    """Aggregate element-type counts across the whole document."""
+    type_counts: Dict[str, int] = {}
+    for elem in elements:
+        elem_type = elem['type']
+        type_counts[elem_type] = type_counts.get(elem_type, 0) + 1
+
+    return {
+        "total_elements": len(elements),
+        "type_counts": type_counts,
+        "has_tables": type_counts.get('table', 0) > 0,
+        "has_figures": type_counts.get('figure', 0) > 0,
+        "has_formulas": type_counts.get('equation', 0) > 0,
+    }
+
+
+def _truncate_error(err: str, limit: int = 400) -> str:
+    """Keep worker/page error strings short enough for JSON and logs."""
+    text = (err or "").strip() or "unknown error"
+    if len(text) > limit:
+        return text[:limit] + "..."
+    return text
+
+
+def _build_pdf_layout_result(
+    page_count: int,
+    all_elements: List[Dict[str, Any]],
+    page_layouts: List[Dict[str, Any]],
+    failed_pages: List[int],
+    failed_page_errors: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """Assemble a multi-page layout dict.
+
+    ``total_pages`` is the PDF page count, not the number of successful
+    pages. Using ``len(page_layouts)`` hid full-document failures as
+    ``total_pages=0``.
+    """
+    return {
+        "engine": "PP-StructureV3",
+        "total_pages": page_count,
+        "elements": all_elements,
+        "page_layouts": page_layouts,
+        "summary": _compute_document_summary(all_elements),
+        "failed_pages": failed_pages,
+        "failed_page_errors": failed_page_errors or [],
+    }
+
+
+def _invoke_worker_command(engine, cmd: str, file_path: str, page_num: Optional[int] = None):
+    """Dispatch one worker command, sync or async depending on the method.
+
+    ``_analyze_image`` / ``_analyze_pdf`` are coroutines and must be driven
+    with ``asyncio.run``. ``_analyze_image_layout_only`` is synchronous.
+    Wrapping a sync call in ``asyncio.run(...)`` evaluates the call first
+    (so inference may run) then raises ``ValueError: a coroutine was
+    expected`` — every PDF page was recorded as failed.
+
+    ``page_num`` (1-based) is forwarded to ``_analyze_image_layout_only`` so
+    element ids and page fields carry the real page number instead of the
+    hardcoded 1 that caused cross-page id collisions (every page reusing
+    ``p1_e*``) and crop-file overwrites.
+
+    Official: ``asyncio.run`` requires a coroutine object
+    (https://docs.python.org/3.11/library/asyncio-runner.html#asyncio.run).
+    """
+    if cmd == "analyze_image_layout":
+        fn = engine._analyze_image_layout_only
+        # Forward page_num so multi-page PDFs get unique element ids.
+        if page_num is not None:
+            return fn(file_path, page_num)
+        return fn(file_path)
+    elif cmd == "analyze_image":
+        fn = engine._analyze_image
+    elif cmd == "analyze":
+        ext = os.path.splitext(file_path)[1].lower()
+        fn = engine._analyze_pdf if ext == ".pdf" else engine._analyze_image
+    else:
+        raise ValueError(f"Unknown PPStructureV3 worker command: {cmd}")
+
+    if inspect.iscoroutinefunction(fn):
+        return asyncio.run(fn(file_path))
+    return fn(file_path)
 
 
 # ---------------------------------------------------------------------------
@@ -1288,16 +1434,20 @@ def _ppstructure_worker_main(use_gpu: bool, lang: str, req_q, res_q):
         if not isinstance(item, tuple) or item[0] == 'stop':
             break
 
-        cmd, file_path = item
-        if cmd != 'analyze':
-            continue
-
+        # Commands (2-tuple, legacy):
+        #   ('analyze', path)             — legacy whole-file call (PDF or image)
+        #   ('analyze_image', path)        — single image (one PDF page rasterized by main)
+        #   ('analyze_image_layout', path) — single image, layout-only (no preprocess meta)
+        # Commands (3-tuple, page-aware):
+        #   ('analyze_image_layout', path, page_num) — single image with 1-based page
+        #     number forwarded to _analyze_image_layout_only so element ids are unique.
+        if len(item) == 3:
+            cmd, file_path, page_num = item
+        else:
+            cmd, file_path = item
+            page_num = None
         try:
-            ext = os.path.splitext(file_path)[1].lower()
-            if ext == '.pdf':
-                result = asyncio.run(engine._analyze_pdf(file_path))
-            else:
-                result = asyncio.run(engine._analyze_image(file_path))
+            result = _invoke_worker_command(engine, cmd, file_path, page_num)
             res_q.put(('ok', result))
         except Exception as e:
             import traceback as _tb
@@ -1328,7 +1478,21 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
         except Exception:
             return 120
 
-    _INFER_TIMEOUT = 180  # seconds to wait per inference
+    _INFER_TIMEOUT = 120  # default per-page inference timeout (seconds)
+
+    def _page_timeout_seconds(self) -> int:
+        """Per-page inference timeout, configurable via env APP_LAYOUT_PAGE_TIMEOUT."""
+        raw = os.environ.get("APP_LAYOUT_PAGE_TIMEOUT", "").strip()
+        if raw.isdigit():
+            return max(30, int(raw))
+        try:
+            from app.core.config import settings
+            val = getattr(settings, "LAYOUT_PAGE_TIMEOUT", None)
+            if val is not None:
+                return max(30, int(val))
+        except Exception:
+            pass
+        return self._INFER_TIMEOUT
 
     def __init__(self, use_gpu: bool = False, lang: str = "en"):
         self._use_gpu = use_gpu
@@ -1338,6 +1502,7 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
         self._req_q = None
         self._res_q = None
         self._ready = False
+        self._infer_timeout = self._page_timeout_seconds()
         self._start_worker()
 
     # ------------------------------------------------------------------
@@ -1359,8 +1524,7 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
             msg = self._res_q.get(timeout=self._init_timeout_seconds())
         except _queue_module.Empty:
             logger.error(
-                "PPStructureV3 worker did not respond within %ss",
-                self._init_timeout_seconds(),
+                f"PPStructureV3 worker did not respond within {self._init_timeout_seconds()}s"
             )
             self._kill_worker()
             return
@@ -1401,19 +1565,35 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
     # Inference
     # ------------------------------------------------------------------
 
-    def _call_worker(self, file_path: str) -> Dict[str, Any]:
-        """Blocking call sent to the worker subprocess (runs in thread executor)."""
+    def _call_worker(self, file_path: str, cmd: str = 'analyze', page_num: Optional[int] = None) -> Dict[str, Any]:
+        """Blocking call sent to the worker subprocess (runs in thread executor).
+
+        Args:
+            file_path: Path to PDF (legacy whole-file) or image.
+            cmd: Worker command — ``analyze`` (whole file), ``analyze_image``
+                (single image with preprocessing metadata), or
+                ``analyze_image_layout`` (single image, layout-only).
+            page_num: 1-based page number forwarded to
+                ``_analyze_image_layout_only`` so element ids are unique across
+                a multi-page PDF. None keeps the legacy 2-tuple wire format.
+        """
         if not self.is_ready():
             raise RuntimeError("PPStructureV3 subprocess worker is not running")
 
-        self._req_q.put(('analyze', file_path))
+        # 3-tuple carries page_num; 2-tuple stays legacy-compatible.
+        request = (cmd, file_path, page_num) if page_num is not None else (cmd, file_path)
+        self._req_q.put(request)
 
         try:
-            msg = self._res_q.get(timeout=self._INFER_TIMEOUT)
+            msg = self._res_q.get(timeout=self._infer_timeout)
         except _queue_module.Empty:
-            logger.error(f"PPStructureV3 worker timed out after {self._INFER_TIMEOUT}s — restarting")
+            logger.error(
+                f"PPStructureV3 worker timed out after {self._infer_timeout}s (cmd={cmd}) — restarting"
+            )
             self._restart_worker()
-            raise RuntimeError("PPStructureV3 worker timed out; worker restarted for next request")
+            raise RuntimeError(
+                f"PPStructureV3 worker timed out after {self._infer_timeout}s; worker restarted"
+            )
 
         if msg[0] == 'ok':
             return msg[1]
@@ -1428,9 +1608,9 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
                     raise RuntimeError(f"PPStructureV3 worker restart failed. Original: {error_msg}")
 
                 # Retry once with the fresh worker
-                self._req_q.put(('analyze', file_path))
+                self._req_q.put(request)
                 try:
-                    msg2 = self._res_q.get(timeout=self._INFER_TIMEOUT)
+                    msg2 = self._res_q.get(timeout=self._infer_timeout)
                 except _queue_module.Empty:
                     self._restart_worker()
                     raise RuntimeError("PPStructureV3 worker timed out on retry; restarted")
@@ -1444,10 +1624,97 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
 
         raise RuntimeError(f"PPStructureV3 worker unexpected response: {msg}")
 
+    def _call_worker_pdf_page_by_page(self, pdf_path: str) -> Dict[str, Any]:
+        """Drive the worker one PDF page at a time from the main process.
+
+        Rasterization happens in the main process; each page image is sent to
+        the worker with the ``analyze_image_layout`` command and a per-page
+        timeout. A page that times out or errors is recorded in
+        ``failed_pages`` and skipped so the remaining pages still get a layout
+        result — instead of failing the whole document on a single bad page.
+        """
+        import fitz
+        from PIL import Image
+
+        doc = fitz.open(pdf_path)
+        page_count = len(doc)
+        all_elements: List[Dict[str, Any]] = []
+        page_layouts: List[Dict[str, Any]] = []
+        failed_pages: List[int] = []
+        failed_page_errors: List[Dict[str, Any]] = []
+
+        try:
+            for page_num in range(page_count):
+                page = doc[page_num]
+                mat = fitz.Matrix(2, 2)
+                pix = page.get_pixmap(matrix=mat)
+                img_path = f"{pdf_path}_layout_{page_num}.png"
+
+                # Ensure RGB (3 channels); PPStructureV3 expects RGB, not RGBA.
+                if pix.alpha:
+                    img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
+                    img = img.convert("RGB")
+                    img.save(img_path)
+                else:
+                    pix.save(img_path)
+
+                try:
+                    # Forward the 1-based page number so the worker produces
+                    # globally-unique element ids (p{N}_e{M}) instead of every
+                    # page reusing p1_e* which caused crop-file overwrites.
+                    page_result = self._call_worker(
+                        img_path, cmd='analyze_image_layout', page_num=page_num + 1
+                    )
+                    elements = page_result.get("elements", []) or []
+                    # Defensive: worker now sets page correctly from page_num,
+                    # but keep this overwrite in case a legacy worker (2-tuple
+                    # wire format, page_num dropped) returns page=1.
+                    for el in elements:
+                        el["page"] = page_num + 1
+                    all_elements.extend(elements)
+
+                    page_layout = page_result.get("page_layout", {}) or {}
+                    page_layout["page"] = page_num + 1
+                    page_layouts.append(page_layout)
+                except Exception as e:
+                    err_text = _truncate_error(str(e))
+                    logger.warning(
+                        f"PPStructureV3 page {page_num + 1}/{page_count} skipped: {err_text}"
+                    )
+                    failed_pages.append(page_num + 1)
+                    failed_page_errors.append(
+                        {"page": page_num + 1, "error": err_text}
+                    )
+                finally:
+                    if os.path.exists(img_path):
+                        try:
+                            os.remove(img_path)
+                        except Exception:
+                            pass
+        finally:
+            doc.close()
+
+        if failed_pages:
+            logger.warning(
+                f"PPStructureV3 skipped {len(failed_pages)}/{page_count} page(s): {failed_pages}"
+            )
+
+        return _build_pdf_layout_result(
+            page_count,
+            all_elements,
+            page_layouts,
+            failed_pages,
+            failed_page_errors,
+        )
+
     async def analyze(self, file_path: str) -> Dict[str, Any]:
-        import asyncio
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._call_worker, file_path)
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext == '.pdf':
+            # Page-by-page driver: per-page timeout, skip bad pages, never
+            # fail the whole document on a single slow/bad page.
+            return await loop.run_in_executor(None, self._call_worker_pdf_page_by_page, file_path)
+        return await loop.run_in_executor(None, self._call_worker, file_path, 'analyze')
 
 
 class LayoutService:
@@ -1499,39 +1766,39 @@ class LayoutService:
         fallback: bool = True
     ) -> Dict[str, Any]:
         """
-        Analyze document layout
+        Analyze document layout.
+
+        Only PP-StructureV3 is registered as a layout engine. The ``engine``
+        and ``fallback`` parameters are kept for backward compatibility with
+        callers (e.g. the orchestrator), but with a single engine there is no
+        fallback path; a failure raises directly.
 
         Args:
             file_path: Path to PDF or image file
-            engine: Specific engine to use (ppstructure, layoutparser)
-            fallback: Whether to try fallback engines on failure
+            engine: Specific engine name; only ``ppstructure`` is supported.
+            fallback: Kept for API compatibility; no-op with a single engine.
 
         Returns:
             Layout analysis result dictionary
         """
-        engines_to_try = []
+        del fallback  # no alternative layout engine to fall back to
 
-        if engine and engine in self.engines:
-            engines_to_try.append(engine)
-        else:
-            # Default order: ppstructure -> layoutparser
-            for eng in ["ppstructure", "layoutparser"]:
-                if eng in self.engines:
-                    engines_to_try.append(eng)
+        if engine and engine not in self.engines:
+            raise RuntimeError(
+                f"Requested layout engine '{engine}' is not available. "
+                f"Available: {list(self.engines.keys())}"
+            )
 
-        last_error = None
+        eng_name = engine or self.default_engine
+        if eng_name not in self.engines:
+            # No layout engine registered at all.
+            raise RuntimeError(
+                f"No layout engine available (requested='{engine}', "
+                f"registered={list(self.engines.keys())})"
+            )
 
-        for eng_name in engines_to_try:
-            try:
-                eng = self.engines[eng_name]
-                logger.info(f"Trying layout analysis with {eng.get_name()}...")
-                result = await eng.analyze(file_path)
-                result["engine_used"] = eng_name
-                return result
-            except Exception as e:
-                logger.warning(f"{eng_name} failed: {e}")
-                last_error = e
-                if not fallback:
-                    raise
-
-        raise RuntimeError(f"All layout engines failed. Last error: {last_error}")
+        eng = self.engines[eng_name]
+        logger.info(f"Trying layout analysis with {eng.get_name()}...")
+        result = await eng.analyze(file_path)
+        result["engine_used"] = eng_name
+        return result

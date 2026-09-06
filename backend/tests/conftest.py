@@ -1,8 +1,19 @@
 """Pytest hooks for Pro GPU backend tests."""
 
+import os as _os
+import sys as _sys
+
 import pytest
 
 from app.core.gpu_lib_path import ensure_pro_gpu_lib_path
+
+# Package-mode collection (tests/__init__.py) inserts only backend/ into
+# sys.path, but legacy modules (test_api_contract_smoke.py,
+# test_api_pipeline.py) use top-level `from _sample_paths import ...`.
+# Put the tests dir itself on sys.path so those imports resolve.
+_TESTS_DIR = _os.path.dirname(_os.path.abspath(__file__))
+if _TESTS_DIR not in _sys.path:
+    _sys.path.insert(0, _TESTS_DIR)
 
 LIVE_API_HEALTH_URL = "http://localhost:8000/health"
 LIVE_API_SKIP_MESSAGE = f"Live API not reachable at {LIVE_API_HEALTH_URL}"

@@ -4,6 +4,7 @@
 > **File**: `docuvision-system-design.md`（英文路径名；本文标题保留中文）  
 > 版本：v1.12  
 > 日期：2026-05-20  
+> 最近对照：v1.6.0 / tag v1.6.0（2026-09-06）  
 > 参考：Azure Document Intelligence Layout API（layout-checklist.jpg.json 等样本）
 
 **文档地图**
@@ -58,6 +59,8 @@
 > - 第二步职责边界已落地：当缺少 layout 输入且 fallback 关闭时，table 路径明确告警并快速返回空表结果。
 > - 第三步已落地：`table_service.extract_with_meta()` 输出结构化 `meta`（path/reason/fallback_activated/engine_used），orchestrator 将其写入 `result.table_extraction_meta.service`。
 > - 第三步验证已完成：新增 `backend/tests/test_table_strategy_meta.py`，覆盖 `extract_with_meta` 包装、`meta.path/reason` 语义以及 `get_strategy_info()` 默认策略。
+> - 后续增量（F6，2026-09-04）：Pro 表格**全部走 PP-StructureV3 layout-first**，移除 born-digital 路由（`detect_file_type` + `core_table_extractor` 提前 return 分支）。原因：pdfplumber/camelot text 流策略在双栏论文/参考文献页产生大量伪表（03_paper_arxiv-mamba 实测 20 表大半为空/错页），而 layout 的 16 个 table 块（含 SLANeXt HTML）被闲置。移除后流程直接走 `_extract_from_layout_elements`。Lite 的 `table_pipeline.py` 独立不受影响。`core_table_extractor.py` 文件保留不删。
+> - 后续增量（F7，2026-09-04）：element id 跨页唯一。`_analyze_image_layout_only` 接受 `page_num` 参数，worker 协议扩展为 3-tuple `(cmd, file_path, page_num)`（兼容旧 2-tuple）。修复前 36 页所有 element id 都是 `p1_e*`，导致 `figure_service` crop 文件互相覆盖。同步加 `seen_crop_ids` 防御层：同 id 多页时第二张加 `_p{N}` 后缀。
 > - 后续增量（v1.2）：`EnvelopeBuilder` 已实现全 block `provenance` 记录（text/table/vision/formula/seal 均有结构化来源信息）；`inline_formula` 已并入 `view.formulas` 聚合。
 > - 后续增量（v1.3）：`processing_status` 兜底已全覆盖，新增 `no_ocr_empty`（文本空内容兜底）与 `passthrough_unknown_type`（未知类型兜底）；并补齐对应单测。
 > - 后续增量（v1.4）：`formula_recognition` 已完成失败分级（`error_level/error_code/failure_stage`）与质量统计细化（`formula_blocks_failed/formula_recognition_rate`、attempt/stage/error 元信息）。
@@ -445,8 +448,9 @@ fused 层各 block 的 `processing_status` 字段：
 
 1. **坐标变换**（唯一允许发生坐标转换的地方）：`USE_DOC_UNWARPING=False` 时调用 `apply_inverse_rotation()`，将所有 block 的 `polygon_preprocessed` 一次性转换为 original 坐标
 2. **字段重命名**：`block_id`→`id`、`type`→`kind`、`polygon_preprocessed`→`polygon`、`width_preprocessed`→`width`
-3. **丢弃调试信息**：`provenance`、`crop_offset`、`bbox_preprocessed` 不写入 view
-4. **文档级聚合**：从 `pages[].elements` 聚合出 `tables[]`、`paragraphs[]`、`figures[]` 等跨页数组
+3. **阅读顺序赋值**（F1）：优先用 fused block 携带的 `reading_order`（来自 PP-StructureV3 `block_order`，Enhanced XYCut），缺失时回退到 per-page 递增计数器。多栏文档不再被朴素 `(y,x)` 排序错排
+4. **丢弃调试信息**：`provenance`、`crop_offset`、`bbox_preprocessed` 不写入 view
+5. **文档级聚合**：从 `pages[].elements` 聚合出 `tables[]`、`paragraphs[]`、`figures[]` 等跨页数组
 
 **严禁在 fusion.py 或引擎适配层中做坐标变换**；fused 层的 `_preprocessed` 后缀字段名是对这一约束的显式提醒。
 
@@ -458,8 +462,9 @@ fused 层各 block 的 `processing_status` 字段：
 
 **fused 层：**
 - `bbox_preprocessed` 字段是 `[x_min, y_min, x_max, y_max]` 轴对齐矩形；`polygon_preprocessed` 是四点多边形，两者均来自 PP-StructureV3，**在任何配置下都不做逆变换**
+- `reading_order` 字段（F1 新增）携带 PP-StructureV3 `parsing_res_list` 的 `block_order`（Enhanced XYCut 阅读顺序）；引擎未分配时为 `None`，view 层回退到计数器。依据 [PP-StructureV3 文档](https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/pipeline_usage/PP-StructureV3.en.md)（list order is the reading order）
 - `provenance` 字段当前为**全 block 结构化记录**（包含 `primary_source`、`merge_strategy`、`status`、`block_type` 等），用于审计每个 block 的处理路径
-- 新增引擎类型时，只扩展 `payload` schema，`block_id`/`type`/`bbox_preprocessed`/`polygon_preprocessed`/`processing_status`/`source`/`confidence`/`provenance` 八个公共字段**不允许改动**
+- 新增引擎类型时，只扩展 `payload` schema，`block_id`/`type`/`bbox_preprocessed`/`polygon_preprocessed`/`processing_status`/`source`/`confidence`/`provenance` 八个公共字段**不允许改动**（`reading_order` 为可选携带字段，不破坏该约束）
 
 **view 层：**
 - `pages[].width` / `pages[].height` 的含义随 `coordinate_space` 变化：`"original"` 时为原图尺寸，`"preprocessed"` 时为预处理图尺寸；前端在渲染时需以此为归一化基准
@@ -787,6 +792,10 @@ BLOCK_ENGINE_MAP = {
 }
 ```
 
+> **LAYOUT_TYPES 对齐说明（F2）**：`layout_service.LAYOUT_TYPES` 已对齐官方 PP-DocLayout-L 23 类（[模型卡](https://huggingface.co/PaddlePaddle/PP-DocLayout-L)），补全 `footnote`/`abstract`/`algorithm`/`formula_number`/`aside_text`/`chart`/`seal` 等，拆分 `title`→`paragraph_title`+`doc_title`。原 `type` 字段保留 PP-StructureV3 原始 label（不泛化），`type_name` 给人类可读名。详见 [pp-structurev3-official-findings.md](pp-structurev3-official-findings.md) §2。
+>
+> **`_map_block_type_to_kind` 对齐说明（F2-edge）**：`envelope_builder._map_block_type_to_kind` 已显式覆盖 `LAYOUT_TYPES` 全部 label，含遗留/别名 `flowchart`→`figure`、`display_formula`→`formula`、`figure_title`→`figure_title`。此前 `flowchart`/`display_formula` 走 else 透传返回原 label，导致不进 `view.figures[]`/`view.formulas[]` 跨页聚合（且 `flowchart` 与 `figure_service.FIGURE_LABELS` 不一致）。现已显式纳入分支，`footnote`→`footer` 不泛化为 paragraph。本机单测 48/48 绿（`test_envelope_builder.py::TestMapBlockTypeToKindEdgeLabels`）。
+
 ### 8.2 各类型扩展后的 payload 示例
 
 **formula：**
@@ -847,7 +856,13 @@ BLOCK_ENGINE_MAP = {
 
 - 前端默认只读 **view 层**，不直接消费 fused 或 raw
 - 文本渲染：`view.pages[].elements[kind=text/title/paragraph].payload.text`
-- 表格渲染：`view.pages[].elements[kind=table].payload.html` 或 `cells`
+- 表格渲染（**权威：`html_structure`**）：前端 `renderTableCard`（`frontend/app.js`）按三档优先级渲染：
+  1. **`tables[*].html_structure`（权威）** — 含 `rows[].cells[].{text,is_header,rowspan,colspan}`，逐格输出 `<th>/<td>` + rowspan/colspan 属性，thead/tbody 按 `is_header` 自动切换。F4 新增 `header_rows`（表头行数）+ `header_span_map`（多级表头 span 树）+ `is_header` 对 `<thead>` 内 `<td>` 也为 true。依据 [Table Recognition v2](https://paddlepaddle.github.io/PaddleOCR/main/en/version3.x/pipeline_usage/table_recognition_v2.html)
+  2. `tables[*].html`（回退） — DOMParser 解析、清理嵌套 table
+  3. `tables[*].data`（最后回退） — 二维数组，带列数/一致性校验
+- **表格导出（CSV/Excel）以 `data` 为源**：侧栏 Export CSV 走 `ExportService.to_csv`（全部表集合；每表前一行 `=== Table {n} (Page {p}) confidence={pct}% ===`，下一行可选 `Caption: …`。`confidence` 为 layout 检测分，0–1 转百分数；缺失则回退 `score`。以 `=`/`+`/`@` 或非数字 `-` 开头的单元格加 `'` 前缀，避免 Excel `#NAME?`。权威：`backend/tests/test_export_service.py`）。Markdown/DOCX 表标题与 XLSX A1 使用 `format_table_export_title`（含 caption）。Tables 卡片 `.table-action-btn` 下载**当前这一张** CSV（文件名 `table_{nn}_p{page}.csv`，首行同 banner）。Batch `/batch/{id}/export.csv` 与 Lite 导出本批未改。`data` 不参与渲染权威，仅作导出与渲染末位回退
+- **单任务 ZIP 打包（v1.6）**：侧栏 Export Results **ZIP** 走 `GET /tasks/{id}/export/zip`（可选 `include=tables,figures,json`，默认 `tables,figures`）。服务端 `pack_export_service.build_task_pack_zip` 写盘后附件下载：`manifest.json` + `tables/tables.csv|xlsx` + 分表 `table_{nn}_p{page}.csv` + `figures/{id}.png`（`is_merged` 进 `figures/merged/`）+ `figures/index.csv`。复用已有 CSV/XLSX 与磁盘 crop，不重裁。体积按未压缩字节累计，超过 `MAX_PACK_BYTES`（256MB）→ 413。权威：`backend/tests/test_pack_export_service.py`。Lite / Batch ZIP 不在 v1.6
+- **Figures Tab**：卡片只显示 crop 图（`.figure-preview img`：`max-width:100%; height:auto; object-fit:contain`；过高则预览区 `max-height:70vh` + `overflow-y:auto`）。caption 只出现在卡片 header，不进预览正文。裁切用检测框原样（不 pad）。`is_merged` 项不进默认轮播，由告警条 “View merged crop” 按需打开。独立图若已绑不同 caption、或垂直方向两者都像完整图（高 ≥ 页高 20% 且为真实 gap）则不合并。Preview overlay 的 reading-order **角标仅画在 text 层**；figure/table 框只在悬浮框显示序号
 - 坐标渲染：`view.pages[].elements[].polygon`（坐标空间由 `preprocessing.coordinate_space` 决定；叠加到对应展示图像上，逻辑与坐标空间无关）
 - 字段渲染：**以 `view.fields` 为规范数据源**（文档级 KIE）；任务轮询结果中若存在 **`result.kie_fields`**，与 `view.fields` 同源，前端实现可 **优先取 `kie_fields` 再回退 `view.fields`**（与当前 `frontend/app.js` 中 `pickKieFieldsMap` 一致）
 - 展示元信息：可使用 `result.kie_meta`（如平均置信度、明细行数）
@@ -1045,6 +1060,8 @@ GET /api/v1/jobs/{job_id}/debug
 
 **v1.3 已交付（P0）**：Pro born-digital → `docuvision-core` 表格路由；跨页 stitch MVP；Lite Batch API；KIE 字段校验 + YAML 模板 API；Batch Excel（v1.2.1+）。详见 [RELEASE_1.3.0_NOTES.md](../release/RELEASE_1.3.0_NOTES.md)。
 
+> **F6 更新（2026-09-04）**：Pro 表格 born-digital 路由已**移除**。Pro 全部走 PP-StructureV3 layout-first（`_extract_from_layout_elements` 消费 layout table 块 HTML），不再判断 `PDF_DIGITAL`、不再调用 `core_table_extractor`。原因见 [pp-structurev3-fix-plan.md](./pp-structurev3-fix-plan.md) §F6。Lite 的 `table_pipeline.py` 仍走 core，独立不受影响。下表 `pdf_digital` 行的 "core TableProcessor" 描述对 Pro 已失效（保留作历史记录，Pro 实际走 layout-first）。
+
 **post-v1.3 优先级（v1.4 主线）**：垂直表格列映射（bank_statement / invoice_line_items）、自动 `document_type` 产品化、HITL Review UI、Webhook HTTP 投递；邮件 IMAP 建议独立服务/n8n。**v1.5+**：可搜索 PDF、PDF 工具箱产品化、Batch 持久化。身份证精度走 `bugfix/*` / patch。
 
 **Pro Table mapping UI（v1.4）**：Analysis Options → Processing → `processingMode=table_mapping` + Template 子面板；上传时 `POST /document/profile` 驱动 eligibility。Analyze 路由：
@@ -1084,4 +1101,7 @@ GET /api/v1/jobs/{job_id}/debug
 | 前端字段 | view 层字段即渲染字段；读取 `preprocessing.coordinate_space` 选择展示图像，坐标叠加逻辑统一 |
 | 调试模式 | 服务级开关（`DEBUG_MODE` 环境变量），开启后自动写 `backend/debug/{job_id}/`，不混入 API 响应 |
 | 兜底 | 文本 block 无 `content` 时写入空字符串，不中断流水线 |
+| 试用鉴权 | `DOCUVISION_TRIAL_API_KEY` 非空时全 `/api/v1/*` 鉴权（HTTP `X-API-Key`、WS `?key=`；`/health` `/docs` 开放）；CORS 由 `DOCUVISION_CORS_ORIGINS` 白名单化（`feat/glm-trial`） |
+| 图形导出 | `figure_step`（layout 后）裁剪 figure/chart 区域：PDF 按 2x 栅格、图像按预处理空间；裁切用检测框原样（不 pad）；`result.figures`/`envelope.figures` + `quality.figure_*`；几何切分/嵌套告警 `warnings[]`；**F5：切分告警消费 `merged_bbox` 重裁合并图**（`is_merged=true`+`merged_from`，保留原半图作 fallback；不同 caption 或「完整图+真实 gap」不合并；`nested_regions` 不合并；UI 默认轮播不含 merged）；`enable_figure_export` 可关（`feat/glm-trial`） |
+| GT 对比 | `POST /api/v1/trial/gt-diff/{task_id}` 字段/单元格级 diff（match/missing/wrong），HTML 报告 `GET .../report`；CLI `python -m app.services.trial.gt_diff`（`feat/glm-trial`） |
 | 扩展方式 | block 引擎注册表 + payload 多态 + 开关预留 |

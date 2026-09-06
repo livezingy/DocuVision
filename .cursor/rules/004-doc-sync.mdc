@@ -1,0 +1,72 @@
+---
+description: 文档同步机制、归属表、生命周期（改契约代码或文档时触发）
+globs: "docs/**/*.md,backend/app/**/*.py,apps/lite/backend/**/*.py,packages/docuvision-core/**/*.py,frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js"
+---
+
+# 文档同步（强制，防漂移）
+
+## 根因
+文档滞后源于：无强制触发 / 无归属 / 文档远离代码 / 无漂移检测 / 文档与测试脱节。以下机制对症。
+
+## 机制 1：交付 footer 加 Doc sync（强制声明）
+改契约/编排/API 时 footer **必须**声明 Doc sync，三选一：
+- `updated <doc> §<节>` —— 已同步
+- `N/A（未触及任何 living 契约）` —— 显式声明，须说明未触及哪类
+- `drift: <doc> 仍写旧 <字段/端点>，待修` —— 记录漂移，列入后续修复
+不允许沉默跳过。
+
+## 机制 2：文档归属表（改哪个模块→同步哪个文档）
+| 代码模块 | owning living doc |
+|---------|-------------------|
+| `backend/app/kie/**` | `kie.md`、`kie-custom-fields.md` |
+| `backend/app/orchestrator*` | `docuvision-system-design.md` |
+| `backend/app/api/batch*` | `batch-ui-roadmap.md` |
+| `backend/app/services/export_service.py` | `docuvision-system-design.md` §9.1 |
+| `backend/app/services/figure_service.py` | `docuvision-system-design.md` §9.1 / §11「图形导出」 |
+| `backend/app/services/pack_export_service.py` | `docuvision-system-design.md` §9.1；`v1.6-roadmap.md`（Epic: Artifact pack，发版后以 §9.1 为准） |
+| `apps/lite/backend/**` | `lite-api.md` |
+| `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
+| `frontend/**` | `frontend/README_FRONTEND.md` |
+
+改模块时按表同步 owning doc；表未覆盖的新模块，新增契约时一并补表。
+
+## 机制 3：契约 = 测试 = 权威
+- **有 pytest 的契约，测试是权威，`.md` 是人类可读派生视图**
+- `.md` 契约段顶部标注 `权威：tests/<file>.py`；代码改了测试会红，`.md` 漂移不致命
+- 无测试覆盖的契约靠 `.md` 人工同步——属高风险，footer Doc sync 必须点名
+- 测试绿不豁免 `.md` 同步义务，测试仅兜底
+
+## 机制 4：living doc 标注"最近对照"
+每份 living doc 顶部加一行：
+```
+> 最近对照：v1.4.0 / commit abc123（2026-07-25）
+```
+- 不强制每次小改刷新，但**发版/合 main 时必须刷新**
+- 漂移可见——读者一眼知道文档对照哪个版本
+
+## 机制 5：漂移审计脚本（路线图，暂不建）
+`scripts/audit_doc_drift.py`：grep living doc 提到的端点/字段/路径，对照代码符号表输出缺失项。候选挂 CI Lite 或发版前手动跑。列入 v1.5+ 路线图，当前不实现。
+
+## 文档生命周期
+| 标签 | 含义 | 助手义务 |
+|------|------|----------|
+| living | `docs/architecture/*`、`docs/README.md` | 改契约代码时同步 |
+| frozen | `docs/release/RELEASE_*`、`MERGE_MAIN_v*` | 发版快照，日常不改 |
+| append-only | `KIE_TEST_RUN_TRACKER.md` | 只追加批次 |
+| local only | `docs/R&D/*`（除 README）、`test_data/TestResult/`、`*Upwork*` | 不得提交 |
+
+- 新增/重命名 `docs/` 文档时更新 `docs/README.md` 索引
+- 验收路径以 `test_data/testfiles/` 为准；acceptance 文档勿引用不存在的 fixture
+- 与 `main-tracked-issues.md` 冲突时以代码与 living architecture 为准
+- R&D 结论稳定后晋升 `docs/architecture/`，不在 R&D 堆长期真源
+
+## README / CHANGELOG 格式
+- README 须含：项目简介、安装说明、使用方法、许可证（贡献指南按需，不强制）
+- CHANGELOG 条目格式：
+  ```
+  ## v1.x.0
+  - 新增功能: <desc>
+  - 修复bug: <desc>
+  ```
+- 文档中引用代码示例、命令、路径、标识符用英文
+<!-- sync: 2026-09-06 -->

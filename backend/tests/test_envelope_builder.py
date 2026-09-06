@@ -272,3 +272,75 @@ class TestViewLayerAggregation:
     def test_view_processing_status_skip_seal(self):
         for elem in VIEW["seals"]:
             assert elem["processing_status"] == "skip_seal"
+
+
+# ===========================================================================
+# P0-B: reading_order surfaced in the view layer (enables frontend overlay)
+# ===========================================================================
+
+class TestViewLayerReadingOrder:
+    def test_every_view_element_has_reading_order(self):
+        for page in VIEW["pages"]:
+            for elem in page["elements"]:
+                assert "reading_order" in elem, f"missing reading_order on {elem.get('id')}"
+                assert isinstance(elem["reading_order"], int)
+
+    def test_reading_order_monotonic_within_page(self):
+        for page in VIEW["pages"]:
+            orders = [elem["reading_order"] for elem in page["elements"]]
+            assert orders == sorted(orders), f"reading_order not monotonic on page {page.get('page_num')}"
+
+    def test_reading_order_starts_at_zero(self):
+        first_page = VIEW["pages"][0]
+        orders = [elem["reading_order"] for elem in first_page["elements"]]
+        assert orders[0] == 0
+
+    def test_all_elements_covered(self):
+        # 10 layout elements → 10 view elements total across pages
+        total = sum(len(p["elements"]) for p in VIEW["pages"])
+        assert total == len(ALL_ELEMENTS)
+
+
+# ===========================================================================
+# F2-edge: flowchart / display_formula must map to figure / formula kind
+# (previously fell through to else passthrough, missing cross-page aggregation)
+# ===========================================================================
+
+class TestMapBlockTypeToKindEdgeLabels:
+    """flowchart and display_formula were relying on the else-passthrough,
+    which returned the raw label as kind and skipped view.figures[] /
+    view.formulas[] aggregation. They are now explicitly mapped."""
+
+    def test_flowchart_maps_to_figure(self):
+        assert builder._map_block_type_to_kind("flowchart") == "figure"
+
+    def test_display_formula_maps_to_formula(self):
+        assert builder._map_block_type_to_kind("display_formula") == "formula"
+
+    def test_flowchart_aggregated_into_view_figures(self):
+        elems = [_elem("fc1", "flowchart", text="")]
+        fused = builder.build_fused_layer(_make_layout_result(elems))
+        pre = builder.build_preprocessing_metadata(_make_layout_result(elems), use_doc_unwarping=False)
+        view = builder.build_view_layer(fused, pre)
+        assert len(view["figures"]) == 1, "flowchart must aggregate into view.figures[]"
+        assert view["figures"][0]["kind"] == "figure"
+
+    def test_display_formula_aggregated_into_view_formulas(self):
+        elems = [_elem("df1", "display_formula", text="")]
+        fused = builder.build_fused_layer(_make_layout_result(elems))
+        pre = builder.build_preprocessing_metadata(_make_layout_result(elems), use_doc_unwarping=False)
+        view = builder.build_view_layer(fused, pre)
+        assert len(view["formulas"]) == 1, "display_formula must aggregate into view.formulas[]"
+        assert view["formulas"][0]["kind"] == "formula"
+
+    def test_existing_figure_labels_unchanged(self):
+        for label in ("figure", "image", "chart", "picture", "figure_table_chart"):
+            assert builder._map_block_type_to_kind(label) == "figure"
+
+    def test_existing_formula_labels_unchanged(self):
+        for label in ("formula", "inline_formula", "equation", "formula_body"):
+            assert builder._map_block_type_to_kind(label) == "formula"
+
+    def test_footnote_still_maps_to_footer_not_paragraph(self):
+        # Regression guard: footnote must NOT be generalized to paragraph.
+        assert builder._map_block_type_to_kind("footnote") == "footer"

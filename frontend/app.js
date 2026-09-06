@@ -199,6 +199,7 @@ const overlayLayerVisibility = {
     figure: true,
     header_footer: true,
     list: true,
+    readingOrder: true,
 };
 
 /**
@@ -1313,8 +1314,7 @@ function initEngineSelectors() {
     if (layoutSelect) {
         layoutSelect.addEventListener('change', () => {
             const engineNames = {
-                'ppstructure': 'PP-StructureV2',
-                'layoutparser': 'LayoutParser'
+                'ppstructure': 'PP-StructureV3'
             };
             showNotification(`Layout engine changed to ${engineNames[layoutSelect.value]}`, 'info');
         });
@@ -1791,7 +1791,7 @@ async function startProcessing() {
         lastHealthPayload.kie &&
         !lastHealthPayload.kie.model_loaded
     ) {
-        showNotification('首次 KIE 将加载 Qwen 模型，可能需数十秒，请耐心等待进度。', 'info');
+        showNotification('First KIE run loads the Qwen model and may take tens of seconds. Watch the progress bar.', 'info');
     }
     // If another item is already processing, queue this one instead of starting
     const activeProcessing = document.querySelector('.queue-item.processing');
@@ -3008,7 +3008,17 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
             const confidencePercent = rawConf > 1 ? rawConf : rawConf * 100;
             const bboxStr = `${x1.toFixed(0)}, ${y1.toFixed(0)}, ${w.toFixed(0)} × ${h.toFixed(0)}`;
 
-            const tooltipData = { role, content: text, displayContent, bbox: bboxStr, confidence: confidencePercent };
+            // GLM trial P0-C: reading-order overlay. The /blocks endpoint
+            // surfaces reading_order from the envelope view layer; we draw a
+            // small badge at the top-left of text/title regions so
+            // multi-column reading sequence is visible. Figure/table boxes
+            // keep the number in the tooltip only (PaddleX often leaves
+            // image block_order as None, so a badge would be a fallback
+            // counter). Gated by the readingOrder overlay toggle.
+            const readingOrder = Number(block.reading_order);
+            const hasReadingOrder = !isNaN(readingOrder) && readingOrder > 0;
+
+            const tooltipData = { role, content: text, displayContent, bbox: bboxStr, confidence: confidencePercent, readingOrder: hasReadingOrder ? readingOrder : null };
 
             const rect = document.createElementNS(svgNS, 'rect');
             rect.setAttribute('x', x1);
@@ -3026,6 +3036,28 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
             rect.style.pointerEvents = 'auto';
             rect.style.cursor = 'pointer';
             svg.appendChild(rect);
+
+            // Reading-order badge (P0-C). Drawn after the rect so it sits
+            // on top; pointer-events disabled so it never steals rect clicks.
+            const overlayLayer = getOverlayLayerType(type);
+            if (hasReadingOrder && overlayLayerVisibility.readingOrder !== false && overlayLayer === 'text') {
+                const badgeFontSize = Math.max(12, Math.min(w, h) * 0.12);
+                const label = document.createElementNS(svgNS, 'text');
+                label.setAttribute('x', x1 + 4);
+                label.setAttribute('y', y1 + badgeFontSize + 2);
+                label.setAttribute('font-size', badgeFontSize);
+                label.setAttribute('font-family', 'Inter, system-ui, sans-serif');
+                label.setAttribute('font-weight', '700');
+                label.setAttribute('fill', colors.stroke);
+                label.setAttribute('stroke', '#ffffff');
+                label.setAttribute('stroke-width', '0.4');
+                label.setAttribute('paint-order', 'stroke');
+                label.classList.add('svg-reading-order-badge');
+                label.dataset.elementType = type;
+                label.style.pointerEvents = 'none';
+                label.textContent = String(readingOrder);
+                svg.appendChild(label);
+            }
         });
 
         if (lastRenderedAnalysisResult) {
@@ -3144,11 +3176,15 @@ function initAnnotationInteractions() {
             if (!raw) return;
             try {
                 const d = JSON.parse(raw);
+                const readingOrderLine = d.readingOrder
+                    ? `<div class="tooltip-line"><strong>Reading order:</strong> ${d.readingOrder}</div>`
+                    : '';
                 globalTooltip.innerHTML = `
                     <div class="tooltip-line"><strong>Role:</strong> ${esc(d.role)}</div>
                     <div class="tooltip-line"><strong>BBox:</strong> ${esc(d.bbox)}</div>
                     <div class="tooltip-line"><strong>Content:</strong> ${d.displayContent ? esc(d.displayContent) : '(empty)'}</div>
                     <div class="tooltip-line"><strong>Confidence:</strong> ${Number(d.confidence || 0).toFixed(1)}%</div>
+                    ${readingOrderLine}
                 `;
 
                 const vr = rect.getBoundingClientRect();
@@ -3285,19 +3321,23 @@ function renderTableCard(table, index, total) {
     const rows = table.rows || tableData.length || 0;
     const columns = table.columns || (tableData[0] ? tableData[0].length : 0);
     const page = table.page || '?';
-    const confidence = table.confidence || 0;
+    const confidencePct = tableConfidencePct(table);
+    const tableCaption = String(table.caption || '').trim();
     const tableHtml = table.html || null;
     const htmlStructure = table.html_structure || null;
 
     let html = '<div class="table-card">';
     html += '<div class="table-card-header">';
     html += `<span class="table-name">Table ${index + 1}${total > 1 ? ` of ${total}` : ''}${page !== '?' ? ` (Page ${page})` : ''}`;
-    if (confidence > 0) {
-        html += ` <span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(confidence * 100).toFixed(1)}%</span>`;
+    if (confidencePct > 0) {
+        html += ` <span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${confidencePct}%</span>`;
     }
     html += '</span>';
+    if (tableCaption) {
+        html += `<span class="table-caption-label" title="${escapeHtml(tableCaption)}" style="font-size:0.75rem;color:var(--text-secondary);font-weight:400;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(tableCaption)}</span>`;
+    }
     html += '<div class="table-actions">';
-    html += '<button class="table-action-btn" title="Export CSV">';
+    html += '<button type="button" class="table-action-btn" title="Export CSV">';
     html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
     html += '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>';
     html += '<polyline points="7 10 12 15 17 10"></polyline>';
@@ -3607,7 +3647,7 @@ function updateContentFields(result) {
     const meta = result.kie_meta || {};
     const metaBits = [];
     if (meta.succeeded === false) {
-        metaBits.push('KIE 未完成');
+        metaBits.push('KIE incomplete');
         if (meta.error_message) {
             metaBits.push(String(meta.error_message));
         } else if (meta.error_code) {
@@ -3615,10 +3655,10 @@ function updateContentFields(result) {
         }
     } else {
         if (meta.confidence_avg != null && !Number.isNaN(Number(meta.confidence_avg))) {
-            metaBits.push('平均置信度 ' + Number(meta.confidence_avg).toFixed(2));
+            metaBits.push('Avg confidence ' + Number(meta.confidence_avg).toFixed(2));
         }
         if (meta.items_count != null) {
-            metaBits.push('明细行 ' + String(meta.items_count));
+            metaBits.push('Line items ' + String(meta.items_count));
         }
     }
     fieldsMeta.textContent = metaBits.join(' · ');
@@ -3900,6 +3940,84 @@ function convertToMarkdown(data) {
     md += data.keywords.map(k => `- ${k}`).join('\n');
 
     return md;
+}
+
+/**
+ * Table confidence as a 0-100 integer.
+ * Prefers table.confidence (layout detector, typically 0-1); falls back to table.score.
+ * Values in [0, 1] are ratios; values > 1 are treated as already-percent.
+ */
+function tableConfidencePct(table) {
+    let raw = table && table.confidence;
+    if (raw == null) raw = table && table.score;
+    const val = Number(raw);
+    if (!Number.isFinite(val)) return 0;
+    if (val >= 0 && val <= 1) return Math.round(val * 100);
+    return Math.round(val);
+}
+
+function formatTableCsvBanner(index1, table) {
+    const page = table && table.page != null ? table.page : '?';
+    return `=== Table ${index1} (Page ${page}) confidence=${tableConfidencePct(table)}% ===`;
+}
+
+function excelSafeCell(cell) {
+    const s = cell == null ? '' : String(cell);
+    if (!s) return s;
+    const first = s.charAt(0);
+    if (first === '=' || first === '+' || first === '@' || first === '\t' || first === '\r') {
+        return "'" + s;
+    }
+    if (first === '-') {
+        const n = Number(s.replace(/,/g, ''));
+        if (!Number.isFinite(n)) return "'" + s;
+    }
+    return s;
+}
+
+function escapeCsvCell(cell) {
+    const s = excelSafeCell(cell);
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+}
+
+function buildSingleTableCsv(table, index1) {
+    const lines = [formatTableCsvBanner(index1, table)];
+    const cap = table && table.caption ? String(table.caption).trim() : '';
+    if (cap) lines.push(escapeCsvCell('Caption: ' + cap));
+    const rows = (table && table.data) || [];
+    for (let i = 0; i < rows.length; i++) {
+        const row = Array.isArray(rows[i]) ? rows[i] : [rows[i]];
+        lines.push(row.map(escapeCsvCell).join(','));
+    }
+    return lines.join('\r\n');
+}
+
+function singleTableCsvFilename(index1, page) {
+    const n = String(index1).padStart(2, '0');
+    const p = page == null || page === '' ? '?' : page;
+    return `table_${n}_p${p}.csv`;
+}
+
+function downloadCurrentTableCsv() {
+    const tables = window.currentTables || [];
+    const idx = typeof window.currentTableIndex === 'number' ? window.currentTableIndex : 0;
+    const table = tables[idx];
+    if (!table) return;
+    const n = idx + 1;
+    const csv = buildSingleTableCsv(table, n);
+    downloadFile('\uFEFF' + csv, singleTableCsvFilename(n, table.page), 'text/csv;charset=utf-8');
+}
+
+function bindTableCardCsvExport(root) {
+    if (!root || root.dataset.csvExportBound === '1') return;
+    root.dataset.csvExportBound = '1';
+    root.addEventListener('click', function (e) {
+        const btn = e.target.closest('.table-action-btn');
+        if (!btn) return;
+        e.preventDefault();
+        downloadCurrentTableCsv();
+    });
 }
 
 /**
@@ -4641,7 +4759,9 @@ function updateContentTables(result) {
                 data: el.data || [],
                 rows: el.rows || 0,
                 columns: el.columns || 0,
-                confidence: typeof el.confidence === 'number' ? el.confidence : 0,
+                confidence: typeof el.confidence === 'number' ? el.confidence : null,
+                score: el.score,
+                caption: el.caption || el.text || '',
                 bbox: el.bbox || null,
             }));
         }
@@ -4661,7 +4781,9 @@ function updateContentTables(result) {
         page: table.page || table.page_number || '?',
         rows: table.rows || 0,
         columns: table.columns || 0,
-        confidence: table.confidence || 0
+        confidence: typeof table.confidence === 'number' ? table.confidence : null,
+        score: table.score,
+        caption: table.caption || ''
     }));
 
     window.currentTableIndex = 0;
@@ -4730,44 +4852,277 @@ function updateContentTables(result) {
 
         updateContentNavButtons();
     }
+
+    bindTableCardCsvExport(contentTableList);
 }
 
 /**
- * Update Content Figures view
+ * Fetch an image URL through the trial-key auth bridge and return an object
+ * URL. Falls back to the raw URL on any error so a missing key still shows
+ * a broken-image placeholder rather than throwing. The object URL is
+ * revoked after the <img> errors or after a generous TTL.
+ */
+function fetchAuthedImage(url, imgEl) {
+    if (!url) return Promise.resolve(null);
+    return fetch(url)
+        .then(function (res) {
+            if (!res.ok) return null;
+            return res.blob();
+        })
+        .then(function (blob) {
+            if (!blob) return null;
+            const objUrl = URL.createObjectURL(blob);
+            if (imgEl) {
+                imgEl.dataset.objUrl = objUrl;
+                imgEl.addEventListener('error', function () {
+                    if (imgEl.dataset.objUrl) {
+                        URL.revokeObjectURL(imgEl.dataset.objUrl);
+                        delete imgEl.dataset.objUrl;
+                    }
+                }, { once: true });
+            }
+            return objUrl;
+        })
+        .catch(function () { return null; });
+}
+
+/**
+ * Update Content Figures view.
+ *
+ * Primary source is result.figures (the P0-2 crop export: items with
+ * crop_url). When crops are absent, falls back to layout figure elements so
+ * the tab is never empty when the detector saw a figure but export was
+ * disabled or failed. Split-figure integrity warnings from the backend are
+ * surfaced per-card.
  */
 function updateContentFigures(result) {
     const contentFiguresList = document.getElementById('contentFiguresList');
     if (!contentFiguresList) return;
 
-    const layout = result.layout || {};
-    const elements = layout.elements || [];
-    const figures = elements.filter(el => el.type === 'figure' || el.type === 'figure_caption');
+    const figuresExport = result.figures || {};
+    const cropItems = Array.isArray(figuresExport.items) ? figuresExport.items : [];
+    const warnings = Array.isArray(figuresExport.warnings) ? figuresExport.warnings : [];
+    const warningIds = new Set();
+    warnings.forEach(function (w) {
+        (w.ids || []).forEach(function (id) { warningIds.add(id); });
+    });
 
-    if (figures.length === 0) {
+    // Layout elements used only for caption fallback (matched by id).
+    const layout = result.layout || {};
+    const layoutElements = layout.elements || [];
+
+    const hasCrops = cropItems.length > 0;
+    if (!hasCrops) {
+        const layoutFigTypes = new Set(['figure', 'image', 'chart', 'figure_table_chart', 'picture', 'flowchart']);
+        const layoutFigs = layoutElements.filter(el => layoutFigTypes.has(String(el.type || '').toLowerCase()));
+        if (layoutFigs.length === 0) {
+            const errs = Array.isArray(figuresExport.errors) ? figuresExport.errors : [];
+            const msg = errs.length
+                ? `Figure export failed: ${escapeHtml(errs[0].reason || 'unknown error')}`
+                : 'No figures detected';
+            contentFiguresList.innerHTML = `<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">${msg}</div>`;
+            return;
+        }
+        // No crops (export off / failed) but layout saw figures — headers only,
+        // never OCR/caption body text on the card.
+        let html = '';
+        layoutFigs.forEach((figure, index) => {
+            html += '<div class="figure-card">';
+            html += '<div class="figure-card-header">';
+            html += `<span class="figure-name">Figure ${index + 1}${figure.page ? ` (Page ${figure.page})` : ''}</span>`;
+            if (figure.confidence !== undefined) {
+                html += `<span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(figure.confidence * 100).toFixed(1)}%</span>`;
+            }
+            html += '</div>';
+            html += '<div class="figure-preview">';
+            html += '<p style="color: var(--text-tertiary);">Figure detected (crop unavailable)</p>';
+            html += '</div></div>';
+        });
+        contentFiguresList.innerHTML = html;
+        return;
+    }
+
+    // Render crops with lazy auth-loaded images.
+    // Page-by-page navigation mirrors the Tables Tab so multi-figure docs are
+    // browsable one card at a time instead of as a long fused list.
+    // Gallery shows original crops only. Merged reconstructions stay in the
+    // API payload and are offered from the warning banner (false-positive
+    // stacked-figure merges must not occupy a carousel slot).
+    const allMapped = cropItems.map((item, index) => ({
+        id: item.id || `figure_${index + 1}`,
+        page: item.page || '?',
+        confidence: item.confidence || 0,
+        crop_url: item.crop_url || '',
+        width_px: item.width_px || 0,
+        height_px: item.height_px || 0,
+        caption: item.caption || '',
+        warned: warningIds.has(item.id),
+        is_merged: !!item.is_merged,
+        merged_from: item.merged_from || null,
+        split_kind: item.split_kind || '',
+        index: index
+    }));
+    window.mergedFigures = allMapped.filter(function (f) { return f.is_merged; });
+    window.currentFigures = allMapped.filter(function (f) { return !f.is_merged; });
+    window.currentFigureIndex = 0;
+    window.viewingMergedIndex = null;
+
+    if (window.currentFigures.length === 0) {
         contentFiguresList.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-tertiary);">No figures detected</div>';
         return;
     }
 
     let html = '';
-    figures.forEach((figure, index) => {
-        html += '<div class="figure-card">';
-        html += '<div class="figure-card-header">';
-        html += `<span class="figure-name">Figure ${index + 1}${figure.page ? ` (Page ${figure.page})` : ''}</span>`;
-        if (figure.confidence !== undefined) {
-            html += `<span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(figure.confidence * 100).toFixed(1)}%</span>`;
-        }
-        html += '</div>';
-        html += '<div class="figure-preview">';
-        if (figure.text) {
-            html += `<p style="color: var(--text-secondary); font-style: italic;">${escapeHtml(normalizeTextForDisplay(figure.text))}</p>`;
-        } else {
-            html += '<p style="color: var(--text-tertiary);">Figure detected (no caption available)</p>';
-        }
-        html += '</div>';
-        html += '</div>';
+    const splitWarnings = warnings.filter(function (w) {
+        return w.kind === 'possible_vertical_split' || w.kind === 'possible_horizontal_split';
     });
-
+    if (splitWarnings.length > 0 || window.mergedFigures.length > 0) {
+        html += '<div class="figure-warnings-banner" id="figureMergedBanner" style="margin-bottom:10px;padding:8px 12px;border-radius:6px;background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.35);font-size:0.8rem;color:var(--text-secondary);">';
+        html += `⚠ ${splitWarnings.length || window.mergedFigures.length} possible split-figure warning(s). Gallery shows original crops only.`;
+        window.mergedFigures.forEach(function (m, i) {
+            html += ` <button type="button" class="figure-view-merged-btn" data-merged-index="${i}" style="margin-left:8px;padding:4px 8px;font-size:0.75rem;cursor:pointer;">View merged crop (Page ${m.page})</button>`;
+        });
+        html += ' <button type="button" class="figure-back-originals-btn" hidden style="margin-left:8px;padding:4px 8px;font-size:0.75rem;cursor:pointer;">Back to originals</button>';
+        html += '</div>';
+    }
+    if (window.currentFigures.length > 1) {
+        html += '<div class="figure-navigation" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md);">';
+        html += '<button class="figure-nav-btn" id="contentPrevFigureBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+        html += 'Previous</button>';
+        html += `<span style="color: var(--text-primary); font-weight: 500;">Figure <span id="contentCurrentFigureIndex">1</span> of ${window.currentFigures.length}</span>`;
+        html += '<button class="figure-nav-btn" id="contentNextFigureBtn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">';
+        html += 'Next<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"></polyline></svg></button>';
+        html += '</div>';
+    }
+    html += renderFigureCard(window.currentFigures[0], 0, window.currentFigures.length);
     contentFiguresList.innerHTML = html;
+
+    function loadFigureCardImage(cardEl) {
+        if (!cardEl) return;
+        const img = cardEl.querySelector('img.figure-crop-img');
+        if (!img) return;
+        const url = img.dataset.cropUrl;
+        if (!url) return;
+        fetchAuthedImage(url, img).then(function (objUrl) {
+            if (objUrl) img.src = objUrl;
+            else img.alt = 'Figure crop unavailable';
+        });
+    }
+
+    function paintVisibleFigure() {
+        const figureCard = contentFiguresList.querySelector('.figure-card');
+        if (!figureCard) return;
+        const backBtn = contentFiguresList.querySelector('.figure-back-originals-btn');
+        if (window.viewingMergedIndex != null && window.mergedFigures[window.viewingMergedIndex]) {
+            const m = window.mergedFigures[window.viewingMergedIndex];
+            figureCard.outerHTML = renderFigureCard(m, 0, 1);
+            if (backBtn) backBtn.hidden = false;
+        } else {
+            const figs = window.currentFigures;
+            const i = window.currentFigureIndex || 0;
+            figureCard.outerHTML = renderFigureCard(figs[i], i, figs.length);
+            if (backBtn) backBtn.hidden = true;
+        }
+        loadFigureCardImage(contentFiguresList.querySelector('.figure-card'));
+    }
+
+    loadFigureCardImage(contentFiguresList.querySelector('.figure-card'));
+
+    contentFiguresList.querySelectorAll('.figure-view-merged-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            window.viewingMergedIndex = Number(btn.dataset.mergedIndex);
+            paintVisibleFigure();
+        });
+    });
+    const backOriginalsBtn = contentFiguresList.querySelector('.figure-back-originals-btn');
+    if (backOriginalsBtn) {
+        backOriginalsBtn.addEventListener('click', function () {
+            window.viewingMergedIndex = null;
+            paintVisibleFigure();
+        });
+    }
+
+    if (window.currentFigures.length > 1) {
+        const prevBtn = document.getElementById('contentPrevFigureBtn');
+        const nextBtn = document.getElementById('contentNextFigureBtn');
+        const currentIndexSpan = document.getElementById('contentCurrentFigureIndex');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (window.currentFigureIndex > 0) {
+                    window.currentFigureIndex--;
+                    window.viewingMergedIndex = null;
+                    if (currentIndexSpan) currentIndexSpan.textContent = window.currentFigureIndex + 1;
+                    paintVisibleFigure();
+                    updateFigureNavButtons();
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (window.currentFigureIndex < window.currentFigures.length - 1) {
+                    window.currentFigureIndex++;
+                    window.viewingMergedIndex = null;
+                    if (currentIndexSpan) currentIndexSpan.textContent = window.currentFigureIndex + 1;
+                    paintVisibleFigure();
+                    updateFigureNavButtons();
+                }
+            });
+        }
+
+        function updateFigureNavButtons() {
+            if (prevBtn) {
+                prevBtn.disabled = window.currentFigureIndex === 0;
+                prevBtn.style.opacity = window.currentFigureIndex === 0 ? '0.5' : '1';
+                prevBtn.style.cursor = window.currentFigureIndex === 0 ? 'not-allowed' : 'pointer';
+            }
+            if (nextBtn) {
+                nextBtn.disabled = window.currentFigureIndex === window.currentFigures.length - 1;
+                nextBtn.style.opacity = window.currentFigureIndex === window.currentFigures.length - 1 ? '0.5' : '1';
+                nextBtn.style.cursor = window.currentFigureIndex === window.currentFigures.length - 1 ? 'not-allowed' : 'pointer';
+            }
+        }
+
+        updateFigureNavButtons();
+    }
+}
+
+/**
+ * Render a single figure card (used by updateContentFigures pagination).
+ * Mirrors renderTableCard so the Figures Tab browses one card at a time
+ * instead of a fused long list.
+ */
+function renderFigureCard(item, index, total) {
+    const page = item.page || '?';
+    const confidence = item.confidence || 0;
+    const cap = String(item.caption || '').trim();
+    let html = '<div class="figure-card">';
+    html += '<div class="figure-card-header">';
+    html += `<span class="figure-name">Figure ${index + 1}${total > 1 ? ` of ${total}` : ''}${page !== '?' ? ` (Page ${page})` : ''}`;
+    if (confidence > 0) {
+        html += ` <span style="font-size: 0.75rem; color: var(--text-tertiary);">Confidence: ${(confidence * 100).toFixed(1)}%</span>`;
+    }
+    if (item.warned && !item.is_merged) {
+        html += ` <span style="font-size: 0.7rem; color: #f59e0b; margin-left:6px;">⚠ possible split</span>`;
+    }
+    if (item.is_merged) {
+        html += ` <span style="font-size: 0.7rem; color: var(--text-tertiary); margin-left:6px;">(merged reconstruction)</span>`;
+    }
+    html += '</span>';
+    if (cap) {
+        const short = cap.length > 80 ? cap.slice(0, 77) + '...' : cap;
+        html += `<span class="figure-caption-label" title="${escapeHtml(cap)}" style="font-size:0.75rem;color:var(--text-secondary);font-weight:400;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(short)}</span>`;
+    }
+    html += '</div>';
+    html += '<div class="figure-preview">';
+    html += `<img class="figure-crop-img" data-crop-url="${item.crop_url || ''}" alt="Figure ${index + 1} crop" />`;
+    if (item.width_px && item.height_px) {
+        html += `<p style="font-size:0.7rem;color:var(--text-tertiary);margin-top:4px;">${item.width_px} × ${item.height_px}px</p>`;
+    }
+    html += '</div></div>';
+    return html;
 }
 
 /**

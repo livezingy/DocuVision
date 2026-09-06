@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-09-06
+
+See [RELEASE_1.6_NOTES.md](docs/release/RELEASE_1.6_NOTES.md) and [v1.6-roadmap.md](docs/architecture/v1.6-roadmap.md).
+
+### Added
+- Pro single-task artifact pack: `GET /api/v1/tasks/{id}/export/zip` (`include=tables,figures,json`) and sidebar **ZIP** button. Layout: `manifest.json` + `tables/` + `figures/` (`is_merged` under `figures/merged/`). Builder: `pack_export_service.py`. Tests: `backend/tests/test_pack_export_service.py`.
+- Trial hardening: API-key middleware (`DOCUVISION_TRIAL_API_KEY`, HTTP `X-API-Key` / WS `?key=`), configurable CORS allowlist (`DOCUVISION_CORS_ORIGINS`), enforced `MAX_FILE_SIZE` (413) on all four upload endpoints, frontend key bridge (`shared/trial-key.js`). See [TRIAL_REMOTE_60MIN.md](docs/demo/TRIAL_REMOTE_60MIN.md) §3 P0-1.
+- Figure crop export + integrity checks: `figure_service.py`, pipeline `figure_step`, `result.figures` / `envelope.figures` + `quality.figure_*`, routes `GET /tasks/{id}/figures[/{figure_id}]`, option `enable_figure_export`. Split-figure merge veto, caption binding (F3), crop-to-detection-box (no pad).
+- Layout-first tables via PP-StructureV3; reading order from `block_order`; `LAYOUT_TYPES` expanded to 23 classes; multi-level table headers (F1/F2/F4). Per-page layout timeout with bad-page skip.
+- Trial sample generator (`scripts/trial/generate_trial_samples.py`): multi-column techdoc with merged-cell symbol table, flowchart and architecture diagram PDFs into `test_data/testfiles/trial/`.
+- Ground-truth diff: `app/services/trial/gt_diff.py` (CLI + HTML report), routes `POST /api/v1/trial/gt-diff/{task_id}` + `GET .../report`. §3 P1-4.
+- Symbol survival benchmark (`scripts/trial/symbol_benchmark.py`, GPU): PP-OCR vs Qwen2.5-VL. §3 P1-5.
+- Trial ops scripts: `trial_preflight.py` (readiness gate), `trial_reset.py` (data wipe between prospects); `.GLM/` assistant rules.
+
+### Changed
+- `APP_VERSION` default **1.6.0** (`/health` `api_version`).
+
+### Fixed
+- `MAX_FILE_SIZE` was configured but never enforced; now wired into `/ocr`, `/upload`, `/analyze`, `/documents:analyze`.
+- pytest collection interrupted on `test_api_contract_smoke.py` / `test_api_pipeline.py`: those legacy manual scripts use top-level `from _sample_paths import ...` while package-mode collection (tests/__init__.py) only puts `backend/` on sys.path. `tests/conftest.py` now inserts the tests dir into sys.path; the scripts collect 0 items harmlessly and stay runnable via `python tests/test_api_pipeline.py`.
+- Table CSV/Excel cells starting with `=`/`+`/`@` or non-numeric `-` are prefixed so Excel does not treat them as formulas.
+- PaddleX #17446 empty-detection crash: drop predict kwargs that trigger it; uniquify figure crop ids.
+
 ## [1.5.0] — 2026-08-05
 
 ### Added

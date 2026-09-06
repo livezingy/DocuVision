@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from loguru import logger
 import os
 import io
+import re
 
 
 class BaseTableEngine(ABC):
@@ -340,13 +341,131 @@ class PPStructureTableEngine(BaseTableEngine):
                     except Exception as e:
                         logger.warning(f"Table {table_idx}: Failed to parse HTML from content: {e}")
 
-            # Only add table if it has data or HTML
-            if table.get('data') or table.get('html'):
+            if not self._keep_layout_table(table):
+                logger.info(
+                    f"Table {table_idx}: dropped pseudo-table "
+                    f"(empty/tiny or html-only with no parsed cells)"
+                )
+                continue
+
+            self._strip_leading_caption_row(table)
+
+            if table.get('data'):
                 tables.append(table)
             else:
                 logger.warning(f"Table {table_idx}: No data or HTML found in layout element")
 
+        # F3: bind table_caption elements to tables (same-page bbox adjacency).
+        self._bind_table_captions(tables, layout_elements)
+
         return tables
+
+    @staticmethod
+    def _keep_layout_table(table: Dict[str, Any]) -> bool:
+        """Return False for empty/tiny layout tables.
+
+        ``_html_to_data`` may yield a grid of empty strings, or fail and leave
+        only ``html``. Either case is a pseudo-table (header rule / axis line)
+        and must not be kept just because HTML is present.
+        """
+        data = table.get("data") or []
+        if not data:
+            return False
+        nonempty = sum(
+            1 for row in data for c in (row or []) if c and str(c).strip()
+        )
+        if nonempty == 0:
+            return False
+        row_count = len(data)
+        col_count = max((len(r) for r in data), default=0)
+        if row_count < 3 and col_count < 3:
+            return False
+        return True
+
+    @staticmethod
+    def _strip_leading_caption_row(table: Dict[str, Any]) -> None:
+        """Move a leading Table/Figure caption row onto ``table.caption``.
+
+        After colspan expansion a single caption cell becomes
+        ``['Table 1: ...', '', '']``. Count nonempty cells, not raw width,
+        so a spanned caption is still stripped.
+        """
+        data = table.get("data") or []
+        if not data or not data[0]:
+            return
+        nonempty = [str(c).strip() for c in data[0] if c and str(c).strip()]
+        if not nonempty or len(nonempty) > 2:
+            return
+        first_text = " ".join(nonempty)
+        if not re.match(r"^(Table|Figure)\s+\d+[:.]", first_text, re.IGNORECASE):
+            return
+        table["caption"] = first_text
+        table["data"] = data[1:]
+        if table.get("data"):
+            table["rows"] = len(table["data"])
+            table["columns"] = max(len(r) for r in table["data"]) if table["data"] else 0
+        logger.info(f"stripped caption row -> {first_text[:50]}")
+
+    @staticmethod
+    def _bind_table_captions(
+        tables: List[Dict[str, Any]],
+        all_elements: List[Dict[str, Any]],
+    ) -> None:
+        """Bind ``table_caption`` elements to nearby tables in-place.
+
+        Simplified reimplementation of PaddleX ``update_vision_child_blocks``
+        for the table-caption case. A caption is consumed by the closest
+        table on the same page with sufficient horizontal overlap and
+        small vertical gap.
+        """
+        from app.services.figure_service import _bbox_tuple, _h_overlap_ratio, _v_gap
+
+        caption_labels = {"table_caption", "figure_table_chart_title"}
+        captions = [
+            e for e in all_elements
+            if str(e.get("type") or "").lower().strip() in caption_labels
+        ]
+        if not captions or not tables:
+            return
+
+        consumed: set = set()
+        for tbl in tables:
+            tbl_page = int(tbl.get("page", 1) or 1)
+            tbl_bbox = tbl.get("bbox") or {}
+            if not tbl_bbox:
+                continue
+            tbl_box = (
+                float(tbl_bbox.get("x", 0)),
+                float(tbl_bbox.get("y", 0)),
+                float(tbl_bbox.get("x", 0)) + float(tbl_bbox.get("width", 0)),
+                float(tbl_bbox.get("y", 0)) + float(tbl_bbox.get("height", 0)),
+            )
+            tbl_h = tbl_box[3] - tbl_box[1]
+            best_cap = None
+            best_gap = float("inf")
+
+            for cap in captions:
+                cap_id = cap.get("id")
+                if cap_id in consumed:
+                    continue
+                if int(cap.get("page", 1) or 1) != tbl_page:
+                    continue
+                cap_box = _bbox_tuple(cap)
+                if _h_overlap_ratio(tbl_box, cap_box) < 0.5:
+                    continue
+                gap = _v_gap(tbl_box, cap_box)
+                cap_h = cap_box[3] - cap_box[1]
+                threshold = 0.5 * max(tbl_h, cap_h) if max(tbl_h, cap_h) > 0 else 50.0
+                if gap > threshold:
+                    continue
+                if gap < best_gap:
+                    best_gap = gap
+                    best_cap = cap
+
+            if best_cap is not None:
+                consumed.add(best_cap.get("id"))
+                tbl["caption"] = best_cap.get("text") or ""
+                tbl["caption_id"] = best_cap.get("id")
 
     def _reconstruct_table_with_ocr(
         self,
@@ -987,6 +1106,19 @@ class PPStructureTableEngine(BaseTableEngine):
         """
         Extract HTML table structure information including rowspan/colspan for frontend rendering.
         Only extracts from <table> tags, ignoring any other content.
+
+        F4: preserve multi-level header relationships.
+        - Rows inside <thead> are header rows (cells flagged is_header regardless
+          of <th> vs <td>, since PP-StructureV3/SLANeXt often writes headers as <td>).
+        - When <thead> is absent, apply a heuristic: the first up-to-3 rows where
+          >=50% of cells are empty or short (<=20 chars) are treated as header rows.
+        - Output ``header_rows`` (count) and ``header_span_map`` (per-header-cell
+          span tree) so downstream can reconstruct multi-level header hierarchy
+          instead of the flat ``data`` array which loses that structure.
+
+        Official basis: SLANeXt outputs HTML with native <thead>/<th rowspan>/
+        <th colspan> for multi-level headers
+        (https://paddlepaddle.github.io/PaddleOCR/main/en/version3.x/pipeline_usage/table_recognition_v2.html).
         """
         try:
             from bs4 import BeautifulSoup
@@ -998,18 +1130,70 @@ class PPStructureTableEngine(BaseTableEngine):
             if not table:
                 return {}
 
-            structure = {
+            structure: Dict[str, Any] = {
                 'rows': [],
-                'has_merged_cells': False
+                'has_merged_cells': False,
+                'header_rows': 0,
+                'header_span_map': [],
             }
 
             rows = table.find_all('tr')
+            if not rows:
+                return structure
+
+            # F4: determine header rows.
+            # 1) Explicit <thead>: every row inside thead is a header row.
+            thead = table.find('thead')
+            header_row_indices: set = set()
+            if thead is not None:
+                # A row is a header row if it is inside <thead>. Match by identity
+                # against the full row list to get the correct row index.
+                thead_rows = thead.find_all('tr')
+                thead_row_ids = {id(r) for r in thead_rows}
+                for r_idx, row in enumerate(rows):
+                    if id(row) in thead_row_ids:
+                        header_row_indices.add(r_idx)
+
+            # 2) Heuristic fallback when no <thead>: first up to 3 rows where
+            #    ALL cells are short text (<=20 chars, empty counts as short).
+            #    A body row typically has at least one long cell, so this stops
+            #    at the first body row. Catches PP-StructureV3 output that writes
+            #    headers as <td> without <thead>.
+            if not header_row_indices:
+                max_header_probe = 3
+                for r_idx, row in enumerate(rows):
+                    if r_idx >= max_header_probe:
+                        break
+                    cells = row.find_all(['td', 'th'])
+                    if not cells:
+                        continue
+                    all_short = True
+                    for cell in cells:
+                        cell_copy = BeautifulSoup(str(cell), 'html.parser')
+                        for nested_table in cell_copy.find_all('table'):
+                            nested_table.decompose()
+                        text = ' '.join(cell_copy.get_text(separator=' ', strip=True).split())
+                        if len(text) > 20:
+                            all_short = False
+                            break
+                    if all_short:
+                        header_row_indices.add(r_idx)
+                    else:
+                        # Stop at first non-header row: headers are leading rows.
+                        break
+
+            structure['header_rows'] = len(header_row_indices)
+
             for row_idx, row in enumerate(rows):
-                row_info = {
-                    'cells': []
+                row_info: Dict[str, Any] = {
+                    'cells': [],
+                    'is_header_row': row_idx in header_row_indices,
                 }
                 cells = row.find_all(['td', 'th'])
 
+                # Track the column cursor for header_span_map (account for
+                # colspan/rowspan of preceding cells in the same row).
+                col_cursor = 0
                 for cell in cells:
                     # Remove nested tables from cell content
                     cell_copy = BeautifulSoup(str(cell), 'html.parser')
@@ -1020,17 +1204,33 @@ class PPStructureTableEngine(BaseTableEngine):
                     # Normalize whitespace
                     cell_text = ' '.join(cell_text.split())
 
+                    rowspan = int(cell.get('rowspan', 1))
+                    colspan = int(cell.get('colspan', 1))
+                    is_header = (row_idx in header_row_indices) or (cell.name == 'th')
+
                     cell_info = {
                         'text': cell_text,
-                        'is_header': cell.name == 'th',
-                        'rowspan': int(cell.get('rowspan', 1)),
-                        'colspan': int(cell.get('colspan', 1))
+                        'is_header': is_header,
+                        'rowspan': rowspan,
+                        'colspan': colspan,
                     }
 
-                    if cell_info['rowspan'] > 1 or cell_info['colspan'] > 1:
+                    if rowspan > 1 or colspan > 1:
                         structure['has_merged_cells'] = True
 
+                    # F4: record header span tree for multi-level header
+                    # reconstruction downstream.
+                    if is_header and (rowspan > 1 or colspan > 1):
+                        structure['header_span_map'].append({
+                            'row': row_idx,
+                            'col': col_cursor,
+                            'rowspan': rowspan,
+                            'colspan': colspan,
+                            'text': cell_text,
+                        })
+
                     row_info['cells'].append(cell_info)
+                    col_cursor += colspan
 
                 # Only add row if it has cells
                 if row_info['cells']:
@@ -1042,166 +1242,21 @@ class PPStructureTableEngine(BaseTableEngine):
             return {}
 
 
-class CamelotTableEngine(BaseTableEngine):
-    """
-    Fallback Table Engine - Camelot
-
-    Advantages:
-    - Excellent for text-based PDFs (not scanned)
-    - Stream and Lattice modes
-    - Handles complex table structures
-    - Pure Python, no ML models needed
-    """
-
-    def __init__(self):
-        self._ready = False
-        self._init_engine()
-
-    def _init_engine(self):
-        try:
-            import camelot
-            self._ready = True
-            logger.info("Camelot Table engine initialized successfully")
-        except ImportError as e:
-            logger.warning(f"Camelot not installed: {e}")
-            self._ready = False
-        except Exception as e:
-            logger.warning(f"Camelot initialization failed: {e}")
-            self._ready = False
-
-    def is_ready(self) -> bool:
-        return self._ready
-
-    def get_name(self) -> str:
-        return "Camelot"
-
-    async def extract(self, file_path: str) -> List[Dict[str, Any]]:
-        if not self._ready:
-            raise RuntimeError("Camelot engine not ready")
-
-        import camelot
-
-        ext = os.path.splitext(file_path)[1].lower()
-
-        if ext != '.pdf':
-            raise ValueError("Camelot only supports PDF files")
-
-        all_tables = []
-
-        try:
-            # Try lattice mode first (for tables with borders)
-            tables = camelot.read_pdf(file_path, pages='all', flavor='lattice')
-
-            if len(tables) == 0:
-                # Try stream mode (for tables without borders)
-                tables = camelot.read_pdf(file_path, pages='all', flavor='stream')
-
-            for idx, table in enumerate(tables):
-                df = table.df
-
-                table_dict = {
-                    "id": f"table_{idx + 1}",
-                    "page": table.page,
-                    "engine": "Camelot",
-                    "bbox": {
-                        "x": table._bbox[0] if table._bbox else 0,
-                        "y": table._bbox[1] if table._bbox else 0,
-                        "width": table._bbox[2] - table._bbox[0] if table._bbox else 0,
-                        "height": table._bbox[3] - table._bbox[1] if table._bbox else 0
-                    },
-                    "data": df.values.tolist(),
-                    "rows": len(df),
-                    "columns": len(df.columns),
-                    "accuracy": table.accuracy,
-                    "whitespace": table.whitespace
-                }
-                all_tables.append(table_dict)
-
-        except Exception as e:
-            logger.warning(f"Camelot extraction failed: {e}")
-            raise
-
-        return all_tables
-
-
-class TabulaTableEngine(BaseTableEngine):
-    """
-    Alternative Table Engine - Tabula-py
-
-    Advantages:
-    - Good for simple tables
-    - Fast processing
-    - Based on tabula-java
-    """
-
-    def __init__(self):
-        self._ready = False
-        self._init_engine()
-
-    def _init_engine(self):
-        try:
-            import tabula
-            self._ready = True
-            logger.info("Tabula Table engine initialized successfully")
-        except ImportError as e:
-            logger.warning(f"Tabula-py not installed: {e}")
-            self._ready = False
-        except Exception as e:
-            logger.warning(f"Tabula initialization failed: {e}")
-            self._ready = False
-
-    def is_ready(self) -> bool:
-        return self._ready
-
-    def get_name(self) -> str:
-        return "Tabula"
-
-    async def extract(self, file_path: str) -> List[Dict[str, Any]]:
-        if not self._ready:
-            raise RuntimeError("Tabula engine not ready")
-
-        import tabula
-
-        ext = os.path.splitext(file_path)[1].lower()
-
-        if ext != '.pdf':
-            raise ValueError("Tabula only supports PDF files")
-
-        all_tables = []
-
-        try:
-            dfs = tabula.read_pdf(file_path, pages='all', multiple_tables=True)
-
-            for idx, df in enumerate(dfs):
-                if df.empty:
-                    continue
-
-                table_dict = {
-                    "id": f"table_{idx + 1}",
-                    "page": 1,  # Tabula doesn't provide page info easily
-                    "engine": "Tabula",
-                    "data": df.fillna('').values.tolist(),
-                    "columns_header": df.columns.tolist(),
-                    "rows": len(df),
-                    "columns": len(df.columns)
-                }
-                all_tables.append(table_dict)
-
-        except Exception as e:
-            logger.warning(f"Tabula extraction failed: {e}")
-            raise
-
-        return all_tables
-
-
 class TableService:
     """
-    Table Extraction Service with multi-engine support
+    Table Extraction Service.
 
-    Supports automatic fallback:
-    1. PP-Structure-Table (Primary - Recommended for images/scanned PDFs)
-    2. Camelot (Fallback - Good for text-based PDFs)
-    3. Tabula (Alternative)
+    Only PP-Structure-Table is registered as a table engine. Pro routes
+    all PDFs (born-digital and scanned) through the PP-StructureV3
+    layout-first path: layout detection supplies table region bboxes and
+    SLANeXt HTML, and this service parses that HTML into rows/data. The
+    former docuvision-core born-digital branch (pdfplumber + camelot
+    text-stream) is removed because its text-stream strategy produced
+    pseudo-tables on two-column papers and reference pages. Lite keeps
+    its own core-based table_pipeline; this service is Pro-only.
+    An earlier design advertised Camelot/Tabula as fallback engines here,
+    but they were never enabled and do not help on scanned inputs; the
+    dead code has been removed.
     """
 
     def __init__(self, use_gpu: bool = False, allow_fullpage_fallback: bool = False):
@@ -1213,20 +1268,12 @@ class TableService:
 
     def _init_engines(self):
         """Initialize all available table engines"""
-        # Primary: PP-Structure-Table
+        # Primary: PP-Structure-Table (only registered table engine).
+        # Camelot/Tabula fallback removed: they cannot process scanned/image
+        # inputs (the only inputs that reach this engine after born-digital
+        # PDFs are routed to docuvision-core TableProcessor upstream).
         pp_engine = PPStructureTableEngine(use_gpu=self._use_gpu, lazy_init=True)
         self.engines["ppstructure"] = pp_engine
-
-        # PaddleOCR-only version: Camelot and Tabula disabled
-        # Fallback: Camelot
-        # camelot_engine = CamelotTableEngine()
-        # if camelot_engine.is_ready():
-        #     self.engines["camelot"] = camelot_engine
-
-        # Alternative: Tabula
-        # tabula_engine = TabulaTableEngine()
-        # if tabula_engine.is_ready():
-        #     self.engines["tabula"] = tabula_engine
 
         logger.info(
             "Available table engines: {} | allow_fullpage_fallback={}",
@@ -1321,8 +1368,11 @@ class TableService:
 
         Args:
             file_path: Path to PDF or image file (used as fallback if layout_elements not provided)
-            engine: Specific engine to use (ppstructure, camelot, tabula)
-            fallback: Whether to try fallback engines on failure
+            engine: Specific engine to use; only ``ppstructure`` is registered.
+                Pro routes all PDFs (born-digital and scanned) through the
+                PP-StructureV3 layout-first path; the former docuvision-core
+                born-digital branch is removed.
+            fallback: Kept for API compatibility; no-op with a single engine
             layout_elements: Optional list of layout elements from Layout Service (preferred method)
             ocr_text_blocks: Optional list of OCR text blocks for table reconstruction
             allow_fullpage_fallback: Override service-level fallback strategy
@@ -1360,32 +1410,12 @@ class TableService:
             effective_allow_fullpage_fallback,
         )
 
-        ext = os.path.splitext(file_path)[1].lower()
-        use_core = engine in (None, "auto", "docuvision_core", "core", "mixed")
-        if ext == ".pdf" and use_core:
-            try:
-                from app.services.file_type_detector import DetectedFileType, detect_file_type
-                from app.services.core_table_extractor import extract_digital_pdf_tables
-
-                detected, _page_count = detect_file_type(file_path)
-                if detected == DetectedFileType.PDF_DIGITAL:
-                    logger.info("Routing born-digital PDF to docuvision-core TableProcessor")
-                    core_tables = extract_digital_pdf_tables(
-                        file_path,
-                    )
-                    meta.update(
-                        {
-                            "strategy": "pdf_digital_core",
-                            "path": "docuvision_core",
-                            "reason": "born_digital_pdf",
-                            "engine_used": "docuvision_core",
-                            "tables_returned": len(core_tables),
-                        }
-                    )
-                    return core_tables, meta
-            except Exception as core_exc:
-                logger.warning(f"docuvision-core table path failed, falling back to layout: {core_exc}")
-
+        # Pro policy: all tables come from PP-StructureV3 layout detection.
+        # The former born-digital branch (docuvision-core pdfplumber/camelot
+        # text-stream) is removed because its text-stream strategy produced
+        # many pseudo-tables on two-column papers and reference pages, while
+        # the layout table blocks (with SLANeXt HTML) were discarded. Lite
+        # keeps its own core-based table_pipeline; this change is Pro-only.
         # If layout elements are provided and using PP-Structure, extract from layout (preferred method)
         if layout_elements and (not engine or engine == "ppstructure"):
             if "ppstructure" in self.engines:

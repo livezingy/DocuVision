@@ -1,6 +1,7 @@
 # DocuVision Documentation
 
-> **Status**: living index — update when adding or renaming docs.
+> **Status**: living index — update when adding or renaming docs.  
+> 最近对照：v1.6.0 / tag v1.6.0（2026-09-06）
 
 ## Onboarding
 
@@ -20,14 +21,17 @@ Read in this order when onboarding to the codebase:
 4. [architecture/lite-api.md](architecture/lite-api.md) — Lite REST API
 5. [architecture/shared-ui-shell.md](architecture/shared-ui-shell.md) — Pro/Lite shared UI
 6. [architecture/batch-ui-roadmap.md](architecture/batch-ui-roadmap.md) — Batch UI roadmap
-7. [architecture/v1.5-roadmap.md](architecture/v1.5-roadmap.md) — post-v1.4 long-tail (searchable PDF, batch persistence)
-8. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
+7. [architecture/v1.5-roadmap.md](architecture/v1.5-roadmap.md) — v1.5 leftovers (searchable PDF, AcroForm, mail)
+8. [architecture/v1.6-roadmap.md](architecture/v1.6-roadmap.md) — v1.6.0 shipped (figure baseline + artifact pack; ZIP contract in system-design §9.1)
+9. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
+10. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
+11. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
 
 ## Validation and QA
 
 | Doc | Purpose |
 |-----|---------|
-| [architecture/CLOUD_VALIDATION.md](architecture/CLOUD_VALIDATION.md) | Cloud Studio GPU phases A–G; **§1.1 Baidu AI Studio** Pro UI via `api_serving` |
+| [architecture/CLOUD_VALIDATION.md](architecture/CLOUD_VALIDATION.md) | Cloud Studio GPU phases A–G; **§1.1 Baidu AI Studio** `api_serving` + **§1.1.1 persist** (work / Git / PaddleX / KIE) |
 | [architecture/KIE_TEST_RUN_TRACKER.md](architecture/KIE_TEST_RUN_TRACKER.md) | KIE batch run log (append-only) |
 | [../test_data/acceptance/README.md](../test_data/acceptance/README.md) | Acceptance matrix index |
 | [../test_data/acceptance/UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) | UI E2E vs manual scope; assistant manual-test reminders |
@@ -81,3 +85,4 @@ New features: add **contract tests** first; extend `MERGE_MAIN_v*.md` only at re
 
 - [demo/TRIAL_DEMO.md](demo/TRIAL_DEMO.md)
 - [demo/SAMPLES.md](demo/SAMPLES.md)
+- [demo/TRIAL_REMOTE_60MIN.md](demo/TRIAL_REMOTE_60MIN.md) — remote 1-hour diagnostic trial (GLM `feat/glm-trial`): bring-up, timeboxed script, cloud acceptance criteria

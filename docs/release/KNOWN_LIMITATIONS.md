@@ -1,7 +1,7 @@
 # Known limitations
 
-> Applies through **v1.6.0** (tag `v1.6.0`, 2026-09-06). Queue persistence is v1.5; figure crops + artifact pack are v1.6.  
-> Release notes: [RELEASE_1.6_NOTES.md](./RELEASE_1.6_NOTES.md) · [RELEASE_1.5_NOTES.md](./RELEASE_1.5_NOTES.md) · [RELEASE_1.4_NOTES.md](./RELEASE_1.4_NOTES.md)  
+> Applies through **v1.7.0 train** (tag pending). Queue persistence is v1.5; figure crops + artifact pack are v1.6; single-task result persistence is v1.7.  
+> Release notes: [v1.7-roadmap.md](../architecture/v1.7-roadmap.md) · [RELEASE_1.6_NOTES.md](./RELEASE_1.6_NOTES.md) · [RELEASE_1.5_NOTES.md](./RELEASE_1.5_NOTES.md)  
 > Acceptance rules: [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
 
 ## DocuVision Lite (since 1.0.1)
@@ -51,7 +51,7 @@
 | KIE query fields（v1.1） | `kie_query_fields` **仅追加**内置 schema（最多 20 字段）。**v1.3** 起支持 `document_type=custom` 与 YAML 模板库（MVP）；无字段 bbox 联动。见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)。 |
 | KIE validation（v1.3） | 启发式 date/currency 规则 + `kie_validation`；非 ground-truth 逐字校验。 |
 | Batch Processing UI | v1.2+ Pro Batch tab with aggregated CSV/JSON/**Excel**. **v1.5**: queue persisted (`batch_jobs`). Lite has no batch UI/API since v1.3.1. |
-| Single-task results | `tasks` dict in `main.py` is **still in-memory**. After `:8000` restart, `GET /tasks/{id}/export/zip` and `GET /tasks/{id}/figures/{id}` 404 even if PNGs remain under `OUTPUT_DIR`. |
+| Single-task results (v1.7) | Completed Pro tasks persist via `analyze_jobs` + `OUTPUT_DIR/{task_id}/result.json`. Restart hydrates the in-memory `tasks` dict. In-flight jobs become `interrupted` (no auto GPU resume). Missing `result.json` → `missing_artifacts` (not 500). FIFO `TASK_KEEP_LAST_N` (default 50) deletes DB row and output dir together. SPA still only holds `currentTaskId` in the current session (no Recent-tasks UI). |
 | Figure crops (v1.6) | `figure_step` writes `OUTPUT_DIR/{task_id}/figures/*.png`. Split-figure merge is best-effort; `is_merged` crops are not in the default Figures carousel. Lite has no figure export. |
 | Artifact pack (v1.6) | Pro `GET /tasks/{id}/export/zip` packs tables + figure PNGs. Oversize → 413 (`MAX_PACK_BYTES` 256MB). No Lite ZIP, no Batch multi-task ZIP, no table-region screenshots. |
 | Table column mapping (v1.4) | `table_template` maps born-digital PDF tables to unified schema (`mapped_table_rows`). **Scanned PDFs/images blocked** in UI (use Layout Analysis). **Debit/Credit split columns, Chinese headers, and complex merged cells** extensible; aliases target **English headers** primarily. Positional fallback when headers unmatched. Custom alias API deferred. **No HITL** on table-mapping analyze path (`document_type=general`, `enable_kie=false`). |
@@ -74,13 +74,13 @@
 - `test_data/TestResult/` 为本地/云端导出目录（gitignore），**不**随仓库分发。
 - 部分 `test_data/testfiles/` 样例仅供验收，使用时注意版权与隐私（勿提交真实证件）。
 
-## 后续版本方向（post-v1.6.0）
+## 后续版本方向（post-v1.7.0）
 
-- **单任务 result 持久化**：补 v1.5 缺口，使 ZIP / figure GET 重启后仍可用。
 - **v1.5 leftovers**：可搜索 PDF、AcroForm、Webhook 持久化、邮件 IMAP 独立服务 — [v1.5-roadmap.md](../architecture/v1.5-roadmap.md)。
 - **Batch ZIP / Lite ZIP / 表格截图**：v1.6 明确不做；Batch ZIP 需单独体积/异步设计。
+- **Recent-tasks UI**：后端可恢复，刷新页仍会丢 `currentTaskId`。
 - **维护**：Playwright E2E P1/P2；文档漂移审计脚本（`004-doc-sync` 机制 5，暂不建）。
 
-Cloud 验收：[MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md)。
+Cloud 验收：[MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md)。
 
-路线图：[RELEASE_1.6_NOTES.md](./RELEASE_1.6_NOTES.md)、[v1.6-roadmap.md](../architecture/v1.6-roadmap.md)。
+路线图：[v1.7-roadmap.md](../architecture/v1.7-roadmap.md)、[RELEASE_1.6_NOTES.md](./RELEASE_1.6_NOTES.md)、[v1.6-roadmap.md](../architecture/v1.6-roadmap.md)。

@@ -331,11 +331,14 @@ export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
 
 # Queue persistence store (SQLite). Attached to batch_service now and to the
-# hitl_queue singleton at startup. See docs/architecture/v1.5-roadmap.md.
+# hitl_queue / analyze_job_store singletons at startup.
+# See docs/architecture/v1.5-roadmap.md and v1.7-roadmap.md.
+from app.services.persistence.analyze_job_store import analyze_job_store  # noqa: E402
 from app.services.persistence.queue_store import SqliteQueueStore  # noqa: E402
 
 _queue_store = SqliteQueueStore(db_path=Path(settings.SQLITE_DB_PATH))
 batch_service.attach_store(_queue_store)
+analyze_job_store.attach_store(_queue_store)
 
 
 def _raise_query_fields_http(exc: Exception) -> None:
@@ -359,6 +362,7 @@ def _resolve_kie_query_fields_in_options(options: Dict[str, Any]) -> None:
 unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服
 # Task Storage
 tasks: Dict[str, Dict[str, Any]] = {}
+analyze_job_store.bind(tasks)
 # Task cancellation flags
 task_cancellation_flags: Dict[str, bool] = {}
 # WebSocket connections for real-time event streaming
@@ -1934,6 +1938,10 @@ async def cancel_task(task_id: str):
     task["status"] = "cancelled"
     task["message"] = "Task cancelled by user"
 
+    from app.services.persistence.analyze_job_store import persist_task_safe
+
+    await persist_task_safe(task)
+
     logger.info(f"Task cancelled: {task_id}")
     return {"message": "Task cancelled", "task_id": task_id}
 
@@ -1955,6 +1963,9 @@ async def patch_task_kie_fields(task_id: str, body: KieFieldsPatchModel):
         validation = _apply_kie_fields_to_task(task, body.fields)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    from app.services.persistence.analyze_job_store import persist_task_safe
+
+    await persist_task_safe(task)
     return {
         "task_id": task_id,
         "fields": body.fields,
@@ -1983,8 +1994,10 @@ async def delete_task(task_id: str):
         except Exception as e:
             logger.warning(f"Failed to delete upload directory: {e}")
 
-    # Remove from storage
-    del tasks[task_id]
+    from app.services.persistence.analyze_job_store import delete_task_safe
+
+    delete_task_safe(task_id)
+    tasks.pop(task_id, None)
     task_cancellation_flags.pop(task_id, None)
 
     return {"message": "Task deleted", "task_id": task_id}
@@ -2606,6 +2619,9 @@ async def startup_event():
         hitl_queue.attach_store(_queue_store)
         hitl_queue.load_from_db()
         batch_service.load_from_db()
+        analyze_job_store.attach_store(_queue_store)
+        analyze_job_store.bind(tasks)
+        analyze_job_store.load_from_db()
     except Exception as exc:
         logger.warning("Queue persistence load failed (non-fatal): {}", exc)
     logger.info("=" * 60)

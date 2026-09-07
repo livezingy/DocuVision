@@ -799,6 +799,10 @@ async def finalize_step(ctx: PipelineContext) -> None:
             result["quality"] = quality
     task["result"] = result
 
+    from app.services.persistence.analyze_job_store import persist_task_safe
+
+    await persist_task_safe(task)
+
     await orchestrator.send_event(ctx["task_id"], "completed", "Processing completed", 100)
 
     try:
@@ -1137,6 +1141,9 @@ class DocumentPipelineOrchestrator:
         task["status"] = "processing"
         task["message"] = "Processing document..."
         await self.send_event(task_id, "status", "Processing document...", 0)
+        from app.services.persistence.analyze_job_store import persist_task_safe
+
+        await persist_task_safe(task)
 
         detected_type, _detect_pages = detect_file_type(task["file_path"])
         result: Dict[str, Any] = {
@@ -1176,6 +1183,11 @@ class DocumentPipelineOrchestrator:
             for step in steps:
                 await step(ctx)
         except asyncio.CancelledError:
+            task["status"] = "cancelled"
+            task["message"] = "Task cancelled"
+            from app.services.persistence.analyze_job_store import persist_task_safe
+
+            await persist_task_safe(task)
             await self.send_event(task_id, "cancelled", "Task cancelled")
             return
         except Exception as exc:
@@ -1183,4 +1195,7 @@ class DocumentPipelineOrchestrator:
             logger.exception(exc)
             task["status"] = "failed"
             task["message"] = f"Processing failed: {exc}"
+            from app.services.persistence.analyze_job_store import persist_task_safe
+
+            await persist_task_safe(task)
             return

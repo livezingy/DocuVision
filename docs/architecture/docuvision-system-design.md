@@ -862,6 +862,7 @@ BLOCK_ENGINE_MAP = {
   3. `tables[*].data`（最后回退） — 二维数组，带列数/一致性校验
 - **表格导出（CSV/Excel）以 `data` 为源**：侧栏 Export CSV 走 `ExportService.to_csv`（全部表集合；每表前一行 `=== Table {n} (Page {p}) confidence={pct}% ===`，下一行可选 `Caption: …`。`confidence` 为 layout 检测分，0–1 转百分数；缺失则回退 `score`。以 `=`/`+`/`@` 或非数字 `-` 开头的单元格加 `'` 前缀，避免 Excel `#NAME?`。权威：`backend/tests/test_export_service.py`）。Markdown/DOCX 表标题与 XLSX A1 使用 `format_table_export_title`（含 caption）。Tables 卡片 `.table-action-btn` 下载**当前这一张** CSV（文件名 `table_{nn}_p{page}.csv`，首行同 banner）。Batch `/batch/{id}/export.csv` 与 Lite 导出本批未改。`data` 不参与渲染权威，仅作导出与渲染末位回退
 - **单任务 ZIP 打包（v1.6）**：侧栏 Export Results **ZIP** 走 `GET /tasks/{id}/export/zip`（可选 `include=tables,figures,json`，默认 `tables,figures`）。服务端 `pack_export_service.build_task_pack_zip` 写盘后附件下载：`manifest.json` + `tables/tables.csv|xlsx` + 分表 `table_{nn}_p{page}.csv` + `figures/{id}.png`（`is_merged` 进 `figures/merged/`）+ `figures/index.csv`。复用已有 CSV/XLSX 与磁盘 crop，不重裁。体积按未压缩字节累计，超过 `MAX_PACK_BYTES`（256MB）→ 413。权威：`backend/tests/test_pack_export_service.py`。Lite / Batch ZIP 不在 v1.6
+- **单任务 result 持久化（v1.7）**：`AnalyzeJobStore` 复用 v1.5 `QueueStore` 第三张表 `analyze_jobs`。SQLite 只存元数据 + `result_path`；完整 result 写 `OUTPUT_DIR/{task_id}/result.json`。启动时 `load_from_db()` 灌回内存 `tasks`，路由语义不变。`processing` 重启后标 `interrupted`（不续跑 GPU）。FIFO `TASK_KEEP_LAST_N`（默认 50）删行必删目录。权威：`backend/tests/test_task_persistence.py`。Cloud 门禁 **TASK-PERSIST-001**。
 - **Figures Tab**：卡片只显示 crop 图（`.figure-preview img`：`max-width:100%; height:auto; object-fit:contain`；过高则预览区 `max-height:70vh` + `overflow-y:auto`）。caption 只出现在卡片 header，不进预览正文。裁切用检测框原样（不 pad）。`is_merged` 项不进默认轮播，由告警条 “View merged crop” 按需打开。独立图若已绑不同 caption、或垂直方向两者都像完整图（高 ≥ 页高 20% 且为真实 gap）则不合并。Preview overlay 的 reading-order **角标仅画在 text 层**；figure/table 框只在悬浮框显示序号
 - 坐标渲染：`view.pages[].elements[].polygon`（坐标空间由 `preprocessing.coordinate_space` 决定；叠加到对应展示图像上，逻辑与坐标空间无关）
 - 字段渲染：**以 `view.fields` 为规范数据源**（文档级 KIE）；任务轮询结果中若存在 **`result.kie_fields`**，与 `view.fields` 同源，前端实现可 **优先取 `kie_fields` 再回退 `view.fields`**（与当前 `frontend/app.js` 中 `pickKieFieldsMap` 一致）
@@ -1102,6 +1103,7 @@ GET /api/v1/jobs/{job_id}/debug
 | 调试模式 | 服务级开关（`DEBUG_MODE` 环境变量），开启后自动写 `backend/debug/{job_id}/`，不混入 API 响应 |
 | 兜底 | 文本 block 无 `content` 时写入空字符串，不中断流水线 |
 | 试用鉴权 | `DOCUVISION_TRIAL_API_KEY` 非空时全 `/api/v1/*` 鉴权（HTTP `X-API-Key`、WS `?key=`；`/health` `/docs` 开放）；CORS 由 `DOCUVISION_CORS_ORIGINS` 白名单化（`feat/glm-trial`） |
+| 单任务持久化 | v1.7：`analyze_jobs` 只存 `result_path`；启动灌回 `tasks`；进行中重启为 `interrupted` |
 | 图形导出 | `figure_step`（layout 后）裁剪 figure/chart 区域：PDF 按 2x 栅格、图像按预处理空间；裁切用检测框原样（不 pad）；`result.figures`/`envelope.figures` + `quality.figure_*`；几何切分/嵌套告警 `warnings[]`；**F5：切分告警消费 `merged_bbox` 重裁合并图**（`is_merged=true`+`merged_from`，保留原半图作 fallback；不同 caption 或「完整图+真实 gap」不合并；`nested_regions` 不合并；UI 默认轮播不含 merged）；`enable_figure_export` 可关（`feat/glm-trial`） |
 | GT 对比 | `POST /api/v1/trial/gt-diff/{task_id}` 字段/单元格级 diff（match/missing/wrong），HTML 报告 `GET .../report`；CLI `python -m app.services.trial.gt_diff`（`feat/glm-trial`） |
 | 扩展方式 | block 引擎注册表 + payload 多态 + 开关预留 |

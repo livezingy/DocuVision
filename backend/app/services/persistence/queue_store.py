@@ -1,18 +1,20 @@
 """Queue persistence layer.
 
 A thin, protocol-based abstraction over a SQLite store used by
-``BatchService`` and ``HitlReviewQueue`` to survive process restarts.
+``BatchService``, ``HitlReviewQueue``, and ``AnalyzeJobStore`` to survive
+process restarts.
 
 Design notes:
-- Single-file SQLite (WAL mode) with two tables: ``batch_jobs`` and ``hitl_reviews``.
-- Nested fields (``options``/``tasks``/``payload``/``edited_fields``) are stored
-  as JSON text columns; the store maps dict fields <-> table columns via an
-  internal ``_TABLE_SCHEMA`` registry.
+- Single-file SQLite (WAL mode) with three tables: ``batch_jobs``,
+  ``hitl_reviews``, and ``analyze_jobs``.
+- Nested fields (``options``/``tasks``/``payload``/``edited_fields``/``quality``)
+  are stored as JSON text columns; the store maps dict fields <-> table
+  columns via an internal ``_TABLE_SCHEMA`` registry.
 - Writes are serialized with a ``threading.Lock`` to avoid ``database is
   locked`` under concurrent task-completion callbacks. Callers that run in an
   async context should use the ``asyncio.to_thread`` wrapper at the service
-  layer (see ``BatchService._persist_async`` / ``HitlReviewQueue._persist_async``)
-  to avoid blocking the event loop.
+  layer (see ``BatchService._persist_async`` / ``HitlReviewQueue._persist_async``
+  / ``AnalyzeJobStore._persist_async``) to avoid blocking the event loop.
 - ``CREATE TABLE IF NOT EXISTS`` on init makes first start idempotent; no
   Alembic migration is required.
 """
@@ -65,12 +67,24 @@ _TABLE_SCHEMA: Dict[str, Tuple[str, ...]] = {
         "created_at",
         "resolved_at",
     ),
+    "analyze_jobs": (
+        "task_id",
+        "status",
+        "file_name",
+        "file_path",
+        "created_at",
+        "completed_at",
+        "options",
+        "result_path",
+        "quality",
+    ),
 }
 
 # Columns stored as JSON text (rather than plain scalars).
 _JSON_COLUMNS: Dict[str, set] = {
     "batch_jobs": {"options", "tasks"},
     "hitl_reviews": {"payload", "edited_fields"},
+    "analyze_jobs": {"options", "quality"},
 }
 
 # DDL for each table. The first column is the primary key.
@@ -101,6 +115,19 @@ _DDL: Dict[str, str] = {
         "  status        TEXT NOT NULL DEFAULT 'pending',\n"
         "  created_at    TEXT NOT NULL,\n"
         "  resolved_at   TEXT\n"
+        ")"
+    ),
+    "analyze_jobs": (
+        "CREATE TABLE IF NOT EXISTS analyze_jobs (\n"
+        "  task_id       TEXT PRIMARY KEY,\n"
+        "  status        TEXT NOT NULL,\n"
+        "  file_name     TEXT NOT NULL DEFAULT '',\n"
+        "  file_path     TEXT NOT NULL DEFAULT '',\n"
+        "  created_at    TEXT NOT NULL,\n"
+        "  completed_at  TEXT,\n"
+        "  options       TEXT NOT NULL DEFAULT '{}',\n"
+        "  result_path   TEXT,\n"
+        "  quality       TEXT\n"
         ")"
     ),
 }
@@ -171,12 +198,12 @@ class SqliteQueueStore:
                 if value is None:
                     out[col] = None
                 elif value == "":
-                    out[col] = {} if col in {"options", "payload"} else []
+                    out[col] = {} if col in {"options", "payload", "quality"} else []
                 else:
                     try:
                         out[col] = json.loads(value)
                     except (json.JSONDecodeError, TypeError):
-                        out[col] = {} if col in {"options", "payload"} else []
+                        out[col] = {} if col in {"options", "payload", "quality"} else []
             else:
                 out[col] = value
         return out

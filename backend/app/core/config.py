@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Application
     APP_NAME: str = "DocuVision"
-    APP_VERSION: str = "1.6.0"
+    APP_VERSION: str = "1.7.0"
     DEBUG: bool = True
 
     # Server
@@ -134,6 +134,11 @@ class Settings(BaseSettings):
     SQLITE_DB_PATH: str = Field(
         default="data/docuvision.sqlite",
         validation_alias=AliasChoices("DOCUVISION_SQLITE_DB_PATH", "SQLITE_DB_PATH"),
+    )
+    # FIFO cap for persisted Pro analyze tasks (DB row + OUTPUT_DIR/{id}/).
+    TASK_KEEP_LAST_N: int = Field(
+        default=50,
+        validation_alias=AliasChoices("DOCUVISION_TASK_KEEP_LAST_N", "TASK_KEEP_LAST_N"),
     )
 
 

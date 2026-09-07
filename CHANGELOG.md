@@ -5,7 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] — v1.7.0 train (tag pending)
+
+Target tag: **v1.7.0**. Branch: `feature/v1.7`.
+See [v1.7-roadmap.md](docs/architecture/v1.7-roadmap.md).
+
+### Added
+- Pro single-task result persistence: `analyze_jobs` on the existing `QueueStore` SQLite plus `OUTPUT_DIR/{task_id}/result.json`. Startup hydrates the in-memory `tasks` dict. In-flight jobs become `interrupted` (no auto GPU resume). FIFO `TASK_KEEP_LAST_N` (default 50) deletes the DB row and output directory together. Builder: `analyze_job_store.py`. Tests: `backend/tests/test_task_persistence.py`. Cloud gate **TASK-PERSIST-001**.
+
+### Changed
+- `APP_VERSION` default **1.7.0** (`/health` `api_version`). Tag `v1.7.0` is **not** cut in this commit.
 
 ## [1.6.0] — 2026-09-06
 

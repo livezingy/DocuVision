@@ -24,6 +24,8 @@ globs: "docs/**/*.md,backend/app/**/*.py,apps/lite/backend/**/*.py,packages/docu
 | `backend/app/services/export_service.py` | `docuvision-system-design.md` §9.1 |
 | `backend/app/services/figure_service.py` | `docuvision-system-design.md` §9.1 / §11「图形导出」 |
 | `backend/app/services/pack_export_service.py` | `docuvision-system-design.md` §9.1；`v1.6-roadmap.md`（Epic: Artifact pack，发版后以 §9.1 为准） |
+| `backend/app/services/persistence/queue_store.py` | `v1.5-roadmap.md` Epic Queue persistence；`v1.7-roadmap.md`（`analyze_jobs`） |
+| `backend/app/services/persistence/analyze_job_store.py` | `v1.7-roadmap.md`；`docuvision-system-design.md` §9.1「单任务 result 持久化」 |
 | `apps/lite/backend/**` | `lite-api.md` |
 | `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
 | `frontend/**` | `frontend/README_FRONTEND.md` |

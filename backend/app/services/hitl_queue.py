@@ -8,8 +8,8 @@ store; ``main.py`` attaches a ``SqliteQueueStore`` at startup via
 Persistence scope (v1.5):
 - ``ReviewItem`` rows (status, payload, edited_fields, resolved_at) survive
   restart.
-- The ``tasks`` dict in ``main.py`` is NOT persisted by this queue; task
-  result persistence is out of scope for v1.5.
+- The ``tasks`` dict in ``main.py`` is persisted separately by
+  ``AnalyzeJobStore`` (v1.7), not by this queue.
 """
 
 from __future__ import annotations

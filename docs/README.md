@@ -1,7 +1,7 @@
 # DocuVision Documentation
 
 > **Status**: living index — update when adding or renaming docs.  
-> 最近对照：v1.6.0 / tag v1.6.0（2026-09-06）
+> 最近对照：v1.7.0 train open / tag pending（2026-09-06）；last shipped tag v1.6.0
 
 ## Onboarding
 
@@ -23,9 +23,10 @@ Read in this order when onboarding to the codebase:
 6. [architecture/batch-ui-roadmap.md](architecture/batch-ui-roadmap.md) — Batch UI roadmap
 7. [architecture/v1.5-roadmap.md](architecture/v1.5-roadmap.md) — v1.5 leftovers (searchable PDF, AcroForm, mail)
 8. [architecture/v1.6-roadmap.md](architecture/v1.6-roadmap.md) — v1.6.0 shipped (figure baseline + artifact pack; ZIP contract in system-design §9.1)
-9. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
-10. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
-11. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
+9. [architecture/v1.7-roadmap.md](architecture/v1.7-roadmap.md) — v1.7.0 train (Pro single-task result persistence; tag pending)
+10. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
+11. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
+12. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
 
 ## Validation and QA
 

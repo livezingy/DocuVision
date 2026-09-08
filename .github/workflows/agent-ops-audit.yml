@@ -12,7 +12,7 @@ on:
       - "docs/agent-ops/**"
       - ".cursor/rules/**"
       - ".GLM/rules/**"
-      - ".workbuddy/rules/**"
+      - ".codebuddy/rules/**"
       - "scripts/sync_agent_rules.py"
       - "scripts/audit_agent_ops.py"
       - "AGENTS.md"

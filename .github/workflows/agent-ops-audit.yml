@@ -1,0 +1,40 @@
+# Agent-ops audit — detect kernel-ref + living-doc drift.
+# Unified framework: scripts/audit_agent_ops.py (no third-party deps).
+# See docs/agent-ops/operations.md.
+
+name: Agent-ops Audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/agent-ops/**"
+      - ".cursor/rules/**"
+      - ".GLM/rules/**"
+      - ".workbuddy/rules/**"
+      - "scripts/sync_agent_rules.py"
+      - "scripts/audit_agent_ops.py"
+      - "AGENTS.md"
+      - ".gitignore"
+
+concurrency:
+  group: agent-ops-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  agent-ops-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run agent-ops audit (kernel-ref + doc drift)
+        run: python scripts/audit_agent_ops.py

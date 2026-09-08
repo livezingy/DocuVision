@@ -10,6 +10,7 @@
 | Agent 花名册 | `docs/agent-ops/core/agents.md` |
 | 生成各 Agent 薄壳 | `python scripts/sync_agent_rules.py` |
 | 审计漂移（kernel-ref + doc） | `python scripts/audit_agent_ops.py` |
+| 稳态运维（巡检 + KPI） | `docs/agent-ops/operations.md` |
 | 待决决策清单 | `docs/R&D/PENDING.md` |
 
 ## 规则层次

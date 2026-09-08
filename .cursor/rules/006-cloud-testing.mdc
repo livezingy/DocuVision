@@ -82,21 +82,7 @@ pip install -e ".[lite,dev]" && pytest tests/processing/test_table_stitch.py \
   tests/processing/test_table_result_mapper.py -q
 ```
 
-**v1.3 pre-release extension** (historical v1.3.0 tag — omit v1.4-only files):
-
-```bash
-cd "$REPO_ROOT/backend"
-source ~/docuvision_env/bin/activate
-pytest tests/test_kie_pages_parse.py tests/test_kie_field_merge.py \
-  tests/test_batch_export_service.py \
-  tests/test_kie_field_validation.py tests/test_kie_schema_templates.py \
-  tests/test_document_type_classifier.py tests/test_file_type_detector.py \
-  tests/test_kie_field_metrics.py tests/test_kie_service.py \
-  tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py -q
-
-cd "$REPO_ROOT/packages/docuvision-core"
-pip install -e ".[lite,dev]" && pytest tests/processing/test_table_stitch.py -q
-```
+**v1.3 pre-release**: see [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md)（历史 tag，不再单独维护）。
 
 **Lite on PR** (GitHub `ci-lite.yml`, not Cloud GPU required):
 

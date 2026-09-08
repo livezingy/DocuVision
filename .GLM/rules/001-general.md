@@ -1,7 +1,7 @@
 # 通用约束（GLM）
 
 > 生成自 kernel `docs/agent-ops/core/`（constraints）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: constraints.md:4d4897eb51665cdf -->
+<!-- kernel-ref: constraints.md:9e50699cfca92cef -->
 
 ## 响应语言与代码语言
 - 回复默认中文；代码、注释、docstring、日志、UI 文案、命令、变量名一律英文（ASCII 优先）。
@@ -52,4 +52,5 @@
 ## 对话收尾回顾
 - 每次对话结束前，回顾本次是否出现新的约定、习惯或特殊要求。
 - 值得固化则**提议**更新 rules/SKILLS（列改哪条、改什么），等用户确认后再改，不擅改。
+- R&D 结论：稳定后晋升 `docs/architecture/` 或固化到 `.workbuddy/memory/MEMORY.md`；待确认结论登记到 `docs/R&D/PENDING.md`（每次会话可见"有 N 条待确认"）。
 - 仅一次性任务无新约定则跳过。

@@ -181,6 +181,7 @@ docs/*
 !docs/agent-ops/**
 docs/R&D/**
 !docs/R&D/README.md
+!docs/R&D/PENDING.md
 # Upwork planning notes live under docs/R&D/upwork/ (covered by docs/R&D/** above)
 
 # Intentionally not versioned / removed from repo (maintainer-local or retired paths)

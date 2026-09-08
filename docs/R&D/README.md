@@ -1,11 +1,12 @@
 # R&D notes (local / gitignored)
 
-> **Status**: local only — contents under `docs/R&D/**` are not committed (except this README).
+> **Status**: local only — contents under `docs/R&D/**` are not committed (except this README and PENDING).
 
 Use this folder for exploratory write-ups that are **not** authoritative for the codebase:
 
 | File | Purpose |
 |------|---------|
+| [PENDING.md](PENDING.md) | 待决决策清单（每次会话可见"有 N 条结论待确认"） |
 | [azure-contract-and-paddle-discovery.md](azure-contract-and-paddle-discovery.md) | Azure sample observations + contract direction notes |
 | [data-flow-diagram-legacy.md](data-flow-diagram-legacy.md) | **Deprecated** early PaddleOCR flow diagrams — do not cite in PRs |
 | [upwork/](upwork/) | Upwork / 客户场景 R&D（local only；见 [upwork/README.md](upwork/README.md)）— 含 **医疗传真 intake** 差距分析与 Phase 1 手册 |

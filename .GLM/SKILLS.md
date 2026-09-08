@@ -13,6 +13,7 @@
 | GPU 依赖改动 | 本地改 + mock 单测 + 在交付文档写 Cloud 验证步骤与验收标准 |
 | 前端改动 | node --check + 契约不变则不跑 E2E；改动触及 UI 时列入云手测清单 |
 | 试用/演示 | 读 rules/004-trial.md 与 docs/demo/TRIAL_REMOTE_60MIN.md |
+| 审查任务 | 读 rules/005-review.md，产出分级/证据/依据三要素 |
 
 ## 交付动作（每轮改动收尾）
 1. 本地测试全绿（能跑的范围）

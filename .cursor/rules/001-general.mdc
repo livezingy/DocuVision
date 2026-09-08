@@ -6,7 +6,7 @@ alwaysApply: true
 
 ## 响应语言
 - 默认中文；代码、注释、docstring、日志、UI 文案、命令、变量名用英文（权威见 005）
-- docs/ 设计文档可用中文（权威见 004 文档同步段）
+- docs/ 设计文档可用中文（权威见 009-doc-sync）
 
 ## 模型使用
 - 默认 Pro 套餐内模型；不主动升级到超出 Pro 套餐的模型
@@ -52,9 +52,10 @@ alwaysApply: true
 - 001-general（本文件，always）：通用约束
 - 002-python（globs *.py）：Python 规范
 - 003-git（按需）：Git/Actions 规范
-- 004-project（always）：项目目标、事实、工作流、目录卫生、文档同步
+- 004-project（always）：项目目标、事实、工作流、目录卫生
 - 005-code-language（always）：代码语言编码（语言权威）
 - 006-cloud-testing（按需）：Cloud 验证速查
 - 007-official-source-first（always）：官方依据优先（改代码/选 API 先查官方文档源码）
 - 008-context-handoff（always）：长对话 Context ≥ 90% 或已混乱时建议开新对话
+- 009-doc-sync（globs docs/代码）：文档同步机制、归属表、生命周期
 - SKILLS.md：投标/试用/定制操作流程

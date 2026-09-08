@@ -6,11 +6,12 @@
 - **暂不建 DrawVision/SciVision 独立仓**：各仅 1-2 需求，过早抽象；先塞 DocuVision 实验区，等 5+ 同类需求再拆。
 - 非文档类（RPA/爬虫/小程序/情报/AR/YOLO）不进任何仓，是别的工具栈。
 
-## 能力暴露形态（2026-08-23 多轮讨论定方向）
+## 能力暴露形态（2026-08-23 定方向，2026-08-31 更新 SDK 门面口径）
 当前问题：FastAPI 单体，能力锁在 `backend/app/services`；`packages/docuvision-core` 是空壳（只覆盖 Lite 表格/OCR）；`main.py` 顶层吞 paddle/paddlex 全局单例，无法 import 即用。
 
 改造方向（收缩版，非全套积木库）：
-- **最小 SDK 4 函数**：`ocr(engine=)` / `extract_layout()` / `extract_fields()` / `confidence_route()`——跨需求高频且有自托管差异化。
+- **SDK 门面按交付物切（2026-08-31 推翻 8/23 的引擎式 4 函数）**：`extract_tables()` / `extract_fields()` / `to_excel()` / `review_report()`；`ocr()`/`extract_layout()` 降为内部能力。
+- **存疑标记落到交付文件**（Excel 一行 `⚠` 列 / review.csv），不是 Web UI 的 HITL 队列——客户不会登录系统（兑现"flag unclear instead of guessing"）。
 - **云 API 适配层**：Azure DI/Textract/Docling 统一薄封装；不和云 API 竞争它擅长的（名片、标准发票）。
 - **脚本模板库**（starter repos，非库）：每类需求一个可 fork 模板（PDF→CSV锚点、票据OCR+校验、RAG切片）。
 - **渐进库化**：被 3 个不同需求调过才升级成正式 SDK 函数（YAGNI）。

@@ -1,6 +1,6 @@
 # 项目事实与测试分层（GLM）
 
-> 同步自 `.cursor/rules/004-project.mdc` + `004-delivery.mdc` + `004-doc-sync.mdc`。
+> 同步自 `.cursor/rules/004-project.mdc` + `009-doc-sync.mdc`。
 > 冲突时以 `.cursor/rules/` 为准；本文件仅 GLM 沙箱用。
 <!-- sync: 2026-09-06 -->
 
@@ -34,7 +34,7 @@
   - `updated <doc> §<节>` —— 已同步
   - `N/A（未触及任何 living 契约）` —— 显式声明
   - `drift: <doc> 仍写旧 <字段/端点>，待修` —— 记录漂移
-- 机制 2：文档归属表（改哪个模块→同步哪个文档），见 `.cursor/rules/004-doc-sync.mdc`
+- 机制 2：文档归属表（改哪个模块→同步哪个文档），见 `.cursor/rules/009-doc-sync.mdc`
 - 机制 3：有 pytest 的契约，测试是权威，`.md` 是派生视图
 - 机制 4：living doc 顶部标"最近对照"行，发版/合 main 时刷新
 - 新增/重命名 docs/ 文档时更新 docs/README.md 索引
@@ -50,9 +50,8 @@
 | 001-general.mdc | always | 通用约束、红线、对抗审查 |
 | 002-python.mdc | globs *.py | Python 规范 |
 | 003-git.mdc | 按需 | Git/Actions 规范 |
-| 004-project.mdc | always | 项目目标、技术栈、环境、结构、目录卫生、按任务选读文档、pytest 边界 |
-| 004-delivery.mdc | globs 代码 | 测试落点、死代码、手工测试、交付 footer |
-| 004-doc-sync.mdc | globs docs/代码 | 文档同步机制 1-5、生命周期、README 格式 |
+| 004-project.mdc | always | 项目目标、技术栈、环境、结构、目录卫生、按任务选读文档、pytest 边界、测试落点、死代码、手工测试、交付 footer |
 | 005-code-language.mdc | always | 代码语言编码 |
 | 006-cloud-testing.mdc | 按需 | Cloud 验证速查 |
 | 007-official-source-first.mdc | always | 官方依据优先 |
+| 009-doc-sync.mdc | globs docs/代码 | 文档同步机制 1-5、生命周期、README 格式 |

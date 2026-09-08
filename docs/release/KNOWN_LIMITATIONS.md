@@ -79,7 +79,7 @@
 - **v1.5 leftovers**：可搜索 PDF、AcroForm、Webhook 持久化、邮件 IMAP 独立服务 — [v1.5-roadmap.md](../architecture/v1.5-roadmap.md)。
 - **Batch ZIP / Lite ZIP / 表格截图**：v1.6 明确不做；Batch ZIP 需单独体积/异步设计。
 - **Recent-tasks UI**：后端可恢复，刷新页仍会丢 `currentTaskId`。
-- **维护**：Playwright E2E P1/P2；文档漂移审计脚本（`004-doc-sync` 机制 5，暂不建）。
+- **维护**：Playwright E2E P1/P2；文档漂移审计脚本（`009-doc-sync` 机制 5，暂不建）。
 
 Cloud 验收：[MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md)。
 

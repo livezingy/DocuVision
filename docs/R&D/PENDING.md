@@ -1,12 +1,12 @@
 # 待决决策清单（PENDING）
 
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
-> 结论确认后：晋升 `docs/architecture/` 或固化到 `.workbuddy/memory/MEMORY.md`，然后从本清单移除。
+> 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
 ## 待确认（1 组）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
-- 来源：`.workbuddy/memory/2026-08-31.md`
+- 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
 - 状态：已口头交付，未落文档 / 未改代码，等用户确认方向
 - 待决项：
   1. **SDK 门面按交付物切**：`extract_tables()` / `extract_fields()` / `to_excel()` / `review_report()`，推翻 8/23 引擎式 4 函数（`ocr()`/`extract_layout()` 降为内部能力）。

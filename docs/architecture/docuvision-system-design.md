@@ -906,7 +906,7 @@ Lite 与 Pro 的 Content 子 Tab 中另有两项 **演示用** Tab，由 [`front
 - 开发/测试环境希望每次请求自动落档，不依赖调用方主动声明
 - 若允许请求级 `"debug": true`，会引入权限管理问题（任意调用者可获取内部中间数据）
 
-**配置方式（`backend/config/settings.py` 或 `.env`）：**
+**配置方式（`backend/app/core/config.py` 或 `.env`）：**
 
 ```python
 DEBUG_MODE = False            # 环境变量 APP_DEBUG_MODE 覆盖

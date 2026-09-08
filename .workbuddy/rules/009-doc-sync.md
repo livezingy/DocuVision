@@ -1,8 +1,3 @@
----
-description: 文档同步机制、归属表、生命周期（改契约代码或文档时触发）
-globs: docs/**/*.md,backend/app/**/*.py,apps/lite/backend/**/*.py,packages/docuvision-core/**/*.py,frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js
----
-
 # 文档同步（强制，防漂移）
 
 > 生成自 kernel `docs/agent-ops/core/`（doc-sync）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。

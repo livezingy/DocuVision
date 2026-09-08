@@ -63,6 +63,17 @@ Read in this order when onboarding to the codebase:
 | **append-only** | Add entries only (`KIE_TEST_RUN_TRACKER.md`) |
 | **local only** | Never commit (`test_data/TestResult/`, `*Upwork*`, `docs/R&D/*` except `R&D/README.md`) |
 
+## Agent-ops (multi-agent rules)
+
+| Doc | Purpose |
+|-----|---------|
+| [agent-ops/core/constraints.md](agent-ops/core/constraints.md) | Shared constraints (single source of truth) |
+| [agent-ops/core/environment.md](agent-ops/core/environment.md) | Environment facts |
+| [agent-ops/core/testing.md](agent-ops/core/testing.md) | Testing & validation rules |
+| [agent-ops/core/doc-sync.md](agent-ops/core/doc-sync.md) | Doc sync mechanisms |
+| [agent-ops/core/agents.md](agent-ops/core/agents.md) | Agent roster (role/mapping) |
+| [../AGENTS.md](../AGENTS.md) | Multi-agent rules entrypoint |
+
 ## R&D (local notes)
 
 Exploratory drafts: [R&D/README.md](R&D/README.md) — not authoritative; promote conclusions into `architecture/` when stable.

@@ -1,57 +1,158 @@
 # 项目事实与测试分层（GLM）
 
-> 同步自 `.cursor/rules/004-project.mdc` + `009-doc-sync.mdc`。
-> 冲突时以 `.cursor/rules/` 为准；本文件仅 GLM 沙箱用。
-<!-- sync: 2026-09-06 -->
+> 生成自 kernel `docs/agent-ops/core/`（environment, testing, doc-sync）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
+<!-- kernel-ref: environment.md:6c895194446feb65; testing.md:ca17cbc786fd710e; doc-sync.md:a0343e73e12c2b34 -->
 
-## 环境
-- 本地（GLM 沙箱与用户本机）**无 GPU**：只改代码 + 跑纯逻辑/契约 pytest。
-- GPU 栈在腾讯 Cloud Studio；工作流：本地改 → git → 云拉取验证。**Git 为真源**。
-- 技术栈：paddlepaddle-gpu 3.3.0 / paddleocr 3.3.2 / paddlex 3.3.12 / Qwen2.5-VL。
-- 本机唯一可信 Python：`D:\USERS\livez\Python\python.exe`（3.11.6）。
+## 项目目标
+DocuVision 旨在**可运行于云端服务器**，提供**试用/演示**，展示主要能力，可直接**投标 Upwork 部分工作**或符合用户基本需求并**接受定制**。开发优先级以"能否上云演示 + 能否投标/定制"为衡量。
 
-## 测试分层（先搜后建）
-| 层 | 位置 | 本地可跑 |
-|----|------|----------|
-| 纯逻辑/契约 mock | backend/tests/test_*.py | ✅（GLM 必须全绿） |
-| 引擎/GPU 集成 | test_live_api.py、云 checklist | ❌ Cloud Studio |
-| UI E2E | frontend/tests/e2e（Playwright） | ❌ 云/本机浏览器 |
+## 关于项目
+使用 Paddle 组件的仿 Azure 智能文档处理系统。`test_data/Azure/` 下为 Azure 风格参考 JSON；样例与验收矩阵见 `test_data/testfiles/`、`test_data/acceptance/`。
 
-- 改后端/KIE/编排须给可复制 Cloud 命令 + 期望（见 006-cloud-testing）。
-- 硬门槛（须 Cloud 通过再继续）：KIE/编排/契约字段变更、发版合 main、用户明确要求。
-- Pro e2e 防遗忘：新增/修改 Pro e2e 须挂进 CI 或登记到 UI_VERIFICATION_MATRIX.md 手工桶。
+## 技术栈
+- paddlepaddle-gpu 3.3.0 / paddleocr 3.3.2 / paddlex 3.3.12 / Qwen2.5-VL
 
-## 交付 footer（diff 触及应用逻辑/UI/API 时必须）
-并列五项：**Adversarial check | Dead code check | Test placement | Manual test scope | Doc sync**
-- Adversarial check：方案何时不成立（至少 1 条反例）
-- Dead code check：touched 文件未用 import / 不可达分支 / 遗留符号
-- Test placement：先搜后建，落点同域文件还是新建，本机可跑 vs Cloud
-- Manual test scope：本机自动化命令 + Cloud 手工项 + 验收标准
-- Doc sync：见下方文档同步机制 1
+## 开发环境
+- 本地**未装** Paddle 及 Qwen2.5-VL 栈；本地以改代码、静态检查/审查为主，不跑 GPU/推理链。
+- 本机 Python：`D:\USERS\livez\Python\python.exe`（3.11.6），可跑不需服务器/GPU 的 pytest（契约 mock、纯逻辑单测）。
+- 工作流：本地改代码 → Git → 腾讯 Cloud Studio GPU 拉取验证；**Git 为真源**，云端不改业务代码。
 
-## 文档同步（强制，防漂移）
-- 机制 1：改契约/编排/API 时 footer 必须声明 Doc sync，三选一：
-  - `updated <doc> §<节>` —— 已同步
-  - `N/A（未触及任何 living 契约）` —— 显式声明
-  - `drift: <doc> 仍写旧 <字段/端点>，待修` —— 记录漂移
-- 机制 2：文档归属表（改哪个模块→同步哪个文档），见 `.cursor/rules/009-doc-sync.mdc`
-- 机制 3：有 pytest 的契约，测试是权威，`.md` 是派生视图
-- 机制 4：living doc 顶部标"最近对照"行，发版/合 main 时刷新
-- 新增/重命名 docs/ 文档时更新 docs/README.md 索引
+## 项目结构
+```
+DocuVision/
+├── backend/              # Pro FastAPI (:8000)
+├── frontend/             # Pro SPA
+├── apps/lite/            # Lite CPU (:8001)
+├── packages/docuvision-core/
+├── docs/                 # 索引见 docs/README.md
+├── test_data/            # acceptance/testfiles/Azure/TestResult(gitignore)
+└── supabase/migrations/  # Lite Trial PoC schema
+```
 
 ## 目录卫生
-- 运行时目录（uploads/ outputs/ debug/ backend/data/）不进 git。
-- docs/R&D/** 除 README 外 local only。
-- `.cursor/` 只放 rules/*.mdc 与 skills/*.md，不放入一次性脚本/临时产物。
+- `.cursor/` 只放 `rules/*.mdc` 与 `skills/*.md`。禁止一次性脚本、临时产物、数据/权重/日志。
+- 正确归属：一次性脚本 → `scripts/`；R&D 临时片段 → `docs/R&D/upwork/`（local only）；临时输出 → `test_data/TestResult/`（gitignore）。
+- 发现遗留产物**带证据报告**，不擅删（删除属红线）。
 
-## 规则文件结构（.cursor/rules/，2026-09-04 拆分后）
-| 文件 | 触发 | 内容 |
-|------|------|------|
-| 001-general.mdc | always | 通用约束、红线、对抗审查 |
-| 002-python.mdc | globs *.py | Python 规范 |
-| 003-git.mdc | 按需 | Git/Actions 规范 |
-| 004-project.mdc | always | 项目目标、技术栈、环境、结构、目录卫生、按任务选读文档、pytest 边界、测试落点、死代码、手工测试、交付 footer |
-| 005-code-language.mdc | always | 代码语言编码 |
-| 006-cloud-testing.mdc | 按需 | Cloud 验证速查 |
-| 007-official-source-first.mdc | always | 官方依据优先 |
-| 009-doc-sync.mdc | globs docs/代码 | 文档同步机制 1-5、生命周期、README 格式 |
+## 按任务选读文档（勿全量通读）
+| 任务 | 先读 |
+|------|------|
+| 总览/编排 | docuvision-system-design.md |
+| KIE 契约/验收 | kie.md → CLOUD_VALIDATION.md |
+| Lite API/UI | lite-api.md → apps/lite/backend/tests/README.md |
+| 发版/合 main | docs/release/README.md → MERGE_MAIN_v*.md |
+| 样例/Batch | test_data/acceptance/README.md |
+| UI 自动化 vs 手工 | UI_VERIFICATION_MATRIX.md |
+| Trial 演示 | docs/demo/TRIAL_DEMO.md |
+
+## pytest 边界
+判据：**是否需要运行中的服务器或 GPU 推理**。不需 → 本机可跑；需 → Cloud。
+
+| 范围 | 需服务器/GPU? | 在哪跑 | 助手本地能否 pytest |
+|------|---------------|--------|---------------------|
+| Pro 契约 mock（`test_kie_*.py` 等不加载 Paddle/Qwen） | 否 | 本机或 Cloud | **允许** |
+| Pro live API（`test_live_api.py` 需 :8000） | 是 | Cloud | **禁止** |
+| Lite + core 契约 mock / 纯逻辑单测（不加载 Paddle） | 否 | 本机或 Cloud | **允许** |
+| Lite + core live 集成（需 :8001 或 Paddle 推理） | 是 | Cloud | **禁止** |
+| 前端 Vitest | 否 | 本机或 Cloud | 允许 |
+
+- 本机 pytest 用 `D:\USERS\livez\Python\` 解释器；先确认测试不触发 `import paddle` / `import torch` / 连 :8000/:8001。
+- 改后端/KIE/编排须给**可复制 Cloud 命令 + 期望**（针对需服务器/GPU 的部分）。
+- **硬门槛**（须 Cloud 通过再继续）：KIE/编排/契约字段变更、发版合 main、用户明确要求。
+- **Pro e2e 防遗忘**：新增/修改 Pro e2e 须挂进 CI 或登记到 `UI_VERIFICATION_MATRIX.md` 手工桶并标注"CI 不覆盖"。
+
+## 测试落点（新建/扩展测试前）
+1. 先搜后建：在对应 `tests/` 搜同模块是否已有 `test_*.py`。
+2. 优先扩展同域文件；新建文件当：新契约域、独立 env gate、CI 已按文件名登记。
+3. 分层：契约 mock（`backend/tests/test_kie_*.py`）/ Live GPU（`test_live_api.py`）/ 手动脚本 / Lite / Core。
+4. Canonical 真源：逻辑断言以 pytest 为准；`kie/_smoke_check.py` 仅薄封装不重复断言。
+5. 交付附建议 pytest 范围；本机跑过的 mock 可声称通过，**不得**声称本地 live API / GPU 已通过。
+
+## 死代码检查
+- 仅扫 touched 文件：未用 import、不可达分支、注释遗留块、已移除调用方但仍定义的符号。
+- 移除符号/文件前全库搜索（code+tests+docs+`.github`），列出每处引用。
+- 不删文件除非本轮明确授权（红线）；默认带证据报告候选。
+- 刻意保留：Legacy Task API、Feature-flag 路径、Cloud 手动脚本。
+- 本地静态检查：`ruff check backend/ apps/lite/ packages/docuvision-core/ --select F401,F841`。
+
+## 手工测试提醒
+手动测试**仅含需云端启动服务器的测试**。每次改动应用代码或 UI 须附 Manual test scope：
+1. 查 `UI_VERIFICATION_MATRIX.md` §4 列仍需手工项。
+2. 写清：建议先跑的自动化（命令，区分本机 vs Cloud）/ 仍需云端手工测什么 / 验收标准。
+3. E2E 绿仅缩小 Pro 已映射手工项；Lite UI、真实 GPU/KIE 不得因 E2E 绿省略。
+4. 发版/合 main 提醒最小手工集。
+
+## 交付 footer
+diff 触及应用逻辑/UI/API 时并列五项：
+**Adversarial check** | **Dead code check** | **Test placement** | **Manual test scope** | **Doc sync**
+
+## 根因
+文档滞后源于：无强制触发 / 无归属 / 文档远离代码 / 无漂移检测 / 文档与测试脱节。以下机制对症。
+
+## 机制 1：交付 footer 加 Doc sync（强制声明）
+改契约/编排/API 时 footer **必须**声明 Doc sync，三选一：
+- `updated <doc> §<节>` —— 已同步
+- `N/A（未触及任何 living 契约）` —— 显式声明，须说明未触及哪类
+- `drift: <doc> 仍写旧 <字段/端点>，待修` —— 记录漂移，列入后续修复
+不允许沉默跳过。
+
+## 机制 2：文档归属表（改哪个模块→同步哪个文档）
+| 代码模块 | owning living doc |
+|---------|-------------------|
+| `backend/app/kie/**` | `kie.md`、`kie-custom-fields.md` |
+| `backend/app/orchestrator*` | `docuvision-system-design.md` |
+| `backend/app/api/batch*` | `batch-ui-roadmap.md` |
+| `backend/app/services/export_service.py` | `docuvision-system-design.md` §9.1 |
+| `backend/app/services/figure_service.py` | `docuvision-system-design.md` §9.1 / §11「图形导出」 |
+| `backend/app/services/pack_export_service.py` | `docuvision-system-design.md` §9.1；`v1.6-roadmap.md`（Epic: Artifact pack，发版后以 §9.1 为准） |
+| `backend/app/services/persistence/queue_store.py` | `v1.5-roadmap.md` Epic Queue persistence；`v1.7-roadmap.md`（`analyze_jobs`） |
+| `backend/app/services/persistence/analyze_job_store.py` | `v1.7-roadmap.md`；`docuvision-system-design.md` §9.1「单任务 result 持久化」 |
+| `apps/lite/backend/**` | `lite-api.md` |
+| `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
+| `frontend/**` | `frontend/README_FRONTEND.md` |
+
+改模块时按表同步 owning doc；表未覆盖的新模块，新增契约时一并补表。
+
+## 机制 3：契约 = 测试 = 权威
+- **有 pytest 的契约，测试是权威，`.md` 是人类可读派生视图**。
+- `.md` 契约段顶部标注 `权威：tests/<file>.py`；代码改了测试会红，`.md` 漂移不致命。
+- 无测试覆盖的契约靠 `.md` 人工同步——属高风险，footer Doc sync 必须点名。
+- 测试绿不豁免 `.md` 同步义务，测试仅兜底。
+
+## 机制 4：living doc 标注"最近对照"
+每份 living doc 顶部加一行：
+```
+> 最近对照：v1.4.0 / commit abc123（2026-07-25）
+```
+- 不强制每次小改刷新，但**发版/合 main 时必须刷新**。
+- 漂移可见——读者一眼知道文档对照哪个版本。
+
+## 机制 5：漂移审计脚本
+`scripts/audit_agent_ops.py`：校验各 Agent 副本与 kernel 一致（kernel-ref 哈希）+ grep living doc 提到的端点/字段/路径对照代码符号表。挂 PR→main CI。
+
+## 文档生命周期
+| 标签 | 含义 | 助手义务 |
+|------|------|----------|
+| living | `docs/architecture/*`、`docs/README.md` | 改契约代码时同步 |
+| frozen | `docs/release/RELEASE_*`、`MERGE_MAIN_v*` | 发版快照，日常不改 |
+| append-only | `KIE_TEST_RUN_TRACKER.md` | 只追加批次 |
+| local only | `docs/R&D/*`（除 README）、`test_data/TestResult/`、`*Upwork*` | 不得提交 |
+
+- 新增/重命名 `docs/` 文档时更新 `docs/README.md` 索引。
+- 验收路径以 `test_data/testfiles/` 为准；acceptance 文档勿引用不存在的 fixture。
+- 与 `main-tracked-issues.md` 冲突时以代码与 living architecture 为准。
+- R&D 结论稳定后晋升 `docs/architecture/`，不在 R&D 堆长期真源。
+
+## README / CHANGELOG 格式
+- README 须含：项目简介、安装说明、使用方法、许可证（贡献指南按需，不强制）。
+- CHANGELOG 条目格式：
+  ```
+  ## v1.x.0
+  - 新增功能: <desc>
+  - 修复bug: <desc>
+  ```
+- 文档中引用代码示例、命令、路径、标识符用英文。
+
+
+## 规则文件结构
+见花名册 `docs/agent-ops/core/agents.md`。本文件由 kernel（environment + testing + doc-sync）生成。

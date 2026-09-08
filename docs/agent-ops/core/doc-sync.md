@@ -1,12 +1,7 @@
----
-description: 文档同步机制、归属表、生命周期（改契约代码或文档时触发）
-globs: docs/**/*.md,backend/app/**/*.py,apps/lite/backend/**/*.py,packages/docuvision-core/**/*.py,frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js
----
-
 # 文档同步（强制，防漂移）
 
-> 生成自 kernel `docs/agent-ops/core/`（doc-sync）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: doc-sync.md:a0343e73e12c2b34 -->
+> 唯一真源（kernel）。各 Agent 副本由 `scripts/sync_agent_rules.py` 生成，勿手改副本。
+> 吸收原 Cursor `009-doc-sync`（改契约代码或文档时触发）。
 
 ## 根因
 文档滞后源于：无强制触发 / 无归属 / 文档远离代码 / 无漂移检测 / 文档与测试脱节。以下机制对症。

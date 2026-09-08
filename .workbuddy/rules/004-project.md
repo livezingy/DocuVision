@@ -1,8 +1,3 @@
----
-description: DocuVision 项目目标、事实、工作流、目录卫生、测试验证
-alwaysApply: true
----
-
 # 项目事实与测试验证
 
 > 生成自 kernel `docs/agent-ops/core/`（environment, testing）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。

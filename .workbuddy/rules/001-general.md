@@ -1,8 +1,3 @@
----
-description: DocuVision 通用约束（思维/沟通/红线/模型/收尾）
-alwaysApply: true
----
-
 # 通用约束
 
 > 生成自 kernel `docs/agent-ops/core/`（constraints）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
@@ -58,16 +53,3 @@ alwaysApply: true
 - 每次对话结束前，回顾本次是否出现新的约定、习惯或特殊要求。
 - 值得固化则**提议**更新 rules/SKILLS（列改哪条、改什么），等用户确认后再改，不擅改。
 - 仅一次性任务无新约定则跳过。
-
-
-## 规则文件说明（.cursor/rules/）
-- 001-general（本文件，always）：通用约束（kernel: constraints）
-- 002-python（globs *.py）：Python 规范（Cursor 专属）
-- 003-git（按需）：Git/Actions 规范（Cursor 专属）
-- 004-project（always）：项目事实 + 测试验证（kernel: environment + testing）
-- 005-code-language（always）：代码语言编码（已并入 kernel constraints，留索引）
-- 006-cloud-testing（按需）：Cloud 验证速查（Cursor 专属）
-- 007-official-source-first（always）：官方依据优先（已并入 kernel constraints，留索引）
-- 008-context-handoff（always）：长对话交接（已并入 kernel constraints，留索引）
-- 009-doc-sync（globs docs/代码）：文档同步（kernel: doc-sync）
-- SKILLS.md：投标/试用/定制操作流程

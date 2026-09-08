@@ -177,6 +177,8 @@ docs/*
 !docs/demo/**
 !docs/release/
 !docs/release/**
+!docs/agent-ops/
+!docs/agent-ops/**
 docs/R&D/**
 !docs/R&D/README.md
 # Upwork planning notes live under docs/R&D/upwork/ (covered by docs/R&D/** above)
@@ -258,6 +260,8 @@ test_data/**/*.tif
 # User-requested: never track these folders (scripts/* instead of scripts/
 # so the trial/ exception below can re-include; same ignore effect otherwise)
 scripts/*
+!scripts/sync_agent_rules.py
+!scripts/audit_agent_ops.py
 !scripts/trial/
 !scripts/trial/**
 !scripts/aistudio_setup.sh

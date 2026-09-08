@@ -179,6 +179,7 @@ docs/*
 !docs/release/**
 !docs/agent-ops/
 !docs/agent-ops/**
+!docs/R&D/
 docs/R&D/**
 !docs/R&D/README.md
 !docs/R&D/PENDING.md

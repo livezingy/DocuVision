@@ -7,7 +7,7 @@
 |-------|------|------|----------|
 | Cursor | `.cursor/rules/` | 主力（开发） | 生成式薄壳 + 专属细则 |
 | GLM (ZCode) | `.GLM/rules/` | 审查（patch 交付 / trial） | 生成式薄壳 + 专属协议 |
-| Codebuddy | `.workbuddy/` | 低频（回顾 / PENDING 跟踪） | 生成式薄壳 |
+| Codebuddy | `.codebuddy/` | 低频（回顾 / PENDING 跟踪） | 生成式薄壳 |
 | VSCode | `.vscode/` | 编辑器（非规则 Agent） | 配置（settings/tasks） |
 
 ## 职责边界
@@ -17,7 +17,7 @@
 - **VSCode**：编辑器配置（解释器指向 `D:\USERS\livez\Python\python.exe`、tasks），不承载规则。
 
 ## kernel 映射
-| core 文件 | Cursor | GLM | Workbuddy |
+| core 文件 | Cursor | GLM | Codebuddy |
 |-----------|--------|-----|-----------|
 | `constraints.md` | `001-general.mdc` | `001-general.md` | `001-general.md` |
 | `environment.md` | `004-project.mdc` | `003-project.md` | `004-project.md` |

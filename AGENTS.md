@@ -15,7 +15,7 @@
 
 ## 规则层次
 1. **共享约束（唯一真源）** → `docs/agent-ops/core/`（4 文件，约 60 行/个软上限）。
-2. **各 Agent 副本（生成）** → `.cursor/rules/`、`.GLM/rules/`、`.workbuddy/rules/`，由 sync 脚本派生并写 `kernel-ref` 哈希。
+2. **各 Agent 副本（生成）** → `.cursor/rules/`、`.GLM/rules/`、`.codebuddy/rules/`，由 sync 脚本派生并写 `kernel-ref` 哈希。
 3. **Agent 特有（本地，不参与 sync）** → 各目录的非生成文件（如 GLM `002-git` patch 协议、`004-trial`；Cursor `002-python`/`003-git`）。
 
 ## 修改规则的正确姿势

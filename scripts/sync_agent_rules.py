@@ -28,7 +28,7 @@ KERNEL_DIR = REPO_ROOT / "docs" / "agent-ops" / "core"
 # ---------------------------------------------------------------------------
 # Mapping: agent -> directory, extension, and (output file, source stems, meta).
 # Each entry: "out" filename, "sources" list of kernel stems, "title", and
-# optional Cursor-style YAML frontmatter (None for GLM/Workbuddy plain md).
+# optional Cursor-style YAML frontmatter (None for GLM/Codebuddy plain md).
 # ---------------------------------------------------------------------------
 AGENTS = {
     "cursor": {
@@ -100,8 +100,8 @@ AGENTS = {
             },
         ],
     },
-    "workbuddy": {
-        "dir": REPO_ROOT / ".workbuddy" / "rules",
+    "codebuddy": {
+        "dir": REPO_ROOT / ".codebuddy" / "rules",
         "ext": ".md",
         "files": [
             {

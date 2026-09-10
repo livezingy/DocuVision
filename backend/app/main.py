@@ -53,7 +53,7 @@ try:
 except Exception as e:
     print(f"[PaddleX Home] 验证失败: {e}")
 
-from fastapi import Body, FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form, Path, WebSocket, WebSocketDisconnect, Request
+from fastapi import Body, FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form, Path as APIPath, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -2308,7 +2308,7 @@ async def list_kie_templates():
 
 @app.get("/api/v1/kie/templates/{template_id}")
 async def get_kie_template(
-    template_id: str = Path(..., pattern=r"^[A-Za-z0-9_-]+$"),
+    template_id: str = APIPath(..., pattern=r"^[A-Za-z0-9_-]+$"),
 ):
     from app.services.kie.schema_templates import load_template
 
@@ -2320,7 +2320,7 @@ async def get_kie_template(
 
 @app.post("/api/v1/kie/templates/{template_id}")
 async def save_kie_template(
-    template_id: str = Path(..., pattern=r"^[A-Za-z0-9_-]+$"),
+    template_id: str = APIPath(..., pattern=r"^[A-Za-z0-9_-]+$"),
     body: Dict[str, Any] = Body(...),
 ):
     from app.services.kie.schema_templates import save_template

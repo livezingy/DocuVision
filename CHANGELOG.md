@@ -28,6 +28,7 @@ Target tag: **v1.8.0**. Branch: `feature/v1.8`.
 ### Fixed
 - `GET/POST /kie/templates/{template_id}` template id whitelist (`[A-Za-z0-9_-]+` path validation).
 - `.gitignore`: ignore `backend/debug/` and `frontend/test-results/`.
+- `QualityLayer` 缺失 `table_backfill` 字段：`GET /api/v1/jobs/{id}/result` 的 `quality.table_backfill` 被 Pydantic (`extra=ignore`) 静默丢弃，BACKFILL-001 验收误判为未启用；补字段后可正常回传。
 
 ## [Unreleased] — v1.7.0 train (tag pending)
 

@@ -422,9 +422,23 @@ fused 层各 block 的 `processing_status` 字段：
   "table_blocks_total": 1,
   "figure_blocks_total": 2,
   "avg_layout_confidence": 0.971,
-  "engines_used": ["doc_preprocessor", "pp_structure_v3"]
+  "engines_used": ["doc_preprocessor", "pp_structure_v3"],
+  "table_backfill": {
+    "enabled": true,
+    "pages_judged": 1,
+    "pages_text_layer_trusted": 1,
+    "cells_candidates": 12,
+    "cells_confirmed": 6,
+    "cells_backfilled": 0,
+    "cells_mismatch": 6,
+    "backfill_rate": 0.0,
+    "mismatch_rate": 0.5,
+    "page_verdicts": ["text_layer"]
+  }
 }
 ```
+
+> v1.8 新增 `quality.table_backfill`（选择性文本层回填摘要，四层漏斗计数 + 页级 `page_verdicts` + 比率）；仅当 `enable_table` 且回填未关断时出现。逐 cell 的 `cell_provenance` / `cell_ocr_text` 双栅格只挂在**原始任务结果** `result.tables[]`（`GET /api/v1/tasks/{id}/result`），不进 Envelope。
 
 ### 6.5 三层差异对比与注意事项
 

@@ -519,6 +519,9 @@ class QualityLayer(BaseModel):
     kie_items_source: str = "n/a"
     avg_layout_confidence: float = 0.0
     engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3"]
+    # v1.8 E2: selective text-layer backfill summary (four-layer funnel counts,
+    # per-page verdicts, rates). Optional; omitted for runs without table step.
+    table_backfill: Optional[Dict[str, Any]] = None
 
 
 class JobEnvelope(BaseModel):

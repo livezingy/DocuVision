@@ -5,6 +5,30 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v1.8.0 train (tag pending)
+
+Target tag: **v1.8.0**. Branch: `feature/v1.8`.
+
+### Added
+- Page-level text-layer trust gatekeeper (`page_text_trust.py`): invisible-rendered character ratio (Tr3) + full-page image coverage, per-page verdict `text_layer`/`overlay`/`mixed`/`no_text`.
+- Selective cell backfill (`table_backfill.py`, four-layer funnel): amount/code/date/symbol cells are char-verified or backfilled from the text layer; `cell_provenance` / `cell_ocr_text` parallel grids + `quality.table_backfill` summary. Kill switch `TABLE_TEXT_BACKFILL=off`.
+- Unified `AnalyzeOptions` (`models/analyze_options.py`) for both analyze routes; `table_text_backfill: off|auto` request switch.
+- OpenAPI contract snapshot test (cloud-only), page-type calibration CLI (`page_type_probe.py`).
+- `normalize_for_compare` in `docuvision_core.utils.pdf_text_utils` (NFKC + whitespace strip + punctuation fold).
+
+### Changed
+- `file_type_detector` from "first 3 pages accumulate 30 chars" to per-page gatekeeper judgement (mixed PDFs handled naturally).
+- `APP_VERSION` default **1.8.0**.
+
+### Removed
+- `apps/lite/` (Lite app retired), `supabase/` (trial PoC with `to anon` RLS hole), `.github/workflows/ci-lite.yml`.
+- core retirement: `processing/` adaptive family / evaluator / stitch / processor / result_mapper, `extractors/`, `engines/`, `models/`, `export/`, `demo/`, and utils config family. `pyproject.toml` drops camelot-py/pdfplumber/pandas/Pillow/numpy/scipy.
+- `backend/app/services/core_table_extractor.py` (zero callers).
+
+### Fixed
+- `GET/POST /kie/templates/{template_id}` template id whitelist (`[A-Za-z0-9_-]+` path validation).
+- `.gitignore`: ignore `backend/debug/` and `frontend/test-results/`.
+
 ## [Unreleased] — v1.7.0 train (tag pending)
 
 Target tag: **v1.7.0**. Branch: `feature/v1.7`.

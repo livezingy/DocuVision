@@ -162,6 +162,7 @@ site/
 .devcontainer/
 .qoder/
 .vscode/
+.codebuddy/plans/
 docker/
 docs/*
 !docs/architecture/

@@ -7,6 +7,8 @@ Deterministic, vector-drawn PDFs for the 1-hour remote diagnostic demo.
 | `multi_column_techdoc.pdf` | two-column reading order, header rule, footnote, bordered table with a merged cell, special glyphs (✓ ⊗ ● ○) |
 | `flowchart_page.pdf` | figure-region detection + complete crop (boxes/arrows must not split) |
 | `architecture_diagram.pdf` | nested figure regions + caption |
+| `bank_statement.pdf` | thousand-separated amounts + dates — selective cell backfill golden sample (v1.8 §8.2) |
+| `symbol_grid.pdf` | symbol survival grid (✓ U+2713 / ⊗ U+2297 / ● U+25CF / ○ U+25CB) — backfill golden sample (v1.8 §8.2) |
 
 Regenerate with:
 ```bash

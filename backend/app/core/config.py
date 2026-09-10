@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Application
     APP_NAME: str = "DocuVision"
-    APP_VERSION: str = "1.7.0"
+    APP_VERSION: str = "1.8.0"
     DEBUG: bool = True
 
     # Server
@@ -68,6 +68,15 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "APP_TABLE_ALLOW_FULLPAGE_FALLBACK",
             "TABLE_ALLOW_FULLPAGE_FALLBACK",
+        ),
+    )
+    # v1.8 selective cell backfill kill switch. "off" globally disables
+    # backfill and cannot be overridden by the request-level parameter.
+    TABLE_TEXT_BACKFILL: str = Field(
+        default="auto",
+        validation_alias=AliasChoices(
+            "TABLE_TEXT_BACKFILL",
+            "DOCUVISION_TABLE_TEXT_BACKFILL",
         ),
     )
     LAYOUT_WORKER_INIT_TIMEOUT: int = Field(

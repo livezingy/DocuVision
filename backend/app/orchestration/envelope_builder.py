@@ -363,6 +363,7 @@ class EnvelopeBuilder:
         fused_layer: Dict[str, Any],
         processing_time_ms: int = 0,
         engines_used: Optional[List[str]] = None,
+        table_backfill: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Compute quality metrics from fused layer."""
         if engines_used is None:
@@ -404,7 +405,7 @@ class EnvelopeBuilder:
 
         avg_layout_confidence = np.mean(confidences) if confidences else 0.0
 
-        return {
+        result = {
             "processing_time_ms": processing_time_ms,
             "text_blocks_total": text_blocks_total,
             "text_blocks_no_ocr": text_blocks_no_ocr,
@@ -417,6 +418,9 @@ class EnvelopeBuilder:
             "avg_layout_confidence": float(avg_layout_confidence),
             "engines_used": engines_used,
         }
+        if table_backfill is not None:
+            result["table_backfill"] = table_backfill
+        return result
 
     def save_debug_artifacts(
         self,

@@ -53,7 +53,7 @@ try:
 except Exception as e:
     print(f"[PaddleX Home] 验证失败: {e}")
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form, WebSocket, WebSocketDisconnect, Request
+from fastapi import Body, FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form, Path, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -857,6 +857,7 @@ async def analyze_document(
     kie_pages: Optional[str] = Form(None),
     table_template: Optional[str] = Form(None),
     enable_hitl: bool = Form(True),
+    table_text_backfill: str = Form("auto"),
 ):
     """Upload and analyze a single document"""
     # Validate file
@@ -889,12 +890,6 @@ async def analyze_document(
         return_raw,
     )
 
-    effective_table_allow_fullpage_fallback = (
-        settings.TABLE_ALLOW_FULLPAGE_FALLBACK
-        if table_allow_fullpage_fallback is None
-        else bool(table_allow_fullpage_fallback)
-    )
-
     task_id = str(uuid.uuid4())
     upload_dir = os.path.join(settings.UPLOAD_DIR, task_id)
     os.makedirs(upload_dir, exist_ok=True)
@@ -905,33 +900,40 @@ async def analyze_document(
         _enforce_max_upload_size(content, file.filename or "")
         f.write(content)
 
-    options = {
-        "enable_layout": enable_layout,
-        "enable_table": enable_table,
-        "enable_figure_export": enable_figure_export,
-        "enable_formula": enable_formula,
-        "enable_seal": enable_seal,
-        "enable_kie": enable_kie,
-        "document_type": document_type,
-        "language": language,
-        "ocr_engine": ocr_engine,
-        "layout_engine": layout_engine,
-        "table_engine": table_engine,
-        "table_allow_fullpage_fallback": effective_table_allow_fullpage_fallback,
-        "formula_disable_layout": formula_disable_layout,
-        "formula_disable_preprocess": formula_disable_preprocess,
-        "formula_two_stage_threshold_retry": formula_two_stage_threshold_retry,
-        "formula_primary_layout_threshold": formula_primary_layout_threshold,
-        "formula_fallback_layout_threshold": formula_fallback_layout_threshold,
-        "formula_layout_threshold": formula_layout_threshold,
-        "pipeline_formula_batch_size": pipeline_formula_batch_size,
-        "return_raw": return_raw,
-        "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
-        "kie_pages": (kie_pages or "").strip() or "1",
-    }
-    if table_template and str(table_template).strip():
-        options["table_template"] = str(table_template).strip().lower()
-    options["enable_hitl"] = bool(enable_hitl)
+    from app.models.analyze_options import AnalyzeOptions, options_to_pipeline_dict
+
+    analyze_options = AnalyzeOptions(
+        enable_layout=enable_layout,
+        enable_table=enable_table,
+        enable_formula=enable_formula,
+        enable_seal=enable_seal,
+        enable_figure_export=enable_figure_export,
+        enable_kie=enable_kie,
+        document_type=document_type,
+        language=language,
+        ocr_engine=ocr_engine,
+        layout_engine=layout_engine,
+        table_engine=table_engine,
+        table_allow_fullpage_fallback=table_allow_fullpage_fallback,
+        formula_disable_layout=formula_disable_layout,
+        formula_disable_preprocess=formula_disable_preprocess,
+        formula_two_stage_threshold_retry=formula_two_stage_threshold_retry,
+        formula_primary_layout_threshold=formula_primary_layout_threshold,
+        formula_fallback_layout_threshold=formula_fallback_layout_threshold,
+        formula_layout_threshold=formula_layout_threshold,
+        pipeline_formula_batch_size=pipeline_formula_batch_size,
+        return_raw=return_raw,
+        kie_query_fields=kie_query_fields,
+        kie_pages=kie_pages,
+        table_template=table_template,
+        enable_hitl=enable_hitl,
+        table_text_backfill=table_text_backfill,
+    )
+    options = options_to_pipeline_dict(
+        analyze_options,
+        table_allow_fullpage_fallback_default=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
+        table_text_backfill_kill_switch=settings.TABLE_TEXT_BACKFILL,
+    )
 
     _resolve_kie_query_fields_in_options(options)
 
@@ -1114,6 +1116,7 @@ async def analyze_document_v1(
     kie_pages: Optional[str] = Form(None),
     table_template: Optional[str] = Form(None),
     enable_hitl: bool = Form(True),
+    table_text_backfill: str = Form("auto"),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """
@@ -1138,12 +1141,6 @@ async def analyze_document_v1(
     if pages_err:
         raise HTTPException(status_code=400, detail=pages_err)
 
-    effective_table_allow_fullpage_fallback = (
-        settings.TABLE_ALLOW_FULLPAGE_FALLBACK
-        if table_allow_fullpage_fallback is None
-        else bool(table_allow_fullpage_fallback)
-    )
-
     job_id = str(uuid.uuid4())
     upload_dir = os.path.join(settings.UPLOAD_DIR, job_id)
     os.makedirs(upload_dir, exist_ok=True)
@@ -1154,35 +1151,42 @@ async def analyze_document_v1(
         _enforce_max_upload_size(content, file.filename or "")
         f.write(content)
 
-    options = {
-        "enable_layout": enable_layout,
-        "enable_table": enable_table,
-        "enable_figure_export": enable_figure_export,
-        "enable_formula": enable_formula,
-        "enable_seal": enable_seal,
-        "enable_kie": enable_kie,
-        "document_type": document_type,
-        "language": language,
-        "ocr_engine": ocr_engine,
-        "layout_engine": layout_engine,
-        "table_engine": table_engine,
-        "table_allow_fullpage_fallback": effective_table_allow_fullpage_fallback,
-        "formula_disable_layout": formula_disable_layout,
-        "formula_disable_preprocess": formula_disable_preprocess,
-        "formula_two_stage_threshold_retry": formula_two_stage_threshold_retry,
-        "formula_primary_layout_threshold": formula_primary_layout_threshold,
-        "formula_fallback_layout_threshold": formula_fallback_layout_threshold,
-        "formula_layout_threshold": formula_layout_threshold,
-        "pipeline_formula_batch_size": pipeline_formula_batch_size,
-        "use_doc_unwarping": settings.USE_DOC_UNWARPING,
-        "debug_mode": settings.DEBUG_MODE,
-        "return_raw": return_raw,
-        "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
-        "kie_pages": (kie_pages or "").strip() or "1",
-    }
-    if table_template and str(table_template).strip():
-        options["table_template"] = str(table_template).strip().lower()
-    options["enable_hitl"] = bool(enable_hitl)
+    from app.models.analyze_options import AnalyzeOptions, options_to_pipeline_dict
+
+    analyze_options = AnalyzeOptions(
+        enable_layout=enable_layout,
+        enable_table=enable_table,
+        enable_formula=enable_formula,
+        enable_seal=enable_seal,
+        enable_figure_export=enable_figure_export,
+        enable_kie=enable_kie,
+        document_type=document_type,
+        language=language,
+        ocr_engine=ocr_engine,
+        layout_engine=layout_engine,
+        table_engine=table_engine,
+        table_allow_fullpage_fallback=table_allow_fullpage_fallback,
+        formula_disable_layout=formula_disable_layout,
+        formula_disable_preprocess=formula_disable_preprocess,
+        formula_two_stage_threshold_retry=formula_two_stage_threshold_retry,
+        formula_primary_layout_threshold=formula_primary_layout_threshold,
+        formula_fallback_layout_threshold=formula_fallback_layout_threshold,
+        formula_layout_threshold=formula_layout_threshold,
+        pipeline_formula_batch_size=pipeline_formula_batch_size,
+        return_raw=return_raw,
+        kie_query_fields=kie_query_fields,
+        kie_pages=kie_pages,
+        table_template=table_template,
+        enable_hitl=enable_hitl,
+        table_text_backfill=table_text_backfill,
+    )
+    options = options_to_pipeline_dict(
+        analyze_options,
+        table_allow_fullpage_fallback_default=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
+        table_text_backfill_kill_switch=settings.TABLE_TEXT_BACKFILL,
+    )
+    options["use_doc_unwarping"] = settings.USE_DOC_UNWARPING
+    options["debug_mode"] = settings.DEBUG_MODE
 
     _resolve_kie_query_fields_in_options(options)
 
@@ -2303,7 +2307,9 @@ async def list_kie_templates():
 
 
 @app.get("/api/v1/kie/templates/{template_id}")
-async def get_kie_template(template_id: str):
+async def get_kie_template(
+    template_id: str = Path(..., pattern=r"^[A-Za-z0-9_-]+$"),
+):
     from app.services.kie.schema_templates import load_template
 
     schema = load_template(template_id)
@@ -2313,7 +2319,10 @@ async def get_kie_template(template_id: str):
 
 
 @app.post("/api/v1/kie/templates/{template_id}")
-async def save_kie_template(template_id: str, body: Dict[str, Any]):
+async def save_kie_template(
+    template_id: str = Path(..., pattern=r"^[A-Za-z0-9_-]+$"),
+    body: Dict[str, Any] = Body(...),
+):
     from app.services.kie.schema_templates import save_template
 
     try:

@@ -15,6 +15,12 @@ _TESTS_DIR = _os.path.dirname(_os.path.abspath(__file__))
 if _TESTS_DIR not in _sys.path:
     _sys.path.insert(0, _TESTS_DIR)
 
+# Make docuvision-core importable in the lightweight local test env (B5):
+# the kept core modules are pure stdlib, so no editable install is required.
+_CORE_DIR = _os.path.abspath(_os.path.join(_TESTS_DIR, "..", "..", "packages", "docuvision-core"))
+if _CORE_DIR not in _sys.path:
+    _sys.path.insert(0, _CORE_DIR)
+
 LIVE_API_HEALTH_URL = "http://localhost:8000/health"
 LIVE_API_SKIP_MESSAGE = f"Live API not reachable at {LIVE_API_HEALTH_URL}"
 

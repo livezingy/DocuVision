@@ -85,9 +85,9 @@ transformers>=4.45.0
 accelerate>=0.26.0
 
 # ============================================
-# Digital PDF tables (Pro pdf_digital -> docuvision-core)
+# Shared core (table_column_mapping / pdf_text_utils)
 # ============================================
--e ../packages/docuvision-core[lite]
+-e ../packages/docuvision-core
 pdfplumber>=0.11.0
 
 # ============================================

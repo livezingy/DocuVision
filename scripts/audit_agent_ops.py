@@ -9,7 +9,9 @@ Two checks in one framework (per the agent-ops refactor plan):
 
 2. living-doc drift: file paths referenced by living docs
    (`docs/architecture/*.md`, `docs/README.md`) must exist in the repo. This
-   catches docs pointing at renamed/removed modules.
+   catches docs pointing at renamed/removed modules. References to
+   runtime-generated artifacts (DOC_DRIFT_ALLOW_PREFIXES, e.g. the gitignored
+   backend/debug/) are exempt.
 
 Severity:
   - agent rules drift  -> ERROR (exit 1, hard gate for PR->main CI)
@@ -52,6 +54,11 @@ PATH_REF_RE = re.compile(
 GLOB_CHARS = ("*", "?")
 LINE_REF_RE = re.compile(r":\d+$")
 
+# Path prefixes pointing at runtime-generated artifacts (mirrors .gitignore,
+# e.g. backend/debug/): valid doc references even though the files never
+# exist in a fresh clone. Keep this list narrow.
+DOC_DRIFT_ALLOW_PREFIXES = ("backend/debug/",)
+
 
 def _norm_ref(ref: str) -> str | None:
     ref = LINE_REF_RE.sub("", ref)
@@ -93,7 +100,7 @@ def check_doc_drift() -> list[dict]:
             text = doc.read_text(encoding="utf-8")
             for m in PATH_REF_RE.finditer(text):
                 ref = _norm_ref(m.group(0))
-                if ref is None:
+                if ref is None or ref.startswith(DOC_DRIFT_ALLOW_PREFIXES):
                     continue
                 key = (str(doc.relative_to(REPO_ROOT)), ref)
                 if key in seen:

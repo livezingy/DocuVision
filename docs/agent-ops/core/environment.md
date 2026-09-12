@@ -22,11 +22,9 @@ DocuVision 旨在**可运行于云端服务器**，提供**试用/演示**，展
 DocuVision/
 ├── backend/              # Pro FastAPI (:8000)
 ├── frontend/             # Pro SPA
-├── apps/lite/            # Lite CPU (:8001)
 ├── packages/docuvision-core/
 ├── docs/                 # 索引见 docs/README.md
-├── test_data/            # acceptance/testfiles/Azure/TestResult(gitignore)
-└── supabase/migrations/  # Lite Trial PoC schema
+└── test_data/            # acceptance/testfiles/Azure/TestResult(gitignore)
 ```
 
 ## 目录卫生
@@ -39,7 +37,6 @@ DocuVision/
 |------|------|
 | 总览/编排 | docuvision-system-design.md |
 | KIE 契约/验收 | kie.md → CLOUD_VALIDATION.md |
-| Lite API/UI | lite-api.md → apps/lite/backend/tests/README.md |
 | 发版/合 main | docs/release/README.md → MERGE_MAIN_v*.md |
 | 样例/Batch | test_data/acceptance/README.md |
 | UI 自动化 vs 手工 | UI_VERIFICATION_MATRIX.md |

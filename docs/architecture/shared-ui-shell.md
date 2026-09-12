@@ -2,6 +2,8 @@
 
 Lite 与 Pro 共用三栏文档处理界面。本文定义**共享层边界**与维护流程，避免 Export、Result 工具栏等组件再次漂移。
 
+> **Lite 已于 v1.8 退役**（commit `1c9807c`，必要时可从 git 历史 v1.7 锚点复活）。本文保留 Pro 共享层的现行规范；Lite 相关内容仅存历史参考。
+
 ## 1. 四层目录职责
 
 | 层级 | 路径 | 内容 |
@@ -63,9 +65,8 @@ styles.css（仍含完整样式，视觉不变）
 
 ## 5. PR 流程
 
-1. 若改 `frontend/shared/**`：更新 [`LITE_UI_TEST_CHECKLIST.md`](../../apps/lite/backend/tests/LITE_UI_TEST_CHECKLIST.md) 相关项；PR2 完成后补 Pro 目视回归。
+1. 若改 `frontend/shared/**`：按 §6 做 Pro 目视回归（Lite 已退役，原 LITE_UI_TEST_CHECKLIST 步骤取消）。
 2. 日常 push 默认不跑 GitHub Actions（见 [`.cursor/rules/003-git.mdc`](../../.cursor/rules/003-git.mdc)）。
-3. Lite 验收：`cd apps/lite/backend && python run_lite.py`，浏览器打开 `/lite/lite.html`。
 
 ## 6. PRO-UI-EXPORT 目视回归（PR2 启用）
 
@@ -75,8 +76,3 @@ PR2 将 Pro 迁到 shared CSS 后，在 Pro 界面确认：
 - Copy / Download JSON 工具栏与改前一致
 - Export 四格式下载成功，toast 正常
 - 与 Lite 同 viewport 宽度下布局无意外换行
-
-## 7. 相关文档
-
-- [Lite API / UI](../lite-api.md)
-- [Lite 测试与 checklist](../../apps/lite/backend/tests/README.md)

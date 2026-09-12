@@ -15,3 +15,9 @@
   4. **P2-1 Mail bridge 不建**（n8n / Power Automate 足够）。
   5. **前端 SPA 冻结不删除**；formula_service / seal_service 冻结。
 - 确认动作：确认后写 `docs/architecture/` 或更新 `MEMORY.md`，并从此清单移除。
+- **进展（2026-09-12，v1.8.1 C6 登记；决策项仍待确认，不移除本组）**：第 2 条「存疑标记落到交付文件」
+  已由 v1.8.1 Proof Pack 实质兑现——HTML 报告 review_list（≤50 条 OCR vs 文本层对照）+
+  annotated.pdf 红虚线格 + report.json 机读版，即「Excel `⚠` 列 / review.csv」思路在 PDF/HTML
+  交付形态上的落地；第 3 条「真正 P0」相应部分兑现。第 1（SDK 门面）/4（Mail bridge）/5（SPA 冻结）
+  仍待决。证据：分支 `feature/v1.8.1`（420a142..df21015）；gig 话术映射
+  `docs/R&D/upwork/Proof-Pack-gig话术模板-v1.8.1-2026-09.md`。

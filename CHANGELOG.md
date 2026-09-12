@@ -5,6 +5,39 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v1.8.1 train
+
+Target tag: **v1.8.1.0**. Branch: `feature/v1.8.1` (base f2ad595 = v1.8.0 content).
+Release gates (cloud, before tagging): PROOF-001/002/003 — bank-statement/symbol proof
+pack e2e with visual alignment check; pure-scan fixture (zero colored cells,
+`no_text` verdicts); BACKFILL-001 / TRUST-GATE / OpenAPI snapshot regression.
+
+### Added
+- Proof Pack (customer-facing trust evidence, pure post-processing — pipeline untouched):
+  `proof_render.py` burns three-state provenance boxes into the original PDF's content
+  stream (green=verified / amber=corrected / red=review; color + line-style double
+  encoding for color-blind readers; cell bboxes re-derived from the raster-px table bbox
+  via uniform grid, parity-pinned against `table_backfill.derive_cell_bbox`);
+  `proof_report.py` one-page self-contained HTML report (en/zh literal tables, inline CSS,
+  zero JS) + full machine-readable JSON; `proof_pack.py` packager + thin
+  `scripts/trial/proof_pack.py` CLI (exit 0 / 2 contract-missing / 3 render-failure).
+- `text_mismatch` provenance value: funnel-stage-4 failures are labeled instead of
+  staying `vision`, so a review list ("cells we recommend you check") is finally
+  possible; `quality.table_backfill.mismatch_details` (cap 50 + `mismatch_details_truncated`).
+- Task result (GET `/api/v1/tasks/{id}/result`) now carries `preprocessing` metadata
+  (coordinate_space / angle_deg / use_doc_unwarping) merged from the envelope.
+
+### Changed
+- `backfill_tables` gains an optional `angle_deg`/`use_doc_unwarping` gate: pages whose
+  table bboxes live in preprocessed raster space are skipped and counted in
+  `pages_skipped_preprocessed` instead of being aligned against the original PDF text
+  layer (which fabricated mismatches). Defaults keep v1.8 behavior — upright fixtures
+  (BACKFILL-001) produce identical numbers.
+- `APP_VERSION` default **1.8.1**.
+- TRIAL runbook: new P1-6 proof pack manual checks, including the real result-export
+  command (`/tasks/{id}/result` — the envelope endpoint has no `tables`) and the honest
+  deskew-skip limitation note.
+
 ## [Unreleased] — v1.8.0 train (tag pending)
 
 Target tag: **v1.8.0**. Branch: `feature/v1.8`.

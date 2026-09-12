@@ -212,6 +212,8 @@ def build_report_data(
             "task_id": meta.get("task_id") or "",
             "app_version": meta.get("app_version") or "",
             "engines": [str(e) for e in quality.get("engines_used") or []],
+            "title": meta.get("title") or "",
+            "client": meta.get("client") or "",
         },
         "metric_cards": {
             "cells_confirmed": confirmed,
@@ -348,21 +350,32 @@ def render_report_html(
     skipped = annotation.get("pages_skipped") or {}
     skipped_detail = ", ".join("{}: {}".format(k, v) for k, v in sorted(skipped.items())) or "0"
 
+    title_text = header.get("title") or header["filename"]
+    client_line = (
+        "<div class='muted'>Client: {}</div>".format(_esc(header["client"]))
+        if header.get("client")
+        else ""
+    )
+    pages_line = "<div class='muted'>{}: {}</div>".format(
+        _esc(t["pages"]),
+        _esc(header["pages_total"] if header["pages_total"] is not None else t["coverage_none"]),
+    )
+
     parts: List[str] = [
         "<!DOCTYPE html><html lang='{}'><head><meta charset='utf-8'><title>{}</title><style>{}</style></head><body>".format(
             lang, _esc(t["title"]), _CSS
         ),
-        "<div class='header'><h1>{}</h1><div class='muted'>{} · {}: {} · {} {} · {} v{}".format(
-            _esc(t["title"]),
-            _esc(header["filename"]),
+        "<div class='header'><h1>{}</h1><div class='muted'>{}: {} · {} {} · {} v{}</div>{}{}</div>".format(
+            _esc(title_text),
             _esc(t["processed"]),
             _esc(header["processed_at"]),
             _esc(t["task"]),
             _esc(header["task_id"]),
             _esc(t["engines"]),
             _esc(header["app_version"]),
+            client_line,
+            pages_line,
         ),
-        " · {} {}</div></div>".format(_esc(t["pages"]), _esc(header["pages_total"] if header["pages_total"] is not None else t["coverage_none"])),
         banner,
         "<div class='cards'>"
         "<div class='card confirmed'><div class='num'>{}</div>{}</div>"

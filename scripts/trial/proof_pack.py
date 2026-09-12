@@ -64,7 +64,7 @@ def main(argv=None) -> int:
         return exc.exit_code
 
     summary = outcome["summary"]
-    skipped = sum(summary.get("pages_skipped", {}).values())
+    skipped = summary.get("pages_skipped", {})
     print(f"[OK] proof pack -> {outcome['zip_path']}")
     print(
         "     cells confirmed/backfilled/mismatch: {}/{}/{} | pages annotated: {}/{} | pages skipped: {}".format(
@@ -73,9 +73,11 @@ def main(argv=None) -> int:
             summary.get("cells_mismatch", 0),
             summary.get("pages_annotated", 0),
             summary.get("pages_total", 0),
-            skipped,
+            sum(skipped.values()),
         )
     )
+    if skipped:
+        print("     skip reasons: {}".format(", ".join(f"{k}={v}" for k, v in sorted(skipped.items()))))
     return 0
 
 

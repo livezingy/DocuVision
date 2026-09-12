@@ -158,12 +158,20 @@ def _table_page_num(table: Dict[str, Any]) -> int:
 
 
 def _view_page_dims_ok(view_page: Dict[str, Any], page_rect: fitz.Rect) -> bool:
-    """Defensive check: view px dims must match the PDF page at 2x raster."""
+    """Defensive check: view px dims must match the PDF page at 2x raster.
+
+    Missing, non-numeric or non-positive dims mean "no information, proceed":
+    the pipeline does not always populate output_size (observed zeros on the
+    born-digital path), and the table-bbox ÷2 invariant is pinned by tests and
+    cloud alignment evidence, so we never skip on absent metadata.
+    """
     try:
         width = float(view_page.get("width"))
         height = float(view_page.get("height"))
     except (TypeError, ValueError):
         return True  # nothing to check on legacy results without view dims
+    if width <= 0 or height <= 0:
+        return True
     expect_w = page_rect.width * RASTER_SCALE
     expect_h = page_rect.height * RASTER_SCALE
     return (

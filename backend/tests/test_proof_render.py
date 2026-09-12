@@ -201,6 +201,21 @@ def test_geometry_guard_skips_mismatched_view_dims(tmp_path) -> None:
     assert rects == []
 
 
+def test_zero_view_dims_are_no_information(tmp_path) -> None:
+    # Cloud evidence (PROOF-001): the born-digital path leaves output_size at
+    # {width:0, height:0}. Zeros are "metadata absent", not a space mismatch —
+    # annotate, never skip.
+    src = _base_pdf(tmp_path)
+    out = str(tmp_path / "annotated.pdf")
+    summary = render_annotated_pdf(
+        src, _result(tables=[_standard_table()], view_dims=(0.0, 0.0)), out
+    )
+
+    assert summary.pages_skipped == {}
+    assert summary.pages_annotated == 1
+    assert (summary.cells_confirmed, summary.cells_backfilled, summary.cells_mismatch) == (2, 1, 1)
+
+
 def test_missing_provenance_falls_back_to_table_outline(tmp_path) -> None:
     src = _base_pdf(tmp_path)
     out = str(tmp_path / "annotated.pdf")

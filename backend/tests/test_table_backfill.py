@@ -5,8 +5,10 @@ from __future__ import annotations
 from app.services.table_backfill import (
     PROVENANCE_TEXT_BACKFILLED,
     PROVENANCE_TEXT_CONFIRMED,
+    PROVENANCE_TEXT_MISMATCH,
     PROVENANCE_VISION,
     backfill_table_cells,
+    backfill_tables,
     is_candidate_cell,
 )
 
@@ -66,7 +68,7 @@ def test_mismatch_when_text_layer_empty() -> None:
     stats = backfill_table_cells(table, [], trusted=True)
     assert stats["mismatch"] == 1
     assert table["data"][0][0] == "1234"
-    assert table["cell_provenance"][0][0] == PROVENANCE_VISION
+    assert table["cell_provenance"][0][0] == PROVENANCE_TEXT_MISMATCH
 
 
 def test_mismatch_when_word_crosses_cell_boundary() -> None:
@@ -75,7 +77,7 @@ def test_mismatch_when_word_crosses_cell_boundary() -> None:
     stats = backfill_table_cells(table, words, trusted=True)
     assert stats["mismatch"] == 1
     assert table["data"][0][0] == "1234"
-    assert table["cell_provenance"][0][0] == PROVENANCE_VISION
+    assert table["cell_provenance"][0][0] == PROVENANCE_TEXT_MISMATCH
 
 
 def test_mismatch_when_multiple_text_lines() -> None:
@@ -116,3 +118,78 @@ def test_counts_are_self_consistent() -> None:
     # provenance grid aligns with data shape
     assert len(table["cell_provenance"]) == 2
     assert len(table["cell_provenance"][0]) == 2
+
+
+def _one_page_pdf(tmp_path):
+    # One page with a (trusted) text layer; the single word sits well outside
+    # the table rect so every candidate cell finds no aligned text line.
+    import fitz
+
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 700), "hello")
+    path = tmp_path / "one_page.pdf"
+    doc.save(str(path))
+    doc.close()
+    return str(path)
+
+
+def test_mismatch_records_capture_details() -> None:
+    table = _table([["1234"]])
+    records: list = []
+    stats = backfill_table_cells(
+        table, [], trusted=True, mismatch_records=records, table_index=2, page_num=3
+    )
+    assert stats["mismatch"] == 1
+    assert records == [
+        {
+            "page": 3,
+            "table_index": 2,
+            "row": 0,
+            "col": 0,
+            "ocr_text": "1234",
+            "text_layer_text": "",
+        }
+    ]
+    assert table["cell_provenance"][0][0] == PROVENANCE_TEXT_MISMATCH
+
+
+def test_backfill_tables_collects_and_caps_mismatch_details(tmp_path) -> None:
+    path = _one_page_pdf(tmp_path)
+    rows = 10
+    cols = 6
+    data = [[str(100 + r * cols + c) for c in range(cols)] for r in range(rows)]
+    table = _table(data, bbox={"x": 200, "y": 200, "width": 600, "height": 400})
+
+    summary = backfill_tables([table], path, enabled=True)
+
+    assert summary["pages_skipped_preprocessed"] == 0  # default params: old behavior
+    assert summary["cells_candidates"] == rows * cols
+    assert summary["cells_mismatch"] == rows * cols
+    assert len(summary["mismatch_details"]) == 50
+    assert summary["mismatch_details_truncated"] == rows * cols - 50
+    first = summary["mismatch_details"][0]
+    assert first["page"] == 1 and first["table_index"] == 0
+    assert first["ocr_text"] == data[0][0]
+    assert first["text_layer_text"] == ""
+
+
+def test_backfill_tables_gate_skips_deskewed_pages(tmp_path) -> None:
+    path = _one_page_pdf(tmp_path)
+    table = _table([["1234"]], bbox={"x": 200, "y": 200, "width": 600, "height": 400})
+
+    summary = backfill_tables([table], path, enabled=True, angle_deg=12.0)
+    assert summary["pages_skipped_preprocessed"] == 1
+    assert summary["pages_judged"] == 0
+    assert summary["cells_candidates"] == 0
+    assert summary["mismatch_details"] == []
+    assert summary["page_verdicts"] == []
+
+
+def test_backfill_tables_gate_skips_unwarped_pages(tmp_path) -> None:
+    path = _one_page_pdf(tmp_path)
+    table = _table([["1234"]], bbox={"x": 200, "y": 200, "width": 600, "height": 400})
+
+    summary = backfill_tables([table], path, enabled=True, use_doc_unwarping=True)
+    assert summary["pages_skipped_preprocessed"] == 1
+    assert summary["cells_candidates"] == 0

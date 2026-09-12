@@ -78,3 +78,58 @@ def test_kie_called_after_table(tmp_path):
     # The kwargs passed to kie should include preprocessed_image_path
     _, _, kwargs = kie_called['args']
     assert kwargs.get('preprocessed_image_path') == str(preproc)
+
+
+def test_finalize_merges_preprocessing_into_result(tmp_path, monkeypatch):
+    # v1.8.1 §6/D9: the task result (GET /tasks/{id}/result) must carry the
+    # envelope's preprocessing metadata so the proof pack renderer can tell
+    # which coordinate space bboxes live in.
+    import fitz
+
+    from app.orchestration.document_pipeline_orchestrator import finalize_step
+
+    doc = fitz.open()
+    doc.new_page()
+    pdf_path = tmp_path / "doc.pdf"
+    doc.save(str(pdf_path))
+    doc.close()
+
+    async def fake_persist(task):
+        return None
+
+    monkeypatch.setattr(
+        "app.services.persistence.analyze_job_store.persist_task_safe", fake_persist
+    )
+
+    orch = make_orchestrator({})
+    envelope = {
+        "preprocessing": {
+            "coordinate_space": "original",
+            "angle_deg": 0.0,
+            "use_doc_unwarping": False,
+        },
+        "view": {"pages": []},
+        "quality": {"table_backfill": {"enabled": True}},
+    }
+    task = {
+        "file_path": str(pdf_path),
+        "file_name": "doc.pdf",
+        "status": "running",
+        "envelope": envelope,
+    }
+    result = {"document_info": {"page_image_meta": {}}}
+    ctx = {
+        "task_id": "t-finalize",
+        "task": task,
+        "file_path": str(pdf_path),
+        "result": result,
+        "orchestrator": orch,
+        "start_time": None,
+    }
+
+    asyncio.run(finalize_step(ctx))
+
+    assert result["preprocessing"] == envelope["preprocessing"]
+    assert result["view"] == envelope["view"]
+    assert result["quality"] == envelope["quality"]
+    assert task["status"] == "completed"

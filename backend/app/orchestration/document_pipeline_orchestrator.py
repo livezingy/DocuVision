@@ -296,11 +296,21 @@ async def table_step(ctx: PipelineContext) -> None:
         from app.services.table_backfill import backfill_tables
 
         backfill_enabled = str(options.get("table_text_backfill", "auto")) == "auto"
+        # v1.8.1 §6/D10: reuse the envelope's single source of truth so the
+        # funnel and the view layer agree on the coordinate space.
+        from app.orchestration.envelope_builder import EnvelopeBuilder
+
+        prep_meta = EnvelopeBuilder(settings).build_preprocessing_metadata(
+            layout_result=ctx["result"].get("layout") or {},
+            use_doc_unwarping=settings.USE_DOC_UNWARPING,
+        )
         ctx["result"]["table_backfill"] = backfill_tables(
             ctx["result"]["tables"],
             ctx["file_path"],
             enabled=backfill_enabled,
             debug_dir=settings.DEBUG_OUTPUT_DIR if settings.DEBUG_MODE else None,
+            angle_deg=float(prep_meta.get("angle_deg", 0.0) or 0.0),
+            use_doc_unwarping=bool(prep_meta.get("use_doc_unwarping", False)),
         )
     except Exception as exc:  # noqa: BLE001 — backfill must not fail the task
         logger.warning(f"Table backfill failed (non-fatal): {exc}")
@@ -308,12 +318,15 @@ async def table_step(ctx: PipelineContext) -> None:
             "enabled": False,
             "pages_judged": 0,
             "pages_text_layer_trusted": 0,
+            "pages_skipped_preprocessed": 0,
             "cells_candidates": 0,
             "cells_confirmed": 0,
             "cells_backfilled": 0,
             "cells_mismatch": 0,
             "backfill_rate": 0.0,
             "mismatch_rate": 0.0,
+            "mismatch_details": [],
+            "mismatch_details_truncated": 0,
             "page_verdicts": [],
         }
 
@@ -824,6 +837,12 @@ async def finalize_step(ctx: PipelineContext) -> None:
         quality = envelope.get("quality")
         if isinstance(quality, dict) and quality:
             result["quality"] = quality
+        # v1.8.1 §6/D9: expose preprocessing metadata (coordinate_space /
+        # angle_deg / use_doc_unwarping) so downstream consumers of the task
+        # result (proof pack renderer) can tell which space bboxes live in.
+        preprocessing = envelope.get("preprocessing")
+        if isinstance(preprocessing, dict) and preprocessing:
+            result["preprocessing"] = preprocessing
     task["result"] = result
 
     from app.services.persistence.analyze_job_store import persist_task_safe

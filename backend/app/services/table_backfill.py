@@ -25,10 +25,11 @@ _NUMBER_RE = re.compile(r"^[+\-]?[¥$€£]?\s?\d[\d,.\s]*%?$")
 _DATE_RE = re.compile(r"\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}")
 _CODE_RE = re.compile(r"^[A-Za-z0-9\s\-/._]+$")
 
-# provenance values (v1.8 §4.4)
+# provenance values (v1.8 §4.4; text_mismatch added in v1.8.1 §6)
 PROVENANCE_VISION = "vision"
 PROVENANCE_TEXT_CONFIRMED = "text_confirmed"
 PROVENANCE_TEXT_BACKFILLED = "text_backfilled"
+PROVENANCE_TEXT_MISMATCH = "text_mismatch"
 
 
 def is_candidate_cell(text: str) -> bool:
@@ -117,17 +118,26 @@ def backfill_table_cells(
     *,
     trusted: bool = True,
     debug_records: Optional[List[Dict[str, Any]]] = None,
+    mismatch_records: Optional[List[Dict[str, Any]]] = None,
     table_id: Optional[str] = None,
+    table_index: Optional[int] = None,
     page_num: Optional[int] = None,
 ) -> Dict[str, int]:
     """Run the funnel over one table's cells, mutating the table in place.
 
     Adds two parallel grids aligned with ``table["data"]``:
-      * ``cell_provenance``  — per-cell "vision" | "text_confirmed" | "text_backfilled"
+      * ``cell_provenance``  — per-cell "vision" | "text_confirmed" |
+        "text_backfilled" | "text_mismatch" (v1.8.1: funnel④ failures are
+        labeled instead of staying "vision", so review lists can be built)
       * ``cell_ocr_text``    — original OCR text (only for backfilled cells)
 
     When ``debug_records`` is provided, each candidate cell's alignment
     evidence is appended for human review (``debug/backfill_alignment.json``).
+
+    When ``mismatch_records`` is provided, each mismatch appends
+    ``{page, table_index, row, col, ocr_text, text_layer_text}`` (the cell
+    value is never replaced — ``text_layer_text`` is "" when no single text
+    layer line could be aligned).
 
     Returns per-table counts (candidates/confirmed/backfilled/mismatch).
     """
@@ -169,14 +179,17 @@ def backfill_table_cells(
             bbox = derive_cell_bbox(table_bbox, n_rows, n_cols, i, j)
             if bbox is None:
                 stats["mismatch"] += 1
+                provenance = PROVENANCE_TEXT_MISMATCH
             else:
                 in_cell, lines = _extract_cell_text_layer(page_words, bbox)
                 if in_cell is None:
                     # crossing word -> alignment failure
                     stats["mismatch"] += 1
+                    provenance = PROVENANCE_TEXT_MISMATCH
                 elif len(lines or []) != 1:
                     # a single grid cell should map to a single text layer line
                     stats["mismatch"] += 1
+                    provenance = PROVENANCE_TEXT_MISMATCH
                 else:
                     text_layer_text = " ".join(str(w[4]) for w in in_cell).strip()
                     vis_norm = normalize_for_compare(cell_text)
@@ -185,6 +198,7 @@ def backfill_table_cells(
                     if not tl_norm:
                         # text layer empty -> keep OCR (possibly a truly empty cell)
                         stats["mismatch"] += 1
+                        provenance = PROVENANCE_TEXT_MISMATCH
                     elif vis_norm == tl_norm:
                         # consistent -> no replacement, mark confirmed
                         provenance = PROVENANCE_TEXT_CONFIRMED
@@ -197,6 +211,20 @@ def backfill_table_cells(
                         ocr_row[j] = cell_text
                         row[j] = text_layer_text
                         stats["backfilled"] += 1
+
+            if provenance == PROVENANCE_TEXT_MISMATCH:
+                prov_row[j] = PROVENANCE_TEXT_MISMATCH
+                if mismatch_records is not None:
+                    mismatch_records.append(
+                        {
+                            "page": page_num,
+                            "table_index": table_index,
+                            "row": i,
+                            "col": j,
+                            "ocr_text": cell_text,
+                            "text_layer_text": text_layer_text,
+                        }
+                    )
 
             if debug_records is not None:
                 debug_records.append(
@@ -226,25 +254,40 @@ def backfill_tables(
     *,
     enabled: bool = True,
     debug_dir: Optional[str] = None,
+    angle_deg: float = 0.0,
+    use_doc_unwarping: bool = False,
 ) -> Dict[str, Any]:
     """Backfill a document's tables in place; return the quality summary dict.
 
     Runs the page gatekeeper per table-bearing page, then the per-cell funnel
     on trusted pages. ``enabled=False`` short-circuits with a zero summary.
 
+    v1.8.1 gate (§6/D10): table bboxes stay in preprocessed raster space
+    (layout_service never inverse-rotates them), so when the document was
+    deskewed (``angle_deg != 0``) or unwarping ran, aligning them with the
+    original PDF's text layer would fabricate mismatches. Such pages are
+    skipped and counted in ``pages_skipped_preprocessed``.
+
     When ``debug_dir`` is provided, per-candidate alignment evidence is
     written to ``debug_dir/backfill_alignment.json`` (R1 mitigation).
+
+    The summary carries ``mismatch_details`` (capped at 50 entries of
+    ``{page, table_index, row, col, ocr_text, text_layer_text}``) plus
+    ``mismatch_details_truncated`` when the cap overflowed.
     """
     summary: Dict[str, Any] = {
         "enabled": bool(enabled),
         "pages_judged": 0,
         "pages_text_layer_trusted": 0,
+        "pages_skipped_preprocessed": 0,
         "cells_candidates": 0,
         "cells_confirmed": 0,
         "cells_backfilled": 0,
         "cells_mismatch": 0,
         "backfill_rate": 0.0,
         "mismatch_rate": 0.0,
+        "mismatch_details": [],
+        "mismatch_details_truncated": 0,
         "page_verdicts": [],
     }
     if not enabled or not tables:
@@ -258,17 +301,23 @@ def backfill_tables(
         return summary
 
     debug_records: Optional[List[Dict[str, Any]]] = [] if debug_dir else None
+    mismatch_records: List[Dict[str, Any]] = []
 
     try:
-        tables_by_page: Dict[int, List[Dict[str, Any]]] = {}
-        for t in tables:
+        tables_by_page: Dict[int, List[Tuple[int, Dict[str, Any]]]] = {}
+        for t_idx, t in enumerate(tables):
             if not isinstance(t, dict):
                 continue
             p = int(t.get("page", 1) or 1)
-            tables_by_page.setdefault(p, []).append(t)
+            tables_by_page.setdefault(p, []).append((t_idx, t))
 
         for page_num in sorted(tables_by_page):
             if page_num < 1 or page_num > len(doc):
+                continue
+            if use_doc_unwarping or angle_deg != 0.0:
+                # v1.8.1 §6/D10: bboxes are in preprocessed raster space while
+                # the PDF text layer is in original page space — never align.
+                summary["pages_skipped_preprocessed"] += 1
                 continue
             page = doc[page_num - 1]
             trust = judge_page_trust(page)
@@ -281,13 +330,15 @@ def backfill_tables(
                 continue
             summary["pages_text_layer_trusted"] += 1
             page_words = page.get_text("words")
-            for t in tables_by_page[page_num]:
+            for t_idx, t in tables_by_page[page_num]:
                 s = backfill_table_cells(
                     t,
                     page_words,
                     trusted=True,
                     debug_records=debug_records,
+                    mismatch_records=mismatch_records,
                     table_id=t.get("id"),
+                    table_index=t_idx,
                     page_num=page_num,
                 )
                 summary["cells_candidates"] += s["candidates"]
@@ -301,6 +352,11 @@ def backfill_tables(
     if cand > 0:
         summary["backfill_rate"] = round(summary["cells_backfilled"] / cand, 3)
         summary["mismatch_rate"] = round(summary["cells_mismatch"] / cand, 3)
+
+    if mismatch_records:
+        summary["mismatch_details"] = mismatch_records[:50]
+        if len(mismatch_records) > 50:
+            summary["mismatch_details_truncated"] = len(mismatch_records) - 50
 
     if debug_dir and debug_records:
         _write_debug_alignment(debug_dir, debug_records)

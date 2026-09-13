@@ -51,6 +51,7 @@ def test_confirmed_when_text_matches() -> None:
     assert table["data"][0][0] == "1234"  # unchanged
     assert table["cell_provenance"][0][0] == PROVENANCE_TEXT_CONFIRMED
     assert table["cell_ocr_text"][0][0] is None
+    assert table["cell_word_bbox"][0][0] == [10.0, 10.0, 40.0, 20.0]  # print anchor
 
 
 def test_backfilled_when_numeric_diverges() -> None:
@@ -61,6 +62,7 @@ def test_backfilled_when_numeric_diverges() -> None:
     assert table["data"][0][0] == "1284"  # replaced by text layer
     assert table["cell_provenance"][0][0] == PROVENANCE_TEXT_BACKFILLED
     assert table["cell_ocr_text"][0][0] == "1234"  # original OCR kept
+    assert table["cell_word_bbox"][0][0] == [10.0, 10.0, 40.0, 20.0]
 
 
 def test_mismatch_when_text_layer_empty() -> None:
@@ -69,6 +71,7 @@ def test_mismatch_when_text_layer_empty() -> None:
     assert stats["mismatch"] == 1
     assert table["data"][0][0] == "1234"
     assert table["cell_provenance"][0][0] == PROVENANCE_TEXT_MISMATCH
+    assert table["cell_word_bbox"][0][0] is None  # no match -> no anchor
 
 
 def test_mismatch_when_word_crosses_cell_boundary() -> None:
@@ -118,6 +121,7 @@ def test_counts_are_self_consistent() -> None:
     # provenance grid aligns with data shape
     assert len(table["cell_provenance"]) == 2
     assert len(table["cell_provenance"][0]) == 2
+    assert len(table["cell_word_bbox"]) == 2
 
 
 def _one_page_pdf(tmp_path):

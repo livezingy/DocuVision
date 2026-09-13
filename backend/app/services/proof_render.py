@@ -1,8 +1,11 @@
 """Proof Pack annotated-PDF renderer (v1.8.1 E2).
 
-Burns three-state provenance boxes into the page content stream of the
-ORIGINAL PDF (vector ``draw_rect``, not annotation objects — annotations can
-be toggled off by the reader; burned content is the evidence).
+Burns provenance boxes into the page content stream of the ORIGINAL PDF
+(vector ``draw_rect``, not annotation objects — annotations can be toggled
+off by the reader; burned content is the evidence). Green/amber boxes are
+anchored to the printed characters themselves (matched-word union bbox —
+exact by construction); red-flagged cells are NOT drawn (no matched geometry
+exists for a failed alignment) and are reported via the review list instead.
 
 Pure post-processing: reads the task result JSON (tables + view + quality +
 preprocessing) and the original PDF; the pipeline itself is untouched. This
@@ -43,27 +46,22 @@ _PROVENANCE_MISMATCH = "text_mismatch"
 
 
 class ProofStyle:
-    """Visual encodings (v1.8.1 §3.2). Color + line style double-encode the
-    three states so deuteranopia (~5% of male readers) still reads them."""
+    """Visual encodings (v1.8.1 §3.2). Drawn states: green = verified,
+    amber = corrected; red review items live in the report, not on the page."""
 
     CONFIRMED_STROKE = (0.00, 0.50, 0.20)  # deep green #008033, thin solid
     BACKFILLED_STROKE = (0.85, 0.55, 0.00)  # amber #D98C00, thick solid
-    MISMATCH_STROKE = (0.80, 0.05, 0.05)  # red #CC080D, dashed
     TABLE_OUTLINE = (0.20, 0.35, 0.70)  # blue #3359B3 (no provenance meaning)
     FIGURE_OUTLINE = (0.55, 0.55, 0.55)  # gray #8C8C8C
     FOOTER_GRAY = (0.45, 0.45, 0.45)
 
     CONFIRMED_WIDTH = 0.8
     BACKFILLED_WIDTH = 1.4
-    MISMATCH_WIDTH = 1.4
-    MISMATCH_DASHES = "[4 2] 0"
     TABLE_WIDTH = 0.5
     FIGURE_WIDTH = 0.5
 
     FOOTER_SIZE = 6.5  # pt, ASCII-only (helv); localized details live in report.html
-    FOOTER_TEXT = (
-        "Proof: green=verified, amber=backfilled, red=review (details in report.html)"
-    )
+    FOOTER_TEXT = "Proof: green=verified, amber=corrected; review items in report.html"
 
 
 @dataclass
@@ -76,10 +74,11 @@ class AnnotationSummary:
     document_skipped_reason: Optional[str] = None  # "preprocessed"|"deskewed"|None
     cells_confirmed: int = 0
     cells_backfilled: int = 0
-    cells_mismatch: int = 0
+    cells_mismatch: int = 0  # counted, deliberately NOT drawn (see _draw_cells)
     cells_fallback_table_level: int = 0
     tables_without_bbox: int = 0
     figures_outlined: int = 0
+    cells_anchored: int = 0  # boxes drawn from matched-word union bbox (exact)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -180,6 +179,17 @@ def _view_page_dims_ok(view_page: Dict[str, Any], page_rect: fitz.Rect) -> bool:
     )
 
 
+def _word_bbox_rect(value: Any) -> Optional[fitz.Rect]:
+    """Cell anchor from the funnel's matched-word union bbox (pt space)."""
+    if not isinstance(value, (list, tuple)) or len(value) != 4:
+        return None
+    try:
+        rect = fitz.Rect(*(float(v) for v in value))
+    except (TypeError, ValueError):
+        return None
+    return None if rect.is_empty else rect
+
+
 def _draw_cells(
     page: fitz.Page,
     table: Dict[str, Any],
@@ -187,8 +197,17 @@ def _draw_cells(
     style: ProofStyle,
     summary: AnnotationSummary,
 ) -> bool:
-    """Draw three-state cell boxes from the provenance grid. Returns True when
-    at least one cell box was drawn (else the table degrades to outline-only)."""
+    """Draw provenance boxes for one table.
+
+    Green/amber boxes are anchored to the printed characters whenever the
+    funnel persisted their matched-word union bbox (``cell_word_bbox``) —
+    exact by construction; the uniform-grid cell is only the fallback for
+    legacy results. Red boxes are deliberately NOT drawn: a red label means
+    alignment failed, so no matched geometry exists and any box would be the
+    grid approximation rather than evidence (PROOF-001 decision). Red cells
+    are still counted and their details live in the report's review list /
+    report.json. Returns True when at least one cell box was drawn.
+    """
     grid = table.get("cell_provenance")
     if not isinstance(grid, list) or not grid:
         return False
@@ -196,6 +215,7 @@ def _draw_cells(
     n_cols = max((len(r) for r in grid if isinstance(r, list)), default=0)
     if n_cols <= 0:
         return False
+    word_grid = table.get("cell_word_bbox") if isinstance(table.get("cell_word_bbox"), list) else None
 
     drew_any = False
     for i, prov_row in enumerate(grid):
@@ -203,26 +223,29 @@ def _draw_cells(
             continue
         for j, value in enumerate(prov_row):
             if value == _PROVENANCE_CONFIRMED:
-                color, width, dashes = style.CONFIRMED_STROKE, style.CONFIRMED_WIDTH, None
+                color, width = style.CONFIRMED_STROKE, style.CONFIRMED_WIDTH
             elif value == _PROVENANCE_BACKFILLED:
-                color, width, dashes = style.BACKFILLED_STROKE, style.BACKFILLED_WIDTH, None
+                color, width = style.BACKFILLED_STROKE, style.BACKFILLED_WIDTH
             elif value == _PROVENANCE_MISMATCH:
-                color, width, dashes = style.MISMATCH_STROKE, style.MISMATCH_WIDTH, style.MISMATCH_DASHES
+                # Counted but not drawn — see docstring.
+                summary.cells_mismatch += 1
+                continue
             else:
                 continue  # "vision" or unknown → never drawn
-            cell = split_cell_rect(table_rect, n_rows, n_cols, i, j)
+
+            anchor = None
+            if word_grid and i < len(word_grid) and isinstance(word_grid[i], list) and j < len(word_grid[i]):
+                anchor = _word_bbox_rect(word_grid[i][j])
+                if anchor is not None:
+                    summary.cells_anchored += 1
+            cell = anchor if anchor is not None else split_cell_rect(table_rect, n_rows, n_cols, i, j)
             if cell is None:
                 continue
-            kwargs: Dict[str, Any] = {"color": color, "width": width}
-            if dashes:
-                kwargs["dashes"] = dashes
-            page.draw_rect(cell, **kwargs)
+            page.draw_rect(cell, color=color, width=width)
             if value == _PROVENANCE_CONFIRMED:
                 summary.cells_confirmed += 1
-            elif value == _PROVENANCE_BACKFILLED:
-                summary.cells_backfilled += 1
             else:
-                summary.cells_mismatch += 1
+                summary.cells_backfilled += 1
             drew_any = True
     return drew_any
 

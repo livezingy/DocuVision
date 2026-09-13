@@ -63,6 +63,12 @@ def _standard_table(**overrides):
         "bbox": TABLE_BBOX,
         "data": [["a", "b", "c"], ["d", "e", "f"]],
         "cell_provenance": [row[:] for row in PROV_GRID],
+        # pt-space anchors for the aligned cells (confirmed/backfilled);
+        # deliberately NOT the uniform-grid positions, to prove anchoring.
+        "cell_word_bbox": [
+            [[102.0, 152.0, 140.0, 196.0], [205.0, 155.0, 295.0, 197.0], None],
+            [None, [302.0, 152.0, 398.0, 196.0], None],
+        ],
     }
     table.update(overrides)
     return table
@@ -85,13 +91,14 @@ def _rects_by_color(drawings):
     return found
 
 
-def test_draws_three_state_cells_and_table_outline(tmp_path) -> None:
+def test_draws_anchored_green_amber_and_table_outline(tmp_path) -> None:
     src = _base_pdf(tmp_path)
     out = str(tmp_path / "annotated.pdf")
     summary = render_annotated_pdf(src, _result(tables=[_standard_table()]), out)
 
     assert summary.pages_annotated == 1
     assert (summary.cells_confirmed, summary.cells_backfilled, summary.cells_mismatch) == (2, 1, 1)
+    assert summary.cells_anchored == 3  # every green/amber box from word anchors
     assert summary.cells_fallback_table_level == 0
 
     doc = fitz.open(out)
@@ -100,19 +107,36 @@ def test_draws_three_state_cells_and_table_outline(tmp_path) -> None:
 
     green = found[tuple(round(c, 3) for c in ProofStyle.CONFIRMED_STROKE)]
     amber = found[tuple(round(c, 3) for c in ProofStyle.BACKFILLED_STROKE)]
-    red = found[tuple(round(c, 3) for c in ProofStyle.MISMATCH_STROKE)]
     blue = found[tuple(round(c, 3) for c in ProofStyle.TABLE_OUTLINE)]
 
-    assert len(green) == 2 and len(amber) == 1 and len(red) == 1 and len(blue) == 1
+    assert len(green) == 2 and len(amber) == 1 and len(blue) == 1
+    # Red is intentionally NOT drawn (no matched geometry) — key absent.
+    assert tuple(round(c, 3) for c in (0.80, 0.05, 0.05)) not in found
     # Table outline: bbox px / 2 -> (100, 150, 400, 250), 0.5pt.
     assert blue[0][0] == pytest.approx((100, 150, 400, 250), abs=0.5)
-    # Amber cell [0][1]: thick solid.
-    assert amber[0][0] == pytest.approx((200, 150, 300, 200), abs=0.5)
+    # Green/amber hug the printed characters (word-union anchors), not the grid.
+    assert green[0][0] == pytest.approx((102, 152, 140, 196), abs=0.01)
+    assert green[1][0] == pytest.approx((302, 152, 398, 196), abs=0.01)
+    assert amber[0][0] == pytest.approx((205, 155, 295, 197), abs=0.01)
     assert amber[0][1] == pytest.approx(ProofStyle.BACKFILLED_WIDTH)
-    # Red cell [0][2]: dashed 1.4pt — geometry x0+2*cw=300..400, y 150..200.
-    assert red[0][0] == pytest.approx((300, 150, 400, 200), abs=0.5)
-    assert red[0][1] == pytest.approx(ProofStyle.MISMATCH_WIDTH)
-    assert "4" in (red[0][2] or "")
+
+
+def test_legacy_result_falls_back_to_uniform_grid(tmp_path) -> None:
+    src = _base_pdf(tmp_path)
+    out = str(tmp_path / "annotated.pdf")
+    table = _standard_table()
+    del table["cell_word_bbox"]  # pre-v1.8.1.1 result files carry no anchors
+    summary = render_annotated_pdf(src, _result(tables=[table]), out)
+
+    assert summary.cells_anchored == 0
+    assert (summary.cells_confirmed, summary.cells_backfilled) == (2, 1)
+
+    doc = fitz.open(out)
+    found = _rects_by_color(doc[0].get_drawings())
+    doc.close()
+    amber = found[tuple(round(c, 3) for c in ProofStyle.BACKFILLED_STROKE)]
+    # Fallback box = uniform-grid cell [0][1]: (200, 150, 300, 200).
+    assert amber[0][0] == pytest.approx((200, 150, 300, 200), abs=0.5)
 
 
 def test_cell_rect_parity_with_table_backfill() -> None:

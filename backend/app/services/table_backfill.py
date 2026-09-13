@@ -112,6 +112,19 @@ def _extract_cell_text_layer(
     return in_cell, lines
 
 
+def _words_union_bbox(words: List[Any]) -> List[float]:
+    """Pt-space union bbox of matched text-layer words (fitz word tuples).
+
+    The exact printed extent of the cell's characters — the drawing anchor
+    for the proof pack's green/amber boxes (guaranteed by construction)."""
+    return [
+        round(min(float(w[0]) for w in words), 2),
+        round(min(float(w[1]) for w in words), 2),
+        round(max(float(w[2]) for w in words), 2),
+        round(max(float(w[3]) for w in words), 2),
+    ]
+
+
 def backfill_table_cells(
     table: Dict[str, Any],
     page_words: List[Any],
@@ -125,11 +138,16 @@ def backfill_table_cells(
 ) -> Dict[str, int]:
     """Run the funnel over one table's cells, mutating the table in place.
 
-    Adds two parallel grids aligned with ``table["data"]``:
+    Adds three parallel grids aligned with ``table["data"]``:
       * ``cell_provenance``  — per-cell "vision" | "text_confirmed" |
         "text_backfilled" | "text_mismatch" (v1.8.1: funnel④ failures are
         labeled instead of staying "vision", so review lists can be built)
       * ``cell_ocr_text``    — original OCR text (only for backfilled cells)
+      * ``cell_word_bbox``   — pt-space ``[x0, y0, x1, y1]`` union bbox of the
+        matched text-layer words (only for confirmed/backfilled cells). This
+        is the printed characters' exact extent — the proof pack anchors its
+        green/amber boxes here, so drawing accuracy is guaranteed by
+        construction instead of by the uniform-grid approximation.
 
     When ``debug_records`` is provided, each candidate cell's alignment
     evidence is appended for human review (``debug/backfill_alignment.json``).
@@ -153,6 +171,7 @@ def backfill_table_cells(
 
     cell_provenance: List[List[str]] = []
     cell_ocr_text: List[List[Optional[str]]] = []
+    cell_word_bbox: List[List[Optional[List[float]]]] = []
 
     for i, row in enumerate(data):
         if not isinstance(row, list):
@@ -160,9 +179,11 @@ def backfill_table_cells(
             data[i] = row
         prov_row: List[str] = []
         ocr_row: List[Optional[str]] = []
+        wb_row: List[Optional[List[float]]] = []
         for j, cell_text in enumerate(row):
             prov_row.append(PROVENANCE_VISION)
             ocr_row.append(None)
+            wb_row.append(None)
 
             if not trusted:
                 continue
@@ -212,6 +233,9 @@ def backfill_table_cells(
                         row[j] = text_layer_text
                         stats["backfilled"] += 1
 
+                    if provenance in (PROVENANCE_TEXT_CONFIRMED, PROVENANCE_TEXT_BACKFILLED):
+                        wb_row[j] = _words_union_bbox(in_cell)
+
             if provenance == PROVENANCE_TEXT_MISMATCH:
                 prov_row[j] = PROVENANCE_TEXT_MISMATCH
                 if mismatch_records is not None:
@@ -242,9 +266,11 @@ def backfill_table_cells(
 
         cell_provenance.append(prov_row)
         cell_ocr_text.append(ocr_row)
+        cell_word_bbox.append(wb_row)
 
     table["cell_provenance"] = cell_provenance
     table["cell_ocr_text"] = cell_ocr_text
+    table["cell_word_bbox"] = cell_word_bbox
     return stats
 
 

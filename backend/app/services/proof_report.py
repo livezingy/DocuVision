@@ -64,7 +64,7 @@ _LITERALS: Dict[str, Dict[str, str]] = {
         "doc_skipped": "This document was processed in a transformed coordinate space, so no annotation could be aligned to the original pages. Reason: {reason}",
         "annotated_pages": "{n} of {total} pages carry annotations",
         "skipped_pages": "skipped pages: {detail}",
-        "grid_note": "Note: cell boxes are derived from a uniform grid over the table outline (documents carry no per-cell geometry); on tables with strongly unequal column widths, boxes may deviate from the printed column edges.",
+        "grid_note": "Verified/corrected boxes are anchored to the printed characters themselves (exact). Values we could not confidently align are not drawn — they are listed in the review section and report.json.",
     },
     "zh": {
         "title": "文档核验报告",
@@ -100,7 +100,7 @@ _LITERALS: Dict[str, Dict[str, str]] = {
         "doc_skipped": "该文档在变换坐标系下处理，无法对齐原始页面标注。原因：{reason}",
         "annotated_pages": "{n} / {total} 页含标注",
         "skipped_pages": "跳过页：{detail}",
-        "grid_note": "说明：单元格框基于表格外框的均匀网格推导（文档不携带逐格几何）；列宽差异大的表格中，框可能偏离实际列边界。",
+        "grid_note": "说明：已核对/已修正框直接锚定在页面印刷字符上（精确）；未能可信对齐的数值不画框，明细见复核清单与 report.json。",
     },
 }
 

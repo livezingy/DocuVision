@@ -1,7 +1,0 @@
----
-description: 代码语言编码（已并入 kernel constraints，见 001-general）
-alwaysApply: true
----
-# 代码语言编码（已并入 kernel）
-
-本文件约束已并入 `docs/agent-ops/core/constraints.md`（§响应语言与代码语言），由 `001-general.mdc` 承载（sync 生成）。此文件仅作历史索引保留，勿在此新增规则。

@@ -263,6 +263,7 @@ test_data/**/*.tif
 scripts/*
 !scripts/sync_agent_rules.py
 !scripts/audit_agent_ops.py
+!scripts/lint_routes.py
 !scripts/trial/
 !scripts/trial/**
 !scripts/aistudio_setup.sh

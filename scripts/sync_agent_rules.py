@@ -49,11 +49,9 @@ AGENTS = {
                     "- 002-python（globs *.py）：Python 规范（Cursor 专属）\n"
                     "- 003-git（按需）：Git/Actions 规范（Cursor 专属）\n"
                     "- 004-project（always）：项目事实 + 测试验证（kernel: environment + testing）\n"
-                    "- 005-code-language（always）：代码语言编码（已并入 kernel constraints，留索引）\n"
                     "- 006-cloud-testing（按需）：Cloud 验证速查（Cursor 专属）\n"
-                    "- 007-official-source-first（always）：官方依据优先（已并入 kernel constraints，留索引）\n"
-                    "- 008-context-handoff（always）：长对话交接（已并入 kernel constraints，留索引）\n"
                     "- 009-doc-sync（globs docs/代码）：文档同步（kernel: doc-sync）\n"
+                    "- 010-routing（globs backend/app）：后端路由架构规范（kernel: routing）\n"
                     "- SKILLS.md：投标/试用/定制操作流程"
                 ),
             },
@@ -73,6 +71,15 @@ AGENTS = {
                 "frontmatter": {
                     "description": "文档同步机制、归属表、生命周期（改契约代码或文档时触发）",
                     "globs": "docs/**/*.md,backend/app/**/*.py,apps/lite/backend/**/*.py,packages/docuvision-core/**/*.py,frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js",
+                },
+            },
+            {
+                "out": "010-routing.mdc",
+                "sources": ["routing"],
+                "title": "后端路由架构规范",
+                "frontmatter": {
+                    "description": "后端路由架构规范（路由归属 / APIRouter / 禁 import main）",
+                    "globs": "backend/app/**/*.py",
                 },
             },
         ],
@@ -97,6 +104,12 @@ AGENTS = {
                 "out": "009-doc-sync.md",
                 "sources": ["doc-sync"],
                 "title": "文档同步（强制，防漂移）",
+                "frontmatter": None,
+            },
+            {
+                "out": "010-routing.md",
+                "sources": ["routing"],
+                "title": "后端路由架构规范",
                 "frontmatter": None,
             },
         ],

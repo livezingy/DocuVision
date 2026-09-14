@@ -6,7 +6,7 @@
 ## 快速导航
 | 目标 | 路径 |
 |------|------|
-| 唯一真源（kernel） | `docs/agent-ops/core/constraints.md` / `environment.md` / `testing.md` / `doc-sync.md` |
+| 唯一真源（kernel） | `docs/agent-ops/core/constraints.md` / `environment.md` / `testing.md` / `doc-sync.md` / `routing.md` |
 | Agent 花名册 | `docs/agent-ops/core/agents.md` |
 | 生成各 Agent 薄壳 | `python scripts/sync_agent_rules.py` |
 | 审计漂移（kernel-ref + doc） | `python scripts/audit_agent_ops.py` |
@@ -15,7 +15,7 @@
 | 待决决策清单 | `docs/R&D/PENDING.md` |
 
 ## 规则层次
-1. **共享约束（唯一真源）** → `docs/agent-ops/core/`（4 文件，约 60 行/个软上限）。
+1. **共享约束（唯一真源）** → `docs/agent-ops/core/`（5 文件，约 60 行/个软上限）。
 2. **各 Agent 副本（生成）** → `.cursor/rules/`、`.codebuddy/rules/`，由 sync 脚本派生并写 `kernel-ref` 哈希。
 3. **Agent 特有（本地，不参与 sync）** → 各目录的非生成文件（如 Cursor `002-python`/`003-git`）。
 4. **ZCode** → 无副本目录，原生加载本文件并直读 kernel（历史 GLM 规则已退役；patch 协议存档见 `docs/agent-ops/glm-sandbox-patch.md`）。

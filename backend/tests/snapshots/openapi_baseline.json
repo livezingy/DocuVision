@@ -1,0 +1,3652 @@
+{
+  "components": {
+    "schemas": {
+      "Body_analyze_document_api_v1_analyze_post": {
+        "properties": {
+          "document_type": {
+            "default": "auto",
+            "title": "Document Type",
+            "type": "string"
+          },
+          "enable_figure_export": {
+            "default": true,
+            "title": "Enable Figure Export",
+            "type": "boolean"
+          },
+          "enable_formula": {
+            "default": false,
+            "title": "Enable Formula",
+            "type": "boolean"
+          },
+          "enable_hitl": {
+            "default": true,
+            "title": "Enable Hitl",
+            "type": "boolean"
+          },
+          "enable_kie": {
+            "default": false,
+            "title": "Enable Kie",
+            "type": "boolean"
+          },
+          "enable_layout": {
+            "default": true,
+            "title": "Enable Layout",
+            "type": "boolean"
+          },
+          "enable_seal": {
+            "default": false,
+            "title": "Enable Seal",
+            "type": "boolean"
+          },
+          "enable_table": {
+            "default": true,
+            "title": "Enable Table",
+            "type": "boolean"
+          },
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          },
+          "formula_disable_layout": {
+            "default": false,
+            "title": "Formula Disable Layout",
+            "type": "boolean"
+          },
+          "formula_disable_preprocess": {
+            "default": false,
+            "title": "Formula Disable Preprocess",
+            "type": "boolean"
+          },
+          "formula_fallback_layout_threshold": {
+            "default": 0.2,
+            "title": "Formula Fallback Layout Threshold",
+            "type": "number"
+          },
+          "formula_layout_threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula Layout Threshold"
+          },
+          "formula_primary_layout_threshold": {
+            "default": 0.5,
+            "title": "Formula Primary Layout Threshold",
+            "type": "number"
+          },
+          "formula_two_stage_threshold_retry": {
+            "default": true,
+            "title": "Formula Two Stage Threshold Retry",
+            "type": "boolean"
+          },
+          "kie_pages": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kie Pages"
+          },
+          "kie_query_fields": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kie Query Fields"
+          },
+          "language": {
+            "default": "en",
+            "title": "Language",
+            "type": "string"
+          },
+          "layout_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layout Engine"
+          },
+          "ocr_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Engine"
+          },
+          "pipeline_formula_batch_size": {
+            "default": 1,
+            "title": "Pipeline Formula Batch Size",
+            "type": "integer"
+          },
+          "return_raw": {
+            "default": false,
+            "title": "Return Raw",
+            "type": "boolean"
+          },
+          "table_allow_fullpage_fallback": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Allow Fullpage Fallback"
+          },
+          "table_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Engine"
+          },
+          "table_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Template"
+          },
+          "table_text_backfill": {
+            "default": "auto",
+            "title": "Table Text Backfill",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_analyze_document_api_v1_analyze_post",
+        "type": "object"
+      },
+      "Body_analyze_document_v1_api_v1_documents_analyze_post": {
+        "properties": {
+          "document_type": {
+            "default": "auto",
+            "title": "Document Type",
+            "type": "string"
+          },
+          "enable_figure_export": {
+            "default": true,
+            "title": "Enable Figure Export",
+            "type": "boolean"
+          },
+          "enable_formula": {
+            "default": false,
+            "title": "Enable Formula",
+            "type": "boolean"
+          },
+          "enable_hitl": {
+            "default": true,
+            "title": "Enable Hitl",
+            "type": "boolean"
+          },
+          "enable_kie": {
+            "default": false,
+            "title": "Enable Kie",
+            "type": "boolean"
+          },
+          "enable_layout": {
+            "default": true,
+            "title": "Enable Layout",
+            "type": "boolean"
+          },
+          "enable_seal": {
+            "default": false,
+            "title": "Enable Seal",
+            "type": "boolean"
+          },
+          "enable_table": {
+            "default": true,
+            "title": "Enable Table",
+            "type": "boolean"
+          },
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          },
+          "formula_disable_layout": {
+            "default": false,
+            "title": "Formula Disable Layout",
+            "type": "boolean"
+          },
+          "formula_disable_preprocess": {
+            "default": false,
+            "title": "Formula Disable Preprocess",
+            "type": "boolean"
+          },
+          "formula_fallback_layout_threshold": {
+            "default": 0.2,
+            "title": "Formula Fallback Layout Threshold",
+            "type": "number"
+          },
+          "formula_layout_threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula Layout Threshold"
+          },
+          "formula_primary_layout_threshold": {
+            "default": 0.5,
+            "title": "Formula Primary Layout Threshold",
+            "type": "number"
+          },
+          "formula_two_stage_threshold_retry": {
+            "default": true,
+            "title": "Formula Two Stage Threshold Retry",
+            "type": "boolean"
+          },
+          "kie_pages": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kie Pages"
+          },
+          "kie_query_fields": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kie Query Fields"
+          },
+          "language": {
+            "default": "en",
+            "title": "Language",
+            "type": "string"
+          },
+          "layout_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layout Engine"
+          },
+          "ocr_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Engine"
+          },
+          "pipeline_formula_batch_size": {
+            "default": 1,
+            "title": "Pipeline Formula Batch Size",
+            "type": "integer"
+          },
+          "return_raw": {
+            "default": false,
+            "title": "Return Raw",
+            "type": "boolean"
+          },
+          "table_allow_fullpage_fallback": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Allow Fullpage Fallback"
+          },
+          "table_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Engine"
+          },
+          "table_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Template"
+          },
+          "table_text_backfill": {
+            "default": "auto",
+            "title": "Table Text Backfill",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_analyze_document_v1_api_v1_documents_analyze_post",
+        "type": "object"
+      },
+      "Body_create_batch_api_v1_batch_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "format": "binary",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "options": {
+            "default": "{}",
+            "title": "Options",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "files"
+        ],
+        "title": "Body_create_batch_api_v1_batch_post",
+        "type": "object"
+      },
+      "Body_document_profile_scan_api_v1_document_profile_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_document_profile_scan_api_v1_document_profile_post",
+        "type": "object"
+      },
+      "Body_ocr_recognize_api_v1_ocr_post": {
+        "properties": {
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          },
+          "language": {
+            "default": "en",
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_ocr_recognize_api_v1_ocr_post",
+        "type": "object"
+      },
+      "Body_pdf_tools_form_fill_api_v1_pdf_tools_form_fill_post": {
+        "properties": {
+          "field_values": {
+            "default": "{}",
+            "title": "Field Values",
+            "type": "string"
+          },
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_pdf_tools_form_fill_api_v1_pdf_tools_form_fill_post",
+        "type": "object"
+      },
+      "Body_pdf_tools_merge_api_v1_pdf_tools_merge_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "format": "binary",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_pdf_tools_merge_api_v1_pdf_tools_merge_post",
+        "type": "object"
+      },
+      "Body_pdf_tools_metadata_api_v1_pdf_tools_metadata_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_pdf_tools_metadata_api_v1_pdf_tools_metadata_post",
+        "type": "object"
+      },
+      "Body_pdf_tools_searchable_api_v1_pdf_tools_searchable_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_pdf_tools_searchable_api_v1_pdf_tools_searchable_post",
+        "type": "object"
+      },
+      "Body_pdf_tools_split_api_v1_pdf_tools_split_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          },
+          "pages": {
+            "default": "",
+            "title": "Pages",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_pdf_tools_split_api_v1_pdf_tools_split_post",
+        "type": "object"
+      },
+      "Body_register_webhook_api_v1_webhooks_post": {
+        "properties": {
+          "events": {
+            "default": "task.completed,batch.completed",
+            "title": "Events",
+            "type": "string"
+          },
+          "secret": {
+            "default": "",
+            "title": "Secret",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "Body_register_webhook_api_v1_webhooks_post",
+        "type": "object"
+      },
+      "Body_upload_file_api_v1_upload_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_file_api_v1_upload_post",
+        "type": "object"
+      },
+      "FusedBlock": {
+        "description": "A single block in the fused layer after text fusion and coordinate standardization",
+        "properties": {
+          "bbox_preprocessed": {
+            "default": [],
+            "items": {
+              "type": "number"
+            },
+            "title": "Bbox Preprocessed",
+            "type": "array"
+          },
+          "block_id": {
+            "title": "Block Id",
+            "type": "string"
+          },
+          "confidence": {
+            "default": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "payload": {
+            "default": {},
+            "title": "Payload",
+            "type": "object"
+          },
+          "polygon_preprocessed": {
+            "default": [],
+            "items": {
+              "type": "number"
+            },
+            "title": "Polygon Preprocessed",
+            "type": "array"
+          },
+          "processing_status": {
+            "default": "succeeded",
+            "title": "Processing Status",
+            "type": "string"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "source": {
+            "default": "pp_structure_v3",
+            "title": "Source",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "block_id",
+          "type"
+        ],
+        "title": "FusedBlock",
+        "type": "object"
+      },
+      "FusedLayer": {
+        "description": "Fused layer: layout blocks with per-block OCR text fusion and coordinate standardization",
+        "properties": {
+          "pages": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FusedPage"
+            },
+            "title": "Pages",
+            "type": "array"
+          }
+        },
+        "title": "FusedLayer",
+        "type": "object"
+      },
+      "FusedPage": {
+        "description": "A page in the fused layer",
+        "properties": {
+          "blocks": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FusedBlock"
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "height_preprocessed": {
+            "default": 0,
+            "title": "Height Preprocessed",
+            "type": "integer"
+          },
+          "page_num": {
+            "title": "Page Num",
+            "type": "integer"
+          },
+          "width_preprocessed": {
+            "default": 0,
+            "title": "Width Preprocessed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page_num"
+        ],
+        "title": "FusedPage",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HitlResolveModel": {
+        "properties": {
+          "corrected_fields": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrected Fields"
+          },
+          "status": {
+            "default": "approved",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "HitlResolveModel",
+        "type": "object"
+      },
+      "JobEnvelope": {
+        "description": "Phase 1 API response envelope: unified document processing result",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "figures": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Figures"
+          },
+          "fused": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FusedLayer"
+              }
+            ],
+            "default": {
+              "pages": []
+            }
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "preprocessing": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PreprocessingMetadata"
+              }
+            ],
+            "default": {
+              "angle_deg": 0.0,
+              "coordinate_space": "original",
+              "input_size": {},
+              "output_size": {},
+              "use_doc_orientation_classify": false,
+              "use_doc_unwarping": false
+            }
+          },
+          "quality": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QualityLayer"
+              }
+            ],
+            "default": {
+              "avg_layout_confidence": 0.0,
+              "engines_used": [],
+              "figure_blocks_total": 0,
+              "figure_count": 0,
+              "figure_cropped_count": 0,
+              "figure_integrity_warning_count": 0,
+              "formula_attempted": false,
+              "formula_blocks_failed": 0,
+              "formula_blocks_recognized": 0,
+              "formula_blocks_total": 0,
+              "formula_count": 0,
+              "formula_error_code": "",
+              "formula_error_level": "none",
+              "formula_error_message": "",
+              "formula_recognition_rate": 0.0,
+              "formula_stage": "",
+              "kie_attempted": false,
+              "kie_confidence_avg": 0.0,
+              "kie_confidence_source": "",
+              "kie_error_code": "",
+              "kie_error_message": "",
+              "kie_fields_count": 0,
+              "kie_id_card_precision_hit": false,
+              "kie_id_card_precision_keys": [],
+              "kie_id_card_precision_reason": "",
+              "kie_items_count": 0,
+              "kie_items_source": "n/a",
+              "kie_model_load_ms": 0,
+              "kie_production_hit": false,
+              "kie_production_keys": [],
+              "kie_production_reason": "",
+              "kie_stage": "",
+              "processing_time_ms": 0,
+              "seal_attempted": false,
+              "seal_blocks_recognized": 0,
+              "seal_blocks_total": 0,
+              "seal_count": 0,
+              "seal_error_code": "",
+              "seal_error_level": "none",
+              "seal_error_message": "",
+              "seal_recognition_rate": 0.0,
+              "seal_stage": "",
+              "table_blocks_total": 0,
+              "text_blocks_no_ocr": 0,
+              "text_blocks_total": 0
+            }
+          },
+          "raw": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RawLayer"
+              }
+            ],
+            "default": {}
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "default": "1.0",
+            "title": "Version",
+            "type": "string"
+          },
+          "view": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ViewLayer"
+              }
+            ],
+            "default": {
+              "fields": {},
+              "figures": [],
+              "formulas": [],
+              "pages": [],
+              "paragraphs": [],
+              "seals": [],
+              "sections": [],
+              "styles": [],
+              "tables": []
+            }
+          }
+        },
+        "required": [
+          "job_id",
+          "status"
+        ],
+        "title": "JobEnvelope",
+        "type": "object"
+      },
+      "JobStatus": {
+        "description": "Job status response (minimal, returned during processing)",
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "progress": {
+            "default": 0.0,
+            "title": "Progress",
+            "type": "number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status"
+        ],
+        "title": "JobStatus",
+        "type": "object"
+      },
+      "KieFieldsPatchModel": {
+        "properties": {
+          "fields": {
+            "title": "Fields",
+            "type": "object"
+          }
+        },
+        "required": [
+          "fields"
+        ],
+        "title": "KieFieldsPatchModel",
+        "type": "object"
+      },
+      "PreprocessingMetadata": {
+        "description": "Preprocessing layer: input/output dimensions, rotation, coordinate space strategy",
+        "properties": {
+          "angle_deg": {
+            "default": 0.0,
+            "title": "Angle Deg",
+            "type": "number"
+          },
+          "coordinate_space": {
+            "default": "original",
+            "title": "Coordinate Space",
+            "type": "string"
+          },
+          "input_size": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "Input Size",
+            "type": "object"
+          },
+          "output_size": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "Output Size",
+            "type": "object"
+          },
+          "use_doc_orientation_classify": {
+            "default": false,
+            "title": "Use Doc Orientation Classify",
+            "type": "boolean"
+          },
+          "use_doc_unwarping": {
+            "default": false,
+            "title": "Use Doc Unwarping",
+            "type": "boolean"
+          }
+        },
+        "title": "PreprocessingMetadata",
+        "type": "object"
+      },
+      "QualityLayer": {
+        "description": "Quality metrics layer",
+        "properties": {
+          "avg_layout_confidence": {
+            "default": 0.0,
+            "title": "Avg Layout Confidence",
+            "type": "number"
+          },
+          "engines_used": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Engines Used",
+            "type": "array"
+          },
+          "figure_blocks_total": {
+            "default": 0,
+            "title": "Figure Blocks Total",
+            "type": "integer"
+          },
+          "figure_count": {
+            "default": 0,
+            "title": "Figure Count",
+            "type": "integer"
+          },
+          "figure_cropped_count": {
+            "default": 0,
+            "title": "Figure Cropped Count",
+            "type": "integer"
+          },
+          "figure_integrity_warning_count": {
+            "default": 0,
+            "title": "Figure Integrity Warning Count",
+            "type": "integer"
+          },
+          "formula_attempted": {
+            "default": false,
+            "title": "Formula Attempted",
+            "type": "boolean"
+          },
+          "formula_blocks_failed": {
+            "default": 0,
+            "title": "Formula Blocks Failed",
+            "type": "integer"
+          },
+          "formula_blocks_recognized": {
+            "default": 0,
+            "title": "Formula Blocks Recognized",
+            "type": "integer"
+          },
+          "formula_blocks_total": {
+            "default": 0,
+            "title": "Formula Blocks Total",
+            "type": "integer"
+          },
+          "formula_count": {
+            "default": 0,
+            "title": "Formula Count",
+            "type": "integer"
+          },
+          "formula_error_code": {
+            "default": "",
+            "title": "Formula Error Code",
+            "type": "string"
+          },
+          "formula_error_level": {
+            "default": "none",
+            "title": "Formula Error Level",
+            "type": "string"
+          },
+          "formula_error_message": {
+            "default": "",
+            "title": "Formula Error Message",
+            "type": "string"
+          },
+          "formula_recognition_rate": {
+            "default": 0.0,
+            "title": "Formula Recognition Rate",
+            "type": "number"
+          },
+          "formula_stage": {
+            "default": "",
+            "title": "Formula Stage",
+            "type": "string"
+          },
+          "kie_attempted": {
+            "default": false,
+            "title": "Kie Attempted",
+            "type": "boolean"
+          },
+          "kie_confidence_avg": {
+            "default": 0.0,
+            "title": "Kie Confidence Avg",
+            "type": "number"
+          },
+          "kie_confidence_source": {
+            "default": "",
+            "title": "Kie Confidence Source",
+            "type": "string"
+          },
+          "kie_error_code": {
+            "default": "",
+            "title": "Kie Error Code",
+            "type": "string"
+          },
+          "kie_error_message": {
+            "default": "",
+            "title": "Kie Error Message",
+            "type": "string"
+          },
+          "kie_fields_count": {
+            "default": 0,
+            "title": "Kie Fields Count",
+            "type": "integer"
+          },
+          "kie_id_card_precision_hit": {
+            "default": false,
+            "title": "Kie Id Card Precision Hit",
+            "type": "boolean"
+          },
+          "kie_id_card_precision_keys": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Kie Id Card Precision Keys",
+            "type": "array"
+          },
+          "kie_id_card_precision_reason": {
+            "default": "",
+            "title": "Kie Id Card Precision Reason",
+            "type": "string"
+          },
+          "kie_items_count": {
+            "default": 0,
+            "title": "Kie Items Count",
+            "type": "integer"
+          },
+          "kie_items_source": {
+            "default": "n/a",
+            "title": "Kie Items Source",
+            "type": "string"
+          },
+          "kie_model_load_ms": {
+            "default": 0,
+            "title": "Kie Model Load Ms",
+            "type": "integer"
+          },
+          "kie_production_hit": {
+            "default": false,
+            "title": "Kie Production Hit",
+            "type": "boolean"
+          },
+          "kie_production_keys": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Kie Production Keys",
+            "type": "array"
+          },
+          "kie_production_reason": {
+            "default": "",
+            "title": "Kie Production Reason",
+            "type": "string"
+          },
+          "kie_stage": {
+            "default": "",
+            "title": "Kie Stage",
+            "type": "string"
+          },
+          "processing_time_ms": {
+            "default": 0,
+            "title": "Processing Time Ms",
+            "type": "integer"
+          },
+          "seal_attempted": {
+            "default": false,
+            "title": "Seal Attempted",
+            "type": "boolean"
+          },
+          "seal_blocks_recognized": {
+            "default": 0,
+            "title": "Seal Blocks Recognized",
+            "type": "integer"
+          },
+          "seal_blocks_total": {
+            "default": 0,
+            "title": "Seal Blocks Total",
+            "type": "integer"
+          },
+          "seal_count": {
+            "default": 0,
+            "title": "Seal Count",
+            "type": "integer"
+          },
+          "seal_error_code": {
+            "default": "",
+            "title": "Seal Error Code",
+            "type": "string"
+          },
+          "seal_error_level": {
+            "default": "none",
+            "title": "Seal Error Level",
+            "type": "string"
+          },
+          "seal_error_message": {
+            "default": "",
+            "title": "Seal Error Message",
+            "type": "string"
+          },
+          "seal_recognition_rate": {
+            "default": 0.0,
+            "title": "Seal Recognition Rate",
+            "type": "number"
+          },
+          "seal_stage": {
+            "default": "",
+            "title": "Seal Stage",
+            "type": "string"
+          },
+          "table_backfill": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Backfill"
+          },
+          "table_blocks_total": {
+            "default": 0,
+            "title": "Table Blocks Total",
+            "type": "integer"
+          },
+          "text_blocks_no_ocr": {
+            "default": 0,
+            "title": "Text Blocks No Ocr",
+            "type": "integer"
+          },
+          "text_blocks_total": {
+            "default": 0,
+            "title": "Text Blocks Total",
+            "type": "integer"
+          }
+        },
+        "title": "QualityLayer",
+        "type": "object"
+      },
+      "RawLayer": {
+        "description": "Raw layer: engine outputs without transformation",
+        "properties": {
+          "paddleocr_blocks": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paddleocr Blocks"
+          },
+          "pp_structure_v3": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pp Structure V3"
+          }
+        },
+        "title": "RawLayer",
+        "type": "object"
+      },
+      "TaskStatus": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "status",
+          "progress",
+          "message",
+          "created_at"
+        ],
+        "title": "TaskStatus",
+        "type": "object"
+      },
+      "TrialGtDiffModel": {
+        "description": "Ground-truth payload for the trial diagnostic endpoint (GLM trial P1-4).",
+        "properties": {
+          "case_sensitive": {
+            "default": false,
+            "title": "Case Sensitive",
+            "type": "boolean"
+          },
+          "fields": {
+            "default": {},
+            "title": "Fields",
+            "type": "object"
+          },
+          "tables": {
+            "default": [],
+            "items": {
+              "items": {
+                "items": {},
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "title": "Tables",
+            "type": "array"
+          }
+        },
+        "title": "TrialGtDiffModel",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ViewElement": {
+        "description": "A single element in the view layer (coordinate-transformed and reading-ordered)",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "default": {},
+            "title": "Payload",
+            "type": "object"
+          },
+          "polygon": {
+            "default": [],
+            "items": {
+              "type": "number"
+            },
+            "title": "Polygon",
+            "type": "array"
+          },
+          "processing_status": {
+            "default": "succeeded",
+            "title": "Processing Status",
+            "type": "string"
+          },
+          "reading_order": {
+            "default": 0,
+            "title": "Reading Order",
+            "type": "integer"
+          },
+          "source": {
+            "default": "pp_structure_v3",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind"
+        ],
+        "title": "ViewElement",
+        "type": "object"
+      },
+      "ViewLayer": {
+        "description": "View layer: reading-order-sorted elements with coordinate transformation applied",
+        "properties": {
+          "fields": {
+            "default": {},
+            "title": "Fields",
+            "type": "object"
+          },
+          "figures": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ViewElement"
+            },
+            "title": "Figures",
+            "type": "array"
+          },
+          "formulas": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ViewElement"
+            },
+            "title": "Formulas",
+            "type": "array"
+          },
+          "pages": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ViewPage"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "paragraphs": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ViewElement"
+            },
+            "title": "Paragraphs",
+            "type": "array"
+          },
+          "seals": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ViewElement"
+            },
+            "title": "Seals",
+            "type": "array"
+          },
+          "sections": {
+            "default": [],
+            "items": {},
+            "title": "Sections",
+            "type": "array"
+          },
+          "styles": {
+            "default": [],
+            "items": {},
+            "title": "Styles",
+            "type": "array"
+          },
+          "tables": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ViewElement"
+            },
+            "title": "Tables",
+            "type": "array"
+          }
+        },
+        "title": "ViewLayer",
+        "type": "object"
+      },
+      "ViewPage": {
+        "description": "A page in the view layer",
+        "properties": {
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "elements": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ViewElement"
+            },
+            "title": "Elements",
+            "type": "array"
+          },
+          "height": {
+            "default": 0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "page_num": {
+            "title": "Page Num",
+            "type": "integer"
+          },
+          "selection_marks": {
+            "default": [],
+            "items": {},
+            "title": "Selection Marks",
+            "type": "array"
+          },
+          "width": {
+            "default": 0,
+            "title": "Width",
+            "type": "integer"
+          },
+          "words": {
+            "default": [],
+            "items": {},
+            "title": "Words",
+            "type": "array"
+          }
+        },
+        "required": [
+          "page_num"
+        ],
+        "title": "ViewPage",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Intelligent Document Processing System - Open Source Alternative to Azure Document Intelligence",
+    "title": "DocuVision API"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Root"
+      }
+    },
+    "/api/v1/analyze": {
+      "post": {
+        "description": "Upload and analyze a single document",
+        "operationId": "analyze_document_api_v1_analyze_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_document_api_v1_analyze_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analyze Document"
+      }
+    },
+    "/api/v1/batch": {
+      "get": {
+        "description": "List all batch jobs",
+        "operationId": "list_batches_api_v1_batch_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Batches"
+      },
+      "post": {
+        "description": "Create a new batch job",
+        "operationId": "create_batch_api_v1_batch_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_batch_api_v1_batch_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Batch"
+      }
+    },
+    "/api/v1/batch/{batch_id}": {
+      "delete": {
+        "description": "Delete a batch job",
+        "operationId": "delete_batch_api_v1_batch__batch_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Batch"
+      },
+      "get": {
+        "description": "Get batch job details",
+        "operationId": "get_batch_api_v1_batch__batch_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Batch"
+      }
+    },
+    "/api/v1/batch/{batch_id}/cancel": {
+      "post": {
+        "description": "Cancel a batch job",
+        "operationId": "cancel_batch_api_v1_batch__batch_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Batch"
+      }
+    },
+    "/api/v1/batch/{batch_id}/export.csv": {
+      "get": {
+        "description": "Download aggregated batch results as CSV (mode: kie, summary, failures).",
+        "operationId": "export_batch_csv_api_v1_batch__batch_id__export_csv_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "default": "kie",
+              "title": "Mode",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "validation_passed_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Validation Passed Only",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Batch Csv"
+      }
+    },
+    "/api/v1/batch/{batch_id}/export.json": {
+      "get": {
+        "description": "Download full batch results as JSON bundle.",
+        "operationId": "export_batch_json_api_v1_batch__batch_id__export_json_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Batch Json"
+      }
+    },
+    "/api/v1/batch/{batch_id}/export.xlsx": {
+      "get": {
+        "description": "Download aggregated batch results as Excel (mode: all, kie, tables, summary).",
+        "operationId": "export_batch_xlsx_api_v1_batch__batch_id__export_xlsx_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "title": "Mode",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Batch Xlsx"
+      }
+    },
+    "/api/v1/batch/{batch_id}/pause": {
+      "post": {
+        "description": "Pause a running batch",
+        "operationId": "pause_batch_api_v1_batch__batch_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pause Batch"
+      }
+    },
+    "/api/v1/batch/{batch_id}/results": {
+      "get": {
+        "description": "Get all results from a batch",
+        "operationId": "get_batch_results_api_v1_batch__batch_id__results_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Batch Results"
+      }
+    },
+    "/api/v1/batch/{batch_id}/resume": {
+      "post": {
+        "description": "Resume a paused batch",
+        "operationId": "resume_batch_api_v1_batch__batch_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Batch"
+      }
+    },
+    "/api/v1/batch/{batch_id}/retry": {
+      "post": {
+        "description": "Retry failed tasks in a batch",
+        "operationId": "retry_batch_failed_api_v1_batch__batch_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Batch Failed"
+      }
+    },
+    "/api/v1/batch/{batch_id}/start": {
+      "post": {
+        "description": "Start processing a batch job",
+        "operationId": "start_batch_api_v1_batch__batch_id__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Batch"
+      }
+    },
+    "/api/v1/batch/{batch_id}/summary": {
+      "get": {
+        "description": "Get batch job summary",
+        "operationId": "get_batch_summary_api_v1_batch__batch_id__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Batch Summary"
+      }
+    },
+    "/api/v1/document/profile": {
+      "post": {
+        "description": "Pre-scan upload and suggest routing options (Pro Document Profile).",
+        "operationId": "document_profile_scan_api_v1_document_profile_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_document_profile_scan_api_v1_document_profile_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Document Profile Scan"
+      }
+    },
+    "/api/v1/documents:analyze": {
+      "post": {
+        "description": "Phase 1 API: Submit a document for analysis.\nReturns job_id and status. Use /api/v1/jobs/{job_id} to poll status,\nand /api/v1/jobs/{job_id}/result to fetch the Envelope result.\n\nRequest: multipart/form-data with 'file' field\nResponse: JobStatus with job_id\n\nForm parameters mirror POST /api/v1/analyze (legacy) so the Phase 1\nJob-based endpoint is feature-complete (layout/table/formula/seal/KIE\ntoggles, engine overrides, formula thresholds, table_template, HITL).",
+        "operationId": "analyze_document_v1_api_v1_documents_analyze_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_document_v1_api_v1_documents_analyze_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analyze Document V1"
+      }
+    },
+    "/api/v1/engines": {
+      "get": {
+        "operationId": "list_engines_api_v1_engines_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Engines"
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "description": "Same payload as GET /health; use behind reverse proxies that only forward /api/v1/*.",
+        "operationId": "health_check_v1_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check V1"
+      }
+    },
+    "/api/v1/hitl/reviews": {
+      "get": {
+        "operationId": "list_hitl_reviews_api_v1_hitl_reviews_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_payload",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Payload",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Hitl Reviews"
+      }
+    },
+    "/api/v1/hitl/reviews/{review_id}": {
+      "get": {
+        "operationId": "get_hitl_review_api_v1_hitl_reviews__review_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "title": "Review Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Hitl Review"
+      }
+    },
+    "/api/v1/hitl/reviews/{review_id}/resolve": {
+      "post": {
+        "operationId": "resolve_hitl_review_api_v1_hitl_reviews__review_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "title": "Review Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "approved",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/HitlResolveModel"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Hitl Review"
+      }
+    },
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "description": "Phase 1 API: Get current job status and progress.",
+        "operationId": "get_job_status_api_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job Status"
+      }
+    },
+    "/api/v1/jobs/{job_id}/debug": {
+      "get": {
+        "description": "Phase 1 API: Get debug artifacts (preprocessing, raw, fused, quality JSON + images).\n\nReturns 404 if:\n- Job not found\n- DEBUG_MODE is disabled\n- Job not completed\n\nReturns a manifest with debug artifact paths and metadata.",
+        "operationId": "get_job_debug_api_v1_jobs__job_id__debug_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job Debug"
+      }
+    },
+    "/api/v1/jobs/{job_id}/debug/{filename}": {
+      "get": {
+        "description": "Phase 1 API: Download a specific debug artifact file.",
+        "operationId": "get_job_debug_file_api_v1_jobs__job_id__debug__filename__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "filename",
+            "required": true,
+            "schema": {
+              "title": "Filename",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job Debug File"
+      }
+    },
+    "/api/v1/jobs/{job_id}/result": {
+      "get": {
+        "description": "Phase 1 API: Get the completed Envelope result.\nReturns 404 if job not found or not completed.\nReturns JobEnvelope with preprocessing, raw, fused, view, quality layers.",
+        "operationId": "get_job_result_api_v1_jobs__job_id__result_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job Result"
+      }
+    },
+    "/api/v1/kie/templates": {
+      "get": {
+        "operationId": "list_kie_templates_api_v1_kie_templates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Kie Templates"
+      }
+    },
+    "/api/v1/kie/templates/{template_id}": {
+      "get": {
+        "operationId": "get_kie_template_api_v1_kie_templates__template_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Kie Template"
+      },
+      "post": {
+        "operationId": "save_kie_template_api_v1_kie_templates__template_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Kie Template"
+      }
+    },
+    "/api/v1/ocr": {
+      "post": {
+        "description": "Simple OCR endpoint for quick text extraction",
+        "operationId": "ocr_recognize_api_v1_ocr_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_ocr_recognize_api_v1_ocr_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ocr Recognize"
+      }
+    },
+    "/api/v1/pdf-tools/form-fill": {
+      "post": {
+        "operationId": "pdf_tools_form_fill_api_v1_pdf_tools_form_fill_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_pdf_tools_form_fill_api_v1_pdf_tools_form_fill_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pdf Tools Form Fill"
+      }
+    },
+    "/api/v1/pdf-tools/merge": {
+      "post": {
+        "operationId": "pdf_tools_merge_api_v1_pdf_tools_merge_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_pdf_tools_merge_api_v1_pdf_tools_merge_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pdf Tools Merge"
+      }
+    },
+    "/api/v1/pdf-tools/metadata": {
+      "post": {
+        "operationId": "pdf_tools_metadata_api_v1_pdf_tools_metadata_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_pdf_tools_metadata_api_v1_pdf_tools_metadata_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pdf Tools Metadata"
+      }
+    },
+    "/api/v1/pdf-tools/searchable": {
+      "post": {
+        "operationId": "pdf_tools_searchable_api_v1_pdf_tools_searchable_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_pdf_tools_searchable_api_v1_pdf_tools_searchable_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pdf Tools Searchable"
+      }
+    },
+    "/api/v1/pdf-tools/split": {
+      "post": {
+        "operationId": "pdf_tools_split_api_v1_pdf_tools_split_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_pdf_tools_split_api_v1_pdf_tools_split_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pdf Tools Split"
+      }
+    },
+    "/api/v1/tasks/{task_id}": {
+      "delete": {
+        "description": "Delete a task (can delete any task regardless of status)",
+        "operationId": "delete_task_api_v1_tasks__task_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Task"
+      },
+      "get": {
+        "operationId": "get_task_status_api_v1_tasks__task_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Task Status"
+      }
+    },
+    "/api/v1/tasks/{task_id}/blocks": {
+      "get": {
+        "description": "Return frontend-oriented flat blocks payload from the view layer.",
+        "operationId": "get_task_blocks_api_v1_tasks__task_id__blocks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_number",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page Number",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "content_limit",
+            "required": false,
+            "schema": {
+              "default": 120,
+              "title": "Content Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Task Blocks"
+      }
+    },
+    "/api/v1/tasks/{task_id}/cancel": {
+      "post": {
+        "description": "Cancel a running task",
+        "operationId": "cancel_task_api_v1_tasks__task_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Task"
+      }
+    },
+    "/api/v1/tasks/{task_id}/events": {
+      "get": {
+        "description": "Debug endpoint: return stored event history for a task (last 100 events).",
+        "operationId": "get_task_events_api_v1_tasks__task_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Task Events"
+      }
+    },
+    "/api/v1/tasks/{task_id}/export/{format}": {
+      "get": {
+        "description": "Export results in various formats.\n\n``format=zip`` builds a tables + figures artifact pack. Optional\n``include`` is a comma list: ``tables``, ``figures``, ``json``\n(default ``tables,figures``).",
+        "operationId": "export_result_api_v1_tasks__task_id__export__format__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "format",
+            "required": true,
+            "schema": {
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Include",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Result"
+      }
+    },
+    "/api/v1/tasks/{task_id}/figures": {
+      "get": {
+        "description": "List figure crops for a task (GLM trial P0-2).",
+        "operationId": "list_task_figures_api_v1_tasks__task_id__figures_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Task Figures"
+      }
+    },
+    "/api/v1/tasks/{task_id}/figures/{figure_id}": {
+      "get": {
+        "description": "Serve a single cropped figure PNG (GLM trial P0-2).\n\nFigure crops live under OUTPUT_DIR/{task_id}/figures/. figure_id is the\nlayout element id (e.g. p1_e3); only a safe basename is accepted to\nprevent path traversal.",
+        "operationId": "get_task_figure_crop_api_v1_tasks__task_id__figures__figure_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "figure_id",
+            "required": true,
+            "schema": {
+              "title": "Figure Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Task Figure Crop"
+      }
+    },
+    "/api/v1/tasks/{task_id}/kie-fields": {
+      "patch": {
+        "description": "Update KIE fields after human review.",
+        "operationId": "patch_task_kie_fields_api_v1_tasks__task_id__kie_fields_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KieFieldsPatchModel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Task Kie Fields"
+      }
+    },
+    "/api/v1/tasks/{task_id}/layout": {
+      "get": {
+        "description": "获取统一格式的版面分析结�?    Returns unified layout analysis result in standard format",
+        "operationId": "get_unified_layout_analysis_api_v1_tasks__task_id__layout_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_number",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page Number",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Unified Layout Analysis"
+      }
+    },
+    "/api/v1/tasks/{task_id}/page-image/{page_num}": {
+      "get": {
+        "description": "Convert PDF page to image for display.\nReturns the first page as PNG image for PDF files, or original image for image files.",
+        "operationId": "get_page_image_api_v1_tasks__task_id__page_image__page_num__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "page_num",
+            "required": true,
+            "schema": {
+              "title": "Page Num",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Page Image"
+      }
+    },
+    "/api/v1/tasks/{task_id}/result": {
+      "get": {
+        "operationId": "get_task_result_api_v1_tasks__task_id__result_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Task Result"
+      }
+    },
+    "/api/v1/trial/gt-diff/{task_id}": {
+      "post": {
+        "description": "Run a ground-truth diff against a completed task (GLM trial P1-4).\n\nThe client (or operator) supplies expected values; the endpoint returns\na field/cell-level accuracy report and persists a self-contained HTML\nreport served at GET /api/v1/trial/gt-diff/{task_id}/report.",
+        "operationId": "trial_gt_diff_api_v1_trial_gt_diff__task_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrialGtDiffModel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trial Gt Diff"
+      }
+    },
+    "/api/v1/trial/gt-diff/{task_id}/report": {
+      "get": {
+        "description": "Serve the generated HTML accuracy report (GLM trial P1-4).",
+        "operationId": "trial_gt_diff_report_file_api_v1_trial_gt_diff__task_id__report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trial Gt Diff Report File"
+      }
+    },
+    "/api/v1/upload": {
+      "post": {
+        "description": "Upload a file and return task_id for preview purposes.\nThis endpoint only uploads the file without processing, allowing immediate preview.",
+        "operationId": "upload_file_api_v1_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_api_v1_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload File"
+      }
+    },
+    "/api/v1/webhooks": {
+      "get": {
+        "operationId": "list_webhooks_api_v1_webhooks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Webhooks"
+      },
+      "post": {
+        "operationId": "register_webhook_api_v1_webhooks_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_register_webhook_api_v1_webhooks_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Webhook"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check"
+      }
+    }
+  }
+}

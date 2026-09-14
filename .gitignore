@@ -210,6 +210,8 @@ backend/outputs/
 !playwright.config.js
 !frontend/shared/demo_classification_mappings.json
 !test_data/scripts/package.json
+# Full OpenAPI snapshot baseline (v1.8.2 SPLIT-U1)
+!backend/tests/snapshots/*.json
 
 # Upload files (user uploaded files)
 uploads/

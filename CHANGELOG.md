@@ -5,12 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v1.8.1 train
+## [Unreleased]
 
-Target tag: **v1.8.1.0**. Branch: `feature/v1.8.1` (base f2ad595 = v1.8.0 content).
-Release gates (cloud, before tagging): PROOF-001/002/003 — bank-statement/symbol proof
-pack e2e with visual alignment check; pure-scan fixture (zero colored cells,
-`no_text` verdicts); BACKFILL-001 / TRUST-GATE / OpenAPI snapshot regression.
+Nothing yet.
+
+## [1.8.1] — 2026-09-14
+
+Tag: **v1.8.1.0**. Branch: `feature/v1.8.1` (base f2ad595 = v1.8.0 content).
+Release gates: PROOF-001/002/003 all green (2026-09-13/14, Cloud Studio GPU) —
+BACKFILL-001 numbers identical to v1.8.0 baseline; pure-scan zero-hallucination
+form verified; OpenAPI snapshot + pipeline regression green.
 
 ### Added
 - Proof Pack (customer-facing trust evidence, pure post-processing — pipeline untouched):
@@ -38,9 +42,9 @@ pack e2e with visual alignment check; pure-scan fixture (zero colored cells,
   command (`/tasks/{id}/result` — the envelope endpoint has no `tables`) and the honest
   deskew-skip limitation note.
 
-## [Unreleased] — v1.8.0 train (tag pending)
+## [1.8.0] — 2026-09-10
 
-Target tag: **v1.8.0**. Branch: `feature/v1.8`.
+Tag: **v1.8.0** (f2ad595). Branch: `feature/v1.8`.
 
 ### Added
 - Page-level text-layer trust gatekeeper (`page_text_trust.py`): invisible-rendered character ratio (Tr3) + full-page image coverage, per-page verdict `text_layer`/`overlay`/`mixed`/`no_text`.

@@ -53,7 +53,7 @@ try:
 except Exception as e:
     print(f"[PaddleX Home] 验证失败: {e}")
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form, WebSocket, WebSocketDisconnect, Request
+from fastapi import Body, FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form, Path as APIPath, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -331,11 +331,14 @@ export_service = ExportService()
 batch_service = BatchService(max_concurrent=3)
 
 # Queue persistence store (SQLite). Attached to batch_service now and to the
-# hitl_queue singleton at startup. See docs/architecture/v1.5-roadmap.md.
+# hitl_queue / analyze_job_store singletons at startup.
+# See docs/architecture/v1.5-roadmap.md and v1.7-roadmap.md.
+from app.services.persistence.analyze_job_store import analyze_job_store  # noqa: E402
 from app.services.persistence.queue_store import SqliteQueueStore  # noqa: E402
 
 _queue_store = SqliteQueueStore(db_path=Path(settings.SQLITE_DB_PATH))
 batch_service.attach_store(_queue_store)
+analyze_job_store.attach_store(_queue_store)
 
 
 def _raise_query_fields_http(exc: Exception) -> None:
@@ -359,6 +362,7 @@ def _resolve_kie_query_fields_in_options(options: Dict[str, Any]) -> None:
 unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服
 # Task Storage
 tasks: Dict[str, Dict[str, Any]] = {}
+analyze_job_store.bind(tasks)
 # Task cancellation flags
 task_cancellation_flags: Dict[str, bool] = {}
 # WebSocket connections for real-time event streaming
@@ -515,6 +519,9 @@ class QualityLayer(BaseModel):
     kie_items_source: str = "n/a"
     avg_layout_confidence: float = 0.0
     engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3"]
+    # v1.8 E2: selective text-layer backfill summary (four-layer funnel counts,
+    # per-page verdicts, rates). Optional; omitted for runs without table step.
+    table_backfill: Optional[Dict[str, Any]] = None
 
 
 class JobEnvelope(BaseModel):
@@ -853,6 +860,7 @@ async def analyze_document(
     kie_pages: Optional[str] = Form(None),
     table_template: Optional[str] = Form(None),
     enable_hitl: bool = Form(True),
+    table_text_backfill: str = Form("auto"),
 ):
     """Upload and analyze a single document"""
     # Validate file
@@ -885,12 +893,6 @@ async def analyze_document(
         return_raw,
     )
 
-    effective_table_allow_fullpage_fallback = (
-        settings.TABLE_ALLOW_FULLPAGE_FALLBACK
-        if table_allow_fullpage_fallback is None
-        else bool(table_allow_fullpage_fallback)
-    )
-
     task_id = str(uuid.uuid4())
     upload_dir = os.path.join(settings.UPLOAD_DIR, task_id)
     os.makedirs(upload_dir, exist_ok=True)
@@ -901,33 +903,40 @@ async def analyze_document(
         _enforce_max_upload_size(content, file.filename or "")
         f.write(content)
 
-    options = {
-        "enable_layout": enable_layout,
-        "enable_table": enable_table,
-        "enable_figure_export": enable_figure_export,
-        "enable_formula": enable_formula,
-        "enable_seal": enable_seal,
-        "enable_kie": enable_kie,
-        "document_type": document_type,
-        "language": language,
-        "ocr_engine": ocr_engine,
-        "layout_engine": layout_engine,
-        "table_engine": table_engine,
-        "table_allow_fullpage_fallback": effective_table_allow_fullpage_fallback,
-        "formula_disable_layout": formula_disable_layout,
-        "formula_disable_preprocess": formula_disable_preprocess,
-        "formula_two_stage_threshold_retry": formula_two_stage_threshold_retry,
-        "formula_primary_layout_threshold": formula_primary_layout_threshold,
-        "formula_fallback_layout_threshold": formula_fallback_layout_threshold,
-        "formula_layout_threshold": formula_layout_threshold,
-        "pipeline_formula_batch_size": pipeline_formula_batch_size,
-        "return_raw": return_raw,
-        "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
-        "kie_pages": (kie_pages or "").strip() or "1",
-    }
-    if table_template and str(table_template).strip():
-        options["table_template"] = str(table_template).strip().lower()
-    options["enable_hitl"] = bool(enable_hitl)
+    from app.models.analyze_options import AnalyzeOptions, options_to_pipeline_dict
+
+    analyze_options = AnalyzeOptions(
+        enable_layout=enable_layout,
+        enable_table=enable_table,
+        enable_formula=enable_formula,
+        enable_seal=enable_seal,
+        enable_figure_export=enable_figure_export,
+        enable_kie=enable_kie,
+        document_type=document_type,
+        language=language,
+        ocr_engine=ocr_engine,
+        layout_engine=layout_engine,
+        table_engine=table_engine,
+        table_allow_fullpage_fallback=table_allow_fullpage_fallback,
+        formula_disable_layout=formula_disable_layout,
+        formula_disable_preprocess=formula_disable_preprocess,
+        formula_two_stage_threshold_retry=formula_two_stage_threshold_retry,
+        formula_primary_layout_threshold=formula_primary_layout_threshold,
+        formula_fallback_layout_threshold=formula_fallback_layout_threshold,
+        formula_layout_threshold=formula_layout_threshold,
+        pipeline_formula_batch_size=pipeline_formula_batch_size,
+        return_raw=return_raw,
+        kie_query_fields=kie_query_fields,
+        kie_pages=kie_pages,
+        table_template=table_template,
+        enable_hitl=enable_hitl,
+        table_text_backfill=table_text_backfill,
+    )
+    options = options_to_pipeline_dict(
+        analyze_options,
+        table_allow_fullpage_fallback_default=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
+        table_text_backfill_kill_switch=settings.TABLE_TEXT_BACKFILL,
+    )
 
     _resolve_kie_query_fields_in_options(options)
 
@@ -1110,6 +1119,7 @@ async def analyze_document_v1(
     kie_pages: Optional[str] = Form(None),
     table_template: Optional[str] = Form(None),
     enable_hitl: bool = Form(True),
+    table_text_backfill: str = Form("auto"),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """
@@ -1134,12 +1144,6 @@ async def analyze_document_v1(
     if pages_err:
         raise HTTPException(status_code=400, detail=pages_err)
 
-    effective_table_allow_fullpage_fallback = (
-        settings.TABLE_ALLOW_FULLPAGE_FALLBACK
-        if table_allow_fullpage_fallback is None
-        else bool(table_allow_fullpage_fallback)
-    )
-
     job_id = str(uuid.uuid4())
     upload_dir = os.path.join(settings.UPLOAD_DIR, job_id)
     os.makedirs(upload_dir, exist_ok=True)
@@ -1150,35 +1154,42 @@ async def analyze_document_v1(
         _enforce_max_upload_size(content, file.filename or "")
         f.write(content)
 
-    options = {
-        "enable_layout": enable_layout,
-        "enable_table": enable_table,
-        "enable_figure_export": enable_figure_export,
-        "enable_formula": enable_formula,
-        "enable_seal": enable_seal,
-        "enable_kie": enable_kie,
-        "document_type": document_type,
-        "language": language,
-        "ocr_engine": ocr_engine,
-        "layout_engine": layout_engine,
-        "table_engine": table_engine,
-        "table_allow_fullpage_fallback": effective_table_allow_fullpage_fallback,
-        "formula_disable_layout": formula_disable_layout,
-        "formula_disable_preprocess": formula_disable_preprocess,
-        "formula_two_stage_threshold_retry": formula_two_stage_threshold_retry,
-        "formula_primary_layout_threshold": formula_primary_layout_threshold,
-        "formula_fallback_layout_threshold": formula_fallback_layout_threshold,
-        "formula_layout_threshold": formula_layout_threshold,
-        "pipeline_formula_batch_size": pipeline_formula_batch_size,
-        "use_doc_unwarping": settings.USE_DOC_UNWARPING,
-        "debug_mode": settings.DEBUG_MODE,
-        "return_raw": return_raw,
-        "kie_query_fields": kie_query_fields if (kie_query_fields and str(kie_query_fields).strip()) else [],
-        "kie_pages": (kie_pages or "").strip() or "1",
-    }
-    if table_template and str(table_template).strip():
-        options["table_template"] = str(table_template).strip().lower()
-    options["enable_hitl"] = bool(enable_hitl)
+    from app.models.analyze_options import AnalyzeOptions, options_to_pipeline_dict
+
+    analyze_options = AnalyzeOptions(
+        enable_layout=enable_layout,
+        enable_table=enable_table,
+        enable_formula=enable_formula,
+        enable_seal=enable_seal,
+        enable_figure_export=enable_figure_export,
+        enable_kie=enable_kie,
+        document_type=document_type,
+        language=language,
+        ocr_engine=ocr_engine,
+        layout_engine=layout_engine,
+        table_engine=table_engine,
+        table_allow_fullpage_fallback=table_allow_fullpage_fallback,
+        formula_disable_layout=formula_disable_layout,
+        formula_disable_preprocess=formula_disable_preprocess,
+        formula_two_stage_threshold_retry=formula_two_stage_threshold_retry,
+        formula_primary_layout_threshold=formula_primary_layout_threshold,
+        formula_fallback_layout_threshold=formula_fallback_layout_threshold,
+        formula_layout_threshold=formula_layout_threshold,
+        pipeline_formula_batch_size=pipeline_formula_batch_size,
+        return_raw=return_raw,
+        kie_query_fields=kie_query_fields,
+        kie_pages=kie_pages,
+        table_template=table_template,
+        enable_hitl=enable_hitl,
+        table_text_backfill=table_text_backfill,
+    )
+    options = options_to_pipeline_dict(
+        analyze_options,
+        table_allow_fullpage_fallback_default=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
+        table_text_backfill_kill_switch=settings.TABLE_TEXT_BACKFILL,
+    )
+    options["use_doc_unwarping"] = settings.USE_DOC_UNWARPING
+    options["debug_mode"] = settings.DEBUG_MODE
 
     _resolve_kie_query_fields_in_options(options)
 
@@ -1934,6 +1945,10 @@ async def cancel_task(task_id: str):
     task["status"] = "cancelled"
     task["message"] = "Task cancelled by user"
 
+    from app.services.persistence.analyze_job_store import persist_task_safe
+
+    await persist_task_safe(task)
+
     logger.info(f"Task cancelled: {task_id}")
     return {"message": "Task cancelled", "task_id": task_id}
 
@@ -1955,6 +1970,9 @@ async def patch_task_kie_fields(task_id: str, body: KieFieldsPatchModel):
         validation = _apply_kie_fields_to_task(task, body.fields)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    from app.services.persistence.analyze_job_store import persist_task_safe
+
+    await persist_task_safe(task)
     return {
         "task_id": task_id,
         "fields": body.fields,
@@ -1983,8 +2001,10 @@ async def delete_task(task_id: str):
         except Exception as e:
             logger.warning(f"Failed to delete upload directory: {e}")
 
-    # Remove from storage
-    del tasks[task_id]
+    from app.services.persistence.analyze_job_store import delete_task_safe
+
+    delete_task_safe(task_id)
+    tasks.pop(task_id, None)
     task_cancellation_flags.pop(task_id, None)
 
     return {"message": "Task deleted", "task_id": task_id}
@@ -2290,7 +2310,9 @@ async def list_kie_templates():
 
 
 @app.get("/api/v1/kie/templates/{template_id}")
-async def get_kie_template(template_id: str):
+async def get_kie_template(
+    template_id: str = APIPath(..., pattern=r"^[A-Za-z0-9_-]+$"),
+):
     from app.services.kie.schema_templates import load_template
 
     schema = load_template(template_id)
@@ -2300,7 +2322,10 @@ async def get_kie_template(template_id: str):
 
 
 @app.post("/api/v1/kie/templates/{template_id}")
-async def save_kie_template(template_id: str, body: Dict[str, Any]):
+async def save_kie_template(
+    template_id: str = APIPath(..., pattern=r"^[A-Za-z0-9_-]+$"),
+    body: Dict[str, Any] = Body(...),
+):
     from app.services.kie.schema_templates import save_template
 
     try:
@@ -2606,6 +2631,9 @@ async def startup_event():
         hitl_queue.attach_store(_queue_store)
         hitl_queue.load_from_db()
         batch_service.load_from_db()
+        analyze_job_store.attach_store(_queue_store)
+        analyze_job_store.bind(tasks)
+        analyze_job_store.load_from_db()
     except Exception as exc:
         logger.warning("Queue persistence load failed (non-fatal): {}", exc)
     logger.info("=" * 60)

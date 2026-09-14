@@ -290,6 +290,46 @@ async def table_step(ctx: PipelineContext) -> None:
         ctx["result"]["mapped_table_rows"] = mapped_rows
         ctx["result"]["table_template"] = table_template
 
+    # v1.8 E2: selective cell backfill (table_step tail, CPU-only).
+    # Enhancement, never replacement — failures keep vision results.
+    try:
+        from app.services.table_backfill import backfill_tables
+
+        backfill_enabled = str(options.get("table_text_backfill", "auto")) == "auto"
+        # v1.8.1 §6/D10: reuse the envelope's single source of truth so the
+        # funnel and the view layer agree on the coordinate space.
+        from app.orchestration.envelope_builder import EnvelopeBuilder
+
+        prep_meta = EnvelopeBuilder(settings).build_preprocessing_metadata(
+            layout_result=ctx["result"].get("layout") or {},
+            use_doc_unwarping=settings.USE_DOC_UNWARPING,
+        )
+        ctx["result"]["table_backfill"] = backfill_tables(
+            ctx["result"]["tables"],
+            ctx["file_path"],
+            enabled=backfill_enabled,
+            debug_dir=settings.DEBUG_OUTPUT_DIR if settings.DEBUG_MODE else None,
+            angle_deg=float(prep_meta.get("angle_deg", 0.0) or 0.0),
+            use_doc_unwarping=bool(prep_meta.get("use_doc_unwarping", False)),
+        )
+    except Exception as exc:  # noqa: BLE001 — backfill must not fail the task
+        logger.warning(f"Table backfill failed (non-fatal): {exc}")
+        ctx["result"]["table_backfill"] = {
+            "enabled": False,
+            "pages_judged": 0,
+            "pages_text_layer_trusted": 0,
+            "pages_skipped_preprocessed": 0,
+            "cells_candidates": 0,
+            "cells_confirmed": 0,
+            "cells_backfilled": 0,
+            "cells_mismatch": 0,
+            "backfill_rate": 0.0,
+            "mismatch_rate": 0.0,
+            "mismatch_details": [],
+            "mismatch_details_truncated": 0,
+            "page_verdicts": [],
+        }
+
     await orchestrator.update_progress(ctx, 65, f"Table extraction completed | Tables: {len(ctx['result']['tables'])}")
 
 
@@ -797,7 +837,17 @@ async def finalize_step(ctx: PipelineContext) -> None:
         quality = envelope.get("quality")
         if isinstance(quality, dict) and quality:
             result["quality"] = quality
+        # v1.8.1 §6/D9: expose preprocessing metadata (coordinate_space /
+        # angle_deg / use_doc_unwarping) so downstream consumers of the task
+        # result (proof pack renderer) can tell which space bboxes live in.
+        preprocessing = envelope.get("preprocessing")
+        if isinstance(preprocessing, dict) and preprocessing:
+            result["preprocessing"] = preprocessing
     task["result"] = result
+
+    from app.services.persistence.analyze_job_store import persist_task_safe
+
+    await persist_task_safe(task)
 
     await orchestrator.send_event(ctx["task_id"], "completed", "Processing completed", 100)
 
@@ -936,6 +986,7 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
             fused_layer=fused,
             processing_time_ms=processing_time_ms,
             engines_used=["doc_preprocessor", "pp_structure_v3"],
+            table_backfill=ctx["result"].get("table_backfill"),
         )
         if formula_adapted is not None:
             quality.update(formula_adapted.get("quality_patch", {}))
@@ -1137,6 +1188,9 @@ class DocumentPipelineOrchestrator:
         task["status"] = "processing"
         task["message"] = "Processing document..."
         await self.send_event(task_id, "status", "Processing document...", 0)
+        from app.services.persistence.analyze_job_store import persist_task_safe
+
+        await persist_task_safe(task)
 
         detected_type, _detect_pages = detect_file_type(task["file_path"])
         result: Dict[str, Any] = {
@@ -1176,6 +1230,11 @@ class DocumentPipelineOrchestrator:
             for step in steps:
                 await step(ctx)
         except asyncio.CancelledError:
+            task["status"] = "cancelled"
+            task["message"] = "Task cancelled"
+            from app.services.persistence.analyze_job_store import persist_task_safe
+
+            await persist_task_safe(task)
             await self.send_event(task_id, "cancelled", "Task cancelled")
             return
         except Exception as exc:
@@ -1183,4 +1242,7 @@ class DocumentPipelineOrchestrator:
             logger.exception(exc)
             task["status"] = "failed"
             task["message"] = f"Processing failed: {exc}"
+            from app.services.persistence.analyze_job_store import persist_task_safe
+
+            await persist_task_safe(task)
             return

@@ -2434,8 +2434,10 @@ function renderQualityPanelPro(result) {
     const quality = result.quality || {};
     const kieAttempted = quality.kie_attempted === true
         || (quality.kie_stage && !['skipped', 'disabled', ''].includes(String(quality.kie_stage)));
+    const backfill = quality.table_backfill;
+    const hasBackfill = backfill && backfill.enabled === true && backfill.cells_candidates > 0;
 
-    if (!kieAttempted) {
+    if (!kieAttempted && !hasBackfill) {
         panel.classList.add('hidden');
         panel.innerHTML = '';
         return;
@@ -2458,6 +2460,12 @@ function renderQualityPanelPro(result) {
     const tableCount = (result.view?.tables || []).length;
     if (tableCount > 0) {
         summaryParts.push(`Tables: ${tableCount}`);
+    }
+    if (hasBackfill) {
+        const backfillPct = backfill.backfill_rate != null
+            ? `${Math.round(backfill.backfill_rate * 100)}%`
+            : '—';
+        summaryParts.push(`Backfill: ${backfill.cells_backfilled}/${backfill.cells_candidates} (${backfillPct})`);
     }
 
     const warnHtml = warnings.map(w =>

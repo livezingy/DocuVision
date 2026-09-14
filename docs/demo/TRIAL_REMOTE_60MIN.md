@@ -37,7 +37,7 @@ key set, disk OK. Fix any FAIL before the call.
 | 0–5 | Privacy promise: data stays on this server, wiped at the end (show `trial_reset.py --dry-run`) | rules/004 §运维 |
 | 5–15 | Client uploads 3–5 representative PDFs; run profile pre-scan; show routing (digital vs scan) | /api/v1/document/profile |
 | 15–40 | Live analysis: layout → tables (merged cells, HTML) → **figure crops + integrity warnings** → KIE fields; export JSON/Excel | figures endpoints |
-| 40–55 | **Ground-truth diff**: client hand-fills 5–10 expected values; generate HTML accuracy report; symbol benchmark result walkthrough | gt-diff + symbol_bench |
+| 40–55 | **Ground-truth diff**: client hand-fills 5–10 expected values; generate HTML accuracy report; symbol benchmark result walkthrough; hand over `proof_pack.zip` (P1-6) as the takeaway evidence | gt-diff + symbol_bench + proof_pack |
 | 55–60 | Verbal recommendations; wipe demo (run `trial_reset.py --yes`, restart server, show empty dirs) | trial_reset |
 
 ## 3. Acceptance criteria (Cloud Studio manual tests)
@@ -86,6 +86,33 @@ key set, disk OK. Fix any FAIL before the call.
    record actual numbers for the client write-up
 4. `--render-only` works on CPU (grid PNG + manifest.json)
 
+### P1-6 Proof pack (v1.8.1)
+The takeaway deliverable: annotated PDF (green=verified / amber=corrected / red=review,
+color + line-style double encoding) + one-page HTML report + machine-readable JSON.
+Pure post-processing — the analysis pipeline is not touched.
+
+1. Run a full analysis on `test_data/testfiles/trial/bank_statement.pdf` with backfill on
+   (default `table_text_backfill=auto` — do **not** send `=true`, the API only accepts
+   `off|auto`)
+2. Export the task result (this is the JSON the CLI consumes — the envelope endpoint
+   `/jobs/{id}/result` has no `tables`):
+   `curl -s http://127.0.0.1:8000/api/v1/tasks/<task_id>/result > ../outputs/<task_id>_result.json`
+3. Build the pack (from repo root):
+   `python scripts/trial/proof_pack.py --result outputs/<task_id>_result.json --pdf test_data/testfiles/trial/bank_statement.pdf --out outputs/<task_id>/proof --title "Bank statement" --client "<client>"`
+   → exit 0, prints `[OK] proof pack -> .../proof_pack.zip` with cell/page counters
+4. `outputs/<task_id>/proof/proof_pack.zip` contains exactly `annotated.pdf`, `report.html`,
+   `report.json` (plus `tables/` + `figures/` when `--pack` merges an artifact zip)
+5. Open `report.html`: four metric cards (verified/corrected/review/text-layer pages),
+   per-table summary, review list with OCR vs text-layer values, corrected-value demo
+   (amber: OCR → text layer), privacy footer
+6. Open `annotated.pdf`: color boxes visually align with the printed cells (≤1 line
+   width); dashed red boxes = the review-list cells; footer legend on every page;
+   original PDF is never modified
+7. Cross-check 3 cells: report numbers match `report.json` and the result JSON's
+   `quality.table_backfill` counters
+8. `--pack outputs/<task_id>/<task_id>_pack.zip` variant: zip gains `tables/` + `figures/`
+   verbatim; `--lang zh` renders the Chinese literal set
+
 ## 4. Rollback / cleanup
 
 - Between prospects: `python ../scripts/trial/trial_reset.py --yes` (from backend/) + restart server
@@ -95,6 +122,9 @@ key set, disk OK. Fix any FAIL before the call.
 ## 5. Known limits to state honestly in the trial
 
 - Split-figure warnings are geometric heuristics (adjacency/nesting), not semantic "same figure" proofs.
+- Proof pack annotation is intentionally skipped for deskewed/unwarped documents (the
+  provenance gate keeps such pages unlabeled rather than risk misaligned evidence); the
+  report states this instead of drawing boxes.
 - GT diff aligns cells by (row, col); merged cells or column drift need manual mapping.
 - Symbol benchmark numbers are environment-specific (font, model build) — always report the env.
 - KIE routes by document_type; technical drawings get layout/tables, not KIE fields.

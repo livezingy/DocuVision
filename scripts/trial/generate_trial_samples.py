@@ -261,6 +261,46 @@ def build_architecture_diagram(fontfile):
     return doc
 
 
+def build_bank_statement(fontfile):
+    """Deterministic bank statement with thousand-separated amount cells (v1.8 §8.2)."""
+    doc = fitz.open()
+    page = doc.new_page(width=A4[0], height=A4[1])
+    fname = _register_font(page, fontfile)
+
+    _textbox(page, fname, fitz.Rect(40, 30, 555, 46), "Bank Statement — Trial Sample", size=12, color=ACCENT)
+
+    rows = [
+        ["Date", "Description", "Amount (USD)"],
+        ["2024-01-05", "Opening balance", "1,250.00"],
+        ["2024-01-12", "Invoice payment", "3,480.25"],
+        ["2024-01-20", "Wire transfer", "12,900.00"],
+        ["2024-02-01", "Service fee", "45.50"],
+        ["2024-02-10", "Refund", "-250.00"],
+        ["2024-02-18", "Closing balance", "17,425.75"],
+    ]
+    _grid_table(page, fname, top=80, left=40, col_widths=[120, 210, 170], row_h=24, rows=rows)
+    return doc
+
+
+def build_symbol_grid(fontfile):
+    """Deterministic symbol-survival grid (v1.8 §8.2; mirrors symbol_benchmark SYMBOLS)."""
+    doc = fitz.open()
+    page = doc.new_page(width=A4[0], height=A4[1])
+    fname = _register_font(page, fontfile)
+
+    _textbox(page, fname, fitz.Rect(40, 30, 555, 46), "Symbol Survival Grid — Trial Sample", size=12, color=ACCENT)
+
+    rows = [
+        ["Symbol", "Name", "Unicode", "Risk"],
+        [SYMBOLS[0], SYMBOL_NAMES[SYMBOLS[0]], "U+2713", "low risk"],
+        [SYMBOLS[1], SYMBOL_NAMES[SYMBOLS[1]], "U+2297", "at risk"],
+        [SYMBOLS[2], SYMBOL_NAMES[SYMBOLS[2]], "U+25CF", "low risk"],
+        [SYMBOLS[3], SYMBOL_NAMES[SYMBOLS[3]], "U+25CB", "at risk"],
+    ]
+    _grid_table(page, fname, top=80, left=40, col_widths=[80, 180, 100, 140], row_h=28, rows=rows)
+    return doc
+
+
 README = """# Trial sample pack (GLM trial P0-3)
 
 Deterministic, vector-drawn PDFs for the 1-hour remote diagnostic demo.
@@ -270,6 +310,8 @@ Deterministic, vector-drawn PDFs for the 1-hour remote diagnostic demo.
 | `multi_column_techdoc.pdf` | two-column reading order, header rule, footnote, bordered table with a merged cell, special glyphs (✓ ⊗ ● ○) |
 | `flowchart_page.pdf` | figure-region detection + complete crop (boxes/arrows must not split) |
 | `architecture_diagram.pdf` | nested figure regions + caption |
+| `bank_statement.pdf` | thousand-separated amounts + dates — selective cell backfill golden sample (v1.8 §8.2) |
+| `symbol_grid.pdf` | symbol survival grid (✓ U+2713 / ⊗ U+2297 / ● U+25CF / ○ U+25CB) — backfill golden sample (v1.8 §8.2) |
 
 Regenerate with:
 ```bash
@@ -296,6 +338,8 @@ def main():
         "multi_column_techdoc.pdf": build_multi_column_techdoc,
         "flowchart_page.pdf": build_flowchart_page,
         "architecture_diagram.pdf": build_architecture_diagram,
+        "bank_statement.pdf": build_bank_statement,
+        "symbol_grid.pdf": build_symbol_grid,
     }
     for name, builder in builders.items():
         doc = builder(fontfile)

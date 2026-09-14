@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 _CID_TOKEN = re.compile(r"\(cid:(\d+)\)")
@@ -55,3 +56,36 @@ def normalize_pdf_text_preserve_paragraphs(value: Any) -> str:
         if lines:
             paragraphs.append("\n".join(lines))
     return "\n\n".join(paragraphs)
+
+
+# Fullwidth / compatibility punctuation folds that NFKC does not collapse to
+# the ASCII variants we compare against (pinned by test_normalize_for_compare).
+_PUNCT_FOLD = {
+    "，": ",",
+    "．": ".",
+    "。": ".",
+    "：": ":",
+    "；": ";",
+    "（": "(",
+    "）": ")",
+    "－": "-",
+    "／": "/",
+    "％": "%",
+}
+
+
+def normalize_for_compare(s: str) -> str:
+    """Normalize text for character-level comparison (v1.8 §4.3).
+
+    1) NFKC normalization (fullwidth -> halfwidth, compatibility folding)
+    2) strip all whitespace
+    3) fold common fullwidth variants (`,`, `.`, `:`, `;`, parens, etc.)
+
+    Used by selective cell backfill to compare OCR text against the text layer.
+    """
+    if s is None:
+        return ""
+    text = unicodedata.normalize("NFKC", str(s))
+    for full, half in _PUNCT_FOLD.items():
+        text = text.replace(full, half)
+    return "".join(text.split())

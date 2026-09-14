@@ -7,6 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.8.1] — 2026-09-14
+
+Tag: **v1.8.1.0**. Branch: `feature/v1.8.1` (base f2ad595 = v1.8.0 content).
+Release gates: PROOF-001/002/003 all green (2026-09-13/14, Cloud Studio GPU) —
+BACKFILL-001 numbers identical to v1.8.0 baseline; pure-scan zero-hallucination
+form verified; OpenAPI snapshot + pipeline regression green.
+
+### Added
+- Proof Pack (customer-facing trust evidence, pure post-processing — pipeline untouched):
+  `proof_render.py` burns three-state provenance boxes into the original PDF's content
+  stream (green=verified / amber=corrected / red=review; color + line-style double
+  encoding for color-blind readers; cell bboxes re-derived from the raster-px table bbox
+  via uniform grid, parity-pinned against `table_backfill.derive_cell_bbox`);
+  `proof_report.py` one-page self-contained HTML report (en/zh literal tables, inline CSS,
+  zero JS) + full machine-readable JSON; `proof_pack.py` packager + thin
+  `scripts/trial/proof_pack.py` CLI (exit 0 / 2 contract-missing / 3 render-failure).
+- `text_mismatch` provenance value: funnel-stage-4 failures are labeled instead of
+  staying `vision`, so a review list ("cells we recommend you check") is finally
+  possible; `quality.table_backfill.mismatch_details` (cap 50 + `mismatch_details_truncated`).
+- Task result (GET `/api/v1/tasks/{id}/result`) now carries `preprocessing` metadata
+  (coordinate_space / angle_deg / use_doc_unwarping) merged from the envelope.
+
+### Changed
+- `backfill_tables` gains an optional `angle_deg`/`use_doc_unwarping` gate: pages whose
+  table bboxes live in preprocessed raster space are skipped and counted in
+  `pages_skipped_preprocessed` instead of being aligned against the original PDF text
+  layer (which fabricated mismatches). Defaults keep v1.8 behavior — upright fixtures
+  (BACKFILL-001) produce identical numbers.
+- `APP_VERSION` default **1.8.1**.
+- TRIAL runbook: new P1-6 proof pack manual checks, including the real result-export
+  command (`/tasks/{id}/result` — the envelope endpoint has no `tables`) and the honest
+  deskew-skip limitation note.
+
+## [1.8.0] — 2026-09-10
+
+Tag: **v1.8.0** (f2ad595). Branch: `feature/v1.8`.
+
+### Added
+- Page-level text-layer trust gatekeeper (`page_text_trust.py`): invisible-rendered character ratio (Tr3) + full-page image coverage, per-page verdict `text_layer`/`overlay`/`mixed`/`no_text`.
+- Selective cell backfill (`table_backfill.py`, four-layer funnel): amount/code/date/symbol cells are char-verified or backfilled from the text layer; `cell_provenance` / `cell_ocr_text` parallel grids + `quality.table_backfill` summary. Kill switch `TABLE_TEXT_BACKFILL=off`.
+- Unified `AnalyzeOptions` (`models/analyze_options.py`) for both analyze routes; `table_text_backfill: off|auto` request switch.
+- OpenAPI contract snapshot test (cloud-only), page-type calibration CLI (`page_type_probe.py`).
+- `normalize_for_compare` in `docuvision_core.utils.pdf_text_utils` (NFKC + whitespace strip + punctuation fold).
+
+### Changed
+- `file_type_detector` from "first 3 pages accumulate 30 chars" to per-page gatekeeper judgement (mixed PDFs handled naturally).
+- `APP_VERSION` default **1.8.0**.
+
+### Removed
+- `apps/lite/` (Lite app retired), `supabase/` (trial PoC with `to anon` RLS hole), `.github/workflows/ci-lite.yml`.
+- core retirement: `processing/` adaptive family / evaluator / stitch / processor / result_mapper, `extractors/`, `engines/`, `models/`, `export/`, `demo/`, and utils config family. `pyproject.toml` drops camelot-py/pdfplumber/pandas/Pillow/numpy/scipy.
+- `backend/app/services/core_table_extractor.py` (zero callers).
+
+### Fixed
+- `GET/POST /kie/templates/{template_id}` template id whitelist (`[A-Za-z0-9_-]+` path validation).
+- `.gitignore`: ignore `backend/debug/` and `frontend/test-results/`.
+- `QualityLayer` 缺失 `table_backfill` 字段：`GET /api/v1/jobs/{id}/result` 的 `quality.table_backfill` 被 Pydantic (`extra=ignore`) 静默丢弃，BACKFILL-001 验收误判为未启用；补字段后可正常回传。
+
+## [Unreleased] — v1.7.0 train (tag pending)
+
+Target tag: **v1.7.0**. Branch: `feature/v1.7`.
+See [v1.7-roadmap.md](docs/architecture/v1.7-roadmap.md).
+
+### Added
+- Pro single-task result persistence: `analyze_jobs` on the existing `QueueStore` SQLite plus `OUTPUT_DIR/{task_id}/result.json`. Startup hydrates the in-memory `tasks` dict. In-flight jobs become `interrupted` (no auto GPU resume). FIFO `TASK_KEEP_LAST_N` (default 50) deletes the DB row and output directory together. Builder: `analyze_job_store.py`. Tests: `backend/tests/test_task_persistence.py`. Cloud gate **TASK-PERSIST-001**.
+
+### Changed
+- `APP_VERSION` default **1.7.0** (`/health` `api_version`). Tag `v1.7.0` is **not** cut in this commit.
+
 ## [1.6.0] — 2026-09-06
 
 See [RELEASE_1.6_NOTES.md](docs/release/RELEASE_1.6_NOTES.md) and [v1.6-roadmap.md](docs/architecture/v1.6-roadmap.md).

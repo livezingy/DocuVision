@@ -1,7 +1,7 @@
 # DocuVision Documentation
 
 > **Status**: living index — update when adding or renaming docs.  
-> 最近对照：v1.6.0 / tag v1.6.0（2026-09-06）
+> 最近对照：v1.7.0 train open / tag pending（2026-09-06）；last shipped tag v1.6.0
 
 ## Onboarding
 
@@ -23,9 +23,10 @@ Read in this order when onboarding to the codebase:
 6. [architecture/batch-ui-roadmap.md](architecture/batch-ui-roadmap.md) — Batch UI roadmap
 7. [architecture/v1.5-roadmap.md](architecture/v1.5-roadmap.md) — v1.5 leftovers (searchable PDF, AcroForm, mail)
 8. [architecture/v1.6-roadmap.md](architecture/v1.6-roadmap.md) — v1.6.0 shipped (figure baseline + artifact pack; ZIP contract in system-design §9.1)
-9. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
-10. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
-11. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
+9. [architecture/v1.7-roadmap.md](architecture/v1.7-roadmap.md) — v1.7.0 train (Pro single-task result persistence; tag pending)
+10. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
+11. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
+12. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
 
 ## Validation and QA
 
@@ -61,6 +62,17 @@ Read in this order when onboarding to the codebase:
 | **frozen** | Snapshot at release (`docs/release/RELEASE_*`, `test_data/acceptance/MERGE_MAIN_v*`) |
 | **append-only** | Add entries only (`KIE_TEST_RUN_TRACKER.md`) |
 | **local only** | Never commit (`test_data/TestResult/`, `*Upwork*`, `docs/R&D/*` except `R&D/README.md`) |
+
+## Agent-ops (multi-agent rules)
+
+| Doc | Purpose |
+|-----|---------|
+| [agent-ops/core/constraints.md](agent-ops/core/constraints.md) | Shared constraints (single source of truth) |
+| [agent-ops/core/environment.md](agent-ops/core/environment.md) | Environment facts |
+| [agent-ops/core/testing.md](agent-ops/core/testing.md) | Testing & validation rules |
+| [agent-ops/core/doc-sync.md](agent-ops/core/doc-sync.md) | Doc sync mechanisms |
+| [agent-ops/core/agents.md](agent-ops/core/agents.md) | Agent roster (role/mapping) |
+| [../AGENTS.md](../AGENTS.md) | Multi-agent rules entrypoint |
 
 ## R&D (local notes)
 

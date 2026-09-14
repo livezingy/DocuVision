@@ -87,7 +87,6 @@ from app.services.batch_export_service import (
     render_csv,
 )
 from app.services.single_file_pipeline import run_single_file_pipeline
-from app.services.kie.kie_pages import validate_kie_pages_for_non_pdf
 from app.core.config import settings
 from app.core.debug_utils import save_debug_overlay_image
 
@@ -130,8 +129,6 @@ from app.models.api_models import (  # noqa: E402
     FusedLayer,
     FusedPage,
     HitlResolveModel,
-    JobEnvelope,
-    JobStatus,
     KieFieldsPatchModel,
     PreprocessingMetadata,
     ProcessingOptions,
@@ -264,281 +261,8 @@ logger.info(
 # Phase 1 API Routes - Job-Based Endpoints
 # ============================================
 
-@app.post("/api/v1/documents:analyze", response_model=JobStatus)
-async def analyze_document_v1(
-    file: UploadFile = File(...),
-    enable_layout: bool = Form(True),
-    enable_table: bool = Form(True),
-    enable_formula: bool = Form(False),
-    enable_seal: bool = Form(False),
-    enable_figure_export: bool = Form(True),
-    enable_kie: bool = Form(False),
-    document_type: str = Form("auto"),
-    language: str = Form("en"),
-    ocr_engine: Optional[str] = Form(None),
-    layout_engine: Optional[str] = Form(None),
-    table_engine: Optional[str] = Form(None),
-    table_allow_fullpage_fallback: Optional[bool] = Form(None),
-    formula_disable_layout: bool = Form(False),
-    formula_disable_preprocess: bool = Form(False),
-    formula_two_stage_threshold_retry: bool = Form(True),
-    formula_primary_layout_threshold: float = Form(0.5),
-    formula_fallback_layout_threshold: float = Form(0.2),
-    formula_layout_threshold: Optional[float] = Form(None),
-    pipeline_formula_batch_size: int = Form(1),
-    return_raw: bool = Form(False),
-    kie_query_fields: Optional[str] = Form(None),
-    kie_pages: Optional[str] = Form(None),
-    table_template: Optional[str] = Form(None),
-    enable_hitl: bool = Form(True),
-    table_text_backfill: str = Form("auto"),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
-):
-    """
-    Phase 1 API: Submit a document for analysis.
-    Returns job_id and status. Use /api/v1/jobs/{job_id} to poll status,
-    and /api/v1/jobs/{job_id}/result to fetch the Envelope result.
-
-    Request: multipart/form-data with 'file' field
-    Response: JobStatus with job_id
-
-    Form parameters mirror POST /api/v1/analyze (legacy) so the Phase 1
-    Job-based endpoint is feature-complete (layout/table/formula/seal/KIE
-    toggles, engine overrides, formula thresholds, table_template, HITL).
-    """
-    # Validate file
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif']:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
-
-    is_pdf = ext == ".pdf"
-    pages_err = validate_kie_pages_for_non_pdf(kie_pages, is_pdf, enable_kie=enable_kie)
-    if pages_err:
-        raise HTTPException(status_code=400, detail=pages_err)
-
-    job_id = str(uuid.uuid4())
-    upload_dir = os.path.join(settings.UPLOAD_DIR, job_id)
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, file.filename)
-
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        _enforce_max_upload_size(content, file.filename or "")
-        f.write(content)
-
-    from app.models.analyze_options import AnalyzeOptions, options_to_pipeline_dict
-
-    analyze_options = AnalyzeOptions(
-        enable_layout=enable_layout,
-        enable_table=enable_table,
-        enable_formula=enable_formula,
-        enable_seal=enable_seal,
-        enable_figure_export=enable_figure_export,
-        enable_kie=enable_kie,
-        document_type=document_type,
-        language=language,
-        ocr_engine=ocr_engine,
-        layout_engine=layout_engine,
-        table_engine=table_engine,
-        table_allow_fullpage_fallback=table_allow_fullpage_fallback,
-        formula_disable_layout=formula_disable_layout,
-        formula_disable_preprocess=formula_disable_preprocess,
-        formula_two_stage_threshold_retry=formula_two_stage_threshold_retry,
-        formula_primary_layout_threshold=formula_primary_layout_threshold,
-        formula_fallback_layout_threshold=formula_fallback_layout_threshold,
-        formula_layout_threshold=formula_layout_threshold,
-        pipeline_formula_batch_size=pipeline_formula_batch_size,
-        return_raw=return_raw,
-        kie_query_fields=kie_query_fields,
-        kie_pages=kie_pages,
-        table_template=table_template,
-        enable_hitl=enable_hitl,
-        table_text_backfill=table_text_backfill,
-    )
-    options = options_to_pipeline_dict(
-        analyze_options,
-        table_allow_fullpage_fallback_default=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
-        table_text_backfill_kill_switch=settings.TABLE_TEXT_BACKFILL,
-    )
-    options["use_doc_unwarping"] = settings.USE_DOC_UNWARPING
-    options["debug_mode"] = settings.DEBUG_MODE
-
-    _resolve_kie_query_fields_in_options(options)
-
-    # Backward-compatible fallback: if user selected a document_type that
-    # typically requires KIE (invoice/receipt/id_card) but did not enable KIE,
-    # enable it automatically (mirrors legacy /api/v1/analyze behavior).
-    try:
-        doc_type_norm = str(document_type or "").strip().lower()
-        if doc_type_norm in {"invoice", "receipt", "id_card"} and not options.get("enable_kie", False):
-            options["enable_kie"] = True
-            logger.info(f"Phase1 analyze: auto-enabled KIE for document_type={doc_type_norm}")
-    except Exception:
-        pass
-
-    try:
-        logger.info("Phase1 analyze options: %s", options)
-    except Exception:
-        logger.debug("Failed to log phase1 analyze options")
-
-    task = {
-        "task_id": job_id,
-        "status": "pending",
-        "progress": 0,
-        "message": "Job created",
-        "created_at": datetime.now(),
-        "completed_at": None,
-        "file_path": file_path,
-        "file_name": file.filename,
-        "options": options,
-        "result": None,
-        "envelope": None,  # Will be populated by phase1_envelope_step
-    }
-    tasks[job_id] = task
-
-    background_tasks.add_task(process_document, job_id)
-
-    return JobStatus(
-        job_id=job_id,
-        status="running",
-        progress=0,
-        message="Job created",
-        created_at=datetime.now(),
-    )
-
-
-@app.get("/api/v1/jobs/{job_id}", response_model=JobStatus)
-async def get_job_status(job_id: str):
-    """
-    Phase 1 API: Get current job status and progress.
-    """
-    task = tasks.get(job_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    return JobStatus(
-        job_id=job_id,
-        status=task.get("status"),
-        progress=task.get("progress", 0),
-        message=task.get("message", ""),
-        created_at=task.get("created_at"),
-        completed_at=task.get("completed_at"),
-    )
-
-
-@app.get("/api/v1/jobs/{job_id}/result", response_model=JobEnvelope, response_model_exclude_none=True)
-async def get_job_result(job_id: str):
-    """
-    Phase 1 API: Get the completed Envelope result.
-    Returns 404 if job not found or not completed.
-    Returns JobEnvelope with preprocessing, raw, fused, view, quality layers.
-    """
-    task = tasks.get(job_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    if task.get("status") not in ("succeeded", "completed"):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Job not completed. Current status: {task.get('status')}"
-        )
-
-    envelope_dict = task.get("envelope")
-    if not envelope_dict:
-        raise HTTPException(
-            status_code=500,
-            detail="Job result envelope not found"
-        )
-
-    if not bool(task.get("options", {}).get("return_raw", False)):
-        envelope_dict = dict(envelope_dict)
-        envelope_dict["raw"] = {}
-
-    # Convert dict to JobEnvelope model
-    return JobEnvelope(**envelope_dict)
-
-
-@app.get("/api/v1/jobs/{job_id}/debug")
-async def get_job_debug(job_id: str):
-    """
-    Phase 1 API: Get debug artifacts (preprocessing, raw, fused, quality JSON + images).
-
-    Returns 404 if:
-    - Job not found
-    - DEBUG_MODE is disabled
-    - Job not completed
-
-    Returns a manifest with debug artifact paths and metadata.
-    """
-    if not settings.DEBUG_MODE:
-        raise HTTPException(
-            status_code=404,
-            detail="Debug mode is disabled"
-        )
-
-    task = tasks.get(job_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    if task.get("status") != "succeeded":
-        raise HTTPException(
-            status_code=409,
-            detail=f"Job not completed. Current status: {task.get('status')}"
-        )
-
-    debug_dir = os.path.join(settings.DEBUG_OUTPUT_DIR, job_id)
-    if not os.path.exists(debug_dir):
-        raise HTTPException(
-            status_code=404,
-            detail="Debug artifacts not found"
-        )
-
-    # List debug files
-    debug_files = []
-    for filename in os.listdir(debug_dir):
-        filepath = os.path.join(debug_dir, filename)
-        if os.path.isfile(filepath):
-            debug_files.append({
-                "filename": filename,
-                "path": f"/api/v1/jobs/{job_id}/debug/{filename}",
-                "size": os.path.getsize(filepath),
-            })
-
-    return {
-        "job_id": job_id,
-        "debug_dir": debug_dir,
-        "artifacts": debug_files,
-    }
-
-
-@app.get("/api/v1/jobs/{job_id}/debug/{filename}")
-async def get_job_debug_file(job_id: str, filename: str):
-    """
-    Phase 1 API: Download a specific debug artifact file.
-    """
-    if not settings.DEBUG_MODE:
-        raise HTTPException(status_code=404, detail="Debug mode is disabled")
-
-    task = tasks.get(job_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    filepath = os.path.join(settings.DEBUG_OUTPUT_DIR, job_id, filename)
-
-    # Security: prevent directory traversal (use resolved path containment,
-    # not startswith, to reject sibling dirs like ./debug2/...)
-    base_dir = Path(settings.DEBUG_OUTPUT_DIR).resolve()
-    try:
-        resolved = Path(filepath).resolve()
-        if not resolved.is_relative_to(base_dir):
-            raise HTTPException(status_code=403, detail="Access denied")
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="File not found")
-
-    return FileResponse(filepath)
+# documents:analyze + jobs routes moved to app.routers.documents / app.routers.jobs
+# (v1.8.2 C1d/C1e).
 
 
 # ============================================
@@ -1454,24 +1178,7 @@ async def export_batch_json(batch_id: str):
 # Roadmap APIs (v1.3–v1.5 MVP)
 # ============================================
 
-@app.post("/api/v1/document/profile")
-async def document_profile_scan(file: UploadFile = File(...)):
-    """Pre-scan upload and suggest routing options (Pro Document Profile)."""
-    import tempfile
-
-    suffix = os.path.splitext(file.filename or "")[1] or ".bin"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
-    try:
-        from app.services.document_profile import build_document_profile
-
-        return build_document_profile(tmp_path)
-    finally:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
+# document/profile moved to app.routers.documents (v1.8.2 C1d).
 
 
 @app.get("/api/v1/kie/templates")
@@ -1756,11 +1463,15 @@ async def pdf_tools_form_fill(
 # Router registration (v1.8.2 split — include order pinned)
 # ============================================
 from app.routers.analyzer import router as analyzer_router  # noqa: E402
+from app.routers.documents import router as documents_router  # noqa: E402
+from app.routers.jobs import router as jobs_router  # noqa: E402
 from app.routers.system import router as system_router  # noqa: E402
 
 routers_to_include = [
     system_router,
     analyzer_router,
+    documents_router,
+    jobs_router,
 ]
 for _router in routers_to_include:
     app.include_router(_router)

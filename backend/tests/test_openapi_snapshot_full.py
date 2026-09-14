@@ -70,5 +70,7 @@ def test_openapi_full_snapshot_zero_diff() -> None:
     assert schema == expected, "OpenAPI schema drifted from baseline (regenerate only for deliberate changes)"
 
 
-def test_openapi_route_count_is_55() -> None:
-    assert _route_count(_normalized_schema()) == 55
+def test_openapi_route_count_matches_inventory() -> None:
+    # OpenAPI exposes REST paths only; the single WebSocket route
+    # (/api/v1/tasks/{task_id}/ws) is excluded -> 55 route decorators - 1 WS = 54.
+    assert _route_count(_normalized_schema()) == 54

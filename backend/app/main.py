@@ -340,65 +340,8 @@ def _enforce_max_upload_size(content: bytes, filename: str = "") -> None:
         )
 
 
-@app.get("/")
-async def root():
-    return {
-        "name": "DocuVision API",
-        "version": API_VERSION,
-        "status": "running",
-        "features": ["OCR/Layout/Table/Export", "Batch Processing"],
-        "docs": "/docs"
-    }
-
-
-# _build_health_payload moved to app.core.runtime (v1.8.2 split).
-
-
-@app.get("/health")
-async def health_check():
-    return _build_health_payload()
-
-
-@app.get("/api/v1/health")
-async def health_check_v1():
-    """Same payload as GET /health; use behind reverse proxies that only forward /api/v1/*."""
-    return _build_health_payload()
-
-
-@app.get("/api/v1/engines")
-async def list_engines():
-    return {
-        "ocr": {
-            "available": ocr_service.get_available_engines(),
-            "default": "paddleocr",
-            "engines": {
-                "paddleocr": {"name": "PaddleOCR", "is_primary": True},
-                "tesseract": {"name": "Tesseract OCR", "is_primary": False},
-                "easyocr": {"name": "EasyOCR", "is_primary": False}
-            }
-        },
-        "layout": {
-            "available": layout_service.get_available_engines(),
-            "default": "ppstructure",
-            "engines": {
-                "ppstructure": {"name": "PP-StructureV3", "is_primary": True}
-            }
-        },
-        "table": {
-            "available": table_service.get_available_engines(),
-            "default": "ppstructure",
-            "engines": {
-                "ppstructure": {"name": "PP-Structure-Table", "is_primary": True}
-            }
-        },
-        "seal": {
-            "available": ["seal_recognition"],
-            "default": "seal_recognition",
-            "engines": {
-                "seal_recognition": {"name": "PaddleX Seal Recognition", "is_primary": True}
-            }
-        }
-    }
+# System routes (/, /health, /api/v1/health, /api/v1/engines) moved to
+# app.routers.system (v1.8.2 C1b).
 
 
 @app.post("/api/v1/ocr")
@@ -2253,6 +2196,18 @@ async def pdf_tools_form_fill(
             os.unlink(in_path)
         except OSError:
             pass
+
+
+# ============================================
+# Router registration (v1.8.2 split — include order pinned)
+# ============================================
+from app.routers.system import router as system_router  # noqa: E402
+
+routers_to_include = [
+    system_router,
+]
+for _router in routers_to_include:
+    app.include_router(_router)
 
 
 # ============================================

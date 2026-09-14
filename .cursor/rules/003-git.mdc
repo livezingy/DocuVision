@@ -25,11 +25,10 @@ git 提交记录样例：[type]: [description]。一个具体的例子, docs: �
 - 教训来源：2026-07-31 多分支并行时 test fix 误落在 docs 分支（虽未推送、本地 reset 清理，但属可避免失误）。
 
 ## 分支管理
-- main/master: 主分支，保持稳定可发布状态
-- develop: 开发分支，包含最新开发特性
-- feature/*: 功能分支，用于开发新功能
-- bugfix/*: 修复分支，用于修复bug
-- release/*: 发布分支，用于准备发布
+- `main`：主分支，保持稳定可发布状态。
+- `feature/*`：功能/发布分支（每版一条，如 `feature/v1.8.2`）。
+- `fix/*` / `chore/*` / `docs/*`：修复 / 杂项 / 文档分支。
+- 本仓库不使用 `develop` 常驻分支；发布以 tag（如 `v1.8.1.0`）标记。
 
 ## 远端同步（GitHub）
 

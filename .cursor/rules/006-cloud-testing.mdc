@@ -22,15 +22,13 @@ export REPO_ROOT="/workspace/DocuVision"
 cd "$REPO_ROOT"
 git pull   # or your feature branch
 
-# Pro GPU venv (separate from Lite)
+# Pro GPU venv
 python3 -m venv ~/docuvision_env
 source ~/docuvision_env/bin/activate
 cd "$REPO_ROOT/backend"
 ./install_pro_gpu.sh   # or per requirements.txt header
 cp -n .env.cloud .env  # do not commit .env
 ```
-
-Lite CPU validation uses **`docuvision_lite_env`** — see `apps/lite/backend/tests/README.md`. **Never mix** Pro and Lite venvs.
 
 ## Phase map (quick)
 
@@ -83,39 +81,6 @@ pip install -e ".[lite,dev]" && pytest tests/processing/test_table_stitch.py \
 ```
 
 **v1.3 pre-release**: see [CLOUD_VALIDATION.md](../docs/architecture/CLOUD_VALIDATION.md)（历史 tag，不再单独维护）。
-
-**Lite on PR** (GitHub `ci-lite.yml`, not Cloud GPU required):
-
-```bash
-cd "$REPO_ROOT/apps/lite/backend"
-pip install -r requirements-lite.txt
-pip install -e "../../../packages/docuvision-core[lite,dev]"
-python -m pytest tests/ -q
-```
-
-**Lite preview E2E** (CI Lite on PR; CPU, starts `run_lite.py` via Playwright):
-
-```bash
-cd "$REPO_ROOT/frontend"
-npm install
-npx playwright install chromium
-npm run test:e2e:lite
-```
-
-From `apps/lite/frontend/` (delegates to `frontend/`):
-
-```bash
-cd "$REPO_ROOT/apps/lite/frontend"
-npm run test:e2e   # requires frontend/node_modules from step above
-```
-
-Contract only:
-
-```bash
-cd "$REPO_ROOT/apps/lite/backend"
-source ~/docuvision_lite_env/bin/activate
-python -m pytest tests/test_lite_preview.py -q
-```
 
 ## Phase B — Pro server + health
 

@@ -60,7 +60,6 @@ from fastapi.staticfiles import StaticFiles
 from typing import List, Optional, Dict, Any, Set
 import uuid
 import shutil
-import hashlib
 from datetime import datetime
 from loguru import logger
 from pathlib import Path
@@ -69,93 +68,13 @@ from pathlib import Path
 
 
 
-def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1) -> Dict[str, Any]:
-    """
-    Build stable page image metadata for front-end coordinate binding checks.
-
-    Coordinates are declared in original image pixel space (image_abs_px).
-    For PDF we render with the same 2x matrix used by /page-image to keep
-    dimensions aligned with the preview image endpoint.
-    """
-    meta: Dict[str, Any] = {
-        "page": int(page_num),
-        "width_px": 0,
-        "height_px": 0,
-        "sha256": "",
-        "coord_space": "image_abs_px",
-        "bbox_to_image_matrix": {
-            "src_space": "image_abs_px",
-            "dst_space": "image_abs_px",
-            "scale_x": 1.0,
-            "scale_y": 1.0,
-            "offset_x": 0.0,
-            "offset_y": 0.0,
-        },
-    }
-
-    if task_id:
-        meta["image_url"] = f"/api/v1/tasks/{task_id}/page-image/{page_num}"
-
-    try:
-        if not file_path or not os.path.exists(file_path):
-            return meta
-
-        ext = os.path.splitext(file_path)[1].lower()
-        if ext == ".pdf":
-            import fitz  # PyMuPDF
-
-            doc = fitz.open(file_path)
-            try:
-                if page_num < 1 or page_num > len(doc):
-                    return meta
-
-                page = doc[page_num - 1]
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                meta["width_px"] = int(pix.width)
-                meta["height_px"] = int(pix.height)
-                meta["sha256"] = hashlib.sha256(pix.tobytes("png")).hexdigest()
-
-                # Explicit PDF-page-points -> rendered-image-px transform.
-                # Useful when a downstream pipeline emits PDF-native coords.
-                rect = page.rect
-                rect_w = float(getattr(rect, "width", 0.0) or 0.0)
-                rect_h = float(getattr(rect, "height", 0.0) or 0.0)
-                if rect_w > 0 and rect_h > 0:
-                    pdf_to_img_scale_x = float(pix.width) / rect_w
-                    pdf_to_img_scale_y = float(pix.height) / rect_h
-                else:
-                    pdf_to_img_scale_x = 1.0
-                    pdf_to_img_scale_y = 1.0
-
-                meta["pdf_page_to_image_matrix"] = {
-                    "src_space": "pdf_page_points",
-                    "dst_space": "image_abs_px",
-                    "scale_x": pdf_to_img_scale_x,
-                    "scale_y": pdf_to_img_scale_y,
-                    "offset_x": 0.0,
-                    "offset_y": 0.0,
-                }
-                return meta
-            finally:
-                doc.close()
-
-        from PIL import Image as PILImage
-        with PILImage.open(file_path) as img:
-            meta["width_px"] = int(img.width)
-            meta["height_px"] = int(img.height)
-        with open(file_path, "rb") as f:
-            meta["sha256"] = hashlib.sha256(f.read()).hexdigest()
-    except Exception as e:
-        logger.warning(f"Failed to build page image meta for {file_path}: {e}")
-
-    return meta
+# _build_page_image_meta moved to app.core.runtime (v1.8.2 C1c).
 
 
 # 继续导入其他模块
 from io import BytesIO
 import json
 import asyncio
-import inspect
 
 from app.services.pack_export_service import PackTooLargeError, build_task_pack_zip
 from app.services.batch_service import BatchStatus
@@ -169,7 +88,6 @@ from app.services.batch_export_service import (
 )
 from app.services.single_file_pipeline import run_single_file_pipeline
 from app.services.kie.kie_pages import validate_kie_pages_for_non_pdf
-from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
 from app.core.config import settings
 from app.core.debug_utils import save_debug_overlay_image
 
@@ -180,17 +98,22 @@ from app.core.runtime import (  # noqa: E402
     API_VERSION,
     _DEP_VERSIONS,
     _build_health_payload,
+    _build_page_image_meta,
+    _enforce_max_upload_size,
     _get_dist_version,
     _raise_query_fields_http,
     _resolve_kie_query_fields_in_options,
+    _send_event,
     _short_public_model_id,
     batch_service,
+    call_maybe_async,
     export_service,
     formula_service,
     init_runtime,
     kie_service,
     layout_service,
     ocr_service,
+    process_document,
     seal_service,
     table_service,
     task_cancellation_flags,
@@ -320,390 +243,21 @@ logger.info(
 # API Routes - Core (P1)
 # ============================================
 
-def _enforce_max_upload_size(content: bytes, filename: str = "") -> None:
-    """Enforce settings.MAX_FILE_SIZE on in-memory uploads (GLM trial P0-1).
-
-    The limit existed in config but was never wired; this closes the gap for
-    every upload endpoint without changing their response contracts.
-    """
-    limit = int(settings.MAX_FILE_SIZE)
-    if limit <= 0:
-        return
-    if len(content) > limit:
-        raise HTTPException(
-            status_code=413,
-            detail=(
-                f"File exceeds maximum upload size "
-                f"({len(content) / (1024 * 1024):.1f}MB > {limit / (1024 * 1024):.0f}MB)"
-                + (f": {filename}" if filename else "")
-            ),
-        )
+# _enforce_max_upload_size moved to app.core.runtime (v1.8.2 C1c).
 
 
 # System routes (/, /health, /api/v1/health, /api/v1/engines) moved to
 # app.routers.system (v1.8.2 C1b).
 
 
-@app.post("/api/v1/ocr")
-async def ocr_recognize(
-    file: UploadFile = File(...),
-    language: str = Form("en"),
-    engine: Optional[str] = Form(None)
-):
-    """Simple OCR endpoint for quick text extraction"""
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif']:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
-
-    # Save file temporarily
-    task_id = str(uuid.uuid4())
-    upload_dir = os.path.join(settings.UPLOAD_DIR, task_id)
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, file.filename)
-
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        _enforce_max_upload_size(content, file.filename or "")
-        f.write(content)
-
-    try:
-        ocr_result = await call_maybe_async(
-            ocr_service.recognize,
-            file_path,
-            language=language,
-            engine=engine,
-            fallback=True
-        )
-
-        return {
-            "text": ocr_result.get("full_text", ""),
-            "text_blocks": ocr_result.get("text_blocks", []),
-            "confidence": ocr_result.get("confidence", 0.0),
-            "engine": ocr_result.get("engine_used", "unknown"),
-            "page_count": ocr_result.get("page_count", 0),
-            "processing_time": ocr_result.get("processing_time", 0)
-        }
-    except Exception as e:
-        logger.error(f"OCR error: {e}")
-        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
-    finally:
-        # Cleanup
-        try:
-            if os.path.exists(upload_dir):
-                shutil.rmtree(upload_dir)
-        except:
-            pass
+# Analyzer routes (/api/v1/ocr, /api/v1/upload, /api/v1/analyze) moved to
+# app.routers.analyzer (v1.8.2 C1c).
 
 
-@app.post("/api/v1/upload")
-async def upload_file(file: UploadFile = File(...)):
-    """
-    Upload a file and return task_id for preview purposes.
-    This endpoint only uploads the file without processing, allowing immediate preview.
-    """
-    # Validate file
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif']:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
-
-    # Create task_id and save file
-    task_id = str(uuid.uuid4())
-    upload_dir = os.path.join(settings.UPLOAD_DIR, task_id)
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, file.filename)
-
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        _enforce_max_upload_size(content, file.filename or "")
-        f.write(content)
-
-    # Create minimal task entry for preview purposes
-    task = {
-        "task_id": task_id,
-        "status": "uploaded",
-        "progress": 0,
-        "message": "File uploaded, ready for preview",
-        "created_at": datetime.now(),
-        "completed_at": None,
-        "file_path": file_path,
-        "file_name": file.filename,
-        "options": {},
-        "result": None
-    }
-    tasks[task_id] = task
-
-    page_count = 1
-    if ext == ".pdf":
-        try:
-            from app.services.pdf_raster import pdf_page_count
-
-            page_count = max(1, pdf_page_count(file_path))
-        except Exception:
-            page_count = 1
-
-    return {
-        "task_id": task_id,
-        "file_name": file.filename,
-        "status": "uploaded",
-        "message": "File uploaded successfully",
-        "page_count": page_count,
-    }
 
 
-@app.post("/api/v1/analyze", response_model=TaskStatus)
-async def analyze_document(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    enable_layout: bool = Form(True),
-    enable_table: bool = Form(True),
-    enable_formula: bool = Form(False),
-    enable_seal: bool = Form(False),
-    enable_figure_export: bool = Form(True),
-    enable_kie: bool = Form(False),
-    document_type: str = Form("auto"),
-    language: str = Form("en"),
-    ocr_engine: Optional[str] = Form(None),
-    layout_engine: Optional[str] = Form(None),
-    table_engine: Optional[str] = Form(None),
-    table_allow_fullpage_fallback: Optional[bool] = Form(None),
-    formula_disable_layout: bool = Form(False),
-    formula_disable_preprocess: bool = Form(False),
-    formula_two_stage_threshold_retry: bool = Form(True),
-    formula_primary_layout_threshold: float = Form(0.5),
-    formula_fallback_layout_threshold: float = Form(0.2),
-    formula_layout_threshold: Optional[float] = Form(None),
-    pipeline_formula_batch_size: int = Form(1),
-    return_raw: bool = Form(False),
-    kie_query_fields: Optional[str] = Form(None),
-    kie_pages: Optional[str] = Form(None),
-    table_template: Optional[str] = Form(None),
-    enable_hitl: bool = Form(True),
-    table_text_backfill: str = Form("auto"),
-):
-    """Upload and analyze a single document"""
-    # Validate file
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif']:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
-    is_pdf = ext == ".pdf"
-    pages_err = validate_kie_pages_for_non_pdf(kie_pages, is_pdf, enable_kie=enable_kie)
-    if pages_err:
-        raise HTTPException(status_code=400, detail=pages_err)
-
-    # CRITICAL FIX: FastAPI parses "1"/"0" as True/False for bool Form fields
-    # "true"/"false" strings will cause validation errors
-    logger.info(
-        "Analyze endpoint received - enable_layout={}, enable_table={}, "
-        "enable_formula={}, enable_seal={}, enable_kie={}, document_type={}, "
-        "table_allow_fullpage_fallback={}, formula_disable_layout={}, formula_disable_preprocess={}, "
-        "pipeline_formula_batch_size={}, return_raw={}",
-        enable_layout,
-        enable_table,
-        enable_formula,
-        enable_seal,
-        enable_kie,
-        document_type,
-        table_allow_fullpage_fallback,
-        formula_disable_layout,
-        formula_disable_preprocess,
-        pipeline_formula_batch_size,
-        return_raw,
-    )
-
-    task_id = str(uuid.uuid4())
-    upload_dir = os.path.join(settings.UPLOAD_DIR, task_id)
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, file.filename)
-
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        _enforce_max_upload_size(content, file.filename or "")
-        f.write(content)
-
-    from app.models.analyze_options import AnalyzeOptions, options_to_pipeline_dict
-
-    analyze_options = AnalyzeOptions(
-        enable_layout=enable_layout,
-        enable_table=enable_table,
-        enable_formula=enable_formula,
-        enable_seal=enable_seal,
-        enable_figure_export=enable_figure_export,
-        enable_kie=enable_kie,
-        document_type=document_type,
-        language=language,
-        ocr_engine=ocr_engine,
-        layout_engine=layout_engine,
-        table_engine=table_engine,
-        table_allow_fullpage_fallback=table_allow_fullpage_fallback,
-        formula_disable_layout=formula_disable_layout,
-        formula_disable_preprocess=formula_disable_preprocess,
-        formula_two_stage_threshold_retry=formula_two_stage_threshold_retry,
-        formula_primary_layout_threshold=formula_primary_layout_threshold,
-        formula_fallback_layout_threshold=formula_fallback_layout_threshold,
-        formula_layout_threshold=formula_layout_threshold,
-        pipeline_formula_batch_size=pipeline_formula_batch_size,
-        return_raw=return_raw,
-        kie_query_fields=kie_query_fields,
-        kie_pages=kie_pages,
-        table_template=table_template,
-        enable_hitl=enable_hitl,
-        table_text_backfill=table_text_backfill,
-    )
-    options = options_to_pipeline_dict(
-        analyze_options,
-        table_allow_fullpage_fallback_default=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
-        table_text_backfill_kill_switch=settings.TABLE_TEXT_BACKFILL,
-    )
-
-    _resolve_kie_query_fields_in_options(options)
-
-    # Backward-compatible fallback: if user selected a document_type that typically
-    # requires KIE (invoice/receipt/id_card) but did not explicitly enable KIE,
-    # enable it automatically as a short-term safety net.
-    try:
-        doc_type_norm = str(document_type or "").strip().lower()
-        if doc_type_norm in {"invoice", "receipt", "id_card"} and not options.get("enable_kie", False):
-            options["enable_kie"] = True
-            logger.info(f"Analyze endpoint compatibility: auto-enabled KIE for document_type={doc_type_norm}")
-    except Exception:
-        pass
-
-    # Explicitly log the final analyze options so server-side observers
-    # (cloud testing / CI logs) can verify whether KIE was enabled without
-    # inspecting the browser request payload.
-    try:
-        logger.info("Analyze options: %s", options)
-    except Exception:
-        # Logging should never break the request flow
-        logger.debug("Failed to log analyze options")
-
-    task = {
-        "task_id": task_id,
-        "status": "pending",
-        "progress": 0,
-        "message": "Task created",
-        "created_at": datetime.now(),
-        "completed_at": None,
-        "file_path": file_path,
-        "file_name": file.filename,
-        "options": options,
-        "result": None
-    }
-    tasks[task_id] = task
-
-    # WebSocket connections will be created when client connects
-    # No need to pre-create anything
-
-    background_tasks.add_task(process_document, task_id)
-
-    return TaskStatus(**task)
-
-
-async def _send_event(task_id: str, event_type: str, message: str, progress: Optional[float] = None):
-    """Send event to WebSocket clients and store in history"""
-    event = {
-        "type": event_type,
-        "message": message,
-        "timestamp": datetime.now().isoformat()
-    }
-    if progress is not None:
-        event["progress"] = progress
-
-    # Store event in history (keep last 100 events)
-    if task_id not in task_event_history:
-        task_event_history[task_id] = []
-    # Assign a monotonic event id for replay filtering
-    if task_id not in task_event_counters:
-        task_event_counters[task_id] = 0
-    task_event_counters[task_id] += 1
-    event_id = task_event_counters[task_id]
-    event["id"] = event_id
-    task_event_history[task_id].append(event)
-    # Keep only last 100 events
-    if len(task_event_history[task_id]) > 100:
-        task_event_history[task_id] = task_event_history[task_id][-100:]
-
-    # Send to all connected WebSocket clients for this task
-    if task_id in task_websockets:
-        disconnected = set()
-        send_tasks = {}
-
-        async def _safe_send(ws, ev):
-            try:
-                await ws.send_json(ev)
-                return True
-            except Exception as e:
-                logger.warning(f"Task {task_id}: Failed to send event via WebSocket: {e}")
-                return False
-
-        # Launch sends concurrently so a slow client won't block processing
-        for ws in list(task_websockets[task_id]):
-            t = asyncio.create_task(_safe_send(ws, event))
-            send_tasks[t] = ws
-
-        # Wait for a short time for sends to complete, but don't block indefinitely
-        if send_tasks:
-            done, pending = await asyncio.wait(send_tasks.keys(), timeout=1.0)
-
-            # Process completed sends
-            for task in done:
-                ws = send_tasks.get(task)
-                try:
-                    ok = task.result()
-                    if not ok:
-                        disconnected.add(ws)
-                except Exception:
-                    disconnected.add(ws)
-
-            # Any pending tasks we don't wait for; they will continue in background.
-            # Remove disconnected websockets
-            for ws in disconnected:
-                task_websockets[task_id].discard(ws)
-            if not task_websockets.get(task_id):
-                task_websockets.pop(task_id, None)
-    else:
-        logger.debug(f"Task {task_id}: No WebSocket connections, event stored in history - type={event_type}, message={message[:50]}...")
-
-
-async def call_maybe_async(func, *args, **kwargs):
-    """Call `func` which may be sync or async. If sync, run it in thread pool."""
-    try:
-        if inspect.iscoroutinefunction(func):
-            return await func(*args, **kwargs)
-        else:
-            return await asyncio.to_thread(func, *args, **kwargs)
-    except Exception:
-        # Re-raise to let callers handle logging
-        raise
-
-
-async def process_document(task_id: str):
-    """Background document processing delegates execution to orchestrator."""
-    task = tasks.get(task_id)
-    if not task:
-        return
-
-    orchestrator = DocumentPipelineOrchestrator(
-        services={
-            "ocr_service": ocr_service,
-            "layout_service": layout_service,
-            "table_service": table_service,
-            "formula_service": formula_service,
-            "seal_service": seal_service,
-            "kie_service": kie_service,
-        },
-        send_event=_send_event,
-        is_cancelled=lambda tid: task_cancellation_flags.get(tid, False),
-        call_maybe_async=call_maybe_async,
-        build_page_image_meta=_build_page_image_meta,
-        save_debug_overlay=save_debug_overlay_image if settings.ENABLE_DEBUG_OVERLAYS else None,
-    )
-
-    try:
-        await orchestrator.run(task_id, task)
-    finally:
-        task_cancellation_flags.pop(task_id, None)
+# _send_event / call_maybe_async / process_document moved to app.core.runtime (v1.8.2 C1c).
 
 
 # ============================================
@@ -2201,10 +1755,12 @@ async def pdf_tools_form_fill(
 # ============================================
 # Router registration (v1.8.2 split — include order pinned)
 # ============================================
+from app.routers.analyzer import router as analyzer_router  # noqa: E402
 from app.routers.system import router as system_router  # noqa: E402
 
 routers_to_include = [
     system_router,
+    analyzer_router,
 ]
 for _router in routers_to_include:
     app.include_router(_router)

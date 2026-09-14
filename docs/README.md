@@ -18,21 +18,20 @@ Read in this order when onboarding to the codebase:
 1. [architecture/docuvision-system-design.md](architecture/docuvision-system-design.md) — system design hub
 2. [architecture/kie.md](architecture/kie.md) — KIE contract (Qwen2.5-VL)
 3. [architecture/kie-custom-fields.md](architecture/kie-custom-fields.md) — custom KIE query fields
-4. [architecture/lite-api.md](architecture/lite-api.md) — Lite REST API
-5. [architecture/shared-ui-shell.md](architecture/shared-ui-shell.md) — Pro/Lite shared UI
-6. [architecture/batch-ui-roadmap.md](architecture/batch-ui-roadmap.md) — Batch UI roadmap
-7. [architecture/v1.5-roadmap.md](architecture/v1.5-roadmap.md) — v1.5 leftovers (searchable PDF, AcroForm, mail)
-8. [architecture/v1.6-roadmap.md](architecture/v1.6-roadmap.md) — v1.6.0 shipped (figure baseline + artifact pack; ZIP contract in system-design §9.1)
-9. [architecture/v1.7-roadmap.md](architecture/v1.7-roadmap.md) — v1.7.0 train (Pro single-task result persistence; tag pending)
-10. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
-11. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
-12. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
+4. [architecture/shared-ui-shell.md](architecture/shared-ui-shell.md) — Shared UI shell (Pro; Lite retired in v1.8)
+5. [architecture/batch-ui-roadmap.md](architecture/batch-ui-roadmap.md) — Batch UI roadmap
+6. [architecture/v1.5-roadmap.md](architecture/v1.5-roadmap.md) — v1.5 leftovers (searchable PDF, AcroForm, mail)
+7. [architecture/v1.6-roadmap.md](architecture/v1.6-roadmap.md) — v1.6.0 shipped (figure baseline + artifact pack; ZIP contract in system-design §9.1)
+8. [architecture/v1.7-roadmap.md](architecture/v1.7-roadmap.md) — v1.7.0 train (Pro single-task result persistence; tag pending)
+9. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
+10. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
+11. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
 
 ## Validation and QA
 
 | Doc | Purpose |
 |-----|---------|
-| [architecture/CLOUD_VALIDATION.md](architecture/CLOUD_VALIDATION.md) | Cloud Studio GPU phases A–G; **§1.1 Baidu AI Studio** `api_serving` + **§1.1.1 persist** (work / Git / PaddleX / KIE) |
+| [architecture/CLOUD_VALIDATION.md](architecture/CLOUD_VALIDATION.md) | Cloud Studio GPU 回归阶段（A–F、MP、H-Batch）; **§1.1 Baidu AI Studio** `api_serving` + **§1.1.1 persist** (work / Git / PaddleX / KIE) |
 | [architecture/KIE_TEST_RUN_TRACKER.md](architecture/KIE_TEST_RUN_TRACKER.md) | KIE batch run log (append-only) |
 | [../test_data/acceptance/README.md](../test_data/acceptance/README.md) | Acceptance matrix index |
 | [../test_data/acceptance/UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) | UI E2E vs manual scope; assistant manual-test reminders |
@@ -51,7 +50,6 @@ Read in this order when onboarding to the codebase:
 | Path | Scope |
 |------|-------|
 | [../frontend/README_FRONTEND.md](../frontend/README_FRONTEND.md) | Pro SPA |
-| [../apps/lite/backend/README.md](../apps/lite/backend/README.md) | Lite backend |
 | [../packages/docuvision-core/README.md](../packages/docuvision-core/README.md) | Shared core library |
 
 ## Document lifecycle
@@ -85,8 +83,7 @@ Exploratory drafts: [R&D/README.md](R&D/README.md) — not authoritative; promot
 | Pro contract (mock) | `backend/tests/test_kie_*.py`, Phase A list in `CLOUD_VALIDATION.md` | PR / Cloud Phase A |
 | Pro live GPU | `backend/tests/test_live_api.py` | Cloud only, server on `:8000`; ignore in full `pytest` |
 | Pro manual script | `backend/tests/test_api_contract_smoke.py`（契约快检）、`test_api_pipeline.py`（含 analyze 轮询） | Cloud REPL, optional |
-| Lite | `apps/lite/backend/tests/` | GitHub `CI Lite` on PR |
-| Core lib | `packages/docuvision-core/tests/` | CI Lite subset + Cloud |
+| Core lib | `packages/docuvision-core/tests/` | Cloud |
 | E2E UI (planned) | `frontend/tests/e2e/` | Local/Cloud with mock API |
 
 New features: add **contract tests** first; extend `MERGE_MAIN_v*.md` only at release — do not duplicate scenarios across `test_live_api` and Phase A mocks.

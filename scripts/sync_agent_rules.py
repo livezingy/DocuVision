@@ -28,7 +28,7 @@ KERNEL_DIR = REPO_ROOT / "docs" / "agent-ops" / "core"
 # ---------------------------------------------------------------------------
 # Mapping: agent -> directory, extension, and (output file, source stems, meta).
 # Each entry: "out" filename, "sources" list of kernel stems, "title", and
-# optional Cursor-style YAML frontmatter (None for GLM/Codebuddy plain md).
+# optional Cursor-style YAML frontmatter (None for Codebuddy plain md).
 # ---------------------------------------------------------------------------
 AGENTS = {
     "cursor": {
@@ -74,29 +74,6 @@ AGENTS = {
                     "description": "文档同步机制、归属表、生命周期（改契约代码或文档时触发）",
                     "globs": "docs/**/*.md,backend/app/**/*.py,apps/lite/backend/**/*.py,packages/docuvision-core/**/*.py,frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js",
                 },
-            },
-        ],
-    },
-    "glm": {
-        "dir": REPO_ROOT / ".GLM" / "rules",
-        "ext": ".md",
-        "files": [
-            {
-                "out": "001-general.md",
-                "sources": ["constraints"],
-                "title": "通用约束（GLM）",
-                "frontmatter": None,
-            },
-            {
-                "out": "003-project.md",
-                "sources": ["environment", "testing", "doc-sync"],
-                "title": "项目事实与测试分层（GLM）",
-                "frontmatter": None,
-                "extra": (
-                    "\n## 规则文件结构\n"
-                    "见花名册 `docs/agent-ops/core/agents.md`。"
-                    "本文件由 kernel（environment + testing + doc-sync）生成。"
-                ),
             },
         ],
     },

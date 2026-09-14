@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+- Agent-ops: retire `.GLM` rules dir (generated copies); ZCode reads `AGENTS.md`
+  + `docs/agent-ops/core/` directly; sandbox patch protocol archived
+  (`docs/agent-ops/glm-sandbox-patch.md`); `.GLM/` added to `.gitignore`.
 
 ## [1.8.1] — 2026-09-14
 

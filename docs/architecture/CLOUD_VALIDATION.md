@@ -6,7 +6,7 @@
 
 ## 1. 环境准备（一次性）
 
-Pro GPU 与 Lite CPU **必须使用独立虚拟环境**（`docuvision_env` / `docuvision_lite_env`）。
+Pro GPU 使用独立虚拟环境（`docuvision_env`）。
 
 ```bash
 cd backend
@@ -21,7 +21,7 @@ source ~/docuvision_env/bin/activate
 cp -n .env.cloud .env   # 按需改模型路径，勿提交 .env
 ```
 
-**勿**在 Pro 环境中安装 Lite 依赖。`install_pro_gpu.sh` 会在 venv 激活时自动设置 `LD_LIBRARY_PATH`；`python run.py` 与 pytest 也会自动设置，**通常无需**每次手动 `source env_pro_gpu.sh`。
+`install_pro_gpu.sh` 会在 venv 激活时自动设置 `LD_LIBRARY_PATH`；`python run.py` 与 pytest 也会自动设置，**通常无需**每次手动 `source env_pro_gpu.sh`。
 
 建议环境变量：
 
@@ -428,53 +428,9 @@ python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
 | `kie_multipage_merge` | v1.2+：多页字段是否文档级合并 |
 | `kie_fields_by_page` | v1.2+：按页 KIE 字段（键为页码字符串） |
 
-## 4. DocuVision Lite（CPU，无 Paddle）
-
-> **Since Release 1.0.1**, Lite ships on `main` (not a separate long-lived feature branch).  
-> **本地不跑 Python/pytest**；改 Lite 代码时维护 `apps/lite/backend/tests/` 与 `packages/docuvision-core/tests/processing/`，由 CI 或云端验收。
-
-### 阶段 G0 — Lite 模型 bootstrap（新主机 / 空 models/ 时执行一次）
-
-```bash
-sudo apt-get install -y tesseract-ocr tesseract-ocr-eng ghostscript
-cd packages/docuvision-core
-bash scripts/bootstrap_lite_models.sh
-python scripts/bootstrap_lite_models.py --status-only
-```
-
-模型权重保存在 **`packages/docuvision-core/models/`**（与源码同路径，持久盘随仓库目录保留）。换主机流程见 [models/README.md](../../packages/docuvision-core/models/README.md)。
-
-### 阶段 G — Lite 契约（GitHub Actions 或 Cloud Studio CPU）
-
-```bash
-cd apps/lite/backend
-pip install -r requirements-lite.txt
-pip install -e '../../packages/docuvision-core[lite,dev]'
-pytest tests/ -q
-cd ../../packages/docuvision-core
-pytest tests/extractors/test_factory.py tests/processing/test_table_type_classifier.py -q
-```
-
-（zsh 下 `pip install -e` 的 extras 路径须加单引号，见 [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md) §2.2。）
-
-**通过标准**：全部 `passed`（规则 **LITE-PROFILE-001～003**、**LITE-CORE-001～002**、**LITE-EXTRACT-001～002**，见 [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md)）。
-
-**GitHub Actions**：**PR 至 `main`** 且 Lite 路径有变更时，[`.github/workflows/ci-lite.yml`](../../.github/workflows/ci-lite.yml) 自动执行。日常 push 至 `feature/docuvision-lite` 默认不跑；需 CI 时用 **`[run ci]`** 或 Actions 页 **Run workflow**。
-
-### 阶段 H — Lite UI 冒烟（可选）
-
-```bash
-cd apps/lite/backend && python run_lite.py
-# http://{host}:8001/lite/lite.html
-```
-
-上传 digital PDF → Document Profile；Run Extraction → Content/Tables；PNG → scan_profile。
-
-## 5. 相关文档
+## 4. 相关文档
 
 - [kie.md](./kie.md) — KIE 契约、PDF 输入策略
 - [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md) — 云测批次记录
 - [test_data/acceptance/doc_types.md](../../test_data/acceptance/doc_types.md) — 样例矩阵
-- [lite-api.md](./lite-api.md) — Lite API
-- [apps/lite/backend/tests/README.md](../../apps/lite/backend/tests/README.md) — Lite 验收规则
-- [packages/docuvision-core/models/README.md](../../packages/docuvision-core/models/README.md) — Lite 模型目录与换主机流程
+- [packages/docuvision-core/models/README.md](../../packages/docuvision-core/models/README.md) — 模型目录与换主机流程

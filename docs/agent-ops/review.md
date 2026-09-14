@@ -1,7 +1,7 @@
-# 代码审查（GLM review）
+# 代码审查规范（review）
 
-> GLM 审查角色专属规则。审查产出必须含**分级 / 证据 / 依据**三要素。
-> 官方依据条款引用 `docs/agent-ops/core/constraints.md`（§官方依据优先），**不引用 Cursor 007**。
+> 审查产出规范（原 `.GLM/rules/005-review.md` 迁移，适用于承担审查任务的 Agent，当前主用 ZCode）。
+> 官方依据条款引用 `docs/agent-ops/core/constraints.md`（§官方依据优先）。
 
 ## 审查产出三要素（强制）
 每一条审查意见必须同时给出：
@@ -23,7 +23,7 @@
 ## 审查红线（不可越过）
 - 不宣称 GPU / 云端功能"已验证"（本机无 GPU）。
 - 不改 `.env` / 密钥 / CI（`.github/workflows/**`）。
-- 不直接 push（红线）；交付用 patch 协议（见 `002-git.md`）。
+- 不直接 push（kernel `constraints.md` §自主边界红线）。
 - 审查结论必须落盘，不口头。
 
 ## 交付格式

@@ -163,6 +163,8 @@ site/
 .qoder/
 .vscode/
 .codebuddy/plans/
+# GLM rules dir retired (6634d86); ignore locally rebuilt copies
+.GLM/
 docker/
 docs/*
 !docs/architecture/

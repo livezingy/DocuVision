@@ -57,25 +57,13 @@ from fastapi import Body, FastAPI, UploadFile, File, HTTPException, BackgroundTa
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 from typing import List, Optional, Dict, Any, Set
 import uuid
 import shutil
 import hashlib
 from datetime import datetime
 from loguru import logger
-from importlib import metadata as _metadata
 from pathlib import Path
-
-
-def _get_dist_version(dist_names: List[str]) -> str:
-    """Get installed package version without importing the package."""
-    for name in dist_names:
-        try:
-            return _metadata.version(name)
-        except Exception:
-            continue
-    return "0.0.0"
 
 
 
@@ -163,49 +151,14 @@ def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1)
     return meta
 
 
-def _dependency_preflight_check() -> Dict[str, str]:
-    """Log installed Paddle/PaddleOCR/PaddleX versions at startup."""
-    versions = {
-        "paddle": _get_dist_version(["paddlepaddle-gpu", "paddlepaddle"]),
-        "paddleocr": _get_dist_version(["paddleocr"]),
-        "paddlex": _get_dist_version(["paddlex"]),
-    }
-    logger.info(
-        "[Preflight] Dependency versions | paddle={paddle} | paddleocr={paddleocr} | paddlex={paddlex}",
-        paddle=versions["paddle"],
-        paddleocr=versions["paddleocr"],
-        paddlex=versions["paddlex"],
-    )
-    return versions
-
-
-_DEP_VERSIONS = _dependency_preflight_check()
-
-
-def _short_public_model_id(model_id: str) -> str:
-    """Last path segment or trimmed id for health payloads (no full host paths)."""
-    s = (model_id or "").strip()
-    if not s:
-        return ""
-    base = os.path.basename(s.rstrip("/\\"))
-    return base if base else s[:96]
-
-
 # 继续导入其他模块
 from io import BytesIO
 import json
 import asyncio
 import inspect
 
-from app.services.ocr_service import OCRService
-from app.services.layout_service import LayoutService
-from app.services.table_service import TableService
-from app.services.formula_service import FormulaService
-from app.services.seal_service import SealService
-from app.services.kie_qwen_service import QwenDocumentKIEService
-from app.services.export_service import ExportService
 from app.services.pack_export_service import PackTooLargeError, build_task_pack_zip
-from app.services.batch_service import BatchService, BatchStatus
+from app.services.batch_service import BatchStatus
 from app.services.batch_export_service import (
     build_batch_xlsx_bytes,
     build_failure_csv_rows,
@@ -216,13 +169,58 @@ from app.services.batch_export_service import (
 )
 from app.services.single_file_pipeline import run_single_file_pipeline
 from app.services.kie.kie_pages import validate_kie_pages_for_non_pdf
-from app.services.unified_layout_service import UnifiedLayoutService
 from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
 from app.core.config import settings
 from app.core.debug_utils import save_debug_overlay_image
 
-# Single source of truth for /health api_version and OpenAPI version (see config.APP_VERSION).
-API_VERSION = settings.APP_VERSION
+# Shared runtime (services / state / helpers) + API models extracted for the
+# v1.8.2 main.py split (C1a). Imported here — after env/paddle setup — so the
+# heavy service singletons are still built once, at the same point in startup.
+from app.core.runtime import (  # noqa: E402
+    API_VERSION,
+    _DEP_VERSIONS,
+    _build_health_payload,
+    _get_dist_version,
+    _raise_query_fields_http,
+    _resolve_kie_query_fields_in_options,
+    _short_public_model_id,
+    batch_service,
+    export_service,
+    formula_service,
+    init_runtime,
+    kie_service,
+    layout_service,
+    ocr_service,
+    seal_service,
+    table_service,
+    task_cancellation_flags,
+    task_event_counters,
+    task_event_history,
+    task_websockets,
+    tasks,
+    unified_layout_service,
+    use_gpu,
+)
+from app.models.api_models import (  # noqa: E402
+    BatchCreateModel,
+    FusedBlock,
+    FusedLayer,
+    FusedPage,
+    HitlResolveModel,
+    JobEnvelope,
+    JobStatus,
+    KieFieldsPatchModel,
+    PreprocessingMetadata,
+    ProcessingOptions,
+    QualityLayer,
+    RawLayer,
+    TaskStatus,
+    TrialGtDiffModel,
+    ViewContent,
+    ViewElement,
+    ViewLayer,
+    ViewPage,
+)
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -284,33 +282,7 @@ try:
 except Exception as e:
     logger.warning(f"[Frontend] Failed to mount frontend static files: {e}")
 
-# Auto-detect GPU availability
-import paddle
-use_gpu = paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0
-logger.info(f"GPU available: {use_gpu}")
-
-# Test GPU functionality to avoid segmentation faults
-if use_gpu:
-    try:
-        # Quick test to see if GPU can be used without crashing
-        import paddle.base.libpaddle as libpaddle
-        config = libpaddle.AnalysisConfig()
-        # If we get here without crashing, GPU should be usable
-        logger.info("GPU initialization test passed")
-    except Exception as e:
-        logger.warning(f"GPU initialization test failed: {e}, falling back to CPU mode")
-        use_gpu = False
-
-# Initialize Services
-ocr_service = OCRService(use_gpu=use_gpu, lang=settings.OCR_LANG)
-layout_service = LayoutService(use_gpu=use_gpu)
-table_service = TableService(
-    use_gpu=use_gpu,
-    allow_fullpage_fallback=settings.TABLE_ALLOW_FULLPAGE_FALLBACK,
-)
-formula_service = FormulaService(device="gpu" if use_gpu else "cpu")
-seal_service = SealService(device="gpu" if use_gpu else "cpu")
-kie_service = QwenDocumentKIEService()
+# Service singletons + GPU detection moved to app.core.runtime (v1.8.2 split).
 
 
 @app.on_event("startup")
@@ -327,50 +299,7 @@ async def _kie_optional_warmup_background() -> None:
             logger.warning("DOCUVISION_KIE_WARMUP: warmup failed (non-fatal): {}", exc)
 
     asyncio.create_task(_run())
-export_service = ExportService()
-batch_service = BatchService(max_concurrent=3)
-
-# Queue persistence store (SQLite). Attached to batch_service now and to the
-# hitl_queue / analyze_job_store singletons at startup.
-# See docs/architecture/v1.5-roadmap.md and v1.7-roadmap.md.
-from app.services.persistence.analyze_job_store import analyze_job_store  # noqa: E402
-from app.services.persistence.queue_store import SqliteQueueStore  # noqa: E402
-
-_queue_store = SqliteQueueStore(db_path=Path(settings.SQLITE_DB_PATH))
-batch_service.attach_store(_queue_store)
-analyze_job_store.attach_store(_queue_store)
-
-
-def _raise_query_fields_http(exc: Exception) -> None:
-    from app.services.kie.query_fields import QueryFieldsError
-
-    if not isinstance(exc, QueryFieldsError):
-        raise exc
-    raise HTTPException(
-        status_code=400,
-        detail={"error_code": exc.error_code, "message": str(exc)},
-    )
-
-
-def _resolve_kie_query_fields_in_options(options: Dict[str, Any]) -> None:
-    from app.services.kie.query_fields import QueryFieldsError, attach_kie_query_fields_to_options
-
-    try:
-        attach_kie_query_fields_to_options(options)
-    except QueryFieldsError as exc:
-        _raise_query_fields_http(exc)
-unified_layout_service = UnifiedLayoutService()  # 统一的版面分析服
-# Task Storage
-tasks: Dict[str, Dict[str, Any]] = {}
-analyze_job_store.bind(tasks)
-# Task cancellation flags
-task_cancellation_flags: Dict[str, bool] = {}
-# WebSocket connections for real-time event streaming
-task_websockets: Dict[str, Set[WebSocket]] = {}
-# Event history for tasks (to send to late-connecting WebSocket clients)
-task_event_history: Dict[str, List[Dict[str, Any]]] = {}
-# Per-task event id counters (monotonic incrementing id for each event)
-task_event_counters: Dict[str, int] = {}
+# Module-level state (services / tasks / streaming) moved to app.core.runtime (v1.8.2 split).
 
 logger.info(
     "Startup strategy | layout=ppstructure(layout-only optional engines off) | table_mode={} | table_fullpage_fallback={} | formula_mode=independent_lazy_roi | seal_mode=independent_lazy",
@@ -380,229 +309,11 @@ logger.info(
 
 
 # ============================================
-# Data Models
+# API models moved to app.models.api_models (v1.8.2 split, C1a).
 # ============================================
 
-# ============================================
-# Phase 1 API - Response Models (Envelope Structure)
-# ============================================
-
-class PreprocessingMetadata(BaseModel):
-    """Preprocessing layer: input/output dimensions, rotation, coordinate space strategy"""
-    input_size: Dict[str, int] = {}  # {"width": int, "height": int}
-    output_size: Dict[str, int] = {}  # {"width": int, "height": int}
-    use_doc_orientation_classify: bool = False
-    use_doc_unwarping: bool = False
-    angle_deg: float = 0.0
-    coordinate_space: str = "original"  # "original" or "preprocessed"
 
 
-class RawLayer(BaseModel):
-    """Raw layer: engine outputs without transformation"""
-    pp_structure_v3: Optional[Dict[str, Any]] = None  # Full PP-StructureV3 output
-    paddleocr_blocks: Optional[Dict[str, Any]] = None  # Per-block OCR results keyed by element id
-
-
-class FusedBlock(BaseModel):
-    """A single block in the fused layer after text fusion and coordinate standardization"""
-    block_id: str
-    type: str  # "text", "table", "figure", "image", "formula", etc.
-    bbox_preprocessed: List[float] = []  # [x0, y0, x1, y1]
-    polygon_preprocessed: List[float] = []  # [x0,y0,x1,y0,x1,y1,x0,y1] flat in preprocessed coords
-    processing_status: str = "succeeded"  # "succeeded", "replaced", "no_match", "low_confidence", "suspicious"
-    source: str = "pp_structure_v3"  # "pp_structure_v3", "paddleocr"
-    confidence: float = 0.0
-    payload: Dict[str, Any] = {}  # Polymorphic by type
-    provenance: Optional[Dict[str, Any]] = None  # {"primary_source", "primary_text", "merge_strategy", "merged_at"} or null
-
-
-class FusedPage(BaseModel):
-    """A page in the fused layer"""
-    page_num: int
-    width_preprocessed: int = 0
-    height_preprocessed: int = 0
-    blocks: List[FusedBlock] = []
-
-
-class FusedLayer(BaseModel):
-    """Fused layer: layout blocks with per-block OCR text fusion and coordinate standardization"""
-    pages: List[FusedPage] = []
-
-
-class ViewElement(BaseModel):
-    """A single element in the view layer (coordinate-transformed and reading-ordered)"""
-    id: str
-    kind: str  # "paragraph", "table", "figure", "image", "formula", etc.
-    polygon: List[float] = []  # [x0,y0,x1,y0,x1,y1,x0,y1] flat in coordinate_space
-    reading_order: int = 0
-    source: str = "pp_structure_v3"
-    processing_status: str = "succeeded"
-    payload: Dict[str, Any] = {}
-
-
-class ViewContent(BaseModel):
-    """Content collections for a page in the view layer"""
-    paragraphs: List[ViewElement] = []
-    tables: List[ViewElement] = []
-    figures: List[ViewElement] = []
-
-
-class ViewPage(BaseModel):
-    """A page in the view layer"""
-    page_num: int
-    width: int = 0
-    height: int = 0
-    elements: List[ViewElement] = []
-    content: str = ""
-    selection_marks: List[Any] = []  # Azure compat placeholder
-    words: List[Any] = []            # Azure compat placeholder
-
-
-class ViewLayer(BaseModel):
-    """View layer: reading-order-sorted elements with coordinate transformation applied"""
-    pages: List[ViewPage] = []
-    paragraphs: List[ViewElement] = []  # Aggregated across all pages
-    tables: List[ViewElement] = []  # Aggregated across all pages
-    figures: List[ViewElement] = []  # Aggregated across all pages
-    formulas: List[ViewElement] = []  # Placeholder, empty for Phase 1.1
-    seals: List[ViewElement] = []  # Placeholder, empty for Phase 1.1
-    fields: Dict[str, Any] = {}  # Placeholder, empty for Phase 1.1
-    sections: List[Any] = []  # Azure compat placeholder
-    styles: List[Any] = []    # Azure compat placeholder
-
-
-class QualityLayer(BaseModel):
-    """Quality metrics layer"""
-    processing_time_ms: int = 0
-    text_blocks_total: int = 0
-    text_blocks_no_ocr: int = 0
-    table_blocks_total: int = 0
-    figure_blocks_total: int = 0
-    formula_blocks_total: int = 0
-    formula_blocks_recognized: int = 0
-    formula_blocks_failed: int = 0
-    formula_count: int = 0
-    formula_attempted: bool = False
-    formula_stage: str = ""
-    formula_error_level: str = "none"
-    formula_error_code: str = ""
-    formula_error_message: str = ""
-    formula_recognition_rate: float = 0.0
-    seal_count: int = 0
-    seal_blocks_total: int = 0
-    seal_blocks_recognized: int = 0
-    seal_attempted: bool = False
-    seal_stage: str = ""
-    seal_error_level: str = "none"
-    seal_error_code: str = ""
-    seal_error_message: str = ""
-    seal_recognition_rate: float = 0.0
-    # Figure crop export metrics (GLM trial P0-2)
-    figure_count: int = 0
-    figure_cropped_count: int = 0
-    figure_integrity_warning_count: int = 0
-    kie_attempted: bool = False
-    kie_stage: str = ""
-    kie_error_code: str = ""
-    kie_error_message: str = ""
-    kie_fields_count: int = 0
-    kie_production_hit: bool = False
-    kie_production_reason: str = ""
-    kie_production_keys: List[str] = []
-    kie_id_card_precision_hit: bool = False
-    kie_id_card_precision_reason: str = ""
-    kie_id_card_precision_keys: List[str] = []
-    kie_items_count: int = 0
-    kie_confidence_avg: float = 0.0
-    kie_confidence_source: str = ""
-    kie_model_load_ms: int = 0
-    kie_items_source: str = "n/a"
-    avg_layout_confidence: float = 0.0
-    engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3"]
-    # v1.8 E2: selective text-layer backfill summary (four-layer funnel counts,
-    # per-page verdicts, rates). Optional; omitted for runs without table step.
-    table_backfill: Optional[Dict[str, Any]] = None
-
-
-class JobEnvelope(BaseModel):
-    """Phase 1 API response envelope: unified document processing result"""
-    job_id: str
-    status: str  # "running", "succeeded", "failed", "cancelled"
-    version: str = "1.0"
-    preprocessing: PreprocessingMetadata = PreprocessingMetadata()
-    raw: RawLayer = RawLayer()
-    fused: FusedLayer = FusedLayer()
-    view: ViewLayer = ViewLayer()
-    quality: QualityLayer = QualityLayer()
-    # Figure crop exports (GLM trial P0-2): present only when figure regions
-    # were detected/cropped or integrity warnings fired; crop files are
-    # served by GET /api/v1/tasks/{task_id}/figures/{figure_id}.
-    figures: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-
-
-class JobStatus(BaseModel):
-    """Job status response (minimal, returned during processing)"""
-    job_id: str
-    status: str  # "running", "succeeded", "failed", "cancelled"
-    progress: float = 0.0
-    message: str = ""
-    created_at: datetime = None
-    completed_at: Optional[datetime] = None
-
-
-class ProcessingOptions(BaseModel):
-    enable_layout: bool = True
-    enable_table: bool = True
-    enable_formula: bool = False
-    enable_seal: bool = False
-    enable_figure_export: bool = True
-    enable_kie: bool = False
-    document_type: str = "auto"
-    language: str = "en"
-    ocr_engine: Optional[str] = None
-    layout_engine: Optional[str] = None
-    table_engine: Optional[str] = None
-    table_allow_fullpage_fallback: bool = settings.TABLE_ALLOW_FULLPAGE_FALLBACK
-    formula_disable_layout: bool = False
-    formula_disable_preprocess: bool = False
-    formula_two_stage_threshold_retry: bool = True
-    formula_primary_layout_threshold: float = 0.5
-    formula_fallback_layout_threshold: float = 0.2
-    formula_layout_threshold: Optional[float] = None
-    pipeline_formula_batch_size: int = 1
-    return_raw: bool = False
-
-
-class TaskStatus(BaseModel):
-    task_id: str
-    status: str
-    progress: float
-    message: str
-    created_at: datetime
-    completed_at: Optional[datetime] = None
-    result: Optional[Dict[str, Any]] = None
-
-
-class BatchCreateModel(BaseModel):
-    name: str
-    options: Dict[str, Any] = {}
-
-
-class KieFieldsPatchModel(BaseModel):
-    fields: Dict[str, Any]
-
-
-class HitlResolveModel(BaseModel):
-    status: str = "approved"
-    corrected_fields: Optional[Dict[str, Any]] = None
-
-
-class TrialGtDiffModel(BaseModel):
-    """Ground-truth payload for the trial diagnostic endpoint (GLM trial P1-4)."""
-    fields: Dict[str, Any] = {}
-    tables: List[List[List[Any]]] = []  # list of tables; each = rows of cells
-    case_sensitive: bool = False
 
 
 # ============================================
@@ -640,43 +351,7 @@ async def root():
     }
 
 
-def _build_health_payload() -> dict:
-    deps_extra = {
-        "torch": _get_dist_version(["torch"]),
-        "transformers": _get_dist_version(["transformers"]),
-    }
-    return {
-        "status": "healthy",
-        "api_version": API_VERSION,
-        "timestamp": datetime.now().isoformat(),
-        "dependencies": dict(_DEP_VERSIONS),
-        "dependencies_extra": deps_extra,
-        "kie": {
-            "model_loaded": kie_service.is_model_loaded(),
-            "model_id": _short_public_model_id(settings.KIE_QWEN_MODEL_ID),
-        },
-        "services": {
-            "ocr": {
-                "ready": ocr_service.is_ready(),
-                "engines": ocr_service.get_available_engines()
-            },
-            "layout": {
-                "ready": layout_service.is_ready(),
-                "engines": layout_service.get_available_engines()
-            },
-            "table": {
-                "ready": table_service.is_ready(),
-                "engines": table_service.get_available_engines(),
-                "strategy": table_service.get_strategy_info(),
-            },
-            "seal": seal_service.get_status(),
-            "batch": {
-                "ready": True,
-                "active_batches": len([b for b in batch_service.batches.values()
-                                      if b.status == BatchStatus.PROCESSING])
-            }
-        }
-    }
+# _build_health_payload moved to app.core.runtime (v1.8.2 split).
 
 
 @app.get("/health")
@@ -2624,16 +2299,9 @@ async def startup_event():
             )
     except Exception:
         pass
-    # Queue persistence: rebuild in-memory batch + HITL indexes from SQLite.
+    # Queue persistence: rebuild in-memory batch + HITL + analyze-job indexes.
     try:
-        from app.services.hitl_queue import hitl_queue
-
-        hitl_queue.attach_store(_queue_store)
-        hitl_queue.load_from_db()
-        batch_service.load_from_db()
-        analyze_job_store.attach_store(_queue_store)
-        analyze_job_store.bind(tasks)
-        analyze_job_store.load_from_db()
+        init_runtime()
     except Exception as exc:
         logger.warning("Queue persistence load failed (non-fatal): {}", exc)
     logger.info("=" * 60)

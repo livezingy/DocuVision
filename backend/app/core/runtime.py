@@ -428,3 +428,9 @@ async def process_document(task_id: str):
         await orchestrator.run(task_id, task)
     finally:
         task_cancellation_flags.pop(task_id, None)
+
+
+def _apply_kie_fields_to_task(task: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
+    from app.services.kie_fields_update import apply_kie_fields_to_task
+
+    return apply_kie_fields_to_task(task, fields)

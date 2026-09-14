@@ -53,9 +53,9 @@ try:
 except Exception as e:
     print(f"[PaddleX Home] 验证失败: {e}")
 
-from fastapi import Body, FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form, Path as APIPath, Request
+from fastapi import Body, FastAPI, UploadFile, File, HTTPException, Form, Path as APIPath, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse, Response
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from typing import List, Optional, Dict, Any, Set
 import uuid
@@ -72,21 +72,9 @@ from pathlib import Path
 
 # 继续导入其他模块
 from io import BytesIO
-import json
 import asyncio
 
-from app.services.batch_service import BatchStatus
-from app.services.batch_export_service import (
-    build_batch_xlsx_bytes,
-    build_failure_csv_rows,
-    build_json_bundle,
-    build_kie_csv_rows,
-    build_summary_csv_rows,
-    render_csv,
-)
-from app.services.single_file_pipeline import run_single_file_pipeline
 from app.core.config import settings
-from app.core.debug_utils import save_debug_overlay_image
 
 # Shared runtime (services / state / helpers) + API models extracted for the
 # v1.8.2 main.py split (C1a). Imported here — after env/paddle setup — so the
@@ -282,268 +270,9 @@ logger.info(
 # API Routes - Batch Processing (P2)
 # ============================================
 
-_PIPELINE_SERVICES = None
-
-
-def _pipeline_services() -> Dict[str, Any]:
-    global _PIPELINE_SERVICES
-    if _PIPELINE_SERVICES is None:
-        _PIPELINE_SERVICES = {
-            "ocr_service": ocr_service,
-            "layout_service": layout_service,
-            "table_service": table_service,
-            "formula_service": formula_service,
-            "seal_service": seal_service,
-            "kie_service": kie_service,
-        }
-    return _PIPELINE_SERVICES
-
-
-async def _batch_process_file(file_path: str, options: Dict[str, Any]) -> Dict[str, Any]:
-    """Full orchestrator pipeline for one batch file."""
-    opts = dict(options)
-    _resolve_kie_query_fields_in_options(opts)
-    doc_type_norm = str(opts.get("document_type", "auto") or "auto").strip().lower()
-    if doc_type_norm in {"invoice", "receipt", "id_card"} and not opts.get("enable_kie", False):
-        opts["enable_kie"] = True
-
-    async def _noop_event(*_args, **_kwargs):
-        return None
-
-    return await run_single_file_pipeline(
-        file_path,
-        opts,
-        services=_pipeline_services(),
-        call_maybe_async=call_maybe_async,
-        send_event=_noop_event,
-        build_page_image_meta=_build_page_image_meta,
-        save_debug_overlay=save_debug_overlay_image if settings.ENABLE_DEBUG_OVERLAYS else None,
-    )
-
-
-@app.post("/api/v1/batch")
-async def create_batch(
-    name: str = Form(...),
-    files: List[UploadFile] = File(...),
-    options: str = Form("{}")
-):
-    """Create a new batch job"""
-    import json
-
-    try:
-        opts = json.loads(options)
-    except Exception:
-        opts = {}
-
-    if not isinstance(opts, dict):
-        opts = {}
-    _resolve_kie_query_fields_in_options(opts)
-
-    # Save files and create file list
-    batch_dir = os.path.join(settings.UPLOAD_DIR, "batch_" + str(uuid.uuid4())[:8])
-    os.makedirs(batch_dir, exist_ok=True)
-
-    file_list = []
-    for file in files:
-        ext = os.path.splitext(file.filename)[1].lower()
-        if ext not in ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif']:
-            continue
-
-        file_path = os.path.join(batch_dir, file.filename)
-        with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
-
-        file_list.append({
-            "file_path": file_path,
-            "file_name": file.filename
-        })
-
-    if not file_list:
-        raise HTTPException(status_code=400, detail="No valid files provided")
-
-    doc_type_norm = str(opts.get("document_type", "auto") or "auto").strip().lower()
-    if doc_type_norm in {"invoice", "receipt", "id_card"} and not opts.get("enable_kie", False):
-        opts["enable_kie"] = True
-    if "kie_pages" not in opts:
-        opts["kie_pages"] = "1"
-
-    batch = batch_service.create_batch(name, file_list, opts)
-    return batch.to_dict()
-
-
-@app.get("/api/v1/batch")
-async def list_batches(
-    status: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0
-):
-    """List all batch jobs"""
-    batch_status = BatchStatus(status) if status else None
-    batches = batch_service.list_batches(batch_status, limit, offset)
-    return {"batches": batches, "total": len(batch_service.batches)}
-
-
-@app.get("/api/v1/batch/{batch_id}")
-async def get_batch(batch_id: str):
-    """Get batch job details"""
-    batch = batch_service.get_batch(batch_id)
-    if not batch:
-        raise HTTPException(status_code=404, detail="Batch not found")
-    return batch.to_dict()
-
-
-@app.post("/api/v1/batch/{batch_id}/start")
-async def start_batch(batch_id: str, background_tasks: BackgroundTasks):
-    """Start processing a batch job"""
-    batch = batch_service.get_batch(batch_id)
-    if not batch:
-        raise HTTPException(status_code=404, detail="Batch not found")
-
-    try:
-        await batch_service.start_batch(batch_id, _batch_process_file)
-        return {"message": "Batch started", "batch_id": batch_id}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@app.post("/api/v1/batch/{batch_id}/pause")
-async def pause_batch(batch_id: str):
-    """Pause a running batch"""
-    try:
-        success = await batch_service.pause_batch(batch_id)
-        return {"message": "Batch paused" if success else "Cannot pause", "batch_id": batch_id}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.post("/api/v1/batch/{batch_id}/resume")
-async def resume_batch(batch_id: str):
-    """Resume a paused batch"""
-    try:
-        success = await batch_service.resume_batch(batch_id, process_func=_batch_process_file)
-        return {"message": "Batch resumed" if success else "Cannot resume", "batch_id": batch_id}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.post("/api/v1/batch/{batch_id}/cancel")
-async def cancel_batch(batch_id: str):
-    """Cancel a batch job"""
-    try:
-        success = await batch_service.cancel_batch(batch_id)
-        return {"message": "Batch cancelled" if success else "Cannot cancel", "batch_id": batch_id}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.delete("/api/v1/batch/{batch_id}")
-async def delete_batch(batch_id: str):
-    """Delete a batch job"""
-    try:
-        success = batch_service.delete_batch(batch_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="Batch not found")
-        return {"message": "Batch deleted", "batch_id": batch_id}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@app.get("/api/v1/batch/{batch_id}/summary")
-async def get_batch_summary(batch_id: str):
-    """Get batch job summary"""
-    try:
-        return batch_service.get_batch_summary(batch_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get("/api/v1/batch/{batch_id}/results")
-async def get_batch_results(batch_id: str):
-    """Get all results from a batch"""
-    try:
-        return {"results": batch_service.get_batch_results(batch_id)}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.post("/api/v1/batch/{batch_id}/retry")
-async def retry_batch_failed(batch_id: str):
-    """Retry failed tasks in a batch"""
-    try:
-        retried = batch_service.retry_failed_tasks(batch_id)
-        return {"message": f"Reset {retried} tasks for retry", "batch_id": batch_id}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@app.get("/api/v1/batch/{batch_id}/export.csv")
-async def export_batch_csv(batch_id: str, mode: str = "kie", validation_passed_only: bool = False):
-    """Download aggregated batch results as CSV (mode: kie, summary, failures)."""
-    batch = batch_service.get_batch(batch_id)
-    if not batch:
-        raise HTTPException(status_code=404, detail="Batch not found")
-
-    mode_norm = (mode or "kie").strip().lower()
-    export_opts = dict(batch.options or {})
-    if validation_passed_only:
-        export_opts["validation_passed_only"] = True
-    if mode_norm == "summary":
-        header, rows = build_summary_csv_rows(batch)
-    elif mode_norm in ("failures", "failure"):
-        header, rows = build_failure_csv_rows(batch)
-    else:
-        header, rows = build_kie_csv_rows(batch, options=export_opts)
-
-    csv_text = render_csv(header, rows)
-    filename = f"batch_{batch_id}_{mode_norm}.csv"
-    return Response(
-        content=csv_text,
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
-@app.get("/api/v1/batch/{batch_id}/export.xlsx")
-async def export_batch_xlsx(batch_id: str, mode: str = "all"):
-    """Download aggregated batch results as Excel (mode: all, kie, tables, summary)."""
-    batch = batch_service.get_batch(batch_id)
-    if not batch:
-        raise HTTPException(status_code=404, detail="Batch not found")
-
-    mode_norm = (mode or "all").strip().lower()
-    if mode_norm not in {"all", "kie", "tables", "summary"}:
-        raise HTTPException(status_code=400, detail="Invalid mode; use all, kie, tables, or summary")
-
-    try:
-        payload = build_batch_xlsx_bytes(batch, mode=mode_norm)
-    except Exception as exc:
-        logger.error(f"Batch Excel export failed: {exc}")
-        raise HTTPException(status_code=500, detail="Batch Excel export failed") from exc
-
-    filename = f"batch_{batch_id}_{mode_norm}.xlsx"
-    return Response(
-        content=payload,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
-@app.get("/api/v1/batch/{batch_id}/export.json")
-async def export_batch_json(batch_id: str):
-    """Download full batch results as JSON bundle."""
-    import json
-
-    batch = batch_service.get_batch(batch_id)
-    if not batch:
-        raise HTTPException(status_code=404, detail="Batch not found")
-    payload = json.dumps(build_json_bundle(batch), ensure_ascii=False, indent=2)
-    filename = f"batch_{batch_id}.json"
-    return Response(
-        content=payload,
-        media_type="application/json; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+# Batch management routes + helpers (_pipeline_services / _batch_process_file)
+# moved to app.routers.batch; batch export routes moved to
+# app.routers.batch_export (v1.8.2 C3).
 
 
 # ============================================
@@ -835,6 +564,8 @@ async def pdf_tools_form_fill(
 # Router registration (v1.8.2 split — include order pinned)
 # ============================================
 from app.routers.analyzer import router as analyzer_router  # noqa: E402
+from app.routers.batch import router as batch_router  # noqa: E402
+from app.routers.batch_export import router as batch_export_router  # noqa: E402
 from app.routers.documents import router as documents_router  # noqa: E402
 from app.routers.jobs import router as jobs_router  # noqa: E402
 from app.routers.system import router as system_router  # noqa: E402
@@ -850,6 +581,8 @@ routers_to_include = [
     tasks_router,
     trial_router,
     tasks_content_router,
+    batch_router,
+    batch_export_router,
 ]
 for _router in routers_to_include:
     app.include_router(_router)

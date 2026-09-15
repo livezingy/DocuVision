@@ -53,13 +53,9 @@ try:
 except Exception as e:
     print(f"[PaddleX Home] 验证失败: {e}")
 
-from fastapi import Body, FastAPI, UploadFile, File, HTTPException, Form, Path as APIPath, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from typing import List, Optional, Dict, Any, Set
-import uuid
-from datetime import datetime
 from loguru import logger
 from pathlib import Path
 
@@ -67,57 +63,24 @@ from pathlib import Path
 
 
 
-# _build_page_image_meta moved to app.core.runtime (v1.8.2 C1c).
-
-
 # 继续导入其他模块
-from io import BytesIO
 import asyncio
 
 from app.core.config import settings
 
-# Shared runtime (services / state / helpers) + API models extracted for the
-# v1.8.2 main.py split (C1a). Imported here — after env/paddle setup — so the
-# heavy service singletons are still built once, at the same point in startup.
+# Shared runtime (services / state / helpers) extracted for the v1.8.2 main.py
+# split (C1a). Imported here — after env/paddle setup — so the heavy service
+# singletons are still built once, at the same point in startup.
 from app.core.runtime import (  # noqa: E402
     API_VERSION,
     _DEP_VERSIONS,
-    _apply_kie_fields_to_task,
-    _build_page_image_meta,
-    _enforce_max_upload_size,
-    _raise_query_fields_http,
-    _resolve_kie_query_fields_in_options,
-    batch_service,
-    call_maybe_async,
-    formula_service,
     init_runtime,
     kie_service,
     layout_service,
     ocr_service,
-    process_document,
-    seal_service,
     table_service,
-    task_cancellation_flags,
-    task_event_counters,
-    task_event_history,
-    task_websockets,
-    tasks,
 )
-from app.models.api_models import (  # noqa: E402
-    BatchCreateModel,
-    FusedBlock,
-    FusedLayer,
-    FusedPage,
-    HitlResolveModel,
-    PreprocessingMetadata,
-    ProcessingOptions,
-    QualityLayer,
-    RawLayer,
-    ViewContent,
-    ViewElement,
-    ViewLayer,
-    ViewPage,
-)
+
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -179,8 +142,8 @@ try:
 except Exception as e:
     logger.warning(f"[Frontend] Failed to mount frontend static files: {e}")
 
-# Service singletons + GPU detection moved to app.core.runtime (v1.8.2 split).
-
+# Service singletons / GPU detection / module-level state live in
+# app.core.runtime (v1.8.2 split).
 
 @app.on_event("startup")
 async def _kie_optional_warmup_background() -> None:
@@ -196,7 +159,7 @@ async def _kie_optional_warmup_background() -> None:
             logger.warning("DOCUVISION_KIE_WARMUP: warmup failed (non-fatal): {}", exc)
 
     asyncio.create_task(_run())
-# Module-level state (services / tasks / streaming) moved to app.core.runtime (v1.8.2 split).
+
 
 logger.info(
     "Startup strategy | layout=ppstructure(layout-only optional engines off) | table_mode={} | table_fullpage_fallback={} | formula_mode=independent_lazy_roi | seal_mode=independent_lazy",
@@ -206,359 +169,11 @@ logger.info(
 
 
 # ============================================
-# API models moved to app.models.api_models (v1.8.2 split, C1a).
+# API routes
 # ============================================
-
-
-
-
-
-# ============================================
-# API Routes - Core (P1)
-# ============================================
-
-# _enforce_max_upload_size moved to app.core.runtime (v1.8.2 C1c).
-
-
-# System routes (/, /health, /api/v1/health, /api/v1/engines) moved to
-# app.routers.system (v1.8.2 C1b).
-
-
-# Analyzer routes (/api/v1/ocr, /api/v1/upload, /api/v1/analyze) moved to
-# app.routers.analyzer (v1.8.2 C1c).
-
-
-
-
-
-# _send_event / call_maybe_async / process_document moved to app.core.runtime (v1.8.2 C1c).
-
-
-# ============================================
-# Phase 1 API Routes - Job-Based Endpoints
-# ============================================
-
-# documents:analyze + jobs routes moved to app.routers.documents / app.routers.jobs
-# (v1.8.2 C1d/C1e).
-
-
-# ============================================
-# Legacy API Routes (Task-based, deprecated for Phase 1.1)
-# ============================================
-
-# Task lifecycle routes (status / events / ws) moved to app.routers.tasks (v1.8.2 C2).
-
-
-# Task result + layout routes moved to app.routers.tasks_content (v1.8.2 C2).
-
-
-# _normalize_flat_bbox + blocks route moved to app.routers.tasks_content (v1.8.2 C2).
-
-
-
-# Figures + trial routes moved to app.routers.tasks_content / app.routers.trial (v1.8.2 C2).
-
-
-# page-image + export routes moved to app.routers.tasks_content (v1.8.2 C2).
-
-
-# cancel / kie-fields / delete routes moved to app.routers.tasks;
-# _apply_kie_fields_to_task moved to app.core.runtime (v1.8.2 C2).
-
-
-# ============================================
-# API Routes - Batch Processing (P2)
-# ============================================
-
-# Batch management routes + helpers (_pipeline_services / _batch_process_file)
-# moved to app.routers.batch; batch export routes moved to
-# app.routers.batch_export (v1.8.2 C3).
-
-
-# ============================================
-# Roadmap APIs (v1.3–v1.5 MVP)
-# ============================================
-
-# document/profile moved to app.routers.documents (v1.8.2 C1d).
-
-
-@app.get("/api/v1/kie/templates")
-async def list_kie_templates():
-    from app.services.kie.schema_templates import list_templates
-
-    return {"templates": list_templates()}
-
-
-@app.get("/api/v1/kie/templates/{template_id}")
-async def get_kie_template(
-    template_id: str = APIPath(..., pattern=r"^[A-Za-z0-9_-]+$"),
-):
-    from app.services.kie.schema_templates import load_template
-
-    schema = load_template(template_id)
-    if not schema:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return schema
-
-
-@app.post("/api/v1/kie/templates/{template_id}")
-async def save_kie_template(
-    template_id: str = APIPath(..., pattern=r"^[A-Za-z0-9_-]+$"),
-    body: Dict[str, Any] = Body(...),
-):
-    from app.services.kie.schema_templates import save_template
-
-    try:
-        save_template(template_id, body)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"template_id": template_id, "saved": True}
-
-
-@app.get("/api/v1/hitl/reviews")
-async def list_hitl_reviews(limit: int = 50, include_payload: bool = False):
-    from app.services.hitl_queue import hitl_queue
-
-    return {"reviews": hitl_queue.list_pending(limit=limit, include_payload=include_payload)}
-
-
-@app.get("/api/v1/hitl/reviews/{review_id}")
-async def get_hitl_review(review_id: str):
-    from app.services.hitl_queue import hitl_queue
-
-    item = hitl_queue.get(review_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Review not found")
-    return {
-        "review_id": item.review_id,
-        "task_id": item.task_id,
-        "file_name": item.file_name,
-        "reason": item.reason,
-        "status": item.status,
-        "created_at": item.created_at.isoformat(),
-        "payload": item.payload,
-    }
-
-
-@app.post("/api/v1/hitl/reviews/{review_id}/resolve")
-async def resolve_hitl_review(
-    review_id: str,
-    status: str = "approved",
-    body: Optional[HitlResolveModel] = None,
-):
-    from app.services.hitl_queue import hitl_queue
-
-    item = hitl_queue.get(review_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Review not found")
-
-    resolved_status = (body.status if body and body.status else status).strip().lower()
-    if resolved_status not in {"approved", "rejected"}:
-        raise HTTPException(status_code=400, detail="status must be approved or rejected")
-
-    if resolved_status == "approved":
-        task_id = item.task_id
-        if task_id in tasks:
-            if body and body.corrected_fields is not None:
-                _apply_kie_fields_to_task(tasks[task_id], body.corrected_fields)
-            else:
-                result = tasks[task_id].get("result")
-                if isinstance(result, dict):
-                    validation = dict(result.get("kie_validation") or {})
-                    validation["manual_reviewed"] = True
-                    validation["validation_passed"] = True
-                    result["kie_validation"] = validation
-
-    corrected = body.corrected_fields if body and body.corrected_fields is not None else None
-    item = await hitl_queue.resolve(review_id, status=resolved_status, edited_fields=corrected)
-    if not item:
-        raise HTTPException(status_code=404, detail="Review not found")
-    return {"review_id": review_id, "status": item.status, "task_id": item.task_id}
-
-
-def _enforce_webhook_enabled() -> None:
-    """Return 404 when the instance has webhooks disabled (process-level switch)."""
-    if not settings.WEBHOOK_ENABLED:
-        raise HTTPException(status_code=404, detail="Not Found")
-
-
-def _enforce_webhook_admin_token(request: Request) -> None:
-    """Validate ``X-DocuVision-Admin-Token`` against ``settings.WEBHOOK_ADMIN_TOKEN``.
-
-    Fail-closed: when an admin token is configured, requests without a
-    matching header are rejected with 401. An empty configured token is
-    treated as "no auth required" only when webhooks are disabled (already
-    gated by ``_enforce_webhook_enabled``); when enabled with an empty token,
-    we still require the header to be absent-or-empty to avoid silently
-    exposing registration, but log a warning.
-    """
-    expected = settings.WEBHOOK_ADMIN_TOKEN
-    provided = request.headers.get("X-DocuVision-Admin-Token", "")
-    if expected:
-        if not provided or provided != expected:
-            raise HTTPException(status_code=401, detail="Invalid admin token")
-    else:
-        # Token not configured: fail-closed to avoid open registration.
-        logger.warning(
-            "WEBHOOK_ENABLED=true but WEBHOOK_ADMIN_TOKEN is empty; "
-            "rejecting webhook admin request. Set WEBHOOK_ADMIN_TOKEN to allow registration."
-        )
-        raise HTTPException(status_code=401, detail="Admin token not configured")
-
-
-@app.get("/api/v1/webhooks")
-async def list_webhooks(request: Request):
-    _enforce_webhook_enabled()
-    _enforce_webhook_admin_token(request)
-    from app.services.webhook_service import webhook_registry
-
-    return {"subscriptions": webhook_registry.list_subscriptions()}
-
-
-@app.post("/api/v1/webhooks")
-async def register_webhook(
-    request: Request,
-    url: str = Form(...),
-    events: str = Form("task.completed,batch.completed"),
-    secret: str = Form(""),
-):
-    _enforce_webhook_enabled()
-    _enforce_webhook_admin_token(request)
-    from app.services.webhook_service import webhook_registry
-
-    event_list = [e.strip() for e in events.split(",") if e.strip()]
-    try:
-        sub = webhook_registry.register(url, event_list, secret=secret)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    return {
-        "subscription_id": sub.subscription_id,
-        "url": sub.url,
-        "events": sub.events,
-    }
-
-
-@app.post("/api/v1/pdf-tools/split")
-async def pdf_tools_split(file: UploadFile = File(...), pages: str = Form("")):
-    import json
-    import tempfile
-
-    from app.services.pdf_tools_service import coerce_page_list, split_pdf
-
-    page_list = None
-    if pages.strip():
-        try:
-            page_list = coerce_page_list(json.loads(pages))
-        except Exception:
-            page_list = coerce_page_list(
-                [int(p.strip()) for p in pages.split(",") if p.strip().isdigit()]
-            )
-
-    suffix = os.path.splitext(file.filename or "")[1] or ".pdf"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
-        in_path = tmp.name
-    out_dir = os.path.join(tempfile.gettempdir(), f"split_{uuid.uuid4().hex[:8]}")
-    try:
-        outputs = split_pdf(in_path, out_dir, pages=page_list)
-        if len(outputs) == 1 and os.path.isfile(outputs[0]):
-            base = os.path.splitext(file.filename or "document")[0]
-            page_num = (page_list or [1])[0]
-            return FileResponse(
-                outputs[0],
-                filename=f"{base}_page_{page_num}.pdf",
-                media_type="application/pdf",
-            )
-        return {"pages": outputs, "count": len(outputs)}
-    finally:
-        try:
-            os.unlink(in_path)
-        except OSError:
-            pass
-
-
-@app.post("/api/v1/pdf-tools/merge")
-async def pdf_tools_merge(files: List[UploadFile] = File(...)):
-    import tempfile
-
-    from app.services.pdf_tools_service import merge_pdfs
-
-    paths = []
-    try:
-        for upload in files:
-            suffix = os.path.splitext(upload.filename or "")[1] or ".pdf"
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                tmp.write(await upload.read())
-                paths.append(tmp.name)
-        out_path = os.path.join(tempfile.gettempdir(), f"merged_{uuid.uuid4().hex[:8]}.pdf")
-        merge_pdfs(paths, out_path)
-        return FileResponse(out_path, filename="merged.pdf", media_type="application/pdf")
-    finally:
-        for path in paths:
-            try:
-                os.unlink(path)
-            except OSError:
-                pass
-
-
-@app.post("/api/v1/pdf-tools/metadata")
-async def pdf_tools_metadata(file: UploadFile = File(...)):
-    import tempfile
-
-    from app.services.pdf_tools_service import read_pdf_metadata
-
-    suffix = os.path.splitext(file.filename or "")[1] or ".pdf"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
-    try:
-        return read_pdf_metadata(tmp_path)
-    finally:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-
-
-@app.post("/api/v1/pdf-tools/searchable")
-async def pdf_tools_searchable(file: UploadFile = File(...), text: str = Form("")):
-    raise HTTPException(
-        status_code=501,
-        detail="Not Implemented: searchable PDF OCR text layer not yet supported",
-    )
-
-
-@app.post("/api/v1/pdf-tools/form-fill")
-async def pdf_tools_form_fill(
-    file: UploadFile = File(...),
-    field_values: str = Form("{}"),
-):
-    import json
-    import tempfile
-
-    from app.services.pdf_tools_service import fill_acroform
-
-    try:
-        values = json.loads(field_values)
-    except Exception:
-        values = {}
-    if not isinstance(values, dict):
-        raise HTTPException(status_code=400, detail="field_values must be a JSON object")
-
-    suffix = os.path.splitext(file.filename or "")[1] or ".pdf"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
-        in_path = tmp.name
-    out_path = os.path.join(tempfile.gettempdir(), f"filled_{uuid.uuid4().hex[:8]}.pdf")
-    try:
-        fill_acroform(in_path, out_path, {str(k): str(v) for k, v in values.items()})
-        return FileResponse(out_path, filename="filled.pdf", media_type="application/pdf")
-    finally:
-        try:
-            os.unlink(in_path)
-        except OSError:
-            pass
-
+# API models live in app.models.api_models; all 55 routes moved to
+# app.routers.* (v1.8.2 C1-C4). Include order is pinned in the router
+# registration table below.
 
 # ============================================
 # Router registration (v1.8.2 split — include order pinned)
@@ -567,11 +182,15 @@ from app.routers.analyzer import router as analyzer_router  # noqa: E402
 from app.routers.batch import router as batch_router  # noqa: E402
 from app.routers.batch_export import router as batch_export_router  # noqa: E402
 from app.routers.documents import router as documents_router  # noqa: E402
+from app.routers.hitl import router as hitl_router  # noqa: E402
 from app.routers.jobs import router as jobs_router  # noqa: E402
+from app.routers.kie import router as kie_router  # noqa: E402
+from app.routers.pdftools import router as pdftools_router  # noqa: E402
 from app.routers.system import router as system_router  # noqa: E402
 from app.routers.tasks import router as tasks_router  # noqa: E402
 from app.routers.tasks_content import router as tasks_content_router  # noqa: E402
 from app.routers.trial import router as trial_router  # noqa: E402
+from app.routers.webhooks import router as webhooks_router  # noqa: E402
 
 routers_to_include = [
     system_router,
@@ -583,6 +202,10 @@ routers_to_include = [
     tasks_content_router,
     batch_router,
     batch_export_router,
+    kie_router,
+    hitl_router,
+    webhooks_router,
+    pdftools_router,
 ]
 for _router in routers_to_include:
     app.include_router(_router)

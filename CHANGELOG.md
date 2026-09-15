@@ -30,6 +30,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B3 — result-panels + overlay extracted**: `frontend/modules/result-panels/`
+  (D9 as seven sub-modules per design §3.1 - quality / demo-transaction / tables / text /
+  figures / enhance / json; 16 functions, plus `TABLE_TEMPLATE_COLUMNS` and the 46-line
+  top-level style block now owned by figures.js) and `frontend/modules/overlay-render.js`
+  (D10 rendering half, 9 functions + its 3 overlay state values; the geometry half has
+  been in utils/geometry.js since B0b). `app.js` **3798 → 2320 lines**, **68 → 43**
+  top-level functions.
+  Injections (11 deps / 12 call sites, all via the same-name module-scope binding trick
+  so every call site stays byte-identical): `overlay-render.js` 9 (D5 previewHelpers /
+  resolveResultPageCount / syncPreviewPaginationControls / revokeCurrentPageImageUrl /
+  getPdfPageImage / adjustDocumentSize, D8 fetchTaskBlocks, D9 updateContentText, D4
+  initAnnotationInteractions), `result-panels/tables.js` 1 (D12 bindTableCardCsvExport),
+  `result-panels/figures.js` 1 (D5 fetchAuthedImage). The D5/D8 wirings are re-pointed
+  to the module exports in B4 (call sites untouched).
+  The seven sub-modules import nothing from each other (verified: every D9 internal call
+  lands in the same sub-module). `known_edge_pairs` drops D10 → D4 and D10 → D9 (both
+  resolved by injection). `envelope_display.test.js` is re-pointed to the real modules -
+  the inline copies of updateEnhancementTabs / updateContentFormulas /
+  updateContentSeals / escapeHtml are deleted, so production drift can no longer hide
+  there (R9). Gate evidence: lint F1-F5, C1-C8, `--syntax` 25/25, vitest 80/80, e2e 14/14.
 - **v1.8.3 B2 — options-dialog + kie-mapping extracted**: `frontend/modules/options-dialog.js`
   (D6: the analysis-options dialog - 6 functions plus the `syncProcessingModeUI` hook, now
   assigned through `setSyncProcessingModeUI`) and `frontend/modules/kie-mapping.js` (D7: 12

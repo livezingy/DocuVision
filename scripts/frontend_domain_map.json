@@ -24,9 +24,7 @@
     ["D5 preview-paging", "D10 overlay"],
     ["D8 pipeline", "D5 preview-paging"],
     ["D8 pipeline", "D7 kie-mapping"],
-    ["D8 pipeline", "D9 result-panels"],
-    ["D10 overlay", "D9 result-panels"],
-    ["D10 overlay", "D4 shell-init"]
+    ["D8 pipeline", "D9 result-panels"]
   ],
   "domains": {
     "D1 api-base": [

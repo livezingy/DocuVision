@@ -49,6 +49,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `app_js_functions` 126); `app_js_module` phase flag flipped to `true`.
 
 ### Fixed
+- `frontend/package-lock.json` now actually contains **jsdom 25.0.1**. It was
+  declared in `frontend/package.json` but absent from the lock (no
+  `packages["node_modules/jsdom"]` entry; the only "jsdom" strings in the lock
+  were vitest's optional peer declaration), so any lock-driven install —
+  `npm ci` on a fresh clone or in CI — could never produce it and
+  `npm run test:unit` failed with `Cannot find dependency 'jsdom'`. CI was
+  unaffected so far only because no workflow runs vitest yet.
 - `scripts/lint_frontend.py` now enumerates with
   `git ls-files --cached --others --exclude-standard`, so a newly created module is
   linted *before* it is `git add`-ed. Previously F1/F3 silently skipped it.

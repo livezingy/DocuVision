@@ -30,6 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B5b — docs and version close-out**: `DEVELOPMENT.md` grows from "three hard
+  rules" to **six** - the three front-end invariants the gates already enforce (module
+  ≤500 lines + import only downward; `app.js` assembly-only with ratchets; every
+  `initXxx` must be wired and cross-domain deps injected, no `window.*` bridges) are now
+  stated where contributors will look for them. `frontend/README_FRONTEND.md` gets its
+  **file structure / initialisation / main modules** sections rewritten against the
+  split reality (33 modules, the three-stage boot, the injection assembly, the 17-step
+  boot sequence) - the stale v1.1.0 section is gone, remaining sections are labelled
+  functional-only. `APP_VERSION` **1.8.2 → 1.8.3** (`backend/app/core/config.py`;
+  `info.version` is excluded from the OpenAPI baseline, so the route-contract snapshot is
+  unaffected). Entry cache-bust token **`?v=20260915-b0b` → `?v=20260915-v183`** (D9:
+  the token tracks assembly/dependency-structure changes - this is the terminal one).
 - **v1.8.3 B5a — shell extracted, entry at terminal state**: `frontend/modules/shell/`
   (`ui.js` + `tools.js`, D4's 12 functions plus the `globalTooltip` state; no cross-half
   calls, so no extra injection). The shell's cross-domain calls are **injected - 10

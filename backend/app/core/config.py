@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Application
     APP_NAME: str = "DocuVision"
-    APP_VERSION: str = "1.8.2"
+    APP_VERSION: str = "1.8.3"
     DEBUG: bool = True
 
     # Server

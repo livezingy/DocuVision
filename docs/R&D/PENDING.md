@@ -38,18 +38,6 @@
   立项即需 BACKFILL-001 云端重验。责任仓：`table_backfill.py` 对应层 + 契约 `reason` 字段。
 - 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
 
-### P-003 · v1.8.2 拆分的两项门禁遗留（v1.8.3 候选，2026-09-15）
-- 来源：v1.8.2 main.py 拆分收尾（PR #17；main `9665e58`；tag `v1.8.2.0`）。用户裁决：留到 v1.8.3 一起做。
-- 状态：已发版；两项均为**门禁补强**，非缺陷。
-- 待决项：
-  1. **SPLIT-U4 测试**：断言 `import app.core.runtime` 不产生任何文件/DB 写（tmp_path 下目录为空）。
-     约束：`backend/app/core/runtime.py` 顶部 `import paddle`，本机跑不了 → 用例只能 Cloud 跑（`DOCUVISION_CLOUD_TESTS=1`）。
-  2. **静态契约测试接入 CI**：`backend/tests/test_route_contract_freeze.py` 与 `test_route_inventory.py`
-     目前只在本地跑。`kie-phase-a.yml` 已在跑 pytest，把这两条加进其 Pro 步骤即可让契约漂移在 PR 阶段变红（成本极低）。
-- 相关存档：设计稿 `docs/R&D/PLAN/v1.8.2-main-split-design.md`（本地，不进 git）；
-  kernel 规则 `docs/agent-ops/core/routing.md` 规则 6；`DEVELOPMENT.md` 三条硬规范。
-- 确认动作：v1.8.3 立项时把两项转入该版 deliverables，然后移除本组。
-
 ### P-004 · 新建 `docs/architecture/module-map.md`（当前态模块地图）（2026-09-15）
 - 目的：补齐「架构与运作模式」层——单一权威入口，回答 main 上的**模块边界 / 依赖方向 / 不变量门禁**。
 - 现状缺口：`docuvision-system-design.md` 是"语义/契约"向（引擎选型/坐标/三层数据结构/API 语义），`最近对照` 已落后 2 版；

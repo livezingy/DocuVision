@@ -3,7 +3,7 @@
   "app_js_module": true,
   "budget": 500,
   "files": {
-    "frontend/app.js": 806
+    "frontend/app.js": 805
   },
   "panel_resize_removed": true
 }

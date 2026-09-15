@@ -1,44 +1,40 @@
 /**
- * Preview navigation (v1.8.3 B4) - domain module (D5, nav half).
+ * Preview navigation (v1.8.3 B4, core-ified per the B-decision) - domain module (D5, nav half).
  *
- * D5 is split across preview-nav.js (this file) and preview-render.js because the
- * domain is >500 lines. The two halves call each other (nav -> render: adjustDocumentSize /
- * getPdfPageImage / updatePreviewView; render -> nav: resolveResultPageCount /
- * revokeCurrentPageImageUrl / syncPreviewPaginationControls), and F3 forbids module-to-module
- * imports, so those six same-domain calls are injected from app.js too - exactly like the
- * cross-domain ones. The same-name module-scope binding trick keeps every call site
+ * Same-domain deps (paging hub, page image, sizing) come from ./core.js; the only
+ * cross-half import is updatePreviewView from ./render.js - one-way, no cycle.
+ * Cross-domain deps (D7 kie-mapping, D8 mediator, D10 overlay) are injected at boot
+ * through initPreviewNav; the same-name module-scope binding keeps every call site
  * byte-identical.
  */
-import { showNotification } from './notifications.js';
-import { API_BASE_URL } from './api-config.js';
+import { showNotification } from '../notifications.js';
+import { API_BASE_URL } from '../api-config.js';
 import {
     currentOriginalFileUrl, currentTaskId, currentQueueItem, currentPreviewPage,
     currentPageImageUrl, previewPaginationInitialized,
     setOriginalFileUrl, setTaskId, setQueueItem, setPreviewPage, setPageImageUrl,
-    setPreviewPaginationInitialized, setLastFetchedBlocks, resetPreviewState,
-} from './preview-state.js';
+    setPreviewPaginationInitialized, setLastFetchedBlocks,
+} from '../preview-state.js';
+import {
+    previewHelpers, resolveResultPageCount, syncPreviewPaginationControls,
+    revokeCurrentPageImageUrl, getPdfPageImage, adjustDocumentSize,
+} from './core.js';
+import { updatePreviewView } from './render.js';
 
-// --- cross-domain deps (D7 / D8 / D10), injected at boot ---
+// --- cross-domain deps, injected at boot ---
 let renderDocumentWithAnnotations = async function () {};
 let updateTableMappingEligibility = function () {};
 let updateDocumentTypeSuggestion = function () {};
 let renderResults = async function () {};
-// --- same-domain deps from preview-render.js, injected at boot ---
-let adjustDocumentSize = function () {};
-let getPdfPageImage = async function () { return null; };
-let updatePreviewView = async function () {};
 
 /**
- * Wire preview-nav dependencies (app.js assembly).
+ * Wire preview-nav cross-domain dependencies (app.js assembly).
  */
 export function initPreviewNav(deps = {}) {
     if (typeof deps.renderDocumentWithAnnotations === 'function') renderDocumentWithAnnotations = deps.renderDocumentWithAnnotations;
     if (typeof deps.updateTableMappingEligibility === 'function') updateTableMappingEligibility = deps.updateTableMappingEligibility;
     if (typeof deps.updateDocumentTypeSuggestion === 'function') updateDocumentTypeSuggestion = deps.updateDocumentTypeSuggestion;
     if (typeof deps.renderResults === 'function') renderResults = deps.renderResults;
-    if (typeof deps.adjustDocumentSize === 'function') adjustDocumentSize = deps.adjustDocumentSize;
-    if (typeof deps.getPdfPageImage === 'function') getPdfPageImage = deps.getPdfPageImage;
-    if (typeof deps.updatePreviewView === 'function') updatePreviewView = deps.updatePreviewView;
 }
 
 /** Clear inline sizing from adjustDocumentSize so the next task is not clipped by the previous layout. */
@@ -57,54 +53,6 @@ export function resetDocumentPageLayoutStyles() {
         previewContent.style.maxWidth = '';
         previewContent.style.maxHeight = '';
         previewContent.style.overflow = '';
-    }
-}
-
-export function previewHelpers() {
-    return window.DocuVisionPreview || {};
-}
-
-export function resolveResultPageCount(result, queueItem = null) {
-    const previewCount = queueItem && queueItem.previewPageCount ? Number(queueItem.previewPageCount) : 0;
-    const fn = previewHelpers().resolveDocumentPageCount;
-    if (typeof fn === 'function') {
-        return fn(result, previewCount);
-    }
-    const pages = Number((result && result.document_info && result.document_info.pages) || previewCount || 1);
-    return pages > 0 ? pages : 1;
-}
-
-export function syncPreviewPaginationControls(totalPages, pageNum = currentPreviewPage) {
-    const total = Math.max(1, Number(totalPages) || 1);
-    const normalize = previewHelpers().normalizePreviewPage;
-    const page = typeof normalize === 'function' ? normalize(pageNum, total) : Math.min(Math.max(1, pageNum), total);
-    setPreviewPage(page);
-
-    const pageInput = document.querySelector('.page-input');
-    const pageTotal = document.querySelector('.page-total');
-    const prevBtn = document.getElementById('prevPage');
-    const nextBtn = document.getElementById('nextPage');
-
-    if (pageInput) {
-        pageInput.min = 1;
-        pageInput.max = total;
-        pageInput.value = page;
-    }
-    if (pageTotal) {
-        pageTotal.textContent = ` / ${total}`;
-    }
-    if (prevBtn) {
-        prevBtn.disabled = page <= 1;
-    }
-    if (nextBtn) {
-        nextBtn.disabled = page >= total;
-    }
-}
-
-export function revokeCurrentPageImageUrl() {
-    if (currentPageImageUrl) {
-        URL.revokeObjectURL(currentPageImageUrl);
-        setPageImageUrl(null);
     }
 }
 

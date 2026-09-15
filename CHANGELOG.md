@@ -30,6 +30,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B-decision — same-domain splits switch from injection to sibling imports**:
+  `preview-nav.js` / `preview-render.js` move into `frontend/modules/preview-paging/`
+  (`core.js` + `nav.js` + `render.js`) and `pipeline-run.js` / `pipeline-result.js`
+  into `frontend/modules/pipeline/` (`run.js` + `result.js`). F3 gains one allowed
+  target - a same-directory sibling inside a domain sub-directory (the `modules/` root
+  is excluded, so true cross-domain pairs stay red; leaf-service L1 is unaffected
+  because F5 validates registered modules independently of F3) - and the 8
+  same-domain injection points from B4 are retired: D5's hub functions
+  (`previewHelpers` / `resolveResultPageCount` / `syncPreviewPaginationControls` /
+  `revokeCurrentPageImageUrl` / `getPdfPageImage` / `adjustDocumentSize`) moved to
+  `preview-paging/core.js`, which turns the split into a one-way DAG
+  (`nav -> render -> core`) with **no circular import and no ESM TDZ hazard**
+  (D8's run -> result was already one-way). The 36 cross-domain injections, the
+  domain-to-function map and the edge table are unchanged; every function body stays
+  byte-identical. `app.js` 806 → 805 lines (13 functions, ratchet lowered).
+  Gate evidence: lint F1-F5, C1-C8, `--syntax` 32/32 (now including `app.js`),
+  vitest 80/80, e2e 14/14.
 - **v1.8.3 B4 — orchestration chain extracted (D3 upload-queue + D5 preview-paging + D8
   pipeline)**: new `frontend/modules/preview-nav.js` + `preview-render.js` (D5, 14
   functions split by the design's line cut), `pipeline-run.js` + `pipeline-result.js` (D8,

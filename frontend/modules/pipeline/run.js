@@ -1,16 +1,20 @@
 /**
- * Processing pipeline - run half (v1.8.3 B4) - domain module (D8).
+ * Processing pipeline - run half (v1.8.3 B4; sibling-imports per the B-decision) -
+ * domain module (D8).
  *
- * D8 is split across pipeline-run.js (this file) and pipeline-result.js because the
- * domain is >500 lines. run -> result calls (clearResultsDisplay / fetchTaskResult) are
- * injected from app.js, as are all cross-domain deps (D1 / D3 / D5 / D6 / D7). The
- * mediator updateResultsDisplay stays in app.js and is injected into pipeline-result.js.
+ * D8 is split across pipeline/run.js (this file) and pipeline/result.js because the
+ * domain is >500 lines. run -> result calls (clearResultsDisplay / fetchTaskResult)
+ * are same-directory sibling imports (one-way, no cycle). All cross-domain deps
+ * (D1 / D3 / D5 / D6 / D7) are injected at boot; the mediator updateResultsDisplay
+ * stays in app.js and is injected into pipeline/result.js. The same-name
+ * module-scope binding keeps every call site byte-identical.
  */
-import { showNotification } from './notifications.js';
-import { updateStatusBar, updateStatusBarThrottled } from './status-bar.js';
-import { API_BASE_URL, API_ROOT_URL } from './api-config.js';
-import { lastHealthPayload } from './api-state.js';
-import { currentQueueItem, setTaskId } from './preview-state.js';
+import { showNotification } from '../notifications.js';
+import { updateStatusBar, updateStatusBarThrottled } from '../status-bar.js';
+import { API_BASE_URL, API_ROOT_URL } from '../api-config.js';
+import { lastHealthPayload } from '../api-state.js';
+import { currentQueueItem, setTaskId } from '../preview-state.js';
+import { clearResultsDisplay, fetchTaskResult } from './result.js';
 
 // --- cross-domain deps, injected at boot ---
 let checkApiReachable = async function () { return { ok: false }; };
@@ -22,9 +26,6 @@ let previewHelpers = function () { return {}; };
 let switchToQueueItem = async function () {};
 let getProcessingOptions = function () { return {}; };
 let isTableMappingRunBlocked = function () { return false; };
-// --- same-domain deps from pipeline-result.js, injected at boot ---
-let clearResultsDisplay = function () {};
-let fetchTaskResult = async function () {};
 
 /**
  * Wire pipeline-run dependencies (app.js assembly).
@@ -39,8 +40,6 @@ export function initPipelineRun(deps = {}) {
     if (typeof deps.switchToQueueItem === 'function') switchToQueueItem = deps.switchToQueueItem;
     if (typeof deps.getProcessingOptions === 'function') getProcessingOptions = deps.getProcessingOptions;
     if (typeof deps.isTableMappingRunBlocked === 'function') isTableMappingRunBlocked = deps.isTableMappingRunBlocked;
-    if (typeof deps.clearResultsDisplay === 'function') clearResultsDisplay = deps.clearResultsDisplay;
-    if (typeof deps.fetchTaskResult === 'function') fetchTaskResult = deps.fetchTaskResult;
 }
 
 /**

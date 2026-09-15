@@ -1,53 +1,32 @@
 /**
- * Preview rendering (v1.8.3 B4) - domain module (D5, render half).
+ * Preview rendering (v1.8.3 B4, core-ified per the B-decision) - domain module (D5, render half).
  *
- * Second half of D5 (see preview-nav.js for the split rationale). The same-domain
- * calls into preview-nav.js (resolveResultPageCount / revokeCurrentPageImageUrl /
- * syncPreviewPaginationControls) are injected at boot, as are the cross-domain ones
- * into D10 (renderDocumentWithAnnotations / renderTextPreview). Same-name
- * module-scope binding keeps every call site byte-identical.
+ * Same-domain deps all come from ./core.js; this file does NOT import nav.js (the
+ * only cross-half edge is nav -> render for updatePreviewView, one-way). The
+ * cross-domain deps into D10 overlay (renderDocumentWithAnnotations /
+ * renderTextPreview) are injected at boot; the same-name module-scope binding
+ * keeps every call site byte-identical.
  */
-import { showNotification } from './notifications.js';
-import { API_BASE_URL } from './api-config.js';
+import { showNotification } from '../notifications.js';
 import {
     currentOriginalFileUrl, currentTaskId, currentQueueItem, currentPreviewPage,
     currentPageImageUrl, setPageImageUrl,
-} from './preview-state.js';
+} from '../preview-state.js';
+import {
+    resolveResultPageCount, syncPreviewPaginationControls, revokeCurrentPageImageUrl,
+    getPdfPageImage, adjustDocumentSize,
+} from './core.js';
 
 // --- cross-domain deps (D10 overlay), injected at boot ---
 let renderDocumentWithAnnotations = async function () {};
 let renderTextPreview = function () {};
-// --- same-domain deps from preview-nav.js, injected at boot ---
-let resolveResultPageCount = function () { return 1; };
-let revokeCurrentPageImageUrl = function () {};
-let syncPreviewPaginationControls = function () {};
 
 /**
- * Wire preview-render dependencies (app.js assembly).
+ * Wire preview-render cross-domain dependencies (app.js assembly).
  */
 export function initPreviewRender(deps = {}) {
     if (typeof deps.renderDocumentWithAnnotations === 'function') renderDocumentWithAnnotations = deps.renderDocumentWithAnnotations;
     if (typeof deps.renderTextPreview === 'function') renderTextPreview = deps.renderTextPreview;
-    if (typeof deps.resolveResultPageCount === 'function') resolveResultPageCount = deps.resolveResultPageCount;
-    if (typeof deps.revokeCurrentPageImageUrl === 'function') revokeCurrentPageImageUrl = deps.revokeCurrentPageImageUrl;
-    if (typeof deps.syncPreviewPaginationControls === 'function') syncPreviewPaginationControls = deps.syncPreviewPaginationControls;
-}
-
-/**
- * Get PDF page image from backend
- */
-export async function getPdfPageImage(taskId, pageNum = 1) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/page-image/${pageNum}`);
-        if (!response.ok) {
-            throw new Error(`Failed to get page image: ${response.statusText}`);
-        }
-        const blob = await response.blob();
-        return URL.createObjectURL(blob);
-    } catch (error) {
-        console.error('Error getting PDF page image:', error);
-        throw error;
-    }
 }
 
 /**
@@ -224,111 +203,4 @@ export function fetchAuthedImage(url, imgEl) {
             return objUrl;
         })
         .catch(function () { return null; });
-}
-
-/**
- * Adjust document size to fit container - show full page without scrollbar
- */
-export function adjustDocumentSize() {
-    const documentImage = document.getElementById('documentImage');
-    const previewContainer = document.querySelector('.preview-container');
-    const documentPage = document.getElementById('documentPage');
-    const documentPreviewContent = document.querySelector('.document-preview-content');
-
-    if (!previewContainer) return;
-
-    // Calculate available space (account for padding: 8px on each side = 16px total)
-    const containerWidth = previewContainer.clientWidth - 16;
-    const containerHeight = previewContainer.clientHeight - 16;
-
-    // Ensure container dimensions are valid
-    if (containerWidth <= 0 || containerHeight <= 0) {
-        setTimeout(adjustDocumentSize, 100);
-        return;
-    }
-
-    if (documentImage) {
-        // Adjust image size to fit container exactly
-        // Use natural dimensions if available, otherwise wait for image to load
-        if (documentImage.complete && documentImage.naturalWidth > 0) {
-            const imgWidth = documentImage.naturalWidth;
-            const imgHeight = documentImage.naturalHeight;
-
-            // Calculate scale to fit container (maintain aspect ratio)
-            const scaleX = containerWidth / imgWidth;
-            const scaleY = containerHeight / imgHeight;
-            const scale = Math.min(scaleX, scaleY); // Fit to container, can scale down
-
-            const displayWidth = imgWidth * scale;
-            const displayHeight = imgHeight * scale;
-
-            // Set image size to fit exactly within container
-            documentImage.style.width = `${displayWidth}px`;
-            documentImage.style.height = `${displayHeight}px`;
-            documentImage.style.maxWidth = `${containerWidth}px`;
-            documentImage.style.maxHeight = `${containerHeight}px`;
-            documentImage.style.objectFit = 'contain';
-            documentImage.style.display = 'block';
-
-            // Set container sizes to match image size (not container size) to eliminate whitespace
-            if (documentPage) {
-                documentPage.style.width = `${displayWidth}px`;
-                documentPage.style.height = `${displayHeight}px`;
-                documentPage.style.maxWidth = `${containerWidth}px`;
-                documentPage.style.maxHeight = `${containerHeight}px`;
-                documentPage.style.overflow = 'hidden';
-            }
-
-            if (documentPreviewContent) {
-                documentPreviewContent.style.width = `${displayWidth}px`;
-                documentPreviewContent.style.height = `${displayHeight}px`;
-                documentPreviewContent.style.maxWidth = `${containerWidth}px`;
-                documentPreviewContent.style.maxHeight = `${containerHeight}px`;
-                documentPreviewContent.style.overflow = 'hidden';
-            }
-        } else {
-            // Image not loaded yet, wait for it
-            const img = new Image();
-            img.onload = function() {
-                const imgWidth = this.naturalWidth || this.width;
-                const imgHeight = this.naturalHeight || this.height;
-
-                if (imgWidth <= 0 || imgHeight <= 0) return;
-
-                // Calculate scale to fit container (maintain aspect ratio)
-                const scaleX = containerWidth / imgWidth;
-                const scaleY = containerHeight / imgHeight;
-                const scale = Math.min(scaleX, scaleY); // Fit to container, can scale down
-
-                const displayWidth = imgWidth * scale;
-                const displayHeight = imgHeight * scale;
-
-                // Set image size to fit exactly within container
-                documentImage.style.width = `${displayWidth}px`;
-                documentImage.style.height = `${displayHeight}px`;
-                documentImage.style.maxWidth = `${containerWidth}px`;
-                documentImage.style.maxHeight = `${containerHeight}px`;
-                documentImage.style.objectFit = 'contain';
-                documentImage.style.display = 'block';
-
-                // Set container sizes to match image size (not container size) to eliminate whitespace
-                if (documentPage) {
-                    documentPage.style.width = `${displayWidth}px`;
-                    documentPage.style.height = `${displayHeight}px`;
-                    documentPage.style.maxWidth = `${containerWidth}px`;
-                    documentPage.style.maxHeight = `${containerHeight}px`;
-                    documentPage.style.overflow = 'hidden';
-                }
-
-                if (documentPreviewContent) {
-                    documentPreviewContent.style.width = `${displayWidth}px`;
-                    documentPreviewContent.style.height = `${displayHeight}px`;
-                    documentPreviewContent.style.maxWidth = `${containerWidth}px`;
-                    documentPreviewContent.style.maxHeight = `${containerHeight}px`;
-                    documentPreviewContent.style.overflow = 'hidden';
-                }
-            };
-            img.src = documentImage.src;
-        }
-    }
 }

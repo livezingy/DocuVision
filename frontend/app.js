@@ -78,17 +78,19 @@ import { updateEnhancementTabs, updateContentFormulas, updateContentSeals } from
 import { updateResultJson } from './modules/result-panels/json.js';
 import { updateDemoTransactionViews } from './modules/result-panels/demo-transaction.js';
 import {
-    initPreviewNav, previewHelpers, resolveResultPageCount, syncPreviewPaginationControls,
-    revokeCurrentPageImageUrl, switchToQueueItem, initPreviewPagination,
-} from './modules/preview-nav.js';
+    initPreviewNav, switchToQueueItem, initPreviewPagination,
+} from './modules/preview-paging/nav.js';
 import {
-    initPreviewRender, getPdfPageImage, updatePreviewView, updateDocumentPreview,
-    fetchAuthedImage, adjustDocumentSize,
-} from './modules/preview-render.js';
-import { initPipelineRun, startProcessing } from './modules/pipeline-run.js';
+    initPreviewRender, updateDocumentPreview, fetchAuthedImage,
+} from './modules/preview-paging/render.js';
 import {
-    initPipelineResult, fetchTaskResult, fetchTaskBlocks, completeProcessing, clearResultsDisplay,
-} from './modules/pipeline-result.js';
+    previewHelpers, resolveResultPageCount, syncPreviewPaginationControls,
+    revokeCurrentPageImageUrl, getPdfPageImage, adjustDocumentSize,
+} from './modules/preview-paging/core.js';
+import { initPipelineRun, startProcessing } from './modules/pipeline/run.js';
+import {
+    initPipelineResult, fetchTaskBlocks, completeProcessing, clearResultsDisplay,
+} from './modules/pipeline/result.js';
 import {
     initUploadQueue, insertInitialSkeleton, initUploadZone, handleFiles, createQueueItem,
     handleQueueItemDeletion, updateQueueCount, resetQueueItemForReprocessing, simulateProcessing,
@@ -108,23 +110,20 @@ initOverlayRender({
 initResultPanelsTables({ bindTableCardCsvExport });
 initResultPanelsFigures({ fetchAuthedImage });
 
-// D5 preview-paging (nav <-> render halves + D10/D7/mediator)
+// D5 preview-paging (nav / render halves over the shared core base + D10/D7/mediator;
+// same-domain deps are same-directory sibling imports, not injections)
 initPreviewNav({
     renderDocumentWithAnnotations, updateTableMappingEligibility, updateDocumentTypeSuggestion,
     renderResults: (r) => updateResultsDisplay(r),
-    adjustDocumentSize, getPdfPageImage, updatePreviewView,
 });
-initPreviewRender({
-    renderDocumentWithAnnotations, renderTextPreview,
-    resolveResultPageCount, revokeCurrentPageImageUrl, syncPreviewPaginationControls,
-});
+initPreviewRender({ renderDocumentWithAnnotations, renderTextPreview });
 
-// D8 pipeline (run <-> result halves + D1/D3/D5/D6/D7 + mediator)
+// D8 pipeline (run / result halves + D1/D3/D5/D6/D7 + mediator; run -> result is a
+// same-directory sibling import)
 initPipelineRun({
     checkApiReachable, applyHealthToFooter,
     failProcessing, resetQueueItemForReprocessing, simulateProcessing,
     previewHelpers, switchToQueueItem, getProcessingOptions, isTableMappingRunBlocked,
-    clearResultsDisplay, fetchTaskResult,
 });
 initPipelineResult({
     failProcessing, handleQueueItemDeletion, processNextInQueue,

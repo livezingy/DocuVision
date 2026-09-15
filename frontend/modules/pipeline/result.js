@@ -1,14 +1,15 @@
 /**
- * Processing pipeline - result half (v1.8.3 B4) - domain module (D8).
+ * Processing pipeline - result half (v1.8.3 B4; sibling-imports per the B-decision) -
+ * domain module (D8).
  *
- * Second half of D8 (see pipeline-run.js for the split rationale). Cross-domain deps
- * (D3 upload-queue, D5 preview-paging) and the app.js mediator updateResultsDisplay
- * (`renderResults`) are injected at boot; same-name module-scope binding keeps every
- * call site byte-identical.
+ * Second half of D8 (see pipeline/run.js for the split rationale). This file does not
+ * import run.js. Cross-domain deps (D3 upload-queue, D5 preview-paging) and the app.js
+ * mediator updateResultsDisplay (`renderResults`) are injected at boot; the same-name
+ * module-scope binding keeps every call site byte-identical.
  */
-import { showNotification } from './notifications.js';
-import { updateStatusBar } from './status-bar.js';
-import { API_BASE_URL } from './api-config.js';
+import { showNotification } from '../notifications.js';
+import { updateStatusBar } from '../status-bar.js';
+import { API_BASE_URL } from '../api-config.js';
 
 // --- cross-domain deps, injected at boot ---
 let failProcessing = function () {};

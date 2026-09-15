@@ -30,6 +30,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B2 — options-dialog + kie-mapping extracted**: `frontend/modules/options-dialog.js`
+  (D6: the analysis-options dialog - 6 functions plus the `syncProcessingModeUI` hook, now
+  assigned through `setSyncProcessingModeUI`) and `frontend/modules/kie-mapping.js` (D7: 12
+  functions - table-mapping eligibility, document-profile pre-scan, KIE field payload and
+  Fields rendering). `app.js` **4318 → 3798 lines**, **86 → 68** top-level functions.
+  The D6 ↔ D7 cycle is broken by app.js assembly injection (D6 needs D7's
+  `clearTableMappingEligibility` / `updateKieQueryFieldsAvailability` /
+  `buildKieQueryFieldsPayload`; D7 needs D6's `getSelectedProcessingMode`), and D6 → D9
+  `updateEnhancementTabs` (result-panels, not yet extracted) is injected from app.js too -
+  the same-name module-scope binding trick keeps every call site byte-identical. The
+  `syncProcessingModeUI` hook moved with D6; D4's `initAnalysisView` now assigns it through
+  `setSyncProcessingModeUI`. `known_edge_pairs` drops D7 → D6 (the cycle is no longer a
+  static edge). Gate evidence: lint F1-F5, C1-C8, `--syntax` 17/17, vitest 80/80, e2e 14/14.
 - **v1.8.3 B1b (part 3) — batch / hitl-review + the single injection (B1b complete)**:
   `frontend/modules/batch.js` (11 functions; `getProcessingOptions` is injected into
   `initBatchProcessing` through a module-scope binding so `createBatch`'s call site stays

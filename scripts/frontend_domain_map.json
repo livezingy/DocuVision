@@ -26,8 +26,7 @@
     ["D8 pipeline", "D7 kie-mapping"],
     ["D8 pipeline", "D9 result-panels"],
     ["D10 overlay", "D9 result-panels"],
-    ["D10 overlay", "D4 shell-init"],
-    ["D7 kie-mapping", "D6 options-dialog"]
+    ["D10 overlay", "D4 shell-init"]
   ],
   "domains": {
     "D1 api-base": [

@@ -13,8 +13,9 @@ Modes:
                      coupling tables) to PATH as UTF-8 - the B0a evidence trail
   --update           lower the recorded ratchets in scripts/frontend_size_allowlist.json
                      to the current measured values (never raises them; flags untouched)
-  --syntax           copy every frontend/modules/**/*.js to a temp ``.mjs`` and run
-                     ``node --check``; skipped (and declared) when node is unavailable
+  --syntax           copy every frontend/modules/**/*.js plus ``frontend/app.js`` to
+                     temp ``.mjs`` files and run ``node --check``; skipped (and
+                     declared) when node is unavailable
 
 Measurement notes:
   * Lines = Python ``splitlines()`` (same metric as ``lint_file_size.py``). PowerShell
@@ -316,7 +317,12 @@ def run_update(lines: list[str]) -> int:
 
 
 def run_syntax() -> int:
-    files = fc.module_files()
+    files: list[Path] = list(fc.module_files())
+    # B-decision (2026-09-15): the entry itself must parse too. A leftover
+    # "declaration + same-name import" pair in app.js is a whole-site SyntaxError
+    # that no other gate catches (this gate previously covered modules/ only).
+    if APP_JS.is_file():
+        files.append(APP_JS)
     if not files:
         print("[syntax] no frontend/modules/**/*.js yet - nothing to check")
         return 0
@@ -326,7 +332,9 @@ def run_syntax() -> int:
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as tmp:
         for path in files:
-            target = Path(tmp) / (path.stem + ".mjs")
+            # Collision-proof temp name: sub-directories may hold same-stem files.
+            flat = path.relative_to(REPO_ROOT).as_posix().replace("/", "__")
+            target = Path(tmp) / (flat[: -len(".js")] + ".mjs")
             target.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
             proc = subprocess.run(["node", "--check", str(target)], capture_output=True, text=True)
             rel = path.relative_to(REPO_ROOT).as_posix()
@@ -338,7 +346,7 @@ def run_syntax() -> int:
             print(f"[FAIL] {item}")
         print(f"[syntax] {len(failures)} file(s) failed")
         return 1
-    print(f"[syntax] OK ({len(files)} module file(s))")
+    print(f"[syntax] OK ({len(files)} file(s) incl. app.js)")
     return 0
 
 

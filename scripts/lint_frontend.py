@@ -12,8 +12,14 @@ Rules (design rev2 section 6 / DEVELOPMENT.md frontend rules):
                       app.js").
   F3  import direction ``frontend/modules/**`` may not import ``../app.js`` and may
                       not import a sibling domain module. Allowed relative targets
-                      are ``frontend/modules/utils/*``, ``frontend/modules/preview-state.js``
+                      are ``frontend/modules/utils/*``, the registered whitelist files
                       and ``frontend/shared/*`` (bare specifiers are rejected too).
+                      Since the B-decision (2026-09-15) one more target is allowed:
+                      a **same-directory sibling inside a domain sub-directory**
+                      (``frontend/modules/<domain>/*.js`` may import its own directory
+                      siblings). The ``frontend/modules`` root is excluded, or true
+                      cross-domain pairs would pass too. Leaf-service L1 stays intact
+                      because F5 checks registered modules independently of F3.
   F4  assembly shape  ``index.html`` keeps exactly one entry (``app.js``); no module
                       file may appear in ``index.html``; only the known legacy
                       classic scripts may stay. The entry ``type="module"``
@@ -222,7 +228,15 @@ def check_f2(allowlist: dict) -> list[str]:
 
 
 def check_f3(tracked: list[str]) -> list[str]:
-    """Import direction inside frontend/modules/**."""
+    """Import direction inside frontend/modules/**.
+
+    Allowed targets: the data-driven whitelist (utils/ + registered files + shared/)
+    and - since the B-decision - same-directory siblings inside a domain
+    sub-directory. The ``frontend/modules`` root is deliberately excluded from the
+    sibling rule so true cross-domain pairs (options-dialog <-> kie-mapping) stay
+    red; leaf-service L1 is unaffected because F5 validates registered modules
+    independently of this whitelist.
+    """
     dirs, files, prefixes = _import_whitelist()
     violations: list[str] = []
     checked = 0
@@ -241,6 +255,12 @@ def check_f3(tracked: list[str]) -> list[str]:
                 violations.append(f"F3 {rel}:{lineno} imports the entry '{spec}'")
                 continue
             if target.startswith(dirs) or target in files or target.startswith(prefixes):
+                continue
+            src_dir = posixpath.dirname(rel)
+            if src_dir != MODULES_PREFIX.rstrip("/") and posixpath.dirname(target) == src_dir:
+                # Same-domain-directory sibling: a sub-directory is the file boundary
+                # of one domain, so its own files may import each other. The modules
+                # root is excluded above - otherwise cross-domain pairs would pass.
                 continue
             violations.append(
                 f"F3 {rel}:{lineno} sibling-domain import '{spec}' -> {target} "

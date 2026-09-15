@@ -4,7 +4,7 @@
 > **File**: `docuvision-system-design.md`（英文路径名；本文标题保留中文）  
 > 版本：v1.12  
 > 日期：2026-05-20  
-> 最近对照：v1.6.0 / tag v1.6.0（2026-09-06）  
+> 最近对照：v1.8.2.0 / tag v1.8.2.0 / commit 9665e58（2026-09-15）  
 > 参考：Azure Document Intelligence Layout API（layout-checklist.jpg.json 等样本）
 
 **文档地图**
@@ -500,7 +500,7 @@ fused 层各 block 的 `processing_status` 字段：
 
 **已移除**：旧版「模板」REST（`/api/v1/templates*`）不再注册，OpenAPI 不展示；遗留客户端将收到 **HTTP 404**（详见 `test_data/acceptance/doc_types.md`）。
 
-下文 §7.1 起以 **Phase1 Job** 的 JSON 选项结构为示意；Legacy `POST /api/v1/analyze` 使用 **multipart Form** 传等价开关（如 `enable_layout`、`enable_kie`、`document_type` 等），以运行实例的 `/docs` 与 [`backend/app/main.py`](../../backend/app/main.py) 为准。
+下文 §7.1 起以 **Phase1 Job** 的 JSON 选项结构为示意；Legacy `POST /api/v1/analyze` 使用 **multipart Form** 传等价开关（如 `enable_layout`、`enable_kie`、`document_type` 等），以运行实例的 `/docs` 与 [`backend/app/routers/analyzer.py`](../../backend/app/routers/analyzer.py) / [`backend/app/routers/documents.py`](../../backend/app/routers/documents.py) 为准（v1.8.2 起路由在 `backend/app/routers/`，`main.py` 仅为装配层）。
 
 ### 7.1 创建分析任务
 

@@ -48,6 +48,10 @@ import {
     setPreviewPaginationInitialized, setLastRenderedAnalysisResult, setLastFetchedBlocks,
     resetPreviewState,
 } from './modules/preview-state.js';
+// --- v1.8.3 B1b: extracted leaf services + shared api state ---
+import { updateStatusBar, updateStatusBarThrottled } from './modules/status-bar.js';
+import { showNotification } from './modules/notifications.js';
+import { lastHealthPayload, setLastHealthPayload } from './modules/api-state.js';
 
 /** Set from initApp; toggles Processing mode sub-panels. */
 let syncProcessingModeUI = function () {};
@@ -106,8 +110,6 @@ async function checkApiReachable(timeoutMs = 8000) {
     return { ok: false, health: null, probe: null, error: lastError };
 }
 
-/** Last successful GET /health JSON (dependencies, kie, api_version). */
-let lastHealthPayload = null;
 let kieHealthRefreshTimer = null;
 
 function truncateFooterEngineLine(line) {
@@ -150,7 +152,7 @@ function refreshActiveEngineFooterLine() {
  */
 function applyHealthToFooter(health) {
     if (!health || typeof health !== 'object') return;
-    lastHealthPayload = health;
+    setLastHealthPayload(health);
     refreshActiveEngineFooterLine();
     const kieEl = document.getElementById('kieEngineStatus');
     if (kieEl) {
@@ -178,13 +180,6 @@ function applyHealthToFooter(health) {
         }, 12000);
     }
 }
-
-// Status bar throttling and filtering with queue mechanism
-let statusUpdateQueue = [];
-let isProcessingQueue = false;
-let lastStatusMessage = '';
-let lastStatusUpdateTime = 0;
-const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
 
 /** Clear inline sizing from adjustDocumentSize so the next task is not clipped by the previous layout. */
 function resetDocumentPageLayoutStyles() {
@@ -214,105 +209,6 @@ const overlayLayerVisibility = {
     list: true,
     readingOrder: true,
 };
-
-/**
- * Check if a status message should be displayed
- * Show all processing steps and completions for real-time feedback
- */
-function shouldDisplayStatus(message) {
-    if (!message) return false;
-
-    const msg = message.toLowerCase();
-
-    // Always show key statuses
-    if (msg.includes('initializing')) return true;
-    if (msg.includes('trying')) return true;
-    if (msg.includes('completed')) return true; // Show all completions
-    if (msg.includes('processing')) return true;
-    if (msg.includes('failed')) return true;
-    if (msg.includes('cancelled')) return true;
-
-    // Show everything else by default (changed from false to true)
-    // This ensures all processing steps are visible in real-time
-    return true;
-}
-
-/**
- * Process status update queue
- * Ensures each key status is displayed with proper timing
- */
-function processStatusQueue() {
-    if (statusUpdateQueue.length === 0) {
-        isProcessingQueue = false;
-        return;
-    }
-
-    isProcessingQueue = true;
-    const { status, data, message, isImmediate } = statusUpdateQueue.shift();
-
-    // Update status bar immediately
-    updateStatusBar(status, data);
-
-    // Update tracking variables
-    lastStatusMessage = message;
-    lastStatusUpdateTime = Date.now();
-
-    // Schedule next item
-    if (statusUpdateQueue.length > 0) {
-        // Use shorter delay for faster updates
-        const delay = isImmediate ? 100 : STATUS_UPDATE_MIN_INTERVAL;
-        setTimeout(() => {
-            processStatusQueue();
-        }, delay);
-    } else {
-        isProcessingQueue = false;
-    }
-}
-
-/**
- * Throttled status bar update with queue mechanism
- * Ensures all key statuses are displayed in order without being lost
- */
-function updateStatusBarThrottled(status, data, isImmediate = false) {
-    const message = data.step || '';
-
-    // Check if this is a key status that should be displayed
-    if (!shouldDisplayStatus(message)) {
-        return; // Skip non-key statuses
-    }
-
-    // If same as last displayed message, skip (unless it's immediate)
-    // But allow different messages even if they contain similar content
-    if (message === lastStatusMessage && !isImmediate) {
-        return;
-    }
-
-    // Don't skip if message is already in queue - allow updates even if similar
-    // This ensures all processing steps are visible
-
-    // Add to queue
-    statusUpdateQueue.push({ status, data, message, isImmediate });
-
-    // Debug log
-    console.log(`[Queue] Added to queue: ${message.substring(0, 50)}... (Queue length: ${statusUpdateQueue.length}, Processing: ${isProcessingQueue})`);
-
-    // Start processing queue if not already processing
-    // CRITICAL FIX: Process first item immediately, don't wait
-    // This ensures the first status is shown right away
-    if (!isProcessingQueue) {
-        console.log(`[Queue] Starting queue processing...`);
-        processStatusQueue();
-    }
-}
-
-/**
- * Clear status update queue
- * Used when we need to reset the queue (e.g., on error)
- */
-function clearStatusQueue() {
-    statusUpdateQueue = [];
-    isProcessingQueue = false;
-}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Clear any existing results on page load
@@ -1345,7 +1241,7 @@ function initExportButtons() {
     DocuVisionExport.init({
         getJobId: () => currentTaskId,
         buildUrl: (jobId, apiFormat) => `${API_BASE_URL}/tasks/${jobId}/export/${apiFormat}`,
-        notify: (message, type) => DocuVisionNotify.show(message, type),
+        notify: showNotification,
         supportsAzure: true,
     });
 }
@@ -3572,78 +3468,13 @@ function failProcessing(item, message) {
 }
 
 /**
- * Update status bar
- */
-function updateStatusBar(status = 'default', data = {}) {
-    const statusDefault = document.getElementById('statusDefault');
-    const statusProcessing = document.getElementById('statusProcessing');
-    const statusCompleted = document.getElementById('statusCompleted');
-
-    // Hide all states
-    if (statusDefault) statusDefault.style.display = 'none';
-    if (statusProcessing) statusProcessing.style.display = 'none';
-    if (statusCompleted) statusCompleted.style.display = 'none';
-
-    switch (status) {
-        case 'processing':
-            if (statusProcessing) {
-                // Force show the element
-                statusProcessing.style.display = 'flex';
-                statusProcessing.style.visibility = 'visible';
-                statusProcessing.style.opacity = '1';
-
-                const stepEl = statusProcessing.querySelector('.processing-step');
-
-                // Only update step text (server terminal output)
-                if (stepEl && data.step) {
-                    stepEl.textContent = data.step;
-                    // Force immediate reflow and repaint to ensure the update is visible
-                    void statusProcessing.offsetHeight;
-                    // Use requestAnimationFrame to ensure browser renders the update immediately
-                    requestAnimationFrame(() => {
-                        if (stepEl && data.step) {
-                            stepEl.textContent = data.step; // Update again in next frame to force render
-                        }
-                    });
-                    console.log(`[StatusBar] Updated processing step: ${data.step.substring(0, 50)}...`);
-                    console.log(`[StatusBar] Element display: ${statusProcessing.style.display}, visibility: ${statusProcessing.style.visibility}`);
-                } else {
-                    if (!stepEl) {
-                        console.warn('[StatusBar] .processing-step element not found');
-                    }
-                    if (!data.step) {
-                        console.warn('[StatusBar] No step data provided');
-                    }
-                }
-            } else {
-                console.warn('[StatusBar] statusProcessing element not found');
-            }
-            break;
-        case 'completed':
-            if (statusCompleted) {
-                statusCompleted.style.display = 'flex';
-                const completedText = statusCompleted.querySelector('.completed-text');
-                if (completedText && data.summary) {
-                    completedText.textContent = data.summary;
-                }
-            }
-            break;
-        default:
-            if (statusDefault) {
-                statusDefault.style.display = 'block';
-            }
-            break;
-    }
-}
-
-/**
  * Export results via backend /tasks/{task_id}/export/{format}
  */
 async function exportResults(format) {
     return DocuVisionExport.exportResults(format, {
         getJobId: () => currentTaskId,
         buildUrl: (jobId, apiFormat) => `${API_BASE_URL}/tasks/${jobId}/export/${apiFormat}`,
-        notify: (message, type) => DocuVisionNotify.show(message, type),
+        notify: showNotification,
         supportsAzure: true,
     });
 }
@@ -3690,58 +3521,6 @@ function downloadFile(content, filename, mimeType) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-}
-
-/**
- * Show notification
- */
-function showNotification(message, type = 'info') {
-    if (typeof DocuVisionNotify !== 'undefined') {
-        DocuVisionNotify.show(message, type);
-        return;
-    }
-
-    // Fallback if shared script failed to load
-    const existing = document.querySelector('.notification');
-    if (existing) {
-        existing.remove();
-    }
-
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    notification.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        padding: 14px 20px;
-        background: #6366f1;
-        border-radius: 10px;
-        color: white;
-        z-index: 9999;
-    `;
-    document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 3000);
-}
-
-/**
- * Get notification icon
- */
-function getNotificationIcon(type) {
-    if (typeof DocuVisionNotify !== 'undefined') {
-        return DocuVisionNotify.getNotificationIcon(type);
-    }
-    return '';
-}
-
-/**
- * Get notification color
- */
-function getNotificationColor(type) {
-    if (typeof DocuVisionNotify !== 'undefined') {
-        return DocuVisionNotify.getNotificationColor(type);
-    }
-    return '#6366f1';
 }
 
 // ============================================

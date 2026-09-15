@@ -65,7 +65,6 @@ ALLOWED_INDEX_SCRIPTS = {
     "shared/trial-key.js",
     "shared/ui-features.js",
     "shared/demo-postprocess.js",
-    "shared/notifications.js",
     "shared/export-ui.js",
 }
 ALLOWED_INLINE_IMPORTS = {

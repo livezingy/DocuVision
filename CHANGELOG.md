@@ -30,6 +30,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B1b (part 1) — base services + notifications fold-in**:
+  - new `frontend/modules/status-bar.js` (5 functions + its presentation-only throttle
+    state; a leaf service with no imports), `frontend/modules/api-state.js`
+    (`lastHealthPayload` + setter — the shared-state module from design §4.1, needed because
+    the value is re-written after boot so a "pass it once" injection would go stale), and
+    `frontend/modules/notifications.js` (fold-in of `frontend/shared/notifications.js` plus
+    the app.js facade).
+  - `frontend/shared/notifications.js` (classic IIFE `window.DocuVisionNotify`) and
+    `frontend/shared/panel-resize.js` (Lite dead code) are removed, and `index.html` no
+    longer loads the notifications script. The two `notify: (m, t) => DocuVisionNotify.show(m, t)`
+    sites in app.js now use the imported `showNotification`.
+  - The boot-sequence gate (C3) and the bootstrap test now accept *imported* functions too,
+    not just declared ones, since `updateStatusBar` (boot step 2) is now imported.
+  - `frontend/app.js` **5357 → 5136 lines**, **124 → 116** top-level functions.
 - **v1.8.3 B2 prep — `modules/kie-config.js`**: the five KIE / table-mapping constants
   (`KIE_DOC_TYPES`, `KIE_FIELD_NAME_RE`, `TABLE_MAPPING_MODE`, `TABLE_MAPPING_ELIGIBLE`,
   `TABLE_MAPPING_IMAGE_EXTENSIONS`; `const` in app.js `:1462-1466`, never reassigned)

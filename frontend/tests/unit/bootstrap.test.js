@@ -53,14 +53,30 @@ function declaredFunctions(text) {
     );
 }
 
+function importedNames(text) {
+    const names = new Set();
+    for (const match of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*["'][^"']+["']/gs)) {
+        for (let spec of match[1].split(',')) {
+            spec = spec.trim();
+            if (!spec || spec.startsWith('//')) continue;
+            const name = spec.split(' as ').pop().trim();
+            if (/^[A-Za-z_$][\w$]*$/.test(name)) names.add(name);
+        }
+    }
+    return names;
+}
+
 describe('boot sequence', () => {
     it('runs the pinned steps in the pinned order', () => {
         expect(bootCalls(appJs)).toEqual(domainMap.boot_sequence);
     });
 
-    it('only calls top-level functions that still exist in app.js', () => {
-        const declared = declaredFunctions(appJs);
-        const missing = bootCalls(appJs).filter((name) => !declared.has(name));
+    it('only calls top-level functions that are defined or imported in app.js', () => {
+        const defined = declaredFunctions(appJs);
+        const imported = importedNames(appJs);
+        const missing = bootCalls(appJs).filter(
+            (name) => !defined.has(name) && !imported.has(name),
+        );
         expect(missing).toEqual([]);
     });
 });

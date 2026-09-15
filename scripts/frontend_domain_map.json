@@ -113,6 +113,7 @@
     "dirs": ["frontend/modules/utils/"],
     "files": [
       "frontend/modules/preview-state.js",
+      "frontend/modules/api-state.js",
       "frontend/modules/api-config.js",
       "frontend/modules/kie-config.js",
       "frontend/modules/notifications.js",
@@ -131,6 +132,12 @@
     "when_a_service_stops_qualifying": "If a registered leaf service ever needs domain state or domain branching, it stops being a leaf service: drop it from the whitelist and inject it from app.js instead. Do not relax L1-L3."
   },
   "shared_state_modules": {
+    "frontend/modules/api-state.js": {
+      "added": "2026-09-15",
+      "approved_in": "B1b",
+      "kind": "shared-state",
+      "evidence": "The single mutable value that the api-base domain (D1) owns and the pipeline (D8) reads (3 sites, :1787-1789). Design rev3 section 4.1 (option B): extracted by mutability from api-config.js. It is re-written after boot - by the 12s KIE-cold retry inside applyHealthToFooter and by startProcessing's own applyHealthToFooter call - so a 'pass it once' injection would go stale; the live binding keeps D8's 3 reads byte-identical. Imports nothing (L1 holds); holds an API-layer response cache, not a domain object such as task / queue-item / preview, so L3 holds."
+    },
     "frontend/modules/preview-state.js": {
       "added": "2026-09-15",
       "approved_in": "B1a (design rev3 section 4)",
@@ -169,6 +176,9 @@
     }
   },
   "shared_modules": {
+    "frontend/modules/api-state.js": [
+      "lastHealthPayload", "setLastHealthPayload"
+    ],
     "frontend/modules/kie-config.js": [
       "KIE_DOC_TYPES", "KIE_FIELD_NAME_RE", "TABLE_MAPPING_MODE",
       "TABLE_MAPPING_ELIGIBLE", "TABLE_MAPPING_IMAGE_EXTENSIONS"

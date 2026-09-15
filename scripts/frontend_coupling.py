@@ -104,6 +104,32 @@ def fn_line_owners(lines: list[str]) -> dict[str, list[int]]:
     return owners
 
 
+def imported_names(lines: list[str]) -> set[str]:
+    """Names imported into app.js (``import { a, b as c } from '...'``).
+
+    Once a batch moves a boot-sequence function into a module (updateStatusBar in B1b,
+    showNotification in B1b, ...), the function is *imported* rather than declared in
+    app.js, so ``fn_line_owners`` alone would report it as undefined. This returns the
+    bound names of every named and default import so the boot check accepts either form.
+    """
+    text = "\n".join(lines)
+    named = re.compile(r"import\s*\{([^}]*)\}\s*from\s*[\"'][^\"']+[\"']", re.DOTALL)
+    default = re.compile(r"import\s+([A-Za-z_$][\w$]*)\s+from\s*[\"'][^\"']+[\"']")
+    ident = re.compile(r"^[A-Za-z_$][\w$]*$")
+    out: set[str] = set()
+    for clause in named.findall(text):
+        for spec in clause.split(","):
+            spec = spec.strip()
+            if not spec or spec.startswith("//"):
+                continue
+            name = spec.split(" as ")[-1].strip()
+            if ident.match(name):
+                out.add(name)
+    for match in default.finditer(text):
+        out.add(match.group(1))
+    return out
+
+
 def dom_refs(lines: list[str], lns: list[int]) -> int:
     return sum(len(_DOM_RE.findall(lines[ln - 1])) for ln in lns if 0 < ln <= len(lines))
 

@@ -139,8 +139,8 @@ def check_boot(lines: list[str]) -> list[str]:
             f"C3 boot sequence mismatch (design={len(fc.BOOT_SEQUENCE)}, measured={len(calls)}; "
             f"missing={missing}; extra={extra})"
         ]
-    owners = fc.fn_line_owners(lines)
-    undefined = [n for n in calls if n not in owners]
+    defined = set(fc.fn_line_owners(lines)) | fc.imported_names(lines)
+    undefined = [n for n in calls if n not in defined]
     if undefined:
         return [f"C3 boot sequence references undefined function(s): {undefined}"]
     print(f"[baseline] C3 order OK ({len(calls)} steps, all defined)")

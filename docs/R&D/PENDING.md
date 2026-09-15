@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（2 组）
+## 待确认（3 组）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -37,3 +37,26 @@
 - 触发条件：真实客户文档（trial 3-5 单）证明需要逐格红/绿标注或出现误报投诉时立项；
   立项即需 BACKFILL-001 云端重验。责任仓：`table_backfill.py` 对应层 + 契约 `reason` 字段。
 - 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
+
+### P-003 · v1.8.2 拆分的两项门禁遗留（v1.8.3 候选，2026-09-15）
+- 来源：v1.8.2 main.py 拆分收尾（PR #17；main `9665e58`；tag `v1.8.2.0`）。用户裁决：留到 v1.8.3 一起做。
+- 状态：已发版；两项均为**门禁补强**，非缺陷。
+- 待决项：
+  1. **SPLIT-U4 测试**：断言 `import app.core.runtime` 不产生任何文件/DB 写（tmp_path 下目录为空）。
+     约束：`backend/app/core/runtime.py` 顶部 `import paddle`，本机跑不了 → 用例只能 Cloud 跑（`DOCUVISION_CLOUD_TESTS=1`）。
+  2. **静态契约测试接入 CI**：`backend/tests/test_route_contract_freeze.py` 与 `test_route_inventory.py`
+     目前只在本地跑。`kie-phase-a.yml` 已在跑 pytest，把这两条加进其 Pro 步骤即可让契约漂移在 PR 阶段变红（成本极低）。
+- 相关存档：设计稿 `docs/R&D/PLAN/v1.8.2-main-split-design.md`（本地，不进 git）；
+  kernel 规则 `docs/agent-ops/core/routing.md` 规则 6；`DEVELOPMENT.md` 三条硬规范。
+- 确认动作：v1.8.3 立项时把两项转入该版 deliverables，然后移除本组。
+
+### P-004 · 新建 `docs/architecture/module-map.md`（当前态模块地图）（2026-09-15）
+- 目的：补齐「架构与运作模式」层——单一权威入口，回答 main 上的**模块边界 / 依赖方向 / 不变量门禁**。
+- 现状缺口：`docuvision-system-design.md` 是"语义/契约"向（引擎选型/坐标/三层数据结构/API 语义），`最近对照` 已落后 2 版；
+  `docs/architecture/` 无任何文档回答"模块怎么摆、依赖往哪走"。
+- 时机：**v1.8.3 之后**——前端段会被 v1.8.3 整体改写（`app.js` → `modules/` 15 域），先写即作废；
+  届时前端证据**直接取自 v1.8.3 自己的 `domain-map.md`**（145 函数 × 15 域已扫完），无需重扫。
+- 触发条件（提前）：若 v1.8.3 延期 >1 个月，则先落地后端段填补空缺。
+- 交付物：`docs/architecture/module-map.md`（后端段 + 前端段 + 不变量门禁表，头部带"最近对照"）
+  + 对账体检（并入 `scripts/audit_agent_ops.py`：校验 map 内路径/脚本真实存在）+ `docs/README.md` 索引一行。
+- 前置已就绪：v1.8.2 后端段证据（`routers/` 13 域 / `core/runtime.py` / `models/api_models.py` / 双 lint 脚本 / 三条静态测试）。

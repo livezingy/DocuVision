@@ -6,7 +6,7 @@ alwaysApply: true
 # 通用约束
 
 > 生成自 kernel `docs/agent-ops/core/`（constraints）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: constraints.md:494bf2c768bd15cb -->
+<!-- kernel-ref: constraints.md:1f7b80317eca38de -->
 
 ## 响应语言与代码语言
 - 回复默认中文；代码、注释、docstring、日志、UI 文案、命令、变量名一律英文（ASCII 优先）。
@@ -32,9 +32,10 @@ alwaysApply: true
 - 遇模糊需求，先给最合理方案，再问要不要调整。
 - 不要问"你确定要这样吗"，除非命中红线。
 - 长对话 Context ≥ 90% 或已混乱、用户又下新命令时：建议开新对话并给出可粘贴约束（目标/范围/分支/约束/验收/模式）。
+- **自省不可靠**：Agent 读不到上下文占用，故「已混乱」以可观测代理判定——出现压缩事件 / 同一文件重复读 ≥2 次 / 连续工具调用因内容不符失败 ≥2 次 / 需推翻自身先前结论，任一命中即主动提议开新对话。
 
 ## 自主边界（红线，auto-accept 下也必须先问）
-- 删除文件、目录或 git 历史（本轮明确授权的除外）。
+- 删除文件、目录、git 分支或远端 ref（含 `git branch -D`、`git push origin --delete`、`git worktree remove --force`）、git 历史或已推送历史改写（本轮明确授权的除外）。
 - 修改 `.env`、密钥、token、CI/CD 配置（含 `.github/workflows/**`）。
 - 数据库 schema 变更或数据迁移。
 - git push、git rebase、git reset --hard、强制推送。
@@ -47,18 +48,23 @@ alwaysApply: true
 - 密钥、token、密码不进代码、不进 commit、不进日志。
 - 大改动前先在 Plan Mode 出方案，确认后再动手。
 - Python：遵循 PEP 8、类型提示、模块化设计、合理 OOP/函数式、错误处理与日志、按需单测。
+- **门禁/验收结论必须附证据**：可复制命令 + 实际输出片段 + 期望值；只写「已通过」视为未验证。
+- **结构性搬移/重构须有机器可判的等价性证据**（契约快照、冻结测试、零 diff），且**禁止顺手修无关缺陷**——要修就单独 commit/PR。
+- **基线类文件须可追溯**：快照/allowlist/冻结文件的来源 commit 与再生成命令必须写明；来源错（如取拆后而非拆前）则证明力归零。
 
 ## 官方依据优先
 - 改代码/选 API/定参数先查官方文档/源码（优先级：官方源码 > 官方文档 > 官方 issue > 第三方博客）。
 - 方案标注依据来源（段名/URL/源码行号/issue 编号/§节）；无依据的"我觉得"不算方案。
 - 核对版本（paddleocr 3.3.2 / paddlex 3.3.12 / paddlepaddle-gpu 3.3.0）；跨版本差异显式标注。
 - 查到的长期参考写入 `docs/architecture/` 对应 living doc，避免重复检索。
+- 本节覆盖**所有事实性断言**（数字/基准/规则），不限代码与 API：无来源不给具体数值；不确定须标「未验证」，不得用推测填空。
 
 ## 对话收尾回顾
 - 每次对话结束前，回顾本次是否出现新的约定、习惯或特殊要求。
 - 值得固化则**提议**更新 rules/SKILLS（列改哪条、改什么），等用户确认后再改，不擅改。
 - R&D 结论：稳定后晋升 `docs/architecture/`；待确认结论登记到 `docs/R&D/PENDING.md`（每次会话可见"有 N 条待确认"）。
 - 仅一次性任务无新约定则跳过。
+- 收尾须产出**下次会话必读清单**（`PENDING.md` + kernel 五文件 + `CHANGELOG.md` + `DEVELOPMENT.md`）；设计稿类 local-only 草稿**用完即删**（结论已晋升则无损失，git tag/PR 即归档）。
 
 
 ## 规则文件说明（.cursor/rules/）

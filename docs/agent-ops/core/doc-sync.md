@@ -17,8 +17,11 @@
 | 代码模块 | owning living doc |
 |---------|-------------------|
 | `backend/app/kie/**` | `kie.md`、`kie-custom-fields.md` |
-| `backend/app/orchestrator*` | `docuvision-system-design.md` |
-| `backend/app/api/batch*` | `batch-ui-roadmap.md` |
+| `backend/app/orchestration/**` | `docuvision-system-design.md` §4 |
+| `backend/app/routers/batch*.py` | `batch-ui-roadmap.md` |
+| `backend/app/routers/**` | `docs/agent-ops/core/routing.md`（域归属 / 无 prefix / 禁 import app.main）|
+| `backend/app/core/runtime.py` | `docuvision-system-design.md`（共享单例 / 装配 `init_runtime()`）|
+| `backend/app/models/api_models.py` | `docuvision-system-design.md` §6（三层数据结构模型）|
 | `backend/app/services/export_service.py` | `docuvision-system-design.md` §9.1 |
 | `backend/app/services/figure_service.py` | `docuvision-system-design.md` §9.1 / §11「图形导出」 |
 | `backend/app/services/pack_export_service.py` | `docuvision-system-design.md` §9.1；`v1.6-roadmap.md`（Epic: Artifact pack，发版后以 §9.1 为准） |

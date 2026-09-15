@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { installProApiMocks } = require('./helpers/mock-pro-api');
+const { gotoApp } = require('./helpers/app-boot');
 const { sampleImagePath } = require('./helpers/e2e-fixtures');
 
 const INDEX_URL = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/frontend/index.html';
@@ -7,7 +8,7 @@ const INDEX_URL = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/frontend/in
 test.describe('UI-S Smoke', () => {
   test.beforeEach(async ({ page }) => {
     await installProApiMocks(page);
-    await page.goto(INDEX_URL, { waitUntil: 'domcontentloaded' });
+    await gotoApp(page, INDEX_URL);
   });
 
   test('UI-S-01 page loads with health-driven status', async ({ page }) => {

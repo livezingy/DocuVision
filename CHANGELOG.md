@@ -87,6 +87,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `app_js_functions` 126); `app_js_module` phase flag flipped to `true`.
 
 ### Fixed
+- **UI e2e determinism (FRONT-U1)** — two test-infrastructure fixes, no application code
+  touched:
+  1. new `scripts/e2e_static_server.py` (stdlib `ThreadingHTTPServer`, 256-deep accept
+     backlog) replaces `python -m http.server` as the Playwright `webServer`. The stdlib
+     default backlog is **5**, Playwright defaults to cores/2 workers (10 on this host) and
+     each page loads ~12 files, so connections were refused and `app.js` *itself* failed to
+     load in some pages — `#documentPage` still held the raw index.html placeholder, i.e.
+     the app had never booted, which is why affected tests looked like "the click did
+     nothing". Serial runs were always 14/14 while parallel runs failed 2-6 of 14 with a
+     different set each time (the B0b baseline failed too, so this was pre-existing).
+  2. new `frontend/tests/e2e/helpers/app-boot.js` (`gotoApp` / `waitForAppBoot`), used by
+     every spec so no test can click before the boot sequence has finished. It waits for
+     the last boot step's DOM side effect (`#documentPage .empty-skeleton`) — a test-only
+     signal, no new global — and turns any future load failure into an explicit "boot never
+     finished" error instead of a misleading assertion failure.
+  Verified: three consecutive full runs at the default worker count — 14/14, 14/14, 14/14.
 - `frontend/package-lock.json` now actually contains **jsdom 25.0.1**. It was
   declared in `frontend/package.json` but absent from the lock (no
   `packages["node_modules/jsdom"]` entry; the only "jsdom" strings in the lock

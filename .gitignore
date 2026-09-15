@@ -273,6 +273,7 @@ scripts/*
 !scripts/frontend_coupling.py
 !scripts/frontend_size_allowlist.json
 !scripts/frontend_domain_map.json
+!scripts/e2e_static_server.py
 !scripts/trial/
 !scripts/trial/**
 !scripts/aistudio_setup.sh

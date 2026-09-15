@@ -7,7 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **v1.8.3 B0a — frontend governance & measurement baseline** (structure-only, no
+  frontend behaviour change):
+  - `scripts/lint_frontend.py`: four machine-checkable rules — F1 line budget
+    (500 lines, `splitlines()` metric), F2 `frontend/app.js` top-level function
+    ratchet, F3 import direction inside `frontend/modules/**` (no `../app.js`, no
+    sibling-domain imports), F4 assembly shape (one `app.js` entry, no module file
+    loaded directly by `index.html`, phase flags for the `type="module"` conversion
+    and the `panel-resize.js` removal).
+  - `scripts/check_frontend_baseline.py` + `scripts/frontend_coupling.py` +
+    `scripts/frontend_domain_map.json`: the C0 calibration gate (measured vs design
+    expectation, exits non-zero on drift), the cross-domain coupling scan
+    (`--edges`), the C0 snapshot writer (`--report-out=PATH`) and a `--syntax`
+    `node --check` pass over the module files. Replaces the original C0 snippet,
+    which used `sed`/`wc` and could not run on win32 + PowerShell.
+  - `scripts/frontend_size_allowlist.json`: frontend-only ratchet record
+    (`frontend/app.js` 5708 lines, `app_js_functions` 145; both only decrease).
+- CI: `lint.yml` gains a third step (`python scripts/lint_frontend.py`) and watches
+  `frontend/**`; `kie-phase-a.yml` now also runs
+  `tests/test_route_contract_freeze.py` and `tests/test_route_inventory.py`, so
+  route-contract drift fails at PR time instead of only locally (PENDING P-003).
+
+### Fixed
+- `scripts/lint_frontend.py` now enumerates with
+  `git ls-files --cached --others --exclude-standard`, so a newly created module is
+  linted *before* it is `git add`-ed. Previously F1/F3 silently skipped it.
+- Baseline recalibration against `frontend/app.js` (mechanical scan, not grep):
+  - preview-state **writes are 17, not 12** as the design stated (16 `current*`
+    plus `previewPaginationInitialized`; the design missed `:2947`, `:2957` and
+    `:1018`).
+  - the cross-domain coupling surface is **219 call sites / 49 domain pairs**
+    plus **29 cross-domain state reads**, versus the 11 / 9 hand-built table in
+    the design. Evidence: `docs/R&D/PLAN/v1.8.3-frontend-split/cross-domain-edges.md`
+    (local only), which also lists the F3-whitelist decision that blocks B1.
+  - `convertToMarkdown` is a pure function (0 DOM references): the earlier
+    "DOM-tainted, 3 hits" note came from a bare `document` grep matching
+    `data.document.name`.
 
 ## [1.8.2] — 2026-09-15
 

@@ -1,0 +1,163 @@
+{
+  "boot_sequence": [
+    "clearResultsDisplay",
+    "updateStatusBar",
+    "initializeAPIConnection",
+    "initUploadZone",
+    "initTabs",
+    "initHelpButton",
+    "initResultTabs",
+    "initActionButtons",
+    "initAnalysisOptionsDialog",
+    "initEngineSelectors",
+    "initAnalysisView",
+    "initExportButtons",
+    "initBatchProcessing",
+    "initHitlReviews",
+    "initPdfTools",
+    "initPreviewPagination",
+    "insertInitialSkeleton"
+  ],
+  "known_edge_pairs": [
+    ["D5 preview-paging", "D8 pipeline"],
+    ["D5 preview-paging", "D7 kie-mapping"],
+    ["D5 preview-paging", "D10 overlay"],
+    ["D8 pipeline", "D5 preview-paging"],
+    ["D8 pipeline", "D7 kie-mapping"],
+    ["D8 pipeline", "D9 result-panels"],
+    ["D10 overlay", "D9 result-panels"],
+    ["D10 overlay", "D4 shell-init"],
+    ["D7 kie-mapping", "D6 options-dialog"]
+  ],
+  "domains": {
+    "D1 api-base": [
+      "normalizeApiBaseUrl", "resolveApiBaseUrl", "checkApiReachable",
+      "truncateFooterEngineLine", "refreshActiveEngineFooterLine",
+      "applyHealthToFooter", "initializeAPIConnection"
+    ],
+    "D2 status-bar": [
+      "shouldDisplayStatus", "processStatusQueue", "updateStatusBarThrottled",
+      "clearStatusQueue", "updateStatusBar"
+    ],
+    "D3 upload-queue": [
+      "insertInitialSkeleton", "initUploadZone", "handleFiles", "createQueueItem",
+      "handleQueueItemDeletion", "updateQueueCount", "resetQueueItemForReprocessing",
+      "simulateProcessing", "processNextInQueue", "failProcessing"
+    ],
+    "D4 shell-init": [
+      "initTabs", "initHelpButton", "initResultTabs", "initActionButtons",
+      "initEngineSelectors", "initAnalysisView", "initExportButtons", "initGlobalTooltip",
+      "initAnnotationInteractions", "initPanelResize", "initJsonViewButtons", "initPdfTools"
+    ],
+    "D5 preview-paging": [
+      "resetDocumentPageLayoutStyles", "previewHelpers", "resolveResultPageCount",
+      "syncPreviewPaginationControls", "revokeCurrentPageImageUrl", "goToPreviewPage",
+      "initPreviewPagination", "uploadFileForPreview", "switchToQueueItem",
+      "getPdfPageImage", "updatePreviewView", "updateDocumentPreview", "fetchAuthedImage",
+      "adjustDocumentSize"
+    ],
+    "D6 options-dialog": [
+      "initAnalysisOptionsDialog", "openAnalysisOptionsDialog", "saveAnalysisOptions",
+      "resetAnalysisOptions", "getSelectedProcessingMode", "getProcessingOptions"
+    ],
+    "D7 kie-mapping": [
+      "clearTableMappingEligibility", "updateTableMappingEligibility",
+      "fetchDocumentProfileForQueueItem", "updateDocumentTypeSuggestion",
+      "isTableMappingRunBlocked", "normalizeKieFieldName", "assertValidKieFieldName",
+      "updateKieQueryFieldsAvailability", "buildKieQueryFieldsPayload", "pickKieFieldsMap",
+      "formatKieFieldForExtract", "updateContentFields"
+    ],
+    "D8 pipeline": [
+      "startProcessing", "pollTaskStatus", "fetchTaskResult", "fetchTaskBlocks",
+      "completeProcessing", "clearResultsDisplay", "updateResultsDisplay"
+    ],
+    "D9 result-panels": [
+      "renderQualityPanelPro", "renderSchemaTable", "updateContentMappedRows",
+      "renderDemoTransactionTable", "updateDemoTransactionViews", "formatAzureRoleLabel",
+      "collectViewPageTextElements", "updateContentText", "normalizeTextForDisplay",
+      "normalizePanelParagraphText", "isLikelyCollapsedText", "toAzureTypeLabel",
+      "renderTableCard", "normalizeTableForDisplay", "updateContentTables",
+      "updateContentFigures", "renderFigureCard", "updateEnhancementTabs",
+      "updateContentFormulas", "updateContentSeals", "updateResultJson"
+    ],
+    "D10 overlay": [
+      "normalizeAnnotationBbox", "bboxFromPolygon", "normalizeCoordSpace",
+      "normalizeBboxToImageMatrix", "remapBboxToImageSpace", "getPageImageMeta",
+      "computeImageSha256Hex", "validateImageCoordinateBinding", "getSvgAnnotationColors",
+      "getOverlayLayerType", "shouldRenderOverlayType", "renderDocumentWithAnnotations",
+      "renderTextPreview", "highlightResultItem"
+    ],
+    "D11 floating-progress": [
+      "showFloatingProgressCard", "updateFloatingProgress", "hideFloatingProgressCard"
+    ],
+    "D12 export-csv": [
+      "exportResults", "convertToCSV", "convertToMarkdown", "tableConfidencePct",
+      "formatTableCsvBanner", "excelSafeCell", "escapeCsvCell", "buildSingleTableCsv",
+      "singleTableCsvFilename", "downloadCurrentTableCsv", "bindTableCardCsvExport",
+      "downloadFile"
+    ],
+    "D13 notifications": [
+      "showNotification", "getNotificationIcon", "getNotificationColor"
+    ],
+    "D14 batch": [
+      "initBatchProcessing", "downloadBatchExport", "setBatchControlsForBatch",
+      "createBatch", "startBatch", "pollBatchStatus", "updateBatchUI", "pauseBatch",
+      "resumeBatch", "cancelBatch", "getBatchResults"
+    ],
+    "D15 hitl-review": [
+      "initHitlReviews", "refreshHitlReviews", "loadHitlReviewDetail",
+      "buildHitlFieldEditor", "collectHitlFieldValues", "saveHitlReviewFields",
+      "resolveHitlReview"
+    ]
+  },
+  "module_import_whitelist": {
+    "dirs": ["frontend/modules/utils/"],
+    "files": ["frontend/modules/preview-state.js"],
+    "prefixes": ["frontend/shared/"]
+  },
+  "utils_modules": {
+    "utils/geometry": [
+      "normalizeAnnotationBbox", "bboxFromPolygon", "normalizeCoordSpace",
+      "normalizeBboxToImageMatrix", "remapBboxToImageSpace"
+    ],
+    "utils/csv": [
+      "convertToCSV", "convertToMarkdown", "tableConfidencePct", "formatTableCsvBanner",
+      "excelSafeCell", "escapeCsvCell", "buildSingleTableCsv", "singleTableCsvFilename"
+    ],
+    "utils/text": [
+      "normalizeTextForDisplay", "normalizePanelParagraphText", "isLikelyCollapsedText",
+      "toAzureTypeLabel", "formatAzureRoleLabel"
+    ],
+    "utils/dom": [
+      "escapeHtml"
+    ]
+  },
+  "state_owners": {
+    "D1 api-base": [
+      "API_BASE_URL", "API_ROOT_URL", "HEALTH_URL", "ENGINES_URL", "lastHealthPayload",
+      "kieHealthRefreshTimer"
+    ],
+    "D2 status-bar": [
+      "statusUpdateQueue", "isProcessingQueue", "lastStatusMessage", "lastStatusUpdateTime",
+      "STATUS_UPDATE_MIN_INTERVAL"
+    ],
+    "D5 preview-paging": [
+      "currentOriginalFileUrl", "currentTaskId", "currentQueueItem", "currentPreviewPage",
+      "currentPageImageUrl", "previewPaginationInitialized"
+    ],
+    "D6 options-dialog": ["syncProcessingModeUI"],
+    "D7 kie-mapping": [
+      "KIE_DOC_TYPES", "KIE_FIELD_NAME_RE", "TABLE_MAPPING_MODE", "TABLE_MAPPING_ELIGIBLE",
+      "TABLE_MAPPING_IMAGE_EXTENSIONS"
+    ],
+    "D8 pipeline": ["lastRenderedAnalysisResult", "lastFetchedBlocks"],
+    "D9 result-panels": ["TABLE_TEMPLATE_COLUMNS"],
+    "D10 overlay": [
+      "enableOverlaySha256Validation", "forcePureLayoutBboxOverlay", "overlayLayerVisibility"
+    ],
+    "D15 hitl-review": [
+      "hitlSelectedReviewId", "hitlSelectedTaskId", "hitlCurrentProfile",
+      "hitlCurrentSchemaFields"
+    ]
+  }
+}

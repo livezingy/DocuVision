@@ -50,6 +50,9 @@ jobs:
           pip install -r requirements-ci-phase-a.txt
           pip install -e ../packages/docuvision-core[lite]
 
+      # test_route_contract_freeze.py / test_route_inventory.py are pure AST scans
+      # (no ``import app.main``, no paddle) so they run here; they catch route
+      # contract drift at PR time instead of only locally (PENDING P-003 item 2).
       - name: Run Phase A pytest (Pro)
         working-directory: backend
         env:
@@ -59,6 +62,7 @@ jobs:
             tests/test_kie_return_raw_contract.py tests/test_orchestrator_order.py \
             tests/test_table_template_analyze.py tests/test_hitl_policy.py \
             tests/test_task_kie_fields_patch.py tests/test_pdf_tools_service.py \
+            tests/test_route_contract_freeze.py tests/test_route_inventory.py \
             -q --tb=short
 
       # test_table_result_mapper.py was retired with the idle core modules

@@ -268,6 +268,11 @@ scripts/*
 !scripts/lint_routes.py
 !scripts/lint_file_size.py
 !scripts/file_size_allowlist.json
+!scripts/lint_frontend.py
+!scripts/check_frontend_baseline.py
+!scripts/frontend_coupling.py
+!scripts/frontend_size_allowlist.json
+!scripts/frontend_domain_map.json
 !scripts/trial/
 !scripts/trial/**
 !scripts/aistudio_setup.sh

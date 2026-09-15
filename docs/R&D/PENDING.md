@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（3 组）
+## 待确认（5 组）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -48,3 +48,28 @@
 - 交付物：`docs/architecture/module-map.md`（后端段 + 前端段 + 不变量门禁表，头部带"最近对照"）
   + 对账体检（并入 `scripts/audit_agent_ops.py`：校验 map 内路径/脚本真实存在）+ `docs/README.md` 索引一行。
 - 前置已就绪：v1.8.2 后端段证据（`routers/` 13 域 / `core/runtime.py` / `models/api_models.py` / 双 lint 脚本 / 三条静态测试）。
+
+### P-005 · v1.8.3 FRONT-C1 云端走查待执行（2026-09-15）
+- 状态：**B0-B5b 全部落地并提交**（B5a `f024183` / B5b `71f228e`）；**FRONT-C1 是 v1.8.3 唯一未执行项**（设计稿 §7-FRONT-C1，属 U4 验收）。
+- 待执行（一次云会话办三件事）：
+  1. **FRONT-C1 走查**——Cloud Studio StaticFiles 下 ≥10 分钟人工交互（上传→分析→预览翻页→叠加层→导出 CSV/MD→批量→HITL resolve→trial key 拒绝→公式渲染），
+     DevTools Network 确认模块文件全 200 + JS MIME、无 404；
+  2. **缓存重验证实测**（D9 落地判据，**唯一部署层硬依赖**）——对 `frontend/**` 下发 `Cache-Control: no-cache` 或强 ETag，
+     然后「改模块 → 重新部署 → 普通刷新仍拿到新文件」三测；
+  3. **并入 v1.8.2 SPLIT-C1 复核**（快照零 diff + 路由冻结 + lint 双绿）**+ P-003① SPLIT-U4**（`DOCUVISION_CLOUD_TESTS=1`）。
+- 执行清单（local-only，含 PowerShell/curl 命令、判定表、排查点）：`docs/R&D/PLAN/v1.8.3-frontend-split/FRONT-C1-checklist.md`。
+- 本地已完成的等价部分：38/38 资产 200 + JS MIME、e2e 14/14、lint F1-F6 / C1-C8、`--syntax` 34/34（含 app.js）。
+- 冻结触发：若第 2 项「缓存重验证」失败（普通刷新拿到旧模块），**v1.8.3 不可发布**——需先在部署层修缓存策略。
+- 收口审计发现（既有状态，非本版回归；已写入清单附录 A）：`modules/floating-progress.js`（D11）是**唯一孤儿模块**——
+  v1.8.2 起 `showFloatingProgressCard` / `updateFloatingProgress` 就无外部调用者（`index.html` 有其 DOM 无 JS 驱动），
+  走查时「浮卡不出现」不算缺陷；接线属行为变更（v1.9 候选）。
+
+### P-006 · `.zcode` 目录跟踪策略（2026-09-15）
+- 结论（已定）：`.zcode/` **纳入版本控制**（后续会有内容、可能值得提交），但 `.zcode/plans/` **不推远端**。
+- 已落地：`.gitignore` 新增 `.zcode/plans/`（与 `.codebuddy/plans/` 同款规则形制）。
+  实测验证：`.zcode/plans/` 下的 plan 文件命中忽略（`.gitignore:168`）；`.zcode/` 下新建普通文件显示为未跟踪且
+  `git add --dry-run` 成功 → **`.zcode` 其余内容将来可直接提交**。
+- 本次未提交 `.zcode` 本身（故留 PENDING）：忽略 `plans/` 后**目录为空**，git 不跟踪空目录
+  （当前 `plans/` 是其唯一内容）。
+- 待办（无需额外动作）：`.zcode` 出现首个非 plans 内容时，随该次改动一并 `git add .zcode/`。
+- 先例：`.codebuddy/` 同款——`rules/` 5 个文件已跟踪、`plans/` 被忽略（`.gitignore:165`）。

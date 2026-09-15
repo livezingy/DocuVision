@@ -30,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B1b (part 3) — batch / hitl-review + the single injection (B1b complete)**:
+  `frontend/modules/batch.js` (11 functions; `getProcessingOptions` is injected into
+  `initBatchProcessing` through a module-scope binding so `createBatch`'s call site stays
+  byte-identical) and `frontend/modules/hitl-review.js` (7 functions + its selection state).
+  `app.js` **4816 → 4318 lines**, **104 → 86** functions. `getBatchResults` moves as
+  exported-but-unused (no call site; flagged for v1.9).
+  B1b is now complete: **9 module files**, `app.js` **5708 → 4318 lines**, **145 → 86**
+  top-level functions.
 - **v1.8.3 B1b (part 2) — api-base / floating-progress / export-csv**:
   `frontend/modules/api-base.js` (5 functions; a normal domain module — it calls status-bar
   and owns a refresh timer, so it is not a leaf service), `frontend/modules/floating-progress.js`

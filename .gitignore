@@ -266,6 +266,8 @@ scripts/*
 !scripts/sync_agent_rules.py
 !scripts/audit_agent_ops.py
 !scripts/lint_routes.py
+!scripts/lint_file_size.py
+!scripts/file_size_allowlist.json
 !scripts/trial/
 !scripts/trial/**
 !scripts/aistudio_setup.sh

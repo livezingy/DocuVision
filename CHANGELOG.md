@@ -7,10 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.8.2] — 2026-09-15
+
 ### Changed
+- **Backend architecture**: `backend/app/main.py` split from 2644 lines into a
+  268-line assembly layer (app factory + middleware chain + startup hooks +
+  pinned `include_router` table), 13 domain routers under
+  `backend/app/routers/`, and shared singletons/state in
+  `backend/app/core/runtime.py`. All 55 routes moved verbatim; a pre-split
+  OpenAPI snapshot baseline locks the contract (zero-diff gate).
 - Agent-ops: retire `.GLM` rules dir (generated copies); ZCode reads `AGENTS.md`
   + `docs/agent-ops/core/` directly; sandbox patch protocol archived
   (`docs/agent-ops/glm-sandbox-patch.md`); `.GLM/` added to `.gitignore`.
+  Adds kernel spec `docs/agent-ops/core/routing.md` + Cursor rule `010-routing`.
+
+### Added
+- `DEVELOPMENT.md`: three hard rules (500-line budget, routes only in domain
+  routers, leaf modules must not import `app.main`).
+- `scripts/lint_routes.py` and `scripts/lint_file_size.py`
+  (+ `scripts/file_size_allowlist.json`): route-architecture lint and the
+  500-line ratchet gate.
+- `.github/workflows/lint.yml`: runs both gates on push/PR touching
+  `backend/**` or `scripts/**`.
 
 ## [1.8.1] — 2026-09-14
 

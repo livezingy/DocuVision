@@ -66,6 +66,7 @@ describe('preview-state', () => {
         state.setPageImageUrl(null);
         state.setPreviewPaginationInitialized(false);
         state.setLastRenderedAnalysisResult(null);
+        state.setLastFetchedBlocks(null);
     });
 
     it('setters update the bindings consumers read', () => {
@@ -76,6 +77,7 @@ describe('preview-state', () => {
         state.setPageImageUrl('blob:page');
         state.setPreviewPaginationInitialized(true);
         state.setLastRenderedAnalysisResult({ document_info: { pages: 3 } });
+        state.setLastFetchedBlocks({ blocks: [{ type: 'text' }] });
 
         expect(state.currentTaskId).toBe('task-1');
         expect(state.currentQueueItem).toEqual({ id: 'q1' });
@@ -84,6 +86,7 @@ describe('preview-state', () => {
         expect(state.currentPageImageUrl).toBe('blob:page');
         expect(state.previewPaginationInitialized).toBe(true);
         expect(state.lastRenderedAnalysisResult).toEqual({ document_info: { pages: 3 } });
+        expect(state.lastFetchedBlocks).toEqual({ blocks: [{ type: 'text' }] });
     });
 
     it('resetPreviewState clears the three document slots only', () => {
@@ -92,6 +95,7 @@ describe('preview-state', () => {
         state.setOriginalFileUrl('blob:original');
         state.setPageImageUrl('blob:page');
         state.setPreviewPaginationInitialized(true);
+        state.setLastFetchedBlocks({ blocks: [1] });
 
         state.resetPreviewState();
 
@@ -101,6 +105,7 @@ describe('preview-state', () => {
         // By design the caller revokes page images itself, so this stays untouched.
         expect(state.currentPageImageUrl).toBe('blob:page');
         expect(state.previewPaginationInitialized).toBe(true);
+        expect(state.lastFetchedBlocks).toEqual({ blocks: [1] });
     });
 });
 

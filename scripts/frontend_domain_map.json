@@ -134,7 +134,7 @@
       "added": "2026-09-15",
       "approved_in": "B1a (design rev3 section 4)",
       "kind": "shared-state",
-      "evidence": "Not a leaf service by design: it is the explicit live-binding channel for cross-domain reads. B1a moved 6 preview states plus lastRenderedAnalysisResult (D8 state read by D10 :2936-2937) here; 19 assignment sites became setter calls, every read expression stayed byte-identical, and all URL.revokeObjectURL calls stayed at their original call sites so statement order is unchanged. L1 also applies (this module imports nothing), so it cannot become a hub either."
+      "evidence": "Not a leaf service by design: it is the explicit live-binding channel for cross-domain reads. B1a moved the 6 preview slots here, plus the two pipeline-owned (D8) values other domains read - lastRenderedAnalysisResult (D10 :2918-2919, D9) and lastFetchedBlocks (D9 :4208, found only after the state-read scan was fixed to stop skipping declaration lines). 23 assignment sites became setter calls, every read expression stayed byte-identical, and all URL.revokeObjectURL calls stayed at their original call sites so statement order is unchanged. L1 also applies (this module imports nothing), so it cannot become a hub either."
     }
   },
   "leaf_services": {
@@ -168,8 +168,10 @@
     "frontend/modules/preview-state.js": [
       "currentOriginalFileUrl", "currentTaskId", "currentQueueItem", "currentPreviewPage",
       "currentPageImageUrl", "previewPaginationInitialized", "lastRenderedAnalysisResult",
+      "lastFetchedBlocks",
       "setOriginalFileUrl", "setTaskId", "setQueueItem", "setPreviewPage", "setPageImageUrl",
-      "setPreviewPaginationInitialized", "setLastRenderedAnalysisResult", "resetPreviewState"
+      "setPreviewPaginationInitialized", "setLastRenderedAnalysisResult", "setLastFetchedBlocks",
+      "resetPreviewState"
     ]
   },
   "utils_modules": {

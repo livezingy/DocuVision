@@ -1,9 +1,11 @@
 /**
  * Shared preview / result state (v1.8.3 B1a) - registered shared-state module.
  *
- * Moved out of app.js (:199 and :921-926) so the preview-paging, overlay, result-panel,
- * export, batch and shell domains can read it through ESM live bindings while it lives in
- * exactly one place.
+ * Moved out of app.js (:199/:200 and :921-926) so the preview-paging, overlay,
+ * result-panel, export, batch and shell domains can read it through ESM live bindings
+ * while it lives in exactly one place. Two of the states are pipeline-owned (D8) but read
+ * by other domains, which is why they have to be here before those domains move:
+ * lastRenderedAnalysisResult (read by D10 and D9) and lastFetchedBlocks (read by D9).
  *
  * Contract (design rev3 section 4):
  *  1. reads are zero-change - consumers `import { currentTaskId }` and every read
@@ -32,6 +34,8 @@ export let previewPaginationInitialized = false;
 // --- pipeline (D8) state that other domains read ---
 /** Last rendered analysis result; read by renderDocumentWithAnnotations (D10) and updateContentText (D9). */
 export let lastRenderedAnalysisResult = null;
+/** Last fetched /blocks payload; read by updateContentText (D9), reset by D5/D10 before refetching. */
+export let lastFetchedBlocks = null;
 
 // --- the single write channel (setters) ---
 export function setOriginalFileUrl(url) { currentOriginalFileUrl = url; } // :1136 (+ reset)
@@ -40,7 +44,8 @@ export function setQueueItem(item) { currentQueueItem = item; } // :1120 (+ rese
 export function setPreviewPage(page) { currentPreviewPage = page; } // :946 :1138 :2812
 export function setPageImageUrl(url) { currentPageImageUrl = url; } // :972 :1020 :1252 :2822
 export function setPreviewPaginationInitialized(value) { previewPaginationInitialized = value; } // :1044
-export function setLastRenderedAnalysisResult(result) { lastRenderedAnalysisResult = result; } // :2424 :2804
+export function setLastRenderedAnalysisResult(result) { lastRenderedAnalysisResult = result; } // :2409 :2782
+export function setLastFetchedBlocks(blocks) { lastFetchedBlocks = blocks; } // :1121 :2409 :2796 :2835
 
 /**
  * Clear the three "currently displayed document" slots (original app.js :685-687).

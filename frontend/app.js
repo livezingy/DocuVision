@@ -34,22 +34,13 @@ import { API_BASE_URL, API_ROOT_URL, HEALTH_URL, ENGINES_URL } from './modules/a
 // --- v1.8.3 B1a: shared preview/result state lives in modules/preview-state.js; reads stay
 // byte-identical through live bindings, writes go through the setters below ---
 import {
-    currentOriginalFileUrl,
-    currentTaskId,
-    currentQueueItem,
-    currentPreviewPage,
-    currentPageImageUrl,
-    previewPaginationInitialized,
-    lastRenderedAnalysisResult,
-} from './modules/preview-state.js';
-import {
-    setOriginalFileUrl,
-    setTaskId,
-    setQueueItem,
-    setPreviewPage,
-    setPageImageUrl,
-    setPreviewPaginationInitialized,
-    setLastRenderedAnalysisResult,
+    // reads: live bindings, every read expression stays byte-identical
+    currentOriginalFileUrl, currentTaskId, currentQueueItem, currentPreviewPage,
+    currentPageImageUrl, previewPaginationInitialized, lastRenderedAnalysisResult,
+    lastFetchedBlocks,
+    // writes: the only channel, module code cannot assign to an imported binding
+    setOriginalFileUrl, setTaskId, setQueueItem, setPreviewPage, setPageImageUrl,
+    setPreviewPaginationInitialized, setLastRenderedAnalysisResult, setLastFetchedBlocks,
     resetPreviewState,
 } from './modules/preview-state.js';
 
@@ -189,7 +180,6 @@ let isProcessingQueue = false;
 let lastStatusMessage = '';
 let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
-let lastFetchedBlocks = null;
 
 /** Clear inline sizing from adjustDocumentSize so the next task is not clipped by the previous layout. */
 function resetDocumentPageLayoutStyles() {
@@ -1118,7 +1108,7 @@ async function switchToQueueItem(queueItem) {
     setOriginalFileUrl(URL.createObjectURL(file));
     setTaskId(taskId || null);
     setPreviewPage(1);
-    lastFetchedBlocks = null;
+    setLastFetchedBlocks(null);
 
     // Update document page
     const documentPage = document.getElementById('documentPage');
@@ -2406,7 +2396,7 @@ async function updateResultsDisplay(result) {
     setLastRenderedAnalysisResult(result);
 
     // Reset cached blocks so the SVG overlay fetches fresh data.
-    lastFetchedBlocks = null;
+    setLastFetchedBlocks(null);
 
     // Update document preview
     await updateDocumentPreview(result);
@@ -2793,7 +2783,7 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
         : Math.min(Math.max(1, pageNum), totalPages);
     setPreviewPage(page);
     syncPreviewPaginationControls(totalPages, page);
-    lastFetchedBlocks = null;
+    setLastFetchedBlocks(null);
 
     let imageUrl = currentOriginalFileUrl;
     if (currentTaskId) {
@@ -2832,7 +2822,7 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
 
         const blocks = await fetchTaskBlocks(currentTaskId, page);
         if (!blocks || !Array.isArray(blocks.blocks) || blocks.blocks.length === 0) return;
-        lastFetchedBlocks = blocks;
+        setLastFetchedBlocks(blocks);
 
         const svg = document.getElementById('annotationSvgOverlay');
         if (!svg) return;

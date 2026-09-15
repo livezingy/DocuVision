@@ -30,6 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B1a follow-up — `lastFetchedBlocks` shared, state-read scan blind spot fixed**:
+  `frontend/modules/preview-state.js` now also owns `lastFetchedBlocks` (pipeline state
+  read by `updateContentText` in the result panels), so all four of its write sites are
+  behind a setter and `app.js` keeps only reads — without this, the batch that moves the
+  result panels could not compile. It was found by fixing `scripts/frontend_coupling.py`:
+  `state_read_rows` skipped *every* `const`/`let`/`var` line (the intent was to skip the
+  state's own declaration), so reads on declaration lines such as
+  `const blocksData = lastFetchedBlocks;` were invisible. Now only lines that declare a
+  tracked state are skipped, whereupon the cross-domain state-read count went **29 → 61**,
+  also exposing `TABLE_MAPPING_MODE` (read by the options dialog — the next batch) and
+  `lastHealthPayload` (read by the pipeline, B4) as real dependencies.
+  `frontend/app.js` **5368 → 5358 lines**; 23 assignments became 21 setter call sites.
 - **v1.8.3 B1a — shared base extracted**: `frontend/modules/preview-state.js`
   (7 live-binding states: the 6 preview slots plus `lastRenderedAnalysisResult`, which
   the overlay domain reads at `:2936-2937`; 8 setters/reset) and

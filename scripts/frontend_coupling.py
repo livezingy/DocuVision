@@ -147,8 +147,14 @@ def edge_rows(lines: list[str]) -> list[tuple[str, str, str, str, int]]:
 
 
 def state_read_rows(lines: list[str]) -> list[tuple[str, str, str, str, int]]:
-    """Cross-domain state reads: (owner domain, state, reader domain, reader fn, line)."""
-    decl_line = re.compile(r"^(?:const|let|var)\s+[A-Za-z_$]")
+    """Cross-domain state reads: (owner domain, state, reader domain, reader fn, line).
+
+    Only the state's *own* declaration is skipped. Skipping every ``const``/``let``/``var``
+    line (the pre-2026-09-15 behaviour) silently dropped reads on declaration lines, e.g.
+    ``const blocksData = lastFetchedBlocks;`` inside ``updateContentText`` - which hid a
+    real D8 -> D9 dependency that would have broken the batch that moves D9.
+    """
+    decl_line = re.compile(r"^(?:const|let|var)\s+([A-Za-z_$][\w$]*)")
     rows: list[tuple[str, str, str, str, int]] = []
     for reader_fn, lns in fn_line_owners(lines).items():
         reader_domain = NAME_TO_DOMAIN.get(reader_fn)
@@ -157,8 +163,11 @@ def state_read_rows(lines: list[str]) -> list[tuple[str, str, str, str, int]]:
         for ln in lns:
             raw = lines[ln - 1]
             stripped = raw.strip()
-            if stripped.startswith(("//", "*", "/*")) or decl_line.match(stripped):
+            if stripped.startswith(("//", "*", "/*")):
                 continue
+            decl = decl_line.match(stripped)
+            if decl and decl.group(1) in STATE_OWNER:
+                continue  # the state's own declaration is not a read
             for state, owner_domain in STATE_OWNER.items():
                 if owner_domain == reader_domain:
                     continue

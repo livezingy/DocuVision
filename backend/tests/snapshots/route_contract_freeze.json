@@ -1,0 +1,361 @@
+{
+  "DELETE /api/v1/batch/{batch_id}": {
+    "name": "delete_batch",
+    "signature": "batch_id: str",
+    "docstring": "Delete a batch job",
+    "decorator_kwargs": []
+  },
+  "DELETE /api/v1/tasks/{task_id}": {
+    "name": "delete_task",
+    "signature": "task_id: str",
+    "docstring": "Delete a task (can delete any task regardless of status)",
+    "decorator_kwargs": []
+  },
+  "GET /": {
+    "name": "root",
+    "signature": "",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/batch": {
+    "name": "list_batches",
+    "signature": "status: Optional[str]=None, limit: int=50, offset: int=0",
+    "docstring": "List all batch jobs",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/batch/{batch_id}": {
+    "name": "get_batch",
+    "signature": "batch_id: str",
+    "docstring": "Get batch job details",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/batch/{batch_id}/export.csv": {
+    "name": "export_batch_csv",
+    "signature": "batch_id: str, mode: str='kie', validation_passed_only: bool=False",
+    "docstring": "Download aggregated batch results as CSV (mode: kie, summary, failures).",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/batch/{batch_id}/export.json": {
+    "name": "export_batch_json",
+    "signature": "batch_id: str",
+    "docstring": "Download full batch results as JSON bundle.",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/batch/{batch_id}/export.xlsx": {
+    "name": "export_batch_xlsx",
+    "signature": "batch_id: str, mode: str='all'",
+    "docstring": "Download aggregated batch results as Excel (mode: all, kie, tables, summary).",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/batch/{batch_id}/results": {
+    "name": "get_batch_results",
+    "signature": "batch_id: str",
+    "docstring": "Get all results from a batch",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/batch/{batch_id}/summary": {
+    "name": "get_batch_summary",
+    "signature": "batch_id: str",
+    "docstring": "Get batch job summary",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/engines": {
+    "name": "list_engines",
+    "signature": "",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/health": {
+    "name": "health_check_v1",
+    "signature": "",
+    "docstring": "Same payload as GET /health; use behind reverse proxies that only forward /api/v1/*.",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/hitl/reviews": {
+    "name": "list_hitl_reviews",
+    "signature": "limit: int=50, include_payload: bool=False",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/hitl/reviews/{review_id}": {
+    "name": "get_hitl_review",
+    "signature": "review_id: str",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/jobs/{job_id}": {
+    "name": "get_job_status",
+    "signature": "job_id: str",
+    "docstring": "Phase 1 API: Get current job status and progress.",
+    "decorator_kwargs": [
+      [
+        "response_model",
+        "JobStatus"
+      ]
+    ]
+  },
+  "GET /api/v1/jobs/{job_id}/debug": {
+    "name": "get_job_debug",
+    "signature": "job_id: str",
+    "docstring": "Phase 1 API: Get debug artifacts (preprocessing, raw, fused, quality JSON + images).\n\nReturns 404 if:\n- Job not found\n- DEBUG_MODE is disabled\n- Job not completed\n\nReturns a manifest with debug artifact paths and metadata.",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/jobs/{job_id}/debug/{filename}": {
+    "name": "get_job_debug_file",
+    "signature": "job_id: str, filename: str",
+    "docstring": "Phase 1 API: Download a specific debug artifact file.",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/jobs/{job_id}/result": {
+    "name": "get_job_result",
+    "signature": "job_id: str",
+    "docstring": "Phase 1 API: Get the completed Envelope result.\nReturns 404 if job not found or not completed.\nReturns JobEnvelope with preprocessing, raw, fused, view, quality layers.",
+    "decorator_kwargs": [
+      [
+        "response_model",
+        "JobEnvelope"
+      ],
+      [
+        "response_model_exclude_none",
+        "True"
+      ]
+    ]
+  },
+  "GET /api/v1/kie/templates": {
+    "name": "list_kie_templates",
+    "signature": "",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/kie/templates/{template_id}": {
+    "name": "get_kie_template",
+    "signature": "template_id: str=APIPath(..., pattern='^[A-Za-z0-9_-]+$')",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/tasks/{task_id}": {
+    "name": "get_task_status",
+    "signature": "task_id: str",
+    "docstring": null,
+    "decorator_kwargs": [
+      [
+        "response_model",
+        "TaskStatus"
+      ]
+    ]
+  },
+  "GET /api/v1/tasks/{task_id}/blocks": {
+    "name": "get_task_blocks",
+    "signature": "task_id: str, page_number: int=1, content_limit: int=120",
+    "docstring": "Return frontend-oriented flat blocks payload from the view layer.",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/tasks/{task_id}/events": {
+    "name": "get_task_events",
+    "signature": "task_id: str",
+    "docstring": "Debug endpoint: return stored event history for a task (last 100 events).",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/tasks/{task_id}/export/{format}": {
+    "name": "export_result",
+    "signature": "task_id: str, format: str, include: str=''",
+    "docstring": "Export results in various formats.\n\n``format=zip`` builds a tables + figures artifact pack. Optional\n``include`` is a comma list: ``tables``, ``figures``, ``json``\n(default ``tables,figures``).",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/tasks/{task_id}/figures": {
+    "name": "list_task_figures",
+    "signature": "task_id: str",
+    "docstring": "List figure crops for a task (GLM trial P0-2).",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/tasks/{task_id}/figures/{figure_id}": {
+    "name": "get_task_figure_crop",
+    "signature": "task_id: str, figure_id: str",
+    "docstring": "Serve a single cropped figure PNG (GLM trial P0-2).\n\nFigure crops live under OUTPUT_DIR/{task_id}/figures/. figure_id is the\nlayout element id (e.g. p1_e3); only a safe basename is accepted to\nprevent path traversal.",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/tasks/{task_id}/layout": {
+    "name": "get_unified_layout_analysis",
+    "signature": "task_id: str, page_number: int=1",
+    "docstring": "获取统一格式的版面分析结�?    Returns unified layout analysis result in standard format",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/tasks/{task_id}/page-image/{page_num}": {
+    "name": "get_page_image",
+    "signature": "task_id: str, page_num: int=1",
+    "docstring": "Convert PDF page to image for display.\nReturns the first page as PNG image for PDF files, or original image for image files.",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/tasks/{task_id}/result": {
+    "name": "get_task_result",
+    "signature": "task_id: str",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/trial/gt-diff/{task_id}/report": {
+    "name": "trial_gt_diff_report_file",
+    "signature": "task_id: str",
+    "docstring": "Serve the generated HTML accuracy report (GLM trial P1-4).",
+    "decorator_kwargs": []
+  },
+  "GET /api/v1/webhooks": {
+    "name": "list_webhooks",
+    "signature": "request: Request",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "GET /health": {
+    "name": "health_check",
+    "signature": "",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "PATCH /api/v1/tasks/{task_id}/kie-fields": {
+    "name": "patch_task_kie_fields",
+    "signature": "task_id: str, body: KieFieldsPatchModel",
+    "docstring": "Update KIE fields after human review.",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/analyze": {
+    "name": "analyze_document",
+    "signature": "background_tasks: BackgroundTasks, file: UploadFile=File(...), enable_layout: bool=Form(True), enable_table: bool=Form(True), enable_formula: bool=Form(False), enable_seal: bool=Form(False), enable_figure_export: bool=Form(True), enable_kie: bool=Form(False), document_type: str=Form('auto'), language: str=Form('en'), ocr_engine: Optional[str]=Form(None), layout_engine: Optional[str]=Form(None), table_engine: Optional[str]=Form(None), table_allow_fullpage_fallback: Optional[bool]=Form(None), formula_disable_layout: bool=Form(False), formula_disable_preprocess: bool=Form(False), formula_two_stage_threshold_retry: bool=Form(True), formula_primary_layout_threshold: float=Form(0.5), formula_fallback_layout_threshold: float=Form(0.2), formula_layout_threshold: Optional[float]=Form(None), pipeline_formula_batch_size: int=Form(1), return_raw: bool=Form(False), kie_query_fields: Optional[str]=Form(None), kie_pages: Optional[str]=Form(None), table_template: Optional[str]=Form(None), enable_hitl: bool=Form(True), table_text_backfill: str=Form('auto')",
+    "docstring": "Upload and analyze a single document",
+    "decorator_kwargs": [
+      [
+        "response_model",
+        "TaskStatus"
+      ]
+    ]
+  },
+  "POST /api/v1/batch": {
+    "name": "create_batch",
+    "signature": "name: str=Form(...), files: List[UploadFile]=File(...), options: str=Form('{}')",
+    "docstring": "Create a new batch job",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/batch/{batch_id}/cancel": {
+    "name": "cancel_batch",
+    "signature": "batch_id: str",
+    "docstring": "Cancel a batch job",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/batch/{batch_id}/pause": {
+    "name": "pause_batch",
+    "signature": "batch_id: str",
+    "docstring": "Pause a running batch",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/batch/{batch_id}/resume": {
+    "name": "resume_batch",
+    "signature": "batch_id: str",
+    "docstring": "Resume a paused batch",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/batch/{batch_id}/retry": {
+    "name": "retry_batch_failed",
+    "signature": "batch_id: str",
+    "docstring": "Retry failed tasks in a batch",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/batch/{batch_id}/start": {
+    "name": "start_batch",
+    "signature": "batch_id: str, background_tasks: BackgroundTasks",
+    "docstring": "Start processing a batch job",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/document/profile": {
+    "name": "document_profile_scan",
+    "signature": "file: UploadFile=File(...)",
+    "docstring": "Pre-scan upload and suggest routing options (Pro Document Profile).",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/documents:analyze": {
+    "name": "analyze_document_v1",
+    "signature": "file: UploadFile=File(...), enable_layout: bool=Form(True), enable_table: bool=Form(True), enable_formula: bool=Form(False), enable_seal: bool=Form(False), enable_figure_export: bool=Form(True), enable_kie: bool=Form(False), document_type: str=Form('auto'), language: str=Form('en'), ocr_engine: Optional[str]=Form(None), layout_engine: Optional[str]=Form(None), table_engine: Optional[str]=Form(None), table_allow_fullpage_fallback: Optional[bool]=Form(None), formula_disable_layout: bool=Form(False), formula_disable_preprocess: bool=Form(False), formula_two_stage_threshold_retry: bool=Form(True), formula_primary_layout_threshold: float=Form(0.5), formula_fallback_layout_threshold: float=Form(0.2), formula_layout_threshold: Optional[float]=Form(None), pipeline_formula_batch_size: int=Form(1), return_raw: bool=Form(False), kie_query_fields: Optional[str]=Form(None), kie_pages: Optional[str]=Form(None), table_template: Optional[str]=Form(None), enable_hitl: bool=Form(True), table_text_backfill: str=Form('auto'), background_tasks: BackgroundTasks=BackgroundTasks()",
+    "docstring": "Phase 1 API: Submit a document for analysis.\nReturns job_id and status. Use /api/v1/jobs/{job_id} to poll status,\nand /api/v1/jobs/{job_id}/result to fetch the Envelope result.\n\nRequest: multipart/form-data with 'file' field\nResponse: JobStatus with job_id\n\nForm parameters mirror POST /api/v1/analyze (legacy) so the Phase 1\nJob-based endpoint is feature-complete (layout/table/formula/seal/KIE\ntoggles, engine overrides, formula thresholds, table_template, HITL).",
+    "decorator_kwargs": [
+      [
+        "response_model",
+        "JobStatus"
+      ]
+    ]
+  },
+  "POST /api/v1/hitl/reviews/{review_id}/resolve": {
+    "name": "resolve_hitl_review",
+    "signature": "review_id: str, status: str='approved', body: Optional[HitlResolveModel]=None",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/kie/templates/{template_id}": {
+    "name": "save_kie_template",
+    "signature": "template_id: str=APIPath(..., pattern='^[A-Za-z0-9_-]+$'), body: Dict[str, Any]=Body(...)",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/ocr": {
+    "name": "ocr_recognize",
+    "signature": "file: UploadFile=File(...), language: str=Form('en'), engine: Optional[str]=Form(None)",
+    "docstring": "Simple OCR endpoint for quick text extraction",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/pdf-tools/form-fill": {
+    "name": "pdf_tools_form_fill",
+    "signature": "file: UploadFile=File(...), field_values: str=Form('{}')",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/pdf-tools/merge": {
+    "name": "pdf_tools_merge",
+    "signature": "files: List[UploadFile]=File(...)",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/pdf-tools/metadata": {
+    "name": "pdf_tools_metadata",
+    "signature": "file: UploadFile=File(...)",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/pdf-tools/searchable": {
+    "name": "pdf_tools_searchable",
+    "signature": "file: UploadFile=File(...), text: str=Form('')",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/pdf-tools/split": {
+    "name": "pdf_tools_split",
+    "signature": "file: UploadFile=File(...), pages: str=Form('')",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/tasks/{task_id}/cancel": {
+    "name": "cancel_task",
+    "signature": "task_id: str",
+    "docstring": "Cancel a running task",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/trial/gt-diff/{task_id}": {
+    "name": "trial_gt_diff",
+    "signature": "task_id: str, body: TrialGtDiffModel",
+    "docstring": "Run a ground-truth diff against a completed task (GLM trial P1-4).\n\nThe client (or operator) supplies expected values; the endpoint returns\na field/cell-level accuracy report and persists a self-contained HTML\nreport served at GET /api/v1/trial/gt-diff/{task_id}/report.",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/upload": {
+    "name": "upload_file",
+    "signature": "file: UploadFile=File(...)",
+    "docstring": "Upload a file and return task_id for preview purposes.\nThis endpoint only uploads the file without processing, allowing immediate preview.",
+    "decorator_kwargs": []
+  },
+  "POST /api/v1/webhooks": {
+    "name": "register_webhook",
+    "signature": "request: Request, url: str=Form(...), events: str=Form('task.completed,batch.completed'), secret: str=Form('')",
+    "docstring": null,
+    "decorator_kwargs": []
+  },
+  "WS /api/v1/tasks/{task_id}/ws": {
+    "name": "websocket_endpoint",
+    "signature": "websocket: WebSocket, task_id: str",
+    "docstring": "WebSocket endpoint for real-time task event streaming.\nConnects to a specific task and receives all events in real-time.\nSends event history to late-connecting clients.",
+    "decorator_kwargs": []
+  }
+}

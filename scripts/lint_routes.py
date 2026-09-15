@@ -32,13 +32,14 @@ def _py_files(root: Path) -> list[Path]:
 
 
 def _route_decorators(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
-    """Return the method names of ``@app.<method>`` decorators on a function."""
+    """Return method names of ``@app.<method>`` / ``@router.<method>`` decorators."""
     found: list[str] = []
     for dec in node.decorator_list:
-        # @app.get(...) -> ast.Attribute(value=Name('app'), attr='get')
-        if isinstance(dec, ast.Attribute) and isinstance(dec.value, ast.Name):
-            if dec.value.id == "app" and dec.attr in ROUTE_METHODS:
-                found.append(dec.attr)
+        # @app.get(...) -> Call(func=Attribute(value=Name('app'), attr='get'))
+        func = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+            if func.value.id in {"app", "router"} and func.attr in ROUTE_METHODS:
+                found.append(func.attr)
     return found
 
 

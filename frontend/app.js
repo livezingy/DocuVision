@@ -31,6 +31,11 @@ import {
 import { escapeHtml } from './modules/utils/dom.js';
 // --- v1.8.3 B1a: API constants moved to modules/api-config.js (leaf service) ---
 import { API_BASE_URL, API_ROOT_URL, HEALTH_URL, ENGINES_URL } from './modules/api-config.js';
+// --- v1.8.3 B2 prep: KIE / table-mapping constants moved to modules/kie-config.js ---
+import {
+    KIE_DOC_TYPES, KIE_FIELD_NAME_RE, TABLE_MAPPING_MODE, TABLE_MAPPING_ELIGIBLE,
+    TABLE_MAPPING_IMAGE_EXTENSIONS,
+} from './modules/kie-config.js';
 // --- v1.8.3 B1a: shared preview/result state lives in modules/preview-state.js; reads stay
 // byte-identical through live bindings, writes go through the setters below ---
 import {
@@ -1458,12 +1463,6 @@ function resetAnalysisOptions() {
     updateEnhancementTabs(false, false);
     showNotification('Options reset to defaults', 'info');
 }
-
-const KIE_DOC_TYPES = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card']);
-const KIE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
-const TABLE_MAPPING_MODE = 'table_mapping';
-const TABLE_MAPPING_ELIGIBLE = new Set(['pdf_digital']);
-const TABLE_MAPPING_IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'tif', 'tiff', 'gif', 'bmp', 'webp']);
 
 function getSelectedProcessingMode() {
     return document.querySelector('input[name="processingMode"]:checked')?.value || 'layout';

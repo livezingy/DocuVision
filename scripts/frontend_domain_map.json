@@ -114,6 +114,7 @@
     "files": [
       "frontend/modules/preview-state.js",
       "frontend/modules/api-config.js",
+      "frontend/modules/kie-config.js",
       "frontend/modules/notifications.js",
       "frontend/modules/status-bar.js"
     ],
@@ -152,6 +153,13 @@
       "callers": "12 call sites / 3 domains (D8 6, D1 4, D3 2)",
       "evidence": "Touches only DOM; owns only presentation state (statusUpdateQueue, isProcessingQueue, lastStatusMessage, lastStatusUpdateTime, STATUS_UPDATE_MIN_INTERVAL) and no other domain reads it (state_owners D2 is read cross-domain: never); every caller gets the same throttled rendering behaviour. Needed in B1 because D1 api-base is extracted in that batch and calls updateStatusBar 4 times."
     },
+    "frontend/modules/kie-config.js": {
+      "added": "2026-09-15",
+      "approved_in": "B2 prep",
+      "criterion": "L1+L2+L3",
+      "callers": "D4 initResultTabs :820; D6 getProcessingOptions :1625/:1687/:1691; D7 updateTableMappingEligibility/updateDocumentTypeSuggestion/assertValidKieFieldName :1482/:1532/:1543/:1549/:1554/:1608",
+      "evidence": "Five immutable constants (const in app.js :1462-1466, never reassigned - measured 2026-09-15) moved verbatim; imports nothing at all and owns no mutable state, so no setter channel is needed. Needed because the options dialog (D6) and kie-mapping (D7) both read them and F3 forbids domain-to-domain imports: without this, the batch that moves the options dialog would have hit an unavoidable D6 -> D7 import. The dependency only became visible after the state-read scan stopped skipping declaration lines."
+    },
     "frontend/modules/api-config.js": {
       "added": "2026-09-15",
       "approved_in": "B1a",
@@ -161,6 +169,10 @@
     }
   },
   "shared_modules": {
+    "frontend/modules/kie-config.js": [
+      "KIE_DOC_TYPES", "KIE_FIELD_NAME_RE", "TABLE_MAPPING_MODE",
+      "TABLE_MAPPING_ELIGIBLE", "TABLE_MAPPING_IMAGE_EXTENSIONS"
+    ],
     "frontend/modules/api-config.js": [
       "normalizeApiBaseUrl", "resolveApiBaseUrl",
       "API_BASE_URL", "API_ROOT_URL", "HEALTH_URL", "ENGINES_URL"

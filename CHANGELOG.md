@@ -30,6 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B2 prep — `modules/kie-config.js`**: the five KIE / table-mapping constants
+  (`KIE_DOC_TYPES`, `KIE_FIELD_NAME_RE`, `TABLE_MAPPING_MODE`, `TABLE_MAPPING_ELIGIBLE`,
+  `TABLE_MAPPING_IMAGE_EXTENSIONS`; `const` in app.js `:1462-1466`, never reassigned)
+  moved verbatim into a read-only leaf service that imports nothing, so no setter channel is
+  needed. Required before B2 because the options dialog (D6) and kie-mapping (D7) both read
+  them and F3 forbids domain-to-domain imports — without it, moving the options dialog would
+  hit an unavoidable D6 → D7 import. The dependency only became visible once the state-read
+  scan stopped skipping declaration lines (previous commit). `frontend/app.js` 5358 → 5357
+  lines; the export surface is pinned in `tests/unit/kie-config.test.js`.
 - **v1.8.3 B1a follow-up — `lastFetchedBlocks` shared, state-read scan blind spot fixed**:
   `frontend/modules/preview-state.js` now also owns `lastFetchedBlocks` (pipeline state
   read by `updateContentText` in the result panels), so all four of its write sites are

@@ -30,6 +30,10 @@ Rules (design rev2 section 6 / DEVELOPMENT.md frontend rules):
                       in ``leaf_services`` / ``shared_state_modules`` with a date and
                       evidence, and **either** kind of registered module may reach
                       ``frontend/modules/utils/`` and ``frontend/shared/`` only (L1).
+  F6  assembly        every ``export function initXxx`` in ``frontend/modules/**``
+                      completeness  must be invoked from ``frontend/app.js`` (a forgotten init
+                      call leaves the module's injected deps as stubs - runtime no-op
+                      that no other static gate catches).
                       So the whitelist cannot grow silently, and a registered module can
                       never become a hub (or close a cycle) - not even by being
                       re-registered as a shared-state module.
@@ -398,6 +402,39 @@ def check_f5(tracked: list[str]) -> list[str]:
     return violations
 
 
+def check_f6(tracked: list[str]) -> list[str]:
+    """Assembly completeness: every module-exported ``initXxx`` must be wired in app.js.
+
+    Weak invariant (B5a): with the injection architecture, a module whose ``initXxx``
+    is never called from app.js silently no-ops at runtime - its module-level deps
+    stay stubs and the first user interaction that reaches them throws. This closes
+    the failure mode the dependency-wiring design is most exposed to (a forgotten
+    init call survives ``node --check``, lint F1-F5 and C1-C8; only e2e would trip,
+    late and with poor attribution). Name-based on purpose: deps completeness is a
+    runtime property, but "an init exists and is never invoked" is static and the
+    high-signal half of the risk.
+    """
+    violations: list[str] = []
+    entry_text = (REPO_ROOT / ENTRY).read_text(encoding="utf-8")
+    checked = 0
+    for rel in sorted(tracked):
+        if not (rel.startswith(MODULES_PREFIX) and rel.endswith(".js")):
+            continue
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        for m in re.finditer(
+            r"^export\s+(?:async\s+)?function\s+(init[A-Za-z_$][\w$]*)", text, re.MULTILINE
+        ):
+            checked += 1
+            name = m.group(1)
+            if not re.search(r"\b" + name + r"\b", entry_text):
+                violations.append(
+                    f"{rel}: exports {name} but {ENTRY} never calls it "
+                    "(assembly completeness - wire it in the boot sequence or the wiring block)"
+                )
+    print(f"[lint_frontend] F6 checked {checked} init export(s)")
+    return violations
+
+
 def main() -> int:
     allowlist = _load_allowlist()
     tracked, mode = _tracked_files()
@@ -409,6 +446,7 @@ def main() -> int:
     violations += check_f3(tracked)
     violations += check_f4(allowlist)
     violations += check_f5(tracked)
+    violations += check_f6(tracked)
 
     if violations:
         for v in violations:
@@ -417,7 +455,7 @@ def main() -> int:
         return 1
     print(
         "[lint_frontend] OK (F1 line budget / F2 entry ratchet / F3 import direction / "
-        "F4 assembly shape / F5 leaf-service registry)"
+        "F4 assembly shape / F5 leaf-service registry / F6 assembly completeness)"
     )
     return 0
 

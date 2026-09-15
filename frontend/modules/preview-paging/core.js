@@ -12,13 +12,16 @@
  * registered in the F3/F5 whitelist - they are reachable only as same-directory
  * siblings.
  */
+import * as DocuVisionPreview from '../../shared/queue_preview.js';
 import { API_BASE_URL } from '../api-config.js';
 import {
     currentPreviewPage, currentPageImageUrl, setPreviewPage, setPageImageUrl,
 } from '../preview-state.js';
 
 export function previewHelpers() {
-    return window.DocuVisionPreview || {};
+    // B5a: direct ESM import of shared/queue_preview.js (the index.html
+    // window.DocuVisionPreview bridge script was removed with it).
+    return DocuVisionPreview || {};
 }
 
 export function resolveResultPageCount(result, queueItem = null) {
@@ -185,3 +188,9 @@ export function adjustDocumentSize() {
         }
     }
 }
+
+// Adjust document size on window resize (moved here from app.js in B5a - it was
+// left behind when B4 extracted adjustDocumentSize into core.js)
+window.addEventListener('resize', () => {
+    setTimeout(adjustDocumentSize, 100);
+});

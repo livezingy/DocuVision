@@ -30,6 +30,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B5a — shell extracted, entry at terminal state**: `frontend/modules/shell/`
+  (`ui.js` + `tools.js`, D4's 12 functions plus the `globalTooltip` state; no cross-half
+  calls, so no extra injection). The shell's cross-domain calls are **injected - 10
+  deps / 15 call points**, five times the design's estimate of 2, because D6-D10 are all
+  extracted by now and F3 forbids importing sibling domain modules (the design assumed
+  the callees would still live in app.js): D8 `startProcessing` ×2, D6
+  `openAnalysisOptionsDialog` + `setSyncProcessingModeUI`, D7 ×4, D9
+  `updateEnhancementTabs` ×4, D15 `refreshHitlReviews`, D1 `refreshActiveEngineFooterLine`,
+  D10 `highlightResultItem`. The `:744` `window.DocuVisionPreview` bridge (R1's last
+  standing window bridge) is **removed** - verified it had no consumer besides
+  `previewHelpers`, which now imports `shared/queue_preview.js` directly (whitelisted
+  `shared/*`). The window-resize listener left behind by B4 moved into
+  `preview-paging/core.js`. `app.js` is at its **terminal state: 211 lines / 1 function**
+  (the `updateResultsDisplay` mediator) - imports, dependency wiring, boot sequence,
+  mediator; **5708 → 211 lines (-96%)**, far inside the ≤600 acceptance.
+  New gate **F6 assembly completeness**: every `export function initXxx` must be called
+  from app.js. Its first run caught 3 over-exported inits (module-private now); a known
+  gap is recorded - F6's name-based weak assertion cannot catch "referenced but not
+  imported" (that bit us once this batch; e2e + a pageerror probe caught it).
+  Gate evidence: lint F1-F6, C1-C8, `--syntax` 34/34 (incl. app.js), vitest 80/80,
+  e2e 14/14.
 - **v1.8.3 B-decision — same-domain splits switch from injection to sibling imports**:
   `preview-nav.js` / `preview-render.js` move into `frontend/modules/preview-paging/`
   (`core.js` + `nav.js` + `render.js`) and `pipeline-run.js` / `pipeline-result.js`

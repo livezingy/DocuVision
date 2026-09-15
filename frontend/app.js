@@ -51,135 +51,14 @@ import {
 // --- v1.8.3 B1b: extracted leaf services + shared api state ---
 import { updateStatusBar, updateStatusBarThrottled } from './modules/status-bar.js';
 import { showNotification } from './modules/notifications.js';
-import { lastHealthPayload, setLastHealthPayload } from './modules/api-state.js';
+import { lastHealthPayload } from './modules/api-state.js';
+import {
+    initializeAPIConnection, checkApiReachable, applyHealthToFooter, refreshActiveEngineFooterLine,
+} from './modules/api-base.js';
+import { bindTableCardCsvExport } from './modules/export-csv.js';
 
 /** Set from initApp; toggles Processing mode sub-panels. */
 let syncProcessingModeUI = function () {};
-
-/**
- * Probe API reachability (cloud proxies may block /health but allow /api/v1/*).
- * Tries GET /api/v1/health, then GET /api/v1/engines as fallback.
- */
-async function checkApiReachable(timeoutMs = 8000) {
-    let lastError = null;
-
-    try {
-        const healthResponse = await fetch(HEALTH_URL, {
-            method: 'GET',
-            signal: AbortSignal.timeout(timeoutMs),
-        });
-        if (healthResponse.ok) {
-            try {
-                const healthJson = await healthResponse.json();
-                if (healthJson) {
-                    return { ok: true, health: healthJson, probe: 'health' };
-                }
-            } catch (parseErr) {
-                lastError = parseErr;
-            }
-        } else {
-            lastError = new Error(`health HTTP ${healthResponse.status}`);
-        }
-    } catch (err) {
-        lastError = err;
-        console.warn('[API] Health probe failed:', err);
-    }
-
-    try {
-        const enginesResponse = await fetch(ENGINES_URL, {
-            method: 'GET',
-            signal: AbortSignal.timeout(timeoutMs),
-        });
-        if (enginesResponse.ok) {
-            try {
-                const enginesJson = await enginesResponse.json();
-                if (enginesJson && enginesJson.ocr) {
-                    return { ok: true, health: null, probe: 'engines' };
-                }
-            } catch (parseErr) {
-                lastError = parseErr;
-            }
-        } else {
-            lastError = new Error(`engines HTTP ${enginesResponse.status}`);
-        }
-    } catch (err) {
-        lastError = err;
-        console.warn('[API] Engines probe failed:', err);
-    }
-
-    return { ok: false, health: null, probe: null, error: lastError };
-}
-
-let kieHealthRefreshTimer = null;
-
-function truncateFooterEngineLine(line) {
-    if (!line) return '';
-    return line.length > 72 ? `${line.slice(0, 69)}...` : line;
-}
-
-/**
- * Keep #activeEngine aligned with last /health dependencies and the OCR engine dropdown.
- */
-function refreshActiveEngineFooterLine() {
-    const activeEl = document.getElementById('activeEngine');
-    if (!activeEl) return;
-    const deps = (lastHealthPayload && lastHealthPayload.dependencies) || {};
-    const px = String(deps.paddlex || '').trim() || 'unknown';
-    const po = String(deps.paddleocr || '').trim() || 'unknown';
-    const ocrSelect = document.getElementById('dialogOcrEngineSelect');
-
-    if (!ocrSelect) {
-        activeEl.textContent = truncateFooterEngineLine(`PaddleOCR ${po} · PaddleX ${px}`);
-        return;
-    }
-
-    const engineNames = {
-        paddleocr: 'PaddleOCR',
-        tesseract: 'Tesseract 5.x',
-        easyocr: 'EasyOCR'
-    };
-    const val = ocrSelect.value || 'paddleocr';
-    const base = engineNames[val] || val;
-    const line =
-        val === 'paddleocr'
-            ? `PaddleOCR ${po} · PaddleX ${px}`
-            : `${base} · PaddleX ${px}`;
-    activeEl.textContent = truncateFooterEngineLine(line);
-}
-
-/**
- * Apply /health payload to footer (Paddle stack version, KIE readiness, API version).
- */
-function applyHealthToFooter(health) {
-    if (!health || typeof health !== 'object') return;
-    setLastHealthPayload(health);
-    refreshActiveEngineFooterLine();
-    const kieEl = document.getElementById('kieEngineStatus');
-    if (kieEl) {
-        if (health.kie && typeof health.kie === 'object') {
-            kieEl.textContent = health.kie.model_loaded ? ' · KIE ready' : ' · KIE cold';
-            kieEl.title = health.kie.model_id ? `KIE: ${health.kie.model_id}` : '';
-        } else {
-            kieEl.textContent = '';
-            kieEl.title = '';
-        }
-    }
-    const verEl = document.getElementById('apiVersionFooter');
-    if (verEl && health.api_version) {
-        verEl.textContent = `API v${health.api_version}`;
-    }
-    if (health.kie && health.kie.model_loaded === false && !kieHealthRefreshTimer) {
-        kieHealthRefreshTimer = window.setTimeout(() => {
-            kieHealthRefreshTimer = null;
-            fetch(HEALTH_URL)
-                .then((r) => (r.ok ? r.json() : null))
-                .then((h) => {
-                    if (h) applyHealthToFooter(h);
-                })
-                .catch(() => {});
-        }, 12000);
-    }
-}
 
 /** Clear inline sizing from adjustDocumentSize so the next task is not clipped by the previous layout. */
 function resetDocumentPageLayoutStyles() {
@@ -241,83 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-
-/**
- * Initialize API connection and check server status
- */
-async function initializeAPIConnection() {
-    try {
-        console.log('[Init] API_BASE_URL=', API_BASE_URL, 'HEALTH_URL=', HEALTH_URL);
-
-        const reachability = await checkApiReachable(8000);
-        if (!reachability.ok) {
-            console.warn('[Init] API reachability probe failed');
-            updateStatusBar('warning', {
-                step: 'Server connection weak - some features may not work properly'
-            });
-            return;
-        }
-
-        if (reachability.health) {
-            applyHealthToFooter(reachability.health);
-        }
-
-        console.log('[Init] API probe OK via', reachability.probe);
-
-        // Get server info (optional; root / may be blocked on some cloud proxies)
-        try {
-            const infoResponse = await fetch(API_ROOT_URL, {
-                signal: AbortSignal.timeout(5000),
-            });
-            if (infoResponse.ok) {
-                const serverInfo = await infoResponse.json();
-                console.log('[Init] Server info:', serverInfo);
-                updateStatusBar('success', {
-                    step: '✓ API Connected: ' + serverInfo.name + ' v' + serverInfo.version
-                });
-                return;
-            }
-        } catch (infoErr) {
-            console.warn('[Init] Could not fetch server info:', infoErr);
-        }
-
-        updateStatusBar('success', {
-            step: '✓ API Connected (' + reachability.probe + ' probe)'
-        });
-
-    } catch (error) {
-        console.error('[Init] Failed to connect to API:', error);
-        updateStatusBar('error', {
-            step: `⚠ Server not responding - check backend: ${API_ROOT_URL}`
-        });
-
-        // Show alert to user
-        const uploadZone = document.getElementById('uploadZone');
-        if (uploadZone) {
-            const overlay = document.createElement('div');
-            overlay.style.cssText = `
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.3);
-                border-radius: 8px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 12px;
-                color: #ff6b6b;
-                padding: 16px;
-                text-align: center;
-                z-index: 10;
-            `;
-            overlay.innerHTML = '⚠ Server not responding<br/>Make sure backend is running';
-            uploadZone.parentElement.style.position = 'relative';
-            uploadZone.parentElement.appendChild(overlay);
-        }
-    }
-}
 
 function insertInitialSkeleton() {
     const container = document.getElementById('documentPage');
@@ -3351,88 +3153,6 @@ function updateContentFields(result) {
 
 
 /**
- * Show floating progress card
- */
-function showFloatingProgressCard(taskInfo) {
-    const card = document.getElementById('floatingProgressCard');
-    if (!card) return;
-
-    const fileNameEl = card.querySelector('.floating-card-filename');
-    const stepEl = card.querySelector('.floating-card-step');
-    const progressFill = card.querySelector('#floatingCardProgressFill');
-    const progressText = card.querySelector('#floatingCardProgressText');
-
-    if (fileNameEl && taskInfo.fileName) {
-        fileNameEl.textContent = taskInfo.fileName;
-    }
-    if (stepEl && taskInfo.step) {
-        stepEl.textContent = taskInfo.step;
-    }
-    if (progressFill && taskInfo.progress !== undefined) {
-        progressFill.style.width = `${taskInfo.progress}%`;
-    }
-    if (progressText && taskInfo.progress !== undefined) {
-        progressText.textContent = `${taskInfo.progress}%`;
-    }
-
-    card.style.display = 'block';
-
-    // Setup cancel button
-    const cancelBtn = document.getElementById('cancelFloatingCardBtn');
-    if (cancelBtn) {
-        cancelBtn.onclick = () => {
-            // Find the processing item and cancel it
-            const processingItem = document.querySelector('.queue-item.processing');
-            if (processingItem && processingItem.dataset.taskId) {
-                fetch(`${API_BASE_URL}/tasks/${processingItem.dataset.taskId}/cancel`, {
-                    method: 'POST'
-                }).catch(console.error);
-            }
-        };
-    }
-
-    // Setup close button
-    const closeBtn = document.getElementById('closeFloatingCardBtn');
-    if (closeBtn) {
-        closeBtn.onclick = () => {
-            hideFloatingProgressCard();
-        };
-    }
-}
-
-/**
- * Update floating progress
- */
-function updateFloatingProgress(progress, step) {
-    const card = document.getElementById('floatingProgressCard');
-    if (!card || card.style.display === 'none') return;
-
-    const stepEl = card.querySelector('.floating-card-step');
-    const progressFill = card.querySelector('#floatingCardProgressFill');
-    const progressText = card.querySelector('#floatingCardProgressText');
-
-    if (stepEl && step) {
-        stepEl.textContent = step;
-    }
-    if (progressFill && progress !== undefined) {
-        progressFill.style.width = `${progress}%`;
-    }
-    if (progressText && progress !== undefined) {
-        progressText.textContent = `${progress}%`;
-    }
-}
-
-/**
- * Hide floating progress card
- */
-function hideFloatingProgressCard() {
-    const card = document.getElementById('floatingProgressCard');
-    if (card) {
-        card.style.display = 'none';
-    }
-}
-
-/**
  * Fail processing
  */
 function failProcessing(item, message) {
@@ -3467,17 +3187,6 @@ function failProcessing(item, message) {
     processNextInQueue();
 }
 
-/**
- * Export results via backend /tasks/{task_id}/export/{format}
- */
-async function exportResults(format) {
-    return DocuVisionExport.exportResults(format, {
-        getJobId: () => currentTaskId,
-        buildUrl: (jobId, apiFormat) => `${API_BASE_URL}/tasks/${jobId}/export/${apiFormat}`,
-        notify: showNotification,
-        supportsAzure: true,
-    });
-}
 
 
 
@@ -3487,41 +3196,12 @@ async function exportResults(format) {
 
 
 
-function downloadCurrentTableCsv() {
-    const tables = window.currentTables || [];
-    const idx = typeof window.currentTableIndex === 'number' ? window.currentTableIndex : 0;
-    const table = tables[idx];
-    if (!table) return;
-    const n = idx + 1;
-    const csv = buildSingleTableCsv(table, n);
-    downloadFile('\uFEFF' + csv, singleTableCsvFilename(n, table.page), 'text/csv;charset=utf-8');
-}
 
-function bindTableCardCsvExport(root) {
-    if (!root || root.dataset.csvExportBound === '1') return;
-    root.dataset.csvExportBound = '1';
-    root.addEventListener('click', function (e) {
-        const btn = e.target.closest('.table-action-btn');
-        if (!btn) return;
-        e.preventDefault();
-        downloadCurrentTableCsv();
-    });
-}
 
-/**
- * Download file
- */
-function downloadFile(content, filename, mimeType) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
+
+
+
+
 
 // ============================================
 // P2 Features: Batch Processing

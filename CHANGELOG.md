@@ -30,6 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B1b (part 2) — api-base / floating-progress / export-csv**:
+  `frontend/modules/api-base.js` (5 functions; a normal domain module — it calls status-bar
+  and owns a refresh timer, so it is not a leaf service), `frontend/modules/floating-progress.js`
+  (3 functions) and `frontend/modules/export-csv.js` (4 functions). `app.js` **5136 → 4816
+  lines**, **116 → 104** functions.
+  Dead-code note (no cleanup performed, per the structure-only rule): `showFloatingProgressCard`
+  / `updateFloatingProgress` and the app.js `exportResults` have no call sites — the
+  processing flow uses the status bar and the export UI uses `shared/export-ui.js` — so they
+  move as exported-but-unused and are flagged for v1.9 review.
 - **v1.8.3 B1b (part 1) — base services + notifications fold-in**:
   - new `frontend/modules/status-bar.js` (5 functions + its presentation-only throttle
     state; a leaf service with no imports), `frontend/modules/api-state.js`

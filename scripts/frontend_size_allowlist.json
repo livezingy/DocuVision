@@ -1,9 +1,9 @@
 {
-  "app_js_functions": 116,
+  "app_js_functions": 104,
   "app_js_module": true,
   "budget": 500,
   "files": {
-    "frontend/app.js": 5136
+    "frontend/app.js": 4816
   },
   "panel_resize_removed": true
 }

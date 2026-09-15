@@ -90,10 +90,7 @@
       "showFloatingProgressCard", "updateFloatingProgress", "hideFloatingProgressCard"
     ],
     "D12 export-csv": [
-      "exportResults", "convertToCSV", "convertToMarkdown", "tableConfidencePct",
-      "formatTableCsvBanner", "excelSafeCell", "escapeCsvCell", "buildSingleTableCsv",
-      "singleTableCsvFilename", "downloadCurrentTableCsv", "bindTableCardCsvExport",
-      "downloadFile"
+      "exportResults", "downloadCurrentTableCsv", "bindTableCardCsvExport", "downloadFile"
     ],
     "D13 notifications": [
       "showNotification", "getNotificationIcon", "getNotificationColor"

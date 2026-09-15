@@ -215,3 +215,5 @@ async def delete_task(task_id: str):
     delete_task_safe(task_id)
     tasks.pop(task_id, None)
     task_cancellation_flags.pop(task_id, None)
+
+    return {"message": "Task deleted", "task_id": task_id}

@@ -39,8 +39,7 @@ async def get_task_result(task_id: str):
 @router.get("/api/v1/tasks/{task_id}/layout")
 async def get_unified_layout_analysis(task_id: str, page_number: int = 1):
     """
-    获取统一格式的版面分析结果
-    Returns unified layout analysis result in standard format
+    获取统一格式的版面分析结�?    Returns unified layout analysis result in standard format
     """
     task = tasks.get(task_id)
     if not task:

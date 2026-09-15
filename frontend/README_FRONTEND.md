@@ -25,15 +25,22 @@
 
 ```
 frontend/
-├── index.html          # 主 HTML 页面（484 行）
-├── app.js              # 主应用逻辑（4287+ 行）
+├── index.html          # 主 HTML 页面（750 行）；app.js 以 type="module" 加载
+├── app.js              # 装配入口 + 域逻辑（5386 行 / 126 个顶层函数，v1.8.3 B0b）
+├── modules/            # 原生 ESM 模块（v1.8.3 起，无构建工具）
+│   ├── utils/          # 纯函数工具：geometry / csv / text / dom
+│   └── preview-state.js、notifications.js…   # 后续批次（B1-B5）逐个迁入
+├── shared/             # 经典脚本 + CSS（过渡期保留，新模块一律不进 index.html）
 ├── styles.css          # 样式表和主题
-└── tests/              # 前端测试
-    ├── e2e/            # 端到端测试
-    │   └── example.spec.js
-    └── unit/           # 单元测试
-        └── example.spec.js
+└── tests/
+    ├── e2e/            # 端到端测试（4 套，走 mock API；需 npx playwright install chromium）
+    └── unit/           # 单元测试（vitest + jsdom）
 ```
+
+> 结构规则（v1.8.3 起，机器可判）：`frontend/modules/**` 新文件 ≤500 行、禁 import
+> `../app.js`、禁跨域互 import（`./utils/*`、`./preview-state.js`、`../shared/*` 除外）；
+> 新模块文件不得出现在 `index.html`（由 app.js import 链加载）。
+> 门禁：`python scripts/lint_frontend.py`（F1-F4）+ `python scripts/check_frontend_baseline.py`（C1-C8）。
 
 ## 🔧 配置和初始化
 
@@ -370,5 +377,10 @@ const API_BASE_URL = 'http://your-server.com/api/v1';
 ---
 
 **版本**: 1.1.0  
-**最后更新**: 2026-02-03  
+**最后更新**: 2026-09-15（v1.8.3 B0b：入口转 ESM + `modules/utils/` 四模块出仓）  
 **维护者**: DocuVision Team
+
+> ⚠️ 除「📁 文件结构」节外，本文其余章节（初始化流程 / 主要模块 / API 交互）仍是 v1.1.0
+> 的旧描述，其中 `runAnalysis()` / `updateQueue()` / `renderAnalysisResults()` /
+> `checkProcessingStatus()` / `displayTableResults()` 等函数在当前 `app.js` 中**已不存在**。
+> 全文重写排在 v1.8.3 B5b。

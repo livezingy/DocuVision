@@ -29,6 +29,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/test_route_contract_freeze.py` and `tests/test_route_inventory.py`, so
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
+### Changed
+- **v1.8.3 B0b — frontend entry converted to native ESM + pure helpers extracted**
+  (structure-only, no behaviour change):
+  - `frontend/index.html`: the app entry is now
+    `<script type="module" src="app.js?v=20260915-b0b">` (module scripts are deferred
+    by default, so load order is unchanged; the classic shared scripts and the inline
+    `queue_preview` bridge stay as-is until B1/B5a).
+  - `frontend/app.js` **5708 → 5386 lines**, top-level functions **145 → 126**.
+  - new `frontend/modules/utils/`: `geometry.js` (5 functions, bbox / coordinate-space
+    math), `csv.js` (8, CSV & Markdown formatting), `text.js` (5, text / role-label
+    normalisation), `dom.js` (1, `escapeHtml`). All 19 bodies were moved verbatim
+    (only the declaration line gained `export `); `app.js` keeps calling them through
+    an explicit import block.
+  - new unit tests: `tests/unit/geometry.test.js` (17 cases incl. the v1.8
+    coordinate-space regression), `tests/unit/csv.test.js` (14 cases),
+    `tests/unit/bootstrap.test.js` (7 static boot-order + extraction guards).
+  - frontend ratchets lowered to the measured values (`frontend/app.js` 5386,
+    `app_js_functions` 126); `app_js_module` phase flag flipped to `true`.
+
 ### Fixed
 - `scripts/lint_frontend.py` now enumerates with
   `git ls-files --cached --others --exclude-standard`, so a newly created module is

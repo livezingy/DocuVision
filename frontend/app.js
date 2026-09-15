@@ -3,6 +3,32 @@
  * Frontend Interaction Script
  */
 
+// --- v1.8.3 B0b: extracted pure helpers (see frontend/modules/utils/) ---
+import {
+    normalizeAnnotationBbox,
+    bboxFromPolygon,
+    normalizeCoordSpace,
+    normalizeBboxToImageMatrix,
+    remapBboxToImageSpace,
+} from './modules/utils/geometry.js';
+import {
+    convertToCSV,
+    convertToMarkdown,
+    tableConfidencePct,
+    formatTableCsvBanner,
+    excelSafeCell,
+    escapeCsvCell,
+    buildSingleTableCsv,
+    singleTableCsvFilename,
+} from './modules/utils/csv.js';
+import {
+    formatAzureRoleLabel,
+    normalizeTextForDisplay,
+    normalizePanelParagraphText,
+    isLikelyCollapsedText,
+    toAzureTypeLabel,
+} from './modules/utils/text.js';
+import { escapeHtml } from './modules/utils/dom.js';
 // API Base URL (auto-adapt for local and cloud deployments)
 function normalizeApiBaseUrl(baseUrl) {
     const trimmed = (baseUrl || '').trim().replace(/\/+$/, '');
@@ -2646,45 +2672,6 @@ async function updateDemoTransactionViews(result) {
     }
 }
 
-function formatAzureRoleLabel(type) {
-    const normalized = String(type || 'paragraph').toLowerCase();
-    const roleMap = {
-        doc_title: 'Title',
-        paragraph_title: 'SectionHeading',
-        abstract_title: 'SectionHeading',
-        reference_title: 'SectionHeading',
-        content_title: 'SectionHeading',
-        figure_table_chart_title: 'FigureCaption',
-        page_header: 'PageHeader',
-        page_footer: 'PageFooter',
-        section_header: 'SectionHeading',
-        table_header: 'TableHeader',
-        figure_caption: 'FigureCaption',
-        list_item: 'ListItem',
-        text_block: 'Paragraph',
-        text: 'Paragraph',
-        paragraph: 'Paragraph',
-        title: 'Title',
-        subtitle: 'Subtitle',
-        table: 'Table',
-        figure: 'Figure',
-        image: 'Figure',
-        header: 'PageHeader',
-        footer: 'PageFooter',
-        reference: 'Reference',
-        equation: 'Formula',
-        list: 'ListItem'
-    };
-
-    if (roleMap[normalized]) {
-        return roleMap[normalized];
-    }
-
-    return normalized
-        .split('_')
-        .map(p => p ? p.charAt(0).toUpperCase() + p.slice(1) : '')
-        .join('');
-}
 
 /**
  * Update document preview
@@ -2713,132 +2700,10 @@ async function updateDocumentPreview(result) {
     }
 }
 
-function normalizeAnnotationBbox(bbox) {
-    if (!bbox) return { x: 0, y: 0, width: 0, height: 0 };
 
-    if (Array.isArray(bbox) && bbox.length >= 4) {
-        return {
-            x: Number(bbox[0]) || 0,
-            y: Number(bbox[1]) || 0,
-            width: Math.max((Number(bbox[2]) || 0) - (Number(bbox[0]) || 0), 0),
-            height: Math.max((Number(bbox[3]) || 0) - (Number(bbox[1]) || 0), 0)
-        };
-    }
 
-    if (typeof bbox === 'object') {
-        if ('x' in bbox || 'y' in bbox || 'width' in bbox || 'height' in bbox) {
-            return {
-                x: Number(bbox.x) || 0,
-                y: Number(bbox.y) || 0,
-                width: Number(bbox.width) || 0,
-                height: Number(bbox.height) || 0
-            };
-        }
-        if ('x1' in bbox || 'y1' in bbox || 'x2' in bbox || 'y2' in bbox) {
-            const x1 = Number(bbox.x1) || 0;
-            const y1 = Number(bbox.y1) || 0;
-            const x2 = Number(bbox.x2) || 0;
-            const y2 = Number(bbox.y2) || 0;
-            return { x: x1, y: y1, width: Math.max(x2 - x1, 0), height: Math.max(y2 - y1, 0) };
-        }
-    }
 
-    return { x: 0, y: 0, width: 0, height: 0 };
-}
 
-function bboxFromPolygon(polygon) {
-    if (!Array.isArray(polygon) || polygon.length === 0) return null;
-
-    let points = [];
-    if (Array.isArray(polygon[0])) {
-        points = polygon.filter(p => Array.isArray(p) && p.length >= 2).map(p => [Number(p[0]) || 0, Number(p[1]) || 0]);
-    } else {
-        for (let i = 0; i < polygon.length - 1; i += 2) {
-            points.push([Number(polygon[i]) || 0, Number(polygon[i + 1]) || 0]);
-        }
-    }
-
-    if (points.length === 0) return null;
-    const xs = points.map(p => p[0]);
-    const ys = points.map(p => p[1]);
-    const x1 = Math.min(...xs);
-    const y1 = Math.min(...ys);
-    const x2 = Math.max(...xs);
-    const y2 = Math.max(...ys);
-    return { x: x1, y: y1, width: Math.max(0, x2 - x1), height: Math.max(0, y2 - y1) };
-}
-
-function normalizeCoordSpace(value) {
-    const v = String(value || '').trim().toLowerCase();
-    if (v === 'image_abs_px') return 'image_abs_px';
-    if (v === 'image_norm') return 'image_norm';
-    return '';
-}
-
-function normalizeBboxToImageMatrix(matrix, coordSpace, imageWidth, imageHeight) {
-    const srcSpace = normalizeCoordSpace(coordSpace);
-
-    if (matrix && typeof matrix === 'object') {
-        const sx = Number(matrix.scale_x);
-        const sy = Number(matrix.scale_y);
-        const ox = Number(matrix.offset_x);
-        const oy = Number(matrix.offset_y);
-        if ([sx, sy, ox, oy].every(Number.isFinite)) {
-            return {
-                src_space: String(matrix.src_space || srcSpace || 'image_abs_px').toLowerCase(),
-                dst_space: String(matrix.dst_space || 'image_abs_px').toLowerCase(),
-                scale_x: sx,
-                scale_y: sy,
-                offset_x: ox,
-                offset_y: oy,
-            };
-        }
-    }
-
-    if (srcSpace === 'image_norm' && imageWidth > 0 && imageHeight > 0) {
-        return {
-            src_space: 'image_norm',
-            dst_space: 'image_abs_px',
-            scale_x: imageWidth,
-            scale_y: imageHeight,
-            offset_x: 0,
-            offset_y: 0,
-        };
-    }
-
-    return {
-        src_space: srcSpace || 'image_abs_px',
-        dst_space: 'image_abs_px',
-        scale_x: 1,
-        scale_y: 1,
-        offset_x: 0,
-        offset_y: 0,
-    };
-}
-
-function remapBboxToImageSpace(x, y, width, height, matrix) {
-    const sx = Number(matrix?.scale_x ?? 1);
-    const sy = Number(matrix?.scale_y ?? 1);
-    const ox = Number(matrix?.offset_x ?? 0);
-    const oy = Number(matrix?.offset_y ?? 0);
-
-    const x1 = sx * x + ox;
-    const y1 = sy * y + oy;
-    const x2 = sx * (x + width) + ox;
-    const y2 = sy * (y + height) + oy;
-
-    const left = Math.min(x1, x2);
-    const top = Math.min(y1, y2);
-    const w = Math.max(Math.abs(x2 - x1), 0);
-    const h = Math.max(Math.abs(y2 - y1), 0);
-
-    return {
-        x: left,
-        y: top,
-        width: w,
-        height: h,
-    };
-}
 
 function getPageImageMeta(result, pageNum = 1) {
     const docInfo = (result && result.document_info) ? result.document_info : {};
@@ -3232,93 +3097,9 @@ function highlightResultItem(elementType, elementIndex) {
 }
 
 
-/**
- * Normalize text to ensure proper spacing between words
- */
-function normalizeTextForDisplay(text) {
-    if (!text) return text;
 
-    // Add space between lowercase letter and uppercase letter (word boundary)
-    text = text.replace(/([a-z])([A-Z])/g, '$1 $2');
 
-    // Add space between letter and number (if not already spaced)
-    text = text.replace(/([a-zA-Z])(\d)/g, '$1 $2');
-    text = text.replace(/(\d)([a-zA-Z])/g, '$1 $2');
 
-    // Clean up multiple spaces
-    text = text.replace(/ +/g, ' ');
-
-    return text.trim();
-}
-
-function normalizePanelParagraphText(text) {
-    const value = normalizeTextForDisplay(text || '');
-    if (!value) return value;
-
-    // Flatten OCR line breaks for panel readability while keeping sentence spacing.
-    return value
-        .replace(/\r\n/g, '\n')
-        .replace(/[ \t]*\n[ \t]*/g, ' ')
-        .replace(/ +/g, ' ')
-        .trim();
-}
-
-function isLikelyCollapsedText(text) {
-    const value = String(text || '');
-    if (!value) return false;
-
-    const noSpaceLength = value.replace(/\s+/g, '').length;
-    const spaceCount = (value.match(/\s/g) || []).length;
-
-    // Long text with almost no spaces is usually collapsed OCR text.
-    if (noSpaceLength >= 40 && spaceCount <= 1) {
-        return true;
-    }
-
-    // Long alpha chunks without spacing are suspicious.
-    if (/[A-Za-z]{25,}/.test(value)) {
-        return true;
-    }
-
-    return false;
-}
-
-function toAzureTypeLabel(type) {
-    const normalized = String(type || 'paragraph').toLowerCase();
-    const map = {
-        doc_title: 'Title',
-        paragraph_title: 'SectionHeading',
-        abstract_title: 'SectionHeading',
-        reference_title: 'SectionHeading',
-        content_title: 'SectionHeading',
-        figure_table_chart_title: 'FigureCaption',
-        table_caption: 'FigureCaption',
-        page_header: 'PageHeader',
-        page_footer: 'PageFooter',
-        section_header: 'SectionHeading',
-        table_header: 'TableHeader',
-        figure_caption: 'FigureCaption',
-        list_item: 'ListItem',
-        text: 'Paragraph',
-        paragraph: 'Paragraph',
-        text_block: 'Paragraph',
-        title: 'Title',
-        subtitle: 'Subtitle',
-        table: 'Table',
-        figure: 'Figure',
-        image: 'Figure',
-        header: 'PageHeader',
-        footer: 'PageFooter',
-        equation: 'Formula',
-        list: 'ListItem',
-        reference: 'Reference'
-    };
-
-    return map[normalized] || normalized
-        .split('_')
-        .map(p => p ? p.charAt(0).toUpperCase() + p.slice(1) : '')
-        .join('');
-}
 
 /**
  * Render a single table card with proper merge cell support
@@ -3701,21 +3482,6 @@ function updateContentFields(result) {
     }
 }
 
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text) {
-    // Handle null, undefined, or non-string types
-    if (text == null) {
-        return '';
-    }
-    if (typeof text !== 'string') {
-        text = String(text);
-    }
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
 /**
  * Show floating progress card
@@ -3911,101 +3677,13 @@ async function exportResults(format) {
     });
 }
 
-/**
- * Convert to CSV format
- */
-function convertToCSV(data) {
-    return data.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-}
 
-/**
- * Convert to Markdown format
- */
-function convertToMarkdown(data) {
-    let md = `# ${data.document.name}\n\n`;
-    md += `**Processed At**: ${data.document.processedAt}\n\n`;
-    md += `**Total Pages**: ${data.document.pages}\n\n`;
 
-    md += `## Document Structure\n\n`;
-    md += `- Headers: ${data.layout.headers}\n`;
-    md += `- Titles: ${data.layout.titles}\n`;
-    md += `- Paragraphs: ${data.layout.paragraphs}\n`;
-    md += `- Tables: ${data.layout.tables}\n`;
-    md += `- Figures: ${data.layout.figures}\n\n`;
 
-    md += `## Extracted Tables\n\n`;
-    if (data.tables.length > 0) {
-        const table = data.tables[0];
-        md += `### ${table.name}\n\n`;
-        md += '| ' + table.data[0].join(' | ') + ' |\n';
-        md += '| ' + table.data[0].map(() => '---').join(' | ') + ' |\n';
-        table.data.slice(1).forEach(row => {
-            md += '| ' + row.join(' | ') + ' |\n';
-        });
-    }
 
-    md += `\n## Keywords\n\n`;
-    md += data.keywords.map(k => `- ${k}`).join('\n');
 
-    return md;
-}
 
-/**
- * Table confidence as a 0-100 integer.
- * Prefers table.confidence (layout detector, typically 0-1); falls back to table.score.
- * Values in [0, 1] are ratios; values > 1 are treated as already-percent.
- */
-function tableConfidencePct(table) {
-    let raw = table && table.confidence;
-    if (raw == null) raw = table && table.score;
-    const val = Number(raw);
-    if (!Number.isFinite(val)) return 0;
-    if (val >= 0 && val <= 1) return Math.round(val * 100);
-    return Math.round(val);
-}
 
-function formatTableCsvBanner(index1, table) {
-    const page = table && table.page != null ? table.page : '?';
-    return `=== Table ${index1} (Page ${page}) confidence=${tableConfidencePct(table)}% ===`;
-}
-
-function excelSafeCell(cell) {
-    const s = cell == null ? '' : String(cell);
-    if (!s) return s;
-    const first = s.charAt(0);
-    if (first === '=' || first === '+' || first === '@' || first === '\t' || first === '\r') {
-        return "'" + s;
-    }
-    if (first === '-') {
-        const n = Number(s.replace(/,/g, ''));
-        if (!Number.isFinite(n)) return "'" + s;
-    }
-    return s;
-}
-
-function escapeCsvCell(cell) {
-    const s = excelSafeCell(cell);
-    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-}
-
-function buildSingleTableCsv(table, index1) {
-    const lines = [formatTableCsvBanner(index1, table)];
-    const cap = table && table.caption ? String(table.caption).trim() : '';
-    if (cap) lines.push(escapeCsvCell('Caption: ' + cap));
-    const rows = (table && table.data) || [];
-    for (let i = 0; i < rows.length; i++) {
-        const row = Array.isArray(rows[i]) ? rows[i] : [rows[i]];
-        lines.push(row.map(escapeCsvCell).join(','));
-    }
-    return lines.join('\r\n');
-}
-
-function singleTableCsvFilename(index1, page) {
-    const n = String(index1).padStart(2, '0');
-    const p = page == null || page === '' ? '?' : page;
-    return `table_${n}_p${p}.csv`;
-}
 
 function downloadCurrentTableCsv() {
     const tables = window.currentTables || [];

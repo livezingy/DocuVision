@@ -30,6 +30,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B4 — orchestration chain extracted (D3 upload-queue + D5 preview-paging + D8
+  pipeline)**: new `frontend/modules/preview-nav.js` + `preview-render.js` (D5, 14
+  functions split by the design's line cut), `pipeline-run.js` + `pipeline-result.js` (D8,
+  6 functions - `updateResultsDisplay` stays in app.js as the result mediator), and
+  `upload-queue.js` (D3, 10 functions). `app.js` **2320 → 806 lines**, **43 → 13**
+  top-level functions (the entry is now imports + dependency wiring + the mediator +
+  the boot sequence).
+  The D3 ↔ D5 ↔ D8 cycles are closed by injection: 36 cross-domain call points (D1
+  api-base, D3, D5, D6, D7) plus 8 same-domain-split points. The split of D5 and D8
+  **exposed a new problem** the design's line cuts had not accounted for - the two halves
+  of each domain call each other (D5 nav ↔ render 6 points; D8 run → result 2 points) -
+  and those same-domain calls are injected from app.js as well, so F3's "no
+  module-to-module imports" rule is kept unchanged (no new exemption, no path change).
+  The B3 leftovers are re-pointed: `initOverlayRender`'s 7 D5/D8 deps now pass the
+  preview-nav.js / preview-render.js / pipeline-result.js exports, and
+  `initResultPanelsFigures` passes preview-render's `fetchAuthedImage` (call sites
+  untouched). `known_edge_pairs` drops D5 → D8 / D5 → D7 / D5 → D10 (all resolved by
+  injection). Gate evidence: lint F1-F5, C1-C8, `--syntax` 30/30, app.js `node --check`,
+  vitest 80/80, e2e 14/14.
 - **v1.8.3 B3 — result-panels + overlay extracted**: `frontend/modules/result-panels/`
   (D9 as seven sub-modules per design §3.1 - quality / demo-transaction / tables / text /
   figures / enhance / json; 16 functions, plus `TABLE_TEMPLATE_COLUMNS` and the 46-line

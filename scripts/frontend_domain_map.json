@@ -19,9 +19,6 @@
     "insertInitialSkeleton"
   ],
   "known_edge_pairs": [
-    ["D5 preview-paging", "D8 pipeline"],
-    ["D5 preview-paging", "D7 kie-mapping"],
-    ["D5 preview-paging", "D10 overlay"],
     ["D8 pipeline", "D5 preview-paging"],
     ["D8 pipeline", "D7 kie-mapping"],
     ["D8 pipeline", "D9 result-panels"]

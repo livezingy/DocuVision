@@ -112,8 +112,46 @@
   },
   "module_import_whitelist": {
     "dirs": ["frontend/modules/utils/"],
-    "files": ["frontend/modules/preview-state.js"],
+    "files": [
+      "frontend/modules/preview-state.js",
+      "frontend/modules/notifications.js",
+      "frontend/modules/status-bar.js"
+    ],
     "prefixes": ["frontend/shared/"]
+  },
+  "whitelist_policy": {
+    "note": "A whitelist target is either a leaf service or the shared-state module. Every entry of module_import_whitelist.files must be registered below with a date and evidence (lint rule F5), so the whitelist cannot grow silently: widening it is a reviewable one-line data diff that carries its own justification.",
+    "criterion_marker": "L1+L2+L3",
+    "leaf_service_criteria": {
+      "L1": "no reverse dependency: the module imports no domain module, no other leaf service and never ../app.js (only frontend/modules/utils/ and frontend/shared/). Enforced mechanically by F5.",
+      "L2": "no domain semantics: its behaviour does not branch on domain state (it never asks 'batch or single task?' to decide what to do).",
+      "L3": "no domain-owned state: it owns at most its own presentation state (throttle queue, last message) and owns no domain object (task, queue item, preview)."
+    },
+    "when_a_service_stops_qualifying": "If a registered leaf service ever needs domain state or domain branching, it stops being a leaf service: drop it from the whitelist and inject it from app.js instead. Do not relax L1-L3."
+  },
+  "shared_state_modules": {
+    "frontend/modules/preview-state.js": {
+      "added": "2026-09-15",
+      "approved_in": "design rev2 section 4",
+      "kind": "shared-state",
+      "evidence": "Not a leaf service by design: it is the explicit live-binding channel for cross-domain reads (17 assignment sites become setters, every read expression stays unchanged). L1-L3 deliberately do not apply."
+    }
+  },
+  "leaf_services": {
+    "frontend/modules/notifications.js": {
+      "added": "2026-09-15",
+      "approved_in": "B1",
+      "criterion": "L1+L2+L3",
+      "callers": "65 call sites / 8 domains (D14 17, D8 16, D4 11, D3 8, D10 4, D15 4, D5 3, D6 2)",
+      "evidence": "Touches only DOM (icon, colour, auto-dismiss); imports nothing but itself; owns no domain state; the same (message, type) always renders the same notification, regardless of who called it or when. Whitelisting it keeps all 65 call sites byte-identical, which is what makes the B1 'behaviour unchanged' claim provable."
+    },
+    "frontend/modules/status-bar.js": {
+      "added": "2026-09-15",
+      "approved_in": "B1",
+      "criterion": "L1+L2+L3",
+      "callers": "12 call sites / 3 domains (D8 6, D1 4, D3 2)",
+      "evidence": "Touches only DOM; owns only presentation state (statusUpdateQueue, isProcessingQueue, lastStatusMessage, lastStatusUpdateTime, STATUS_UPDATE_MIN_INTERVAL) and no other domain reads it (state_owners D2 is read cross-domain: never); every caller gets the same throttled rendering behaviour. Needed in B1 because D1 api-base is extracted in that batch and calls updateStatusBar 4 times."
+    }
   },
   "utils_modules": {
     "utils/geometry": [

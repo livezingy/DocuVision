@@ -20,6 +20,12 @@ Rules (design rev2 section 6 / DEVELOPMENT.md frontend rules):
                       conversion and the dead-code removal are gated by phase flags
                       (``app_js_module`` / ``panel_resize_removed``) so that the B0a
                       batch stays green before B0b / B1 flip them.
+  F5  leaf services   every ``module_import_whitelist.files`` entry must be registered
+                      in ``leaf_services`` / ``shared_state_modules`` with a date and
+                      evidence, and a registered leaf service may reach
+                      ``frontend/modules/utils/`` and ``frontend/shared/`` only. So the
+                      whitelist cannot grow silently, and a leaf service can never
+                      become a hub (or close a cycle).
 
 Line counts use ``str.splitlines()`` - the same metric as ``lint_file_size.py``.
 Never use PowerShell ``(Get-Content x).Count``: it under-reports ``frontend/app.js``
@@ -73,17 +79,49 @@ IMPORT_PREFIX_WHITELIST = ("frontend/shared/",)
 DEAD_CODE = "frontend/shared/panel-resize.js"
 
 
+_DOMAIN_MAP_CACHE: dict | None = None
+
+
+def _domain_map() -> dict:
+    """Parsed ``scripts/frontend_domain_map.json`` (empty dict when unreadable)."""
+    global _DOMAIN_MAP_CACHE
+    if _DOMAIN_MAP_CACHE is None:
+        try:
+            _DOMAIN_MAP_CACHE = json.loads(DOMAIN_MAP.read_text(encoding="utf-8"))
+        except Exception:
+            _DOMAIN_MAP_CACHE = {}
+    return _DOMAIN_MAP_CACHE
+
+
 def _import_whitelist() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
-    try:
-        data = json.loads(DOMAIN_MAP.read_text(encoding="utf-8"))
-        entry = data["module_import_whitelist"]
-        return (
-            tuple(entry.get("dirs", IMPORT_DIR_WHITELIST)),
-            tuple(entry.get("files", IMPORT_FILE_WHITELIST)),
-            tuple(entry.get("prefixes", IMPORT_PREFIX_WHITELIST)),
-        )
-    except Exception:
-        return IMPORT_DIR_WHITELIST, IMPORT_FILE_WHITELIST, IMPORT_PREFIX_WHITELIST
+    entry = _domain_map().get("module_import_whitelist") or {}
+    return (
+        tuple(entry.get("dirs", IMPORT_DIR_WHITELIST)),
+        tuple(entry.get("files", IMPORT_FILE_WHITELIST)),
+        tuple(entry.get("prefixes", IMPORT_PREFIX_WHITELIST)),
+    )
+
+
+def _iter_imports(rel: str):
+    """Yield ``(lineno, spec, repo-relative target)`` per import of a module file.
+
+    ``target`` is ``None`` for bare specifiers (no relative resolution possible).
+    """
+    path = REPO_ROOT / rel
+    if not path.is_file():
+        return
+    for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        stripped = line.strip()
+        if stripped.startswith("//") or stripped.startswith("*"):
+            continue
+        match = _IMPORT_RE.search(line)
+        if not match:
+            continue
+        spec = match.group(1)
+        if not spec.startswith("."):
+            yield lineno, spec, None
+            continue
+        yield lineno, spec, posixpath.normpath(posixpath.join(posixpath.dirname(rel), spec))
 
 _FN_RE = re.compile(r"^(?:async\s+)?function\s+[A-Za-z_$][\w$]*", re.MULTILINE)
 _SCRIPT_RE = re.compile(r"<script\b([^>]*)>(.*?)</script>", re.IGNORECASE | re.DOTALL)
@@ -195,18 +233,10 @@ def check_f3(tracked: list[str]) -> list[str]:
         if not path.is_file():
             continue
         checked += 1
-        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            stripped = line.strip()
-            if stripped.startswith("//") or stripped.startswith("*"):
-                continue
-            match = _IMPORT_RE.search(line)
-            if not match:
-                continue
-            spec = match.group(1)
-            if not spec.startswith("."):
+        for lineno, spec, target in _iter_imports(rel):
+            if target is None:
                 violations.append(f"F3 {rel}:{lineno} bare specifier '{spec}' not allowed")
                 continue
-            target = posixpath.normpath(posixpath.join(posixpath.dirname(rel), spec))
             if target == ENTRY:
                 violations.append(f"F3 {rel}:{lineno} imports the entry '{spec}'")
                 continue
@@ -283,6 +313,70 @@ def check_f4(allowlist: dict) -> list[str]:
     return violations
 
 
+def check_f5(tracked: list[str]) -> list[str]:
+    """Leaf-service registry: whitelist entries must be registered *and* justified.
+
+    Three mechanical guards, so the whitelist cannot creep and a leaf service can
+    never become a hub (which is what keeps cycles impossible):
+
+      F5a  every ``module_import_whitelist.files`` entry is registered below;
+      F5b  a registered leaf service reaches ``utils/`` + ``shared/`` only (L1);
+      F5c  every registration carries ``added`` + ``evidence`` (+ ``criterion`` for
+           leaf services), so widening the whitelist is never free.
+    """
+    data = _domain_map()
+    whitelist = data.get("module_import_whitelist") or {}
+    allowed_files = tuple(whitelist.get("files", ()))
+    allowed_dirs = tuple(whitelist.get("dirs", ()))
+    allowed_prefixes = tuple(whitelist.get("prefixes", ()))
+    marker = str((data.get("whitelist_policy") or {}).get("criterion_marker", "L1+L2+L3"))
+    registry: dict[str, tuple[str, dict]] = {}
+    for kind in ("shared_state_modules", "leaf_services"):
+        for rel, meta in (data.get(kind) or {}).items():
+            registry[rel] = (kind, meta if isinstance(meta, dict) else {})
+    violations: list[str] = []
+
+    for rel in allowed_files:
+        if rel not in registry:
+            violations.append(
+                f"F5 {rel}: whitelisted in module_import_whitelist.files but not registered "
+                "in leaf_services / shared_state_modules"
+            )
+
+    for rel, (kind, _meta) in sorted(registry.items()):
+        if kind != "leaf_services":
+            continue
+        if not rel.startswith(MODULES_PREFIX):
+            violations.append(f"F5 {rel}: leaf service must live under {MODULES_PREFIX}")
+            continue
+        for lineno, spec, target in _iter_imports(rel):
+            if target is None:
+                violations.append(
+                    f"F5 {rel}:{lineno} bare specifier '{spec}' not allowed in a leaf service"
+                )
+                continue
+            if target.startswith(allowed_dirs) or target.startswith(allowed_prefixes):
+                continue
+            violations.append(
+                f"F5 {rel}:{lineno} leaf service imports '{spec}' -> {target} "
+                "(L1: utils/ and shared/ only - not a module, not another leaf service)"
+            )
+
+    for rel, (kind, meta) in sorted(registry.items()):
+        missing = [k for k in ("added", "evidence") if not str(meta.get(k, "")).strip()]
+        if kind == "leaf_services" and str(meta.get("criterion", "")) != marker:
+            missing.append(f"criterion {marker!r} (got {meta.get('criterion')!r})")
+        if missing:
+            violations.append(f"F5 {rel}: incomplete registration - {'; '.join(missing)}")
+
+    leaves = sum(1 for kind, _ in registry.values() if kind == "leaf_services")
+    print(
+        f"[lint_frontend] F5 registry: {leaves} leaf service(s) / {len(registry)} registered, "
+        f"{len(allowed_files)} whitelisted file(s) over {len(tracked)} scanned path(s)"
+    )
+    return violations
+
+
 def main() -> int:
     allowlist = _load_allowlist()
     tracked, mode = _tracked_files()
@@ -293,13 +387,17 @@ def main() -> int:
     violations += check_f2(allowlist)
     violations += check_f3(tracked)
     violations += check_f4(allowlist)
+    violations += check_f5(tracked)
 
     if violations:
         for v in violations:
             print(f"[FAIL] {v}")
         print(f"[lint_frontend] {len(violations)} violation(s)")
         return 1
-    print("[lint_frontend] OK (F1 line budget / F2 entry ratchet / F3 import direction / F4 assembly shape)")
+    print(
+        "[lint_frontend] OK (F1 line budget / F2 entry ratchet / F3 import direction / "
+        "F4 assembly shape / F5 leaf-service registry)"
+    )
     return 0
 
 

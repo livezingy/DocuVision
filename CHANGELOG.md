@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B0a follow-up — leaf-service whitelist + lint rule F5**: `notifications`
+  (65 call sites / 8 domains) and `status-bar` (12 / 3) are now whitelisted import
+  targets for `frontend/modules/**`, each registered in
+  `scripts/frontend_domain_map.json` with its qualification evidence (L1 no
+  reverse dependency / L2 no domain semantics / L3 no domain-owned state).
+  `api-base` is deliberately not registered yet (it calls `status-bar`, which
+  conflicts with L1) - B4 decides the trade-off. New rule **F5** keeps this
+  mechanical: a whitelisted file must be registered, a registered leaf service may
+  reach `utils/` and `shared/` only (so it can never become a hub or close a
+  cycle), and every registration needs a date plus evidence - the whitelist cannot
+  grow silently.
 - **v1.8.3 B0b — frontend entry converted to native ESM + pure helpers extracted**
   (structure-only, no behaviour change):
   - `frontend/index.html`: the app entry is now

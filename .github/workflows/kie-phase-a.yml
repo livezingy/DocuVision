@@ -61,9 +61,8 @@ jobs:
             tests/test_task_kie_fields_patch.py tests/test_pdf_tools_service.py \
             -q --tb=short
 
+      # test_table_result_mapper.py was retired with the idle core modules
+      # (1c9807c, v1.8); only the column-mapping contract test remains.
       - name: Run Phase A pytest (docuvision-core mapping)
         working-directory: packages/docuvision-core
-        run: |
-          pytest tests/processing/test_table_column_mapping.py \
-            tests/processing/test_table_result_mapper.py \
-            -q --tb=short
+        run: pytest tests/processing/test_table_column_mapping.py -q --tb=short

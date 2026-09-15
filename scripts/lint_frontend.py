@@ -22,10 +22,11 @@ Rules (design rev2 section 6 / DEVELOPMENT.md frontend rules):
                       batch stays green before B0b / B1 flip them.
   F5  leaf services   every ``module_import_whitelist.files`` entry must be registered
                       in ``leaf_services`` / ``shared_state_modules`` with a date and
-                      evidence, and a registered leaf service may reach
-                      ``frontend/modules/utils/`` and ``frontend/shared/`` only. So the
-                      whitelist cannot grow silently, and a leaf service can never
-                      become a hub (or close a cycle).
+                      evidence, and **either** kind of registered module may reach
+                      ``frontend/modules/utils/`` and ``frontend/shared/`` only (L1).
+                      So the whitelist cannot grow silently, and a registered module can
+                      never become a hub (or close a cycle) - not even by being
+                      re-registered as a shared-state module.
 
 Line counts use ``str.splitlines()`` - the same metric as ``lint_file_size.py``.
 Never use PowerShell ``(Get-Content x).Count``: it under-reports ``frontend/app.js``
@@ -320,7 +321,9 @@ def check_f5(tracked: list[str]) -> list[str]:
     never become a hub (which is what keeps cycles impossible):
 
       F5a  every ``module_import_whitelist.files`` entry is registered below;
-      F5b  a registered leaf service reaches ``utils/`` + ``shared/`` only (L1);
+      F5b  **any** registered module (leaf service or shared-state) reaches ``utils/``
+           + ``shared/`` only (L1) - closing the "register it as shared-state to skip
+           L1" loophole;
       F5c  every registration carries ``added`` + ``evidence`` (+ ``criterion`` for
            leaf services), so widening the whitelist is never free.
     """
@@ -344,22 +347,21 @@ def check_f5(tracked: list[str]) -> list[str]:
             )
 
     for rel, (kind, _meta) in sorted(registry.items()):
-        if kind != "leaf_services":
-            continue
+        label = kind[:-1]  # leaf_service / shared_state_module
         if not rel.startswith(MODULES_PREFIX):
-            violations.append(f"F5 {rel}: leaf service must live under {MODULES_PREFIX}")
+            violations.append(f"F5 {rel}: a registered {label} must live under {MODULES_PREFIX}")
             continue
         for lineno, spec, target in _iter_imports(rel):
             if target is None:
                 violations.append(
-                    f"F5 {rel}:{lineno} bare specifier '{spec}' not allowed in a leaf service"
+                    f"F5 {rel}:{lineno} bare specifier '{spec}' not allowed in a registered module"
                 )
                 continue
             if target.startswith(allowed_dirs) or target.startswith(allowed_prefixes):
                 continue
             violations.append(
-                f"F5 {rel}:{lineno} leaf service imports '{spec}' -> {target} "
-                "(L1: utils/ and shared/ only - not a module, not another leaf service)"
+                f"F5 {rel}:{lineno} {label} imports '{spec}' -> {target} "
+                "(L1: utils/ and shared/ only - not a module, not another registered module)"
             )
 
     for rel, (kind, meta) in sorted(registry.items()):

@@ -30,6 +30,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route-contract drift fails at PR time instead of only locally (PENDING P-003).
 
 ### Changed
+- **v1.8.3 B1a — shared base extracted**: `frontend/modules/preview-state.js`
+  (7 live-binding states: the 6 preview slots plus `lastRenderedAnalysisResult`, which
+  the overlay domain reads at `:2936-2937`; 8 setters/reset) and
+  `frontend/modules/api-config.js` (the four immutable `API_BASE_URL` / `API_ROOT_URL` /
+  `HEALTH_URL` / `ENGINES_URL` constants plus the two URL helpers that build them).
+  `app.js` **5386 → 5368 lines**, top-level functions **126 → 124**: 19 assignment sites
+  became setter calls, every read expression stayed byte-identical, and all three
+  `URL.revokeObjectURL` call sites stayed exactly where they were (absorbing the revoke
+  into the setters is not byte-equivalent: it would evaluate `createObjectURL` before the
+  revoke, and would move the page-image revoke across an `await`).
+  The URL helpers deliberately did **not** go to `frontend/modules/utils/`: the C6 gate
+  asserts zero `document`/`window.` references there and `resolveApiBaseUrl` has 7, so
+  they live inside `api-config.js`, which now imports nothing at all.
+  New: `frontend/tests/unit/preview-state.test.js` (export surface pinned by the domain
+  map, setter/live-binding and reset semantics).
 - **v1.8.3 B0a follow-up — leaf-service whitelist + lint rule F5**: `notifications`
   (65 call sites / 8 domains) and `status-bar` (12 / 3) are now whitelisted import
   targets for `frontend/modules/**`, each registered in

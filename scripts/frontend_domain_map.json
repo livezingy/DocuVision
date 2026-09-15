@@ -31,8 +31,7 @@
   ],
   "domains": {
     "D1 api-base": [
-      "normalizeApiBaseUrl", "resolveApiBaseUrl", "checkApiReachable",
-      "truncateFooterEngineLine", "refreshActiveEngineFooterLine",
+      "checkApiReachable", "truncateFooterEngineLine", "refreshActiveEngineFooterLine",
       "applyHealthToFooter", "initializeAPIConnection"
     ],
     "D2 status-bar": [
@@ -114,6 +113,7 @@
     "dirs": ["frontend/modules/utils/"],
     "files": [
       "frontend/modules/preview-state.js",
+      "frontend/modules/api-config.js",
       "frontend/modules/notifications.js",
       "frontend/modules/status-bar.js"
     ],
@@ -132,9 +132,9 @@
   "shared_state_modules": {
     "frontend/modules/preview-state.js": {
       "added": "2026-09-15",
-      "approved_in": "design rev2 section 4",
+      "approved_in": "B1a (design rev3 section 4)",
       "kind": "shared-state",
-      "evidence": "Not a leaf service by design: it is the explicit live-binding channel for cross-domain reads (17 assignment sites become setters, every read expression stays unchanged). L1-L3 deliberately do not apply."
+      "evidence": "Not a leaf service by design: it is the explicit live-binding channel for cross-domain reads. B1a moved 6 preview states plus lastRenderedAnalysisResult (D8 state read by D10 :2936-2937) here; 19 assignment sites became setter calls, every read expression stayed byte-identical, and all URL.revokeObjectURL calls stayed at their original call sites so statement order is unchanged. L1 also applies (this module imports nothing), so it cannot become a hub either."
     }
   },
   "leaf_services": {
@@ -151,7 +151,26 @@
       "criterion": "L1+L2+L3",
       "callers": "12 call sites / 3 domains (D8 6, D1 4, D3 2)",
       "evidence": "Touches only DOM; owns only presentation state (statusUpdateQueue, isProcessingQueue, lastStatusMessage, lastStatusUpdateTime, STATUS_UPDATE_MIN_INTERVAL) and no other domain reads it (state_owners D2 is read cross-domain: never); every caller gets the same throttled rendering behaviour. Needed in B1 because D1 api-base is extracted in that batch and calls updateStatusBar 4 times."
+    },
+    "frontend/modules/api-config.js": {
+      "added": "2026-09-15",
+      "approved_in": "B1a",
+      "criterion": "L1+L2+L3",
+      "callers": "constant reads: D11 :3520, D12 :3674, D15 :5365 (B1) plus D10/D4/D8 in later batches; written once at load for api-base",
+      "evidence": "Four immutable values (API_BASE_URL / API_ROOT_URL / HEALTH_URL / ENGINES_URL) plus the two URL helpers that build them (moved verbatim from app.js :33-55/:57-64). Measured 2026-09-15: all four were const and are never reassigned after load, so they need no setter. The helpers did NOT go to modules/utils/ because the C6 gate asserts zero document/window refs there and resolveApiBaseUrl has 7 (window.location / window.DOCUVISION_CONFIG); keeping them here also means this module imports nothing at all, so L1 holds trivially. Splitting the config out of api-base.js is what lets every consumer import it while api-base itself stays unregistered - api-base calls status-bar, which would conflict with L1."
     }
+  },
+  "shared_modules": {
+    "frontend/modules/api-config.js": [
+      "normalizeApiBaseUrl", "resolveApiBaseUrl",
+      "API_BASE_URL", "API_ROOT_URL", "HEALTH_URL", "ENGINES_URL"
+    ],
+    "frontend/modules/preview-state.js": [
+      "currentOriginalFileUrl", "currentTaskId", "currentQueueItem", "currentPreviewPage",
+      "currentPageImageUrl", "previewPaginationInitialized", "lastRenderedAnalysisResult",
+      "setOriginalFileUrl", "setTaskId", "setQueueItem", "setPreviewPage", "setPageImageUrl",
+      "setPreviewPaginationInitialized", "setLastRenderedAnalysisResult", "resetPreviewState"
+    ]
   },
   "utils_modules": {
     "utils/geometry": [

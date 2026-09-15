@@ -29,39 +29,32 @@ import {
     toAzureTypeLabel,
 } from './modules/utils/text.js';
 import { escapeHtml } from './modules/utils/dom.js';
-// API Base URL (auto-adapt for local and cloud deployments)
-function normalizeApiBaseUrl(baseUrl) {
-    const trimmed = (baseUrl || '').trim().replace(/\/+$/, '');
-    if (!trimmed) return '/api/v1';
-    return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
-}
-
-function resolveApiBaseUrl() {
-    // Optional override via global config: window.DOCUVISION_CONFIG.API_BASE_URL
-    if (window.DOCUVISION_CONFIG && typeof window.DOCUVISION_CONFIG.API_BASE_URL === 'string') {
-        return normalizeApiBaseUrl(window.DOCUVISION_CONFIG.API_BASE_URL);
-    }
-
-    const hostname = window.location.hostname;
-    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
-    if (isLocal) {
-        return 'http://localhost:8000/api/v1';
-    }
-
-    // Cloud/staging friendly: infer proxy prefix from current path when '/frontend' is present.
-    const path = window.location.pathname || '/';
-    const prefix = path.includes('/frontend') ? path.split('/frontend')[0] : '';
-    return `${window.location.origin}${prefix}/api/v1`;
-}
-
-const API_BASE_URL = resolveApiBaseUrl();
-const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, '');
+// --- v1.8.3 B1a: API constants moved to modules/api-config.js (leaf service) ---
+import { API_BASE_URL, API_ROOT_URL, HEALTH_URL, ENGINES_URL } from './modules/api-config.js';
+// --- v1.8.3 B1a: shared preview/result state lives in modules/preview-state.js; reads stay
+// byte-identical through live bindings, writes go through the setters below ---
+import {
+    currentOriginalFileUrl,
+    currentTaskId,
+    currentQueueItem,
+    currentPreviewPage,
+    currentPageImageUrl,
+    previewPaginationInitialized,
+    lastRenderedAnalysisResult,
+} from './modules/preview-state.js';
+import {
+    setOriginalFileUrl,
+    setTaskId,
+    setQueueItem,
+    setPreviewPage,
+    setPageImageUrl,
+    setPreviewPaginationInitialized,
+    setLastRenderedAnalysisResult,
+    resetPreviewState,
+} from './modules/preview-state.js';
 
 /** Set from initApp; toggles Processing mode sub-panels. */
 let syncProcessingModeUI = function () {};
-/** Prefer /api/v1/health (works on Baidu AI Studio api_serving); /health kept for direct :8000 access. */
-const HEALTH_URL = `${API_BASE_URL}/health`;
-const ENGINES_URL = `${API_BASE_URL}/engines`;
 
 /**
  * Probe API reachability (cloud proxies may block /health but allow /api/v1/*).
@@ -196,7 +189,6 @@ let isProcessingQueue = false;
 let lastStatusMessage = '';
 let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
-let lastRenderedAnalysisResult = null;
 let lastFetchedBlocks = null;
 
 /** Clear inline sizing from adjustDocumentSize so the next task is not clipped by the previous layout. */
@@ -682,9 +674,7 @@ async function handleQueueItemDeletion(item) {
             if (currentOriginalFileUrl) {
                 URL.revokeObjectURL(currentOriginalFileUrl);
             }
-            currentOriginalFileUrl = null;
-            currentTaskId = null;
-            currentQueueItem = null;
+            resetPreviewState();
 
             // Find next available queue item
             const queueList = document.getElementById('queueList');
@@ -917,14 +907,6 @@ function initActionButtons() {
 
 }
 
-// Store original file URL for display
-let currentOriginalFileUrl = null;
-let currentTaskId = null;
-let currentQueueItem = null; // Track currently selected queue item
-let currentPreviewPage = 1;
-let currentPageImageUrl = null;
-let previewPaginationInitialized = false;
-
 function previewHelpers() {
     return window.DocuVisionPreview || {};
 }
@@ -943,7 +925,7 @@ function syncPreviewPaginationControls(totalPages, pageNum = currentPreviewPage)
     const total = Math.max(1, Number(totalPages) || 1);
     const normalize = previewHelpers().normalizePreviewPage;
     const page = typeof normalize === 'function' ? normalize(pageNum, total) : Math.min(Math.max(1, pageNum), total);
-    currentPreviewPage = page;
+    setPreviewPage(page);
 
     const pageInput = document.querySelector('.page-input');
     const pageTotal = document.querySelector('.page-total');
@@ -969,7 +951,7 @@ function syncPreviewPaginationControls(totalPages, pageNum = currentPreviewPage)
 function revokeCurrentPageImageUrl() {
     if (currentPageImageUrl) {
         URL.revokeObjectURL(currentPageImageUrl);
-        currentPageImageUrl = null;
+        setPageImageUrl(null);
     }
 }
 
@@ -1017,7 +999,7 @@ async function goToPreviewPage(pageNum) {
         const documentImage = document.getElementById('documentImage');
         try {
             revokeCurrentPageImageUrl();
-            currentPageImageUrl = await getPdfPageImage(currentTaskId, page);
+            setPageImageUrl(await getPdfPageImage(currentTaskId, page));
             if (documentImage) {
                 documentImage.src = currentPageImageUrl;
             } else {
@@ -1041,7 +1023,7 @@ async function goToPreviewPage(pageNum) {
 
 function initPreviewPagination() {
     if (previewPaginationInitialized) return;
-    previewPaginationInitialized = true;
+    setPreviewPaginationInitialized(true);
 
     const prevBtn = document.getElementById('prevPage');
     const nextBtn = document.getElementById('nextPage');
@@ -1088,7 +1070,7 @@ async function uploadFileForPreview(file, queueItem) {
         const pageCount = Number(result.page_count) || 0;
 
         // Store taskId
-        currentTaskId = taskId;
+        setTaskId(taskId);
         if (queueItem) {
             queueItem.dataset.taskId = taskId;
             if (pageCount > 0) {
@@ -1117,7 +1099,7 @@ async function switchToQueueItem(queueItem) {
 
     // Mark current item as active
     queueItem.classList.add('active');
-    currentQueueItem = queueItem;
+    setQueueItem(queueItem);
 
     // Get file information
     const file = queueItem.file;
@@ -1133,9 +1115,9 @@ async function switchToQueueItem(queueItem) {
     if (currentOriginalFileUrl) {
         URL.revokeObjectURL(currentOriginalFileUrl);
     }
-    currentOriginalFileUrl = URL.createObjectURL(file);
-    currentTaskId = taskId || null;
-    currentPreviewPage = 1;
+    setOriginalFileUrl(URL.createObjectURL(file));
+    setTaskId(taskId || null);
+    setPreviewPage(1);
     lastFetchedBlocks = null;
 
     // Update document page
@@ -1156,7 +1138,7 @@ async function switchToQueueItem(queueItem) {
         }
 
         uploadFileForPreview(file, queueItem).then(async (newTaskId) => {
-            currentTaskId = newTaskId;
+            setTaskId(newTaskId);
             await updatePreviewView('original');
         }).catch((error) => {
             console.error('Failed to upload file for preview:', error);
@@ -1249,7 +1231,7 @@ async function updatePreviewView(viewType) {
 
                         let html = '<div class="document-preview-content">';
                         revokeCurrentPageImageUrl();
-                        currentPageImageUrl = await getPdfPageImage(currentTaskId, currentPreviewPage);
+                        setPageImageUrl(await getPdfPageImage(currentTaskId, currentPreviewPage));
                         html += `<img id="documentImage" src="${currentPageImageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()" onerror="this.parentElement.innerHTML=\'<div class=\\\'empty-state\\\' style=\\\'padding: 40px; text-align: center; color: #f43f5e;\\\'>Failed to load PDF image. Please try again.</div>\'">`;
                         html += '</div>';
                         documentPage.innerHTML = html;
@@ -1922,7 +1904,7 @@ async function startProcessing() {
             if (response.ok) {
                 const task = await response.json();
                 firstPending.dataset.taskId = task.task_id;
-                currentTaskId = task.task_id; // Store taskId for PDF page image API
+                setTaskId(task.task_id); // Store taskId for PDF page image API
 
                 // Removed short-lived WS handshake: rely on persistent WS and `since` param.
                 // Ensure we have a lastEventId placeholder on the queue item (default 0)
@@ -2421,7 +2403,7 @@ function processNextInQueue() {
 async function updateResultsDisplay(result) {
     if (!result) return;
 
-    lastRenderedAnalysisResult = result;
+    setLastRenderedAnalysisResult(result);
 
     // Reset cached blocks so the SVG overlay fetches fresh data.
     lastFetchedBlocks = null;
@@ -2801,7 +2783,7 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
     const documentPage = document.getElementById('documentPage');
     if (!documentPage) return;
 
-    lastRenderedAnalysisResult = result;
+    setLastRenderedAnalysisResult(result);
 
     const docInfo = result.document_info || {};
     const fileName = docInfo.file_name || 'Document';
@@ -2809,7 +2791,7 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
     const page = previewHelpers().normalizePreviewPage
         ? previewHelpers().normalizePreviewPage(pageNum, totalPages)
         : Math.min(Math.max(1, pageNum), totalPages);
-    currentPreviewPage = page;
+    setPreviewPage(page);
     syncPreviewPaginationControls(totalPages, page);
     lastFetchedBlocks = null;
 
@@ -2819,7 +2801,7 @@ async function renderDocumentWithAnnotations(result, pageNum = currentPreviewPag
             // Always use backend page-image endpoint after analysis so the displayed
             // image stays in the same coordinate space as /blocks bboxes.
             revokeCurrentPageImageUrl();
-            currentPageImageUrl = await getPdfPageImage(currentTaskId, page);
+            setPageImageUrl(await getPdfPageImage(currentTaskId, page));
             imageUrl = currentPageImageUrl;
         } catch (error) {
             console.error('Failed to get backend page image:', error);

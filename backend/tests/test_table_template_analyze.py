@@ -74,14 +74,21 @@ def test_analyze_form_accepts_table_template(monkeypatch):
     from fastapi.testclient import TestClient
 
     from app import main as main_module
+    from app.core.runtime import tasks
+    from app.routers import analyzer as analyzer_module
 
     async def _noop_process(task_id: str):
-        task = main_module.tasks.get(task_id)
+        task = tasks.get(task_id)
         if task:
             task["status"] = "completed"
             task["result"] = {"document_info": {"file_name": task.get("file_name", "")}}
 
-    monkeypatch.setattr(main_module, "process_document", _noop_process)
+    # Patch at the *use site*: analyzer.py:284 calls
+    # ``background_tasks.add_task(process_document, task_id)`` on the name it
+    # bound via ``from app.core.runtime import process_document`` (v1.8.2 C1c
+    # moved it out of app.main), so patching app.main would raise AttributeError
+    # and patching app.core.runtime would not take effect.
+    monkeypatch.setattr(analyzer_module, "process_document", _noop_process)
 
     client = TestClient(main_module.app)
     response = client.post(
@@ -99,5 +106,5 @@ def test_analyze_form_accepts_table_template(monkeypatch):
     payload = response.json()
     task_id = payload.get("task_id")
     assert task_id
-    task = main_module.tasks[task_id]
+    task = tasks[task_id]
     assert task["options"].get("table_template") == "bank_statement"

@@ -1,7 +1,8 @@
 import io
 from fastapi.testclient import TestClient
 
-from app.main import app, tasks
+from app.main import app
+from app.core.runtime import tasks
 
 
 client = TestClient(app)

@@ -5,9 +5,277 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.8.3] — 2026-09-16
 
-Nothing yet.
+Tag: **v1.8.3**. Branch: `feature/v1.8.3`. Front-end split: `frontend/app.js`
+5708 → **211 lines / 1 function** (assembly + mediator only), 33 modules under
+`frontend/modules/**` (15 domains). Acceptance: local gates (lint F1-F6, C1-C8,
+`--syntax` 34/34 incl. app.js, vitest 80/80, e2e 14/14) plus **FRONT-C1** on
+Cloud Studio (38/38 assets 200 + JS MIME; walkthrough 9/9; cache revalidation
+green on a plain F5 via the gateway's content-MD5 ETag; SPLIT-C1 re-check green;
+SPLIT-U4 **430 passed / 0 failed**). See
+[docs/architecture/CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md)
+§ 阶段 FRONT-C1.
+
+### Added
+- **v1.8.3 B0a — frontend governance & measurement baseline** (structure-only, no
+  frontend behaviour change):
+  - `scripts/lint_frontend.py`: four machine-checkable rules — F1 line budget
+    (500 lines, `splitlines()` metric), F2 `frontend/app.js` top-level function
+    ratchet, F3 import direction inside `frontend/modules/**` (no `../app.js`, no
+    sibling-domain imports), F4 assembly shape (one `app.js` entry, no module file
+    loaded directly by `index.html`, phase flags for the `type="module"` conversion
+    and the `panel-resize.js` removal).
+  - `scripts/check_frontend_baseline.py` + `scripts/frontend_coupling.py` +
+    `scripts/frontend_domain_map.json`: the C0 calibration gate (measured vs design
+    expectation, exits non-zero on drift), the cross-domain coupling scan
+    (`--edges`), the C0 snapshot writer (`--report-out=PATH`) and a `--syntax`
+    `node --check` pass over the module files. Replaces the original C0 snippet,
+    which used `sed`/`wc` and could not run on win32 + PowerShell.
+  - `scripts/frontend_size_allowlist.json`: frontend-only ratchet record
+    (`frontend/app.js` 5708 lines, `app_js_functions` 145; both only decrease).
+- CI: `lint.yml` gains a third step (`python scripts/lint_frontend.py`) and watches
+  `frontend/**`; `kie-phase-a.yml` now also runs
+  `tests/test_route_contract_freeze.py` and `tests/test_route_inventory.py`, so
+  route-contract drift fails at PR time instead of only locally (PENDING P-003).
+
+### Changed
+- **v1.8.3 B5b — docs and version close-out**: `DEVELOPMENT.md` grows from "three hard
+  rules" to **six** - the three front-end invariants the gates already enforce (module
+  ≤500 lines + import only downward; `app.js` assembly-only with ratchets; every
+  `initXxx` must be wired and cross-domain deps injected, no `window.*` bridges) are now
+  stated where contributors will look for them. `frontend/README_FRONTEND.md` gets its
+  **file structure / initialisation / main modules** sections rewritten against the
+  split reality (33 modules, the three-stage boot, the injection assembly, the 17-step
+  boot sequence) - the stale v1.1.0 section is gone, remaining sections are labelled
+  functional-only. `APP_VERSION` **1.8.2 → 1.8.3** (`backend/app/core/config.py`;
+  `info.version` is excluded from the OpenAPI baseline, so the route-contract snapshot is
+  unaffected). Entry cache-bust token **`?v=20260915-b0b` → `?v=20260915-v183`** (D9:
+  the token tracks assembly/dependency-structure changes - this is the terminal one).
+- **v1.8.3 B5a — shell extracted, entry at terminal state**: `frontend/modules/shell/`
+  (`ui.js` + `tools.js`, D4's 12 functions plus the `globalTooltip` state; no cross-half
+  calls, so no extra injection). The shell's cross-domain calls are **injected - 10
+  deps / 15 call points**, five times the design's estimate of 2, because D6-D10 are all
+  extracted by now and F3 forbids importing sibling domain modules (the design assumed
+  the callees would still live in app.js): D8 `startProcessing` ×2, D6
+  `openAnalysisOptionsDialog` + `setSyncProcessingModeUI`, D7 ×4, D9
+  `updateEnhancementTabs` ×4, D15 `refreshHitlReviews`, D1 `refreshActiveEngineFooterLine`,
+  D10 `highlightResultItem`. The `:744` `window.DocuVisionPreview` bridge (R1's last
+  standing window bridge) is **removed** - verified it had no consumer besides
+  `previewHelpers`, which now imports `shared/queue_preview.js` directly (whitelisted
+  `shared/*`). The window-resize listener left behind by B4 moved into
+  `preview-paging/core.js`. `app.js` is at its **terminal state: 211 lines / 1 function**
+  (the `updateResultsDisplay` mediator) - imports, dependency wiring, boot sequence,
+  mediator; **5708 → 211 lines (-96%)**, far inside the ≤600 acceptance.
+  New gate **F6 assembly completeness**: every `export function initXxx` must be called
+  from app.js. Its first run caught 3 over-exported inits (module-private now); a known
+  gap is recorded - F6's name-based weak assertion cannot catch "referenced but not
+  imported" (that bit us once this batch; e2e + a pageerror probe caught it).
+  Gate evidence: lint F1-F6, C1-C8, `--syntax` 34/34 (incl. app.js), vitest 80/80,
+  e2e 14/14.
+- **v1.8.3 B-decision — same-domain splits switch from injection to sibling imports**:
+  `preview-nav.js` / `preview-render.js` move into `frontend/modules/preview-paging/`
+  (`core.js` + `nav.js` + `render.js`) and `pipeline-run.js` / `pipeline-result.js`
+  into `frontend/modules/pipeline/` (`run.js` + `result.js`). F3 gains one allowed
+  target - a same-directory sibling inside a domain sub-directory (the `modules/` root
+  is excluded, so true cross-domain pairs stay red; leaf-service L1 is unaffected
+  because F5 validates registered modules independently of F3) - and the 8
+  same-domain injection points from B4 are retired: D5's hub functions
+  (`previewHelpers` / `resolveResultPageCount` / `syncPreviewPaginationControls` /
+  `revokeCurrentPageImageUrl` / `getPdfPageImage` / `adjustDocumentSize`) moved to
+  `preview-paging/core.js`, which turns the split into a one-way DAG
+  (`nav -> render -> core`) with **no circular import and no ESM TDZ hazard**
+  (D8's run -> result was already one-way). The 36 cross-domain injections, the
+  domain-to-function map and the edge table are unchanged; every function body stays
+  byte-identical. `app.js` 806 → 805 lines (13 functions, ratchet lowered).
+  Gate evidence: lint F1-F5, C1-C8, `--syntax` 32/32 (now including `app.js`),
+  vitest 80/80, e2e 14/14.
+- **v1.8.3 B4 — orchestration chain extracted (D3 upload-queue + D5 preview-paging + D8
+  pipeline)**: new `frontend/modules/preview-nav.js` + `preview-render.js` (D5, 14
+  functions split by the design's line cut), `pipeline-run.js` + `pipeline-result.js` (D8,
+  6 functions - `updateResultsDisplay` stays in app.js as the result mediator), and
+  `upload-queue.js` (D3, 10 functions). `app.js` **2320 → 806 lines**, **43 → 13**
+  top-level functions (the entry is now imports + dependency wiring + the mediator +
+  the boot sequence).
+  The D3 ↔ D5 ↔ D8 cycles are closed by injection: 36 cross-domain call points (D1
+  api-base, D3, D5, D6, D7) plus 8 same-domain-split points. The split of D5 and D8
+  **exposed a new problem** the design's line cuts had not accounted for - the two halves
+  of each domain call each other (D5 nav ↔ render 6 points; D8 run → result 2 points) -
+  and those same-domain calls are injected from app.js as well, so F3's "no
+  module-to-module imports" rule is kept unchanged (no new exemption, no path change).
+  The B3 leftovers are re-pointed: `initOverlayRender`'s 7 D5/D8 deps now pass the
+  preview-nav.js / preview-render.js / pipeline-result.js exports, and
+  `initResultPanelsFigures` passes preview-render's `fetchAuthedImage` (call sites
+  untouched). `known_edge_pairs` drops D5 → D8 / D5 → D7 / D5 → D10 (all resolved by
+  injection). Gate evidence: lint F1-F5, C1-C8, `--syntax` 30/30, app.js `node --check`,
+  vitest 80/80, e2e 14/14.
+- **v1.8.3 B3 — result-panels + overlay extracted**: `frontend/modules/result-panels/`
+  (D9 as seven sub-modules per design §3.1 - quality / demo-transaction / tables / text /
+  figures / enhance / json; 16 functions, plus `TABLE_TEMPLATE_COLUMNS` and the 46-line
+  top-level style block now owned by figures.js) and `frontend/modules/overlay-render.js`
+  (D10 rendering half, 9 functions + its 3 overlay state values; the geometry half has
+  been in utils/geometry.js since B0b). `app.js` **3798 → 2320 lines**, **68 → 43**
+  top-level functions.
+  Injections (11 deps / 12 call sites, all via the same-name module-scope binding trick
+  so every call site stays byte-identical): `overlay-render.js` 9 (D5 previewHelpers /
+  resolveResultPageCount / syncPreviewPaginationControls / revokeCurrentPageImageUrl /
+  getPdfPageImage / adjustDocumentSize, D8 fetchTaskBlocks, D9 updateContentText, D4
+  initAnnotationInteractions), `result-panels/tables.js` 1 (D12 bindTableCardCsvExport),
+  `result-panels/figures.js` 1 (D5 fetchAuthedImage). The D5/D8 wirings are re-pointed
+  to the module exports in B4 (call sites untouched).
+  The seven sub-modules import nothing from each other (verified: every D9 internal call
+  lands in the same sub-module). `known_edge_pairs` drops D10 → D4 and D10 → D9 (both
+  resolved by injection). `envelope_display.test.js` is re-pointed to the real modules -
+  the inline copies of updateEnhancementTabs / updateContentFormulas /
+  updateContentSeals / escapeHtml are deleted, so production drift can no longer hide
+  there (R9). Gate evidence: lint F1-F5, C1-C8, `--syntax` 25/25, vitest 80/80, e2e 14/14.
+- **v1.8.3 B2 — options-dialog + kie-mapping extracted**: `frontend/modules/options-dialog.js`
+  (D6: the analysis-options dialog - 6 functions plus the `syncProcessingModeUI` hook, now
+  assigned through `setSyncProcessingModeUI`) and `frontend/modules/kie-mapping.js` (D7: 12
+  functions - table-mapping eligibility, document-profile pre-scan, KIE field payload and
+  Fields rendering). `app.js` **4318 → 3798 lines**, **86 → 68** top-level functions.
+  The D6 ↔ D7 cycle is broken by app.js assembly injection (D6 needs D7's
+  `clearTableMappingEligibility` / `updateKieQueryFieldsAvailability` /
+  `buildKieQueryFieldsPayload`; D7 needs D6's `getSelectedProcessingMode`), and D6 → D9
+  `updateEnhancementTabs` (result-panels, not yet extracted) is injected from app.js too -
+  the same-name module-scope binding trick keeps every call site byte-identical. The
+  `syncProcessingModeUI` hook moved with D6; D4's `initAnalysisView` now assigns it through
+  `setSyncProcessingModeUI`. `known_edge_pairs` drops D7 → D6 (the cycle is no longer a
+  static edge). Gate evidence: lint F1-F5, C1-C8, `--syntax` 17/17, vitest 80/80, e2e 14/14.
+- **v1.8.3 B1b (part 3) — batch / hitl-review + the single injection (B1b complete)**:
+  `frontend/modules/batch.js` (11 functions; `getProcessingOptions` is injected into
+  `initBatchProcessing` through a module-scope binding so `createBatch`'s call site stays
+  byte-identical) and `frontend/modules/hitl-review.js` (7 functions + its selection state).
+  `app.js` **4816 → 4318 lines**, **104 → 86** functions. `getBatchResults` moves as
+  exported-but-unused (no call site; flagged for v1.9).
+  B1b is now complete: **9 module files**, `app.js` **5708 → 4318 lines**, **145 → 86**
+  top-level functions.
+- **v1.8.3 B1b (part 2) — api-base / floating-progress / export-csv**:
+  `frontend/modules/api-base.js` (5 functions; a normal domain module — it calls status-bar
+  and owns a refresh timer, so it is not a leaf service), `frontend/modules/floating-progress.js`
+  (3 functions) and `frontend/modules/export-csv.js` (4 functions). `app.js` **5136 → 4816
+  lines**, **116 → 104** functions.
+  Dead-code note (no cleanup performed, per the structure-only rule): `showFloatingProgressCard`
+  / `updateFloatingProgress` and the app.js `exportResults` have no call sites — the
+  processing flow uses the status bar and the export UI uses `shared/export-ui.js` — so they
+  move as exported-but-unused and are flagged for v1.9 review.
+- **v1.8.3 B1b (part 1) — base services + notifications fold-in**:
+  - new `frontend/modules/status-bar.js` (5 functions + its presentation-only throttle
+    state; a leaf service with no imports), `frontend/modules/api-state.js`
+    (`lastHealthPayload` + setter — the shared-state module from design §4.1, needed because
+    the value is re-written after boot so a "pass it once" injection would go stale), and
+    `frontend/modules/notifications.js` (fold-in of `frontend/shared/notifications.js` plus
+    the app.js facade).
+  - `frontend/shared/notifications.js` (classic IIFE `window.DocuVisionNotify`) and
+    `frontend/shared/panel-resize.js` (Lite dead code) are removed, and `index.html` no
+    longer loads the notifications script. The two `notify: (m, t) => DocuVisionNotify.show(m, t)`
+    sites in app.js now use the imported `showNotification`.
+  - The boot-sequence gate (C3) and the bootstrap test now accept *imported* functions too,
+    not just declared ones, since `updateStatusBar` (boot step 2) is now imported.
+  - `frontend/app.js` **5357 → 5136 lines**, **124 → 116** top-level functions.
+- **v1.8.3 B2 prep — `modules/kie-config.js`**: the five KIE / table-mapping constants
+  (`KIE_DOC_TYPES`, `KIE_FIELD_NAME_RE`, `TABLE_MAPPING_MODE`, `TABLE_MAPPING_ELIGIBLE`,
+  `TABLE_MAPPING_IMAGE_EXTENSIONS`; `const` in app.js `:1462-1466`, never reassigned)
+  moved verbatim into a read-only leaf service that imports nothing, so no setter channel is
+  needed. Required before B2 because the options dialog (D6) and kie-mapping (D7) both read
+  them and F3 forbids domain-to-domain imports — without it, moving the options dialog would
+  hit an unavoidable D6 → D7 import. The dependency only became visible once the state-read
+  scan stopped skipping declaration lines (previous commit). `frontend/app.js` 5358 → 5357
+  lines; the export surface is pinned in `tests/unit/kie-config.test.js`.
+- **v1.8.3 B1a follow-up — `lastFetchedBlocks` shared, state-read scan blind spot fixed**:
+  `frontend/modules/preview-state.js` now also owns `lastFetchedBlocks` (pipeline state
+  read by `updateContentText` in the result panels), so all four of its write sites are
+  behind a setter and `app.js` keeps only reads — without this, the batch that moves the
+  result panels could not compile. It was found by fixing `scripts/frontend_coupling.py`:
+  `state_read_rows` skipped *every* `const`/`let`/`var` line (the intent was to skip the
+  state's own declaration), so reads on declaration lines such as
+  `const blocksData = lastFetchedBlocks;` were invisible. Now only lines that declare a
+  tracked state are skipped, whereupon the cross-domain state-read count went **29 → 61**,
+  also exposing `TABLE_MAPPING_MODE` (read by the options dialog — the next batch) and
+  `lastHealthPayload` (read by the pipeline, B4) as real dependencies.
+  `frontend/app.js` **5368 → 5358 lines**; 23 assignments became 21 setter call sites.
+- **v1.8.3 B1a — shared base extracted**: `frontend/modules/preview-state.js`
+  (7 live-binding states: the 6 preview slots plus `lastRenderedAnalysisResult`, which
+  the overlay domain reads at `:2936-2937`; 8 setters/reset) and
+  `frontend/modules/api-config.js` (the four immutable `API_BASE_URL` / `API_ROOT_URL` /
+  `HEALTH_URL` / `ENGINES_URL` constants plus the two URL helpers that build them).
+  `app.js` **5386 → 5368 lines**, top-level functions **126 → 124**: 19 assignment sites
+  became setter calls, every read expression stayed byte-identical, and all three
+  `URL.revokeObjectURL` call sites stayed exactly where they were (absorbing the revoke
+  into the setters is not byte-equivalent: it would evaluate `createObjectURL` before the
+  revoke, and would move the page-image revoke across an `await`).
+  The URL helpers deliberately did **not** go to `frontend/modules/utils/`: the C6 gate
+  asserts zero `document`/`window.` references there and `resolveApiBaseUrl` has 7, so
+  they live inside `api-config.js`, which now imports nothing at all.
+  New: `frontend/tests/unit/preview-state.test.js` (export surface pinned by the domain
+  map, setter/live-binding and reset semantics).
+- **v1.8.3 B0a follow-up — leaf-service whitelist + lint rule F5**: `notifications`
+  (65 call sites / 8 domains) and `status-bar` (12 / 3) are now whitelisted import
+  targets for `frontend/modules/**`, each registered in
+  `scripts/frontend_domain_map.json` with its qualification evidence (L1 no
+  reverse dependency / L2 no domain semantics / L3 no domain-owned state).
+  `api-base` is deliberately not registered yet (it calls `status-bar`, which
+  conflicts with L1) - B4 decides the trade-off. New rule **F5** keeps this
+  mechanical: a whitelisted file must be registered, a registered leaf service may
+  reach `utils/` and `shared/` only (so it can never become a hub or close a
+  cycle), and every registration needs a date plus evidence - the whitelist cannot
+  grow silently.
+- **v1.8.3 B0b — frontend entry converted to native ESM + pure helpers extracted**
+  (structure-only, no behaviour change):
+  - `frontend/index.html`: the app entry is now
+    `<script type="module" src="app.js?v=20260915-b0b">` (module scripts are deferred
+    by default, so load order is unchanged; the classic shared scripts and the inline
+    `queue_preview` bridge stay as-is until B1/B5a).
+  - `frontend/app.js` **5708 → 5386 lines**, top-level functions **145 → 126**.
+  - new `frontend/modules/utils/`: `geometry.js` (5 functions, bbox / coordinate-space
+    math), `csv.js` (8, CSV & Markdown formatting), `text.js` (5, text / role-label
+    normalisation), `dom.js` (1, `escapeHtml`). All 19 bodies were moved verbatim
+    (only the declaration line gained `export `); `app.js` keeps calling them through
+    an explicit import block.
+  - new unit tests: `tests/unit/geometry.test.js` (17 cases incl. the v1.8
+    coordinate-space regression), `tests/unit/csv.test.js` (14 cases),
+    `tests/unit/bootstrap.test.js` (7 static boot-order + extraction guards).
+  - frontend ratchets lowered to the measured values (`frontend/app.js` 5386,
+    `app_js_functions` 126); `app_js_module` phase flag flipped to `true`.
+
+### Fixed
+- **UI e2e determinism (FRONT-U1)** — two test-infrastructure fixes, no application code
+  touched:
+  1. new `scripts/e2e_static_server.py` (stdlib `ThreadingHTTPServer`, 256-deep accept
+     backlog) replaces `python -m http.server` as the Playwright `webServer`. The stdlib
+     default backlog is **5**, Playwright defaults to cores/2 workers (10 on this host) and
+     each page loads ~12 files, so connections were refused and `app.js` *itself* failed to
+     load in some pages — `#documentPage` still held the raw index.html placeholder, i.e.
+     the app had never booted, which is why affected tests looked like "the click did
+     nothing". Serial runs were always 14/14 while parallel runs failed 2-6 of 14 with a
+     different set each time (the B0b baseline failed too, so this was pre-existing).
+  2. new `frontend/tests/e2e/helpers/app-boot.js` (`gotoApp` / `waitForAppBoot`), used by
+     every spec so no test can click before the boot sequence has finished. It waits for
+     the last boot step's DOM side effect (`#documentPage .empty-skeleton`) — a test-only
+     signal, no new global — and turns any future load failure into an explicit "boot never
+     finished" error instead of a misleading assertion failure.
+  Verified: three consecutive full runs at the default worker count — 14/14, 14/14, 14/14.
+- `frontend/package-lock.json` now actually contains **jsdom 25.0.1**. It was
+  declared in `frontend/package.json` but absent from the lock (no
+  `packages["node_modules/jsdom"]` entry; the only "jsdom" strings in the lock
+  were vitest's optional peer declaration), so any lock-driven install —
+  `npm ci` on a fresh clone or in CI — could never produce it and
+  `npm run test:unit` failed with `Cannot find dependency 'jsdom'`. CI was
+  unaffected so far only because no workflow runs vitest yet.
+- `scripts/lint_frontend.py` now enumerates with
+  `git ls-files --cached --others --exclude-standard`, so a newly created module is
+  linted *before* it is `git add`-ed. Previously F1/F3 silently skipped it.
+- Baseline recalibration against `frontend/app.js` (mechanical scan, not grep):
+  - preview-state **writes are 17, not 12** as the design stated (16 `current*`
+    plus `previewPaginationInitialized`; the design missed `:2947`, `:2957` and
+    `:1018`).
+  - the cross-domain coupling surface is **219 call sites / 49 domain pairs**
+    plus **29 cross-domain state reads**, versus the 11 / 9 hand-built table in
+    the design. Evidence: `docs/R&D/PLAN/v1.8.3-frontend-split/cross-domain-edges.md`
+    (local only), which also lists the F3-whitelist decision that blocks B1.
+  - `convertToMarkdown` is a pure function (0 DOM references): the earlier
+    "DOM-tainted, 3 hits" note came from a bare `document` grep matching
+    `data.document.name`.
 
 ## [1.8.2] — 2026-09-15
 

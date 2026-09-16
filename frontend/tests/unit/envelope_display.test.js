@@ -2,9 +2,19 @@
  * Unit tests for Phase 2 Group A frontend changes.
  * Tests: updateEnhancementTabs, updateContentFormulas, updateContentSeals
  *
+ * v1.8.3 B3: re-pointed to the real modules (result-panels/enhance.js + utils/dom.js).
+ * The inline copies of the three functions and of escapeHtml are deleted - the modules
+ * are now the single source of truth, so production drift can no longer hide here.
+ *
  * Uses jsdom (vitest's default browser-like environment) to simulate the DOM.
  */
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, it, expect } from 'vitest';
+import {
+    updateEnhancementTabs,
+    updateContentFormulas,
+    updateContentSeals,
+} from '../../modules/result-panels/enhance.js';
+import { escapeHtml } from '../../modules/utils/dom.js';
 
 // ---------------------------------------------------------------------------
 // Minimal DOM setup — replicate the elements the functions touch
@@ -26,85 +36,13 @@ function setupDOM() {
     `;
 }
 
-// ---------------------------------------------------------------------------
-// Inline the functions under test (extracted from app.js logic, no server dep)
-// ---------------------------------------------------------------------------
-function updateEnhancementTabs(enableFormula, enableSeal) {
-    const tabFormulas = document.getElementById('tabBtnFormulas');
-    const tabSeals    = document.getElementById('tabBtnSeals');
-    if (tabFormulas) tabFormulas.classList.toggle('hidden', !enableFormula);
-    if (tabSeals)    tabSeals.classList.toggle('hidden', !enableSeal);
-}
-
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
-
-// Minimal katex stub (real KaTeX not available in jsdom)
-const katex = {
-    renderToString: (latex, _opts) => `<span class="katex-stub">${escapeHtml(latex)}</span>`,
-};
-
-function updateContentFormulas(formulas) {
-    const list = document.getElementById('contentFormulasList');
-    if (!list) return;
-    const items = Array.isArray(formulas) ? formulas : [];
-    if (items.length === 0) {
-        list.innerHTML = '<div class="empty-state">No formulas detected</div>';
-        return;
-    }
-    let html = '';
-    items.forEach((formula, index) => {
-        const latex  = formula.payload && formula.payload.latex ? formula.payload.latex : null;
-        const status = formula.processing_status || '';
-        html += '<div class="formula-item">';
-        html += `<div class="formula-item-header"><span class="formula-name">Formula ${index + 1}</span>`;
-        html += `<span class="formula-status">${escapeHtml(status)}</span></div>`;
-        html += '<div class="formula-item-body">';
-        if (latex) {
-            try {
-                html += `<div class="formula-rendered">${katex.renderToString(latex, { throwOnError: false, displayMode: true })}</div>`;
-                html += `<div class="formula-latex"><code>${escapeHtml(latex)}</code></div>`;
-            } catch {
-                html += `<div class="formula-latex"><code>${escapeHtml(latex)}</code></div>`;
-            }
-        } else {
-            html += '<p class="formula-placeholder">Formula region detected — recognition pending</p>';
-        }
-        html += '</div></div>';
-    });
-    list.innerHTML = html;
-}
-
-function updateContentSeals(seals) {
-    const list = document.getElementById('contentSealsList');
-    if (!list) return;
-    const items = Array.isArray(seals) ? seals : [];
-    if (items.length === 0) {
-        list.innerHTML = '<div class="empty-state">No seals detected</div>';
-        return;
-    }
-    let html = '';
-    items.forEach((seal, index) => {
-        const text   = seal.payload && seal.payload.text_on_seal ? seal.payload.text_on_seal : null;
-        const status = seal.processing_status || '';
-        html += '<div class="seal-item">';
-        html += `<div class="seal-item-header"><span class="seal-name">Seal ${index + 1}</span>`;
-        html += `<span class="seal-status">${escapeHtml(status)}</span></div>`;
-        html += '<div class="seal-item-body">';
-        if (text) {
-            html += `<p class="seal-text">${escapeHtml(text)}</p>`;
-        } else {
-            html += '<p class="seal-placeholder">Seal region detected — recognition pending</p>';
-        }
-        html += '</div></div>';
-    });
-    list.innerHTML = html;
-}
+// Minimal katex stub (real KaTeX not available in jsdom). enhance.js reads the bare
+// global `katex`, so the stub is installed on window before any test runs.
+beforeAll(() => {
+    window.katex = {
+        renderToString: (latex, _opts) => `<span class="katex-stub">${escapeHtml(latex)}</span>`,
+    };
+});
 
 // ---------------------------------------------------------------------------
 // Tests

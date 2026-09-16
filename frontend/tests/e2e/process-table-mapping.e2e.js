@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { installProApiMocks } = require('./helpers/mock-pro-api');
+const { gotoApp } = require('./helpers/app-boot');
 const { sampleImagePath, samplePdfPath } = require('./helpers/e2e-fixtures');
 
 const INDEX_URL = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/frontend/index.html';
@@ -21,7 +22,7 @@ async function selectTableMappingMode(page) {
 test.describe('UI-TM Table mapping', () => {
   test('UI-TM-01 options dialog exposes table mapping template', async ({ page }) => {
     await installProApiMocks(page);
-    await page.goto(INDEX_URL, { waitUntil: 'domcontentloaded' });
+    await gotoApp(page, INDEX_URL);
 
     await openProcessingOptions(page);
     await selectTableMappingMode(page);
@@ -33,7 +34,7 @@ test.describe('UI-TM Table mapping', () => {
 
   test('UI-TM-02 digital PDF shows table mapping eligibility hint', async ({ page }) => {
     await installProApiMocks(page, { documentProfileType: 'pdf_digital' });
-    await page.goto(INDEX_URL, { waitUntil: 'domcontentloaded' });
+    await gotoApp(page, INDEX_URL);
 
     const profileResponse = page.waitForResponse(
       (response) => response.url().includes('/document/profile') && response.ok(),
@@ -55,7 +56,7 @@ test.describe('UI-TM Table mapping', () => {
       useMappedResult: true,
       documentProfileType: 'pdf_digital',
     });
-    await page.goto(INDEX_URL, { waitUntil: 'domcontentloaded' });
+    await gotoApp(page, INDEX_URL);
 
     const profileResponse = page.waitForResponse(
       (response) => response.url().includes('/document/profile') && response.ok(),
@@ -82,7 +83,7 @@ test.describe('UI-TM Table mapping', () => {
 
   test('UI-TM-04 image upload blocked for table mapping run', async ({ page }) => {
     await installProApiMocks(page, { documentProfileType: 'image' });
-    await page.goto(INDEX_URL, { waitUntil: 'domcontentloaded' });
+    await gotoApp(page, INDEX_URL);
 
     await page.locator('#fileInput').setInputFiles(sampleImagePath());
     await openProcessingOptions(page);

@@ -4,7 +4,13 @@ const path = require('path');
 const phaseUiDir = path.join(__dirname, '..', 'test_data', 'TestResult', 'PhaseUI');
 const repoRoot = path.join(__dirname, '..');
 const e2eEntryUrl = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/frontend/index.html';
-const staticServerCmd = process.platform === 'win32' ? 'python -m http.server 8000' : 'python3 -m http.server 8000';
+// scripts/e2e_static_server.py is a stdlib ThreadingHTTPServer with a 256-deep accept
+// backlog. The default `python -m http.server` backlog is 5 and refuses connections once
+// Playwright's cores/2 default worker count has several pages loading at once (app.js then
+// fails to load and the tests report misleading assertion failures) - see the script header.
+const staticServerCmd = process.platform === 'win32'
+  ? 'python scripts/e2e_static_server.py 8000'
+  : 'python3 scripts/e2e_static_server.py 8000';
 
 module.exports = defineConfig({
   testDir: './tests/e2e',

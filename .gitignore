@@ -163,6 +163,9 @@ site/
 .qoder/
 .vscode/
 .codebuddy/plans/
+# zcode: the dir itself stays trackable (future content may be worth committing),
+# but the generated session plans under .zcode/plans/ never go to the remote
+.zcode/plans/
 # GLM rules dir retired (6634d86); ignore locally rebuilt copies
 .GLM/
 docker/
@@ -268,6 +271,12 @@ scripts/*
 !scripts/lint_routes.py
 !scripts/lint_file_size.py
 !scripts/file_size_allowlist.json
+!scripts/lint_frontend.py
+!scripts/check_frontend_baseline.py
+!scripts/frontend_coupling.py
+!scripts/frontend_size_allowlist.json
+!scripts/frontend_domain_map.json
+!scripts/e2e_static_server.py
 !scripts/trial/
 !scripts/trial/**
 !scripts/aistudio_setup.sh

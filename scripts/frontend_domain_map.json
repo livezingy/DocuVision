@@ -1,0 +1,235 @@
+{
+  "boot_sequence": [
+    "clearResultsDisplay",
+    "updateStatusBar",
+    "initializeAPIConnection",
+    "initUploadZone",
+    "initTabs",
+    "initHelpButton",
+    "initResultTabs",
+    "initActionButtons",
+    "initAnalysisOptionsDialog",
+    "initEngineSelectors",
+    "initAnalysisView",
+    "initExportButtons",
+    "initBatchProcessing",
+    "initHitlReviews",
+    "initPdfTools",
+    "initPreviewPagination",
+    "insertInitialSkeleton"
+  ],
+  "known_edge_pairs": [
+    ["D8 pipeline", "D5 preview-paging"],
+    ["D8 pipeline", "D7 kie-mapping"],
+    ["D8 pipeline", "D9 result-panels"]
+  ],
+  "domains": {
+    "D1 api-base": [
+      "checkApiReachable", "truncateFooterEngineLine", "refreshActiveEngineFooterLine",
+      "applyHealthToFooter", "initializeAPIConnection"
+    ],
+    "D2 status-bar": [
+      "shouldDisplayStatus", "processStatusQueue", "updateStatusBarThrottled",
+      "clearStatusQueue", "updateStatusBar"
+    ],
+    "D3 upload-queue": [
+      "insertInitialSkeleton", "initUploadZone", "handleFiles", "createQueueItem",
+      "handleQueueItemDeletion", "updateQueueCount", "resetQueueItemForReprocessing",
+      "simulateProcessing", "processNextInQueue", "failProcessing"
+    ],
+    "D4 shell-init": [
+      "initTabs", "initHelpButton", "initResultTabs", "initActionButtons",
+      "initEngineSelectors", "initAnalysisView", "initExportButtons", "initGlobalTooltip",
+      "initAnnotationInteractions", "initPanelResize", "initJsonViewButtons", "initPdfTools"
+    ],
+    "D5 preview-paging": [
+      "resetDocumentPageLayoutStyles", "previewHelpers", "resolveResultPageCount",
+      "syncPreviewPaginationControls", "revokeCurrentPageImageUrl", "goToPreviewPage",
+      "initPreviewPagination", "uploadFileForPreview", "switchToQueueItem",
+      "getPdfPageImage", "updatePreviewView", "updateDocumentPreview", "fetchAuthedImage",
+      "adjustDocumentSize"
+    ],
+    "D6 options-dialog": [
+      "initAnalysisOptionsDialog", "openAnalysisOptionsDialog", "saveAnalysisOptions",
+      "resetAnalysisOptions", "getSelectedProcessingMode", "getProcessingOptions"
+    ],
+    "D7 kie-mapping": [
+      "clearTableMappingEligibility", "updateTableMappingEligibility",
+      "fetchDocumentProfileForQueueItem", "updateDocumentTypeSuggestion",
+      "isTableMappingRunBlocked", "normalizeKieFieldName", "assertValidKieFieldName",
+      "updateKieQueryFieldsAvailability", "buildKieQueryFieldsPayload", "pickKieFieldsMap",
+      "formatKieFieldForExtract", "updateContentFields"
+    ],
+    "D8 pipeline": [
+      "startProcessing", "pollTaskStatus", "fetchTaskResult", "fetchTaskBlocks",
+      "completeProcessing", "clearResultsDisplay", "updateResultsDisplay"
+    ],
+    "D9 result-panels": [
+      "renderQualityPanelPro", "renderSchemaTable", "updateContentMappedRows",
+      "renderDemoTransactionTable", "updateDemoTransactionViews", "formatAzureRoleLabel",
+      "collectViewPageTextElements", "updateContentText", "normalizeTextForDisplay",
+      "normalizePanelParagraphText", "isLikelyCollapsedText", "toAzureTypeLabel",
+      "renderTableCard", "normalizeTableForDisplay", "updateContentTables",
+      "updateContentFigures", "renderFigureCard", "updateEnhancementTabs",
+      "updateContentFormulas", "updateContentSeals", "updateResultJson"
+    ],
+    "D10 overlay": [
+      "normalizeAnnotationBbox", "bboxFromPolygon", "normalizeCoordSpace",
+      "normalizeBboxToImageMatrix", "remapBboxToImageSpace", "getPageImageMeta",
+      "computeImageSha256Hex", "validateImageCoordinateBinding", "getSvgAnnotationColors",
+      "getOverlayLayerType", "shouldRenderOverlayType", "renderDocumentWithAnnotations",
+      "renderTextPreview", "highlightResultItem"
+    ],
+    "D11 floating-progress": [
+      "showFloatingProgressCard", "updateFloatingProgress", "hideFloatingProgressCard"
+    ],
+    "D12 export-csv": [
+      "exportResults", "downloadCurrentTableCsv", "bindTableCardCsvExport", "downloadFile"
+    ],
+    "D13 notifications": [
+      "showNotification", "getNotificationIcon", "getNotificationColor"
+    ],
+    "D14 batch": [
+      "initBatchProcessing", "downloadBatchExport", "setBatchControlsForBatch",
+      "createBatch", "startBatch", "pollBatchStatus", "updateBatchUI", "pauseBatch",
+      "resumeBatch", "cancelBatch", "getBatchResults"
+    ],
+    "D15 hitl-review": [
+      "initHitlReviews", "refreshHitlReviews", "loadHitlReviewDetail",
+      "buildHitlFieldEditor", "collectHitlFieldValues", "saveHitlReviewFields",
+      "resolveHitlReview"
+    ]
+  },
+  "module_import_whitelist": {
+    "dirs": ["frontend/modules/utils/"],
+    "files": [
+      "frontend/modules/preview-state.js",
+      "frontend/modules/api-state.js",
+      "frontend/modules/api-config.js",
+      "frontend/modules/kie-config.js",
+      "frontend/modules/notifications.js",
+      "frontend/modules/status-bar.js"
+    ],
+    "prefixes": ["frontend/shared/"]
+  },
+  "whitelist_policy": {
+    "note": "A whitelist target is either a leaf service or the shared-state module. Every entry of module_import_whitelist.files must be registered below with a date and evidence (lint rule F5), so the whitelist cannot grow silently: widening it is a reviewable one-line data diff that carries its own justification.",
+    "criterion_marker": "L1+L2+L3",
+    "leaf_service_criteria": {
+      "L1": "no reverse dependency: the module imports no domain module, no other leaf service and never ../app.js (only frontend/modules/utils/ and frontend/shared/). Enforced mechanically by F5.",
+      "L2": "no domain semantics: its behaviour does not branch on domain state (it never asks 'batch or single task?' to decide what to do).",
+      "L3": "no domain-owned state: it owns at most its own presentation state (throttle queue, last message) and owns no domain object (task, queue item, preview)."
+    },
+    "when_a_service_stops_qualifying": "If a registered leaf service ever needs domain state or domain branching, it stops being a leaf service: drop it from the whitelist and inject it from app.js instead. Do not relax L1-L3."
+  },
+  "shared_state_modules": {
+    "frontend/modules/api-state.js": {
+      "added": "2026-09-15",
+      "approved_in": "B1b",
+      "kind": "shared-state",
+      "evidence": "The single mutable value that the api-base domain (D1) owns and the pipeline (D8) reads (3 sites, :1787-1789). Design rev3 section 4.1 (option B): extracted by mutability from api-config.js. It is re-written after boot - by the 12s KIE-cold retry inside applyHealthToFooter and by startProcessing's own applyHealthToFooter call - so a 'pass it once' injection would go stale; the live binding keeps D8's 3 reads byte-identical. Imports nothing (L1 holds); holds an API-layer response cache, not a domain object such as task / queue-item / preview, so L3 holds."
+    },
+    "frontend/modules/preview-state.js": {
+      "added": "2026-09-15",
+      "approved_in": "B1a (design rev3 section 4)",
+      "kind": "shared-state",
+      "evidence": "Not a leaf service by design: it is the explicit live-binding channel for cross-domain reads. B1a moved the 6 preview slots here, plus the two pipeline-owned (D8) values other domains read - lastRenderedAnalysisResult (D10 :2918-2919, D9) and lastFetchedBlocks (D9 :4208, found only after the state-read scan was fixed to stop skipping declaration lines). 23 assignment sites became setter calls, every read expression stayed byte-identical, and all URL.revokeObjectURL calls stayed at their original call sites so statement order is unchanged. L1 also applies (this module imports nothing), so it cannot become a hub either."
+    }
+  },
+  "leaf_services": {
+    "frontend/modules/notifications.js": {
+      "added": "2026-09-15",
+      "approved_in": "B1",
+      "criterion": "L1+L2+L3",
+      "callers": "65 call sites / 8 domains (D14 17, D8 16, D4 11, D3 8, D10 4, D15 4, D5 3, D6 2)",
+      "evidence": "Touches only DOM (icon, colour, auto-dismiss); imports nothing but itself; owns no domain state; the same (message, type) always renders the same notification, regardless of who called it or when. Whitelisting it keeps all 65 call sites byte-identical, which is what makes the B1 'behaviour unchanged' claim provable."
+    },
+    "frontend/modules/status-bar.js": {
+      "added": "2026-09-15",
+      "approved_in": "B1",
+      "criterion": "L1+L2+L3",
+      "callers": "12 call sites / 3 domains (D8 6, D1 4, D3 2)",
+      "evidence": "Touches only DOM; owns only presentation state (statusUpdateQueue, isProcessingQueue, lastStatusMessage, lastStatusUpdateTime, STATUS_UPDATE_MIN_INTERVAL) and no other domain reads it (state_owners D2 is read cross-domain: never); every caller gets the same throttled rendering behaviour. Needed in B1 because D1 api-base is extracted in that batch and calls updateStatusBar 4 times."
+    },
+    "frontend/modules/kie-config.js": {
+      "added": "2026-09-15",
+      "approved_in": "B2 prep",
+      "criterion": "L1+L2+L3",
+      "callers": "D4 initResultTabs :820; D6 getProcessingOptions :1625/:1687/:1691; D7 updateTableMappingEligibility/updateDocumentTypeSuggestion/assertValidKieFieldName :1482/:1532/:1543/:1549/:1554/:1608",
+      "evidence": "Five immutable constants (const in app.js :1462-1466, never reassigned - measured 2026-09-15) moved verbatim; imports nothing at all and owns no mutable state, so no setter channel is needed. Needed because the options dialog (D6) and kie-mapping (D7) both read them and F3 forbids domain-to-domain imports: without this, the batch that moves the options dialog would have hit an unavoidable D6 -> D7 import. The dependency only became visible after the state-read scan stopped skipping declaration lines."
+    },
+    "frontend/modules/api-config.js": {
+      "added": "2026-09-15",
+      "approved_in": "B1a",
+      "criterion": "L1+L2+L3",
+      "callers": "constant reads: D11 :3520, D12 :3674, D15 :5365 (B1) plus D10/D4/D8 in later batches; written once at load for api-base",
+      "evidence": "Four immutable values (API_BASE_URL / API_ROOT_URL / HEALTH_URL / ENGINES_URL) plus the two URL helpers that build them (moved verbatim from app.js :33-55/:57-64). Measured 2026-09-15: all four were const and are never reassigned after load, so they need no setter. The helpers did NOT go to modules/utils/ because the C6 gate asserts zero document/window refs there and resolveApiBaseUrl has 7 (window.location / window.DOCUVISION_CONFIG); keeping them here also means this module imports nothing at all, so L1 holds trivially. Splitting the config out of api-base.js is what lets every consumer import it while api-base itself stays unregistered - api-base calls status-bar, which would conflict with L1."
+    }
+  },
+  "shared_modules": {
+    "frontend/modules/api-state.js": [
+      "lastHealthPayload", "setLastHealthPayload"
+    ],
+    "frontend/modules/kie-config.js": [
+      "KIE_DOC_TYPES", "KIE_FIELD_NAME_RE", "TABLE_MAPPING_MODE",
+      "TABLE_MAPPING_ELIGIBLE", "TABLE_MAPPING_IMAGE_EXTENSIONS"
+    ],
+    "frontend/modules/api-config.js": [
+      "normalizeApiBaseUrl", "resolveApiBaseUrl",
+      "API_BASE_URL", "API_ROOT_URL", "HEALTH_URL", "ENGINES_URL"
+    ],
+    "frontend/modules/preview-state.js": [
+      "currentOriginalFileUrl", "currentTaskId", "currentQueueItem", "currentPreviewPage",
+      "currentPageImageUrl", "previewPaginationInitialized", "lastRenderedAnalysisResult",
+      "lastFetchedBlocks",
+      "setOriginalFileUrl", "setTaskId", "setQueueItem", "setPreviewPage", "setPageImageUrl",
+      "setPreviewPaginationInitialized", "setLastRenderedAnalysisResult", "setLastFetchedBlocks",
+      "resetPreviewState"
+    ]
+  },
+  "utils_modules": {
+    "utils/geometry": [
+      "normalizeAnnotationBbox", "bboxFromPolygon", "normalizeCoordSpace",
+      "normalizeBboxToImageMatrix", "remapBboxToImageSpace"
+    ],
+    "utils/csv": [
+      "convertToCSV", "convertToMarkdown", "tableConfidencePct", "formatTableCsvBanner",
+      "excelSafeCell", "escapeCsvCell", "buildSingleTableCsv", "singleTableCsvFilename"
+    ],
+    "utils/text": [
+      "normalizeTextForDisplay", "normalizePanelParagraphText", "isLikelyCollapsedText",
+      "toAzureTypeLabel", "formatAzureRoleLabel"
+    ],
+    "utils/dom": [
+      "escapeHtml"
+    ]
+  },
+  "state_owners": {
+    "D1 api-base": [
+      "API_BASE_URL", "API_ROOT_URL", "HEALTH_URL", "ENGINES_URL", "lastHealthPayload",
+      "kieHealthRefreshTimer"
+    ],
+    "D2 status-bar": [
+      "statusUpdateQueue", "isProcessingQueue", "lastStatusMessage", "lastStatusUpdateTime",
+      "STATUS_UPDATE_MIN_INTERVAL"
+    ],
+    "D5 preview-paging": [
+      "currentOriginalFileUrl", "currentTaskId", "currentQueueItem", "currentPreviewPage",
+      "currentPageImageUrl", "previewPaginationInitialized"
+    ],
+    "D6 options-dialog": ["syncProcessingModeUI"],
+    "D7 kie-mapping": [
+      "KIE_DOC_TYPES", "KIE_FIELD_NAME_RE", "TABLE_MAPPING_MODE", "TABLE_MAPPING_ELIGIBLE",
+      "TABLE_MAPPING_IMAGE_EXTENSIONS"
+    ],
+    "D8 pipeline": ["lastRenderedAnalysisResult", "lastFetchedBlocks"],
+    "D9 result-panels": ["TABLE_TEMPLATE_COLUMNS"],
+    "D10 overlay": [
+      "enableOverlaySha256Validation", "forcePureLayoutBboxOverlay", "overlayLayerVisibility"
+    ],
+    "D15 hitl-review": [
+      "hitlSelectedReviewId", "hitlSelectedTaskId", "hitlCurrentProfile",
+      "hitlCurrentSchemaFields"
+    ]
+  }
+}

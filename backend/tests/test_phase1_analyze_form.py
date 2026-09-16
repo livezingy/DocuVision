@@ -13,16 +13,23 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import main as main_module
+from app.core.runtime import tasks
+from app.routers import documents as documents_module
 
 
 def _install_nop_process(monkeypatch) -> None:
     async def _noop_process(task_id: str):
-        task = main_module.tasks.get(task_id)
+        task = tasks.get(task_id)
         if task:
             task["status"] = "completed"
             task["result"] = {"document_info": {"file_name": task.get("file_name", "")}}
 
-    monkeypatch.setattr(main_module, "process_document", _noop_process)
+    # Patch at the *use site*: documents.py does
+    # ``from app.core.runtime import process_document``, which binds the name in
+    # that module's namespace, so patching ``app.main`` (where it no longer lives
+    # after the v1.8.2 split) or ``app.core.runtime`` would not affect
+    # ``background_tasks.add_task(process_document, job_id)`` at documents.py:162.
+    monkeypatch.setattr(documents_module, "process_document", _noop_process)
 
 
 def _post_phase1(client: TestClient, data: dict) -> dict:
@@ -34,7 +41,7 @@ def _post_phase1(client: TestClient, data: dict) -> dict:
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["job_id"], payload
-    return main_module.tasks[payload["job_id"]]
+    return tasks[payload["job_id"]]
 
 
 def test_phase1_defaults_match_legacy_defaults(monkeypatch):

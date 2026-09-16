@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { installProApiMocks } = require('./helpers/mock-pro-api');
+const { gotoApp } = require('./helpers/app-boot');
 const { samplePdfPath } = require('./helpers/e2e-fixtures');
 
 const INDEX_URL = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/frontend/index.html';
@@ -13,7 +14,7 @@ async function openPdfToolsTab(page) {
 test.describe('UI-PT PDF Tools', () => {
   test.beforeEach(async ({ page }) => {
     await installProApiMocks(page);
-    await page.goto(INDEX_URL, { waitUntil: 'domcontentloaded' });
+    await gotoApp(page, INDEX_URL);
     await openPdfToolsTab(page);
   });
 

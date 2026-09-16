@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（3 组）
+## 待确认（7 组）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -38,18 +38,6 @@
   立项即需 BACKFILL-001 云端重验。责任仓：`table_backfill.py` 对应层 + 契约 `reason` 字段。
 - 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
 
-### P-003 · v1.8.2 拆分的两项门禁遗留（v1.8.3 候选，2026-09-15）
-- 来源：v1.8.2 main.py 拆分收尾（PR #17；main `9665e58`；tag `v1.8.2.0`）。用户裁决：留到 v1.8.3 一起做。
-- 状态：已发版；两项均为**门禁补强**，非缺陷。
-- 待决项：
-  1. **SPLIT-U4 测试**：断言 `import app.core.runtime` 不产生任何文件/DB 写（tmp_path 下目录为空）。
-     约束：`backend/app/core/runtime.py` 顶部 `import paddle`，本机跑不了 → 用例只能 Cloud 跑（`DOCUVISION_CLOUD_TESTS=1`）。
-  2. **静态契约测试接入 CI**：`backend/tests/test_route_contract_freeze.py` 与 `test_route_inventory.py`
-     目前只在本地跑。`kie-phase-a.yml` 已在跑 pytest，把这两条加进其 Pro 步骤即可让契约漂移在 PR 阶段变红（成本极低）。
-- 相关存档：设计稿 `docs/R&D/PLAN/v1.8.2-main-split-design.md`（本地，不进 git）；
-  kernel 规则 `docs/agent-ops/core/routing.md` 规则 6；`DEVELOPMENT.md` 三条硬规范。
-- 确认动作：v1.8.3 立项时把两项转入该版 deliverables，然后移除本组。
-
 ### P-004 · 新建 `docs/architecture/module-map.md`（当前态模块地图）（2026-09-15）
 - 目的：补齐「架构与运作模式」层——单一权威入口，回答 main 上的**模块边界 / 依赖方向 / 不变量门禁**。
 - 现状缺口：`docuvision-system-design.md` 是"语义/契约"向（引擎选型/坐标/三层数据结构/API 语义），`最近对照` 已落后 2 版；
@@ -60,3 +48,60 @@
 - 交付物：`docs/architecture/module-map.md`（后端段 + 前端段 + 不变量门禁表，头部带"最近对照"）
   + 对账体检（并入 `scripts/audit_agent_ops.py`：校验 map 内路径/脚本真实存在）+ `docs/README.md` 索引一行。
 - 前置已就绪：v1.8.2 后端段证据（`routers/` 13 域 / `core/runtime.py` / `models/api_models.py` / 双 lint 脚本 / 三条静态测试）。
+
+### P-006 · `.zcode` 目录跟踪策略（2026-09-15）
+- 结论（已定）：`.zcode/` **纳入版本控制**（后续会有内容、可能值得提交），但 `.zcode/plans/` **不推远端**。
+- 已落地：`.gitignore` 新增 `.zcode/plans/`（与 `.codebuddy/plans/` 同款规则形制）。
+  实测验证：`.zcode/plans/` 下的 plan 文件命中忽略（`.gitignore:168`）；`.zcode/` 下新建普通文件显示为未跟踪且
+  `git add --dry-run` 成功 → **`.zcode` 其余内容将来可直接提交**。
+- 本次未提交 `.zcode` 本身（故留 PENDING）：忽略 `plans/` 后**目录为空**，git 不跟踪空目录
+  （当前 `plans/` 是其唯一内容）。
+- 待办（无需额外动作）：`.zcode` 出现首个非 plans 内容时，随该次改动一并 `git add .zcode/`。
+- 先例：`.codebuddy/` 同款——`rules/` 5 个文件已跟踪、`plans/` 被忽略（`.gitignore:165`）。
+
+### P-007 · 非 KIE 任务的 Processing Results 仍显示 KIE 元信息（2026-09-16，FRONT-C1 走查发现）
+- 现象：跑完一次 invoice（KIE）任务后，Processing Results 出现 KIE 行；之后跑 **layout 任务**（无 KIE）
+  该行**仍在**，值为 `KIE confidence: 0% · KIE fields: 0`，同面板还有 `Tables: 16 · Backfill: 89/588 (15%)`
+  与 `⚠ kie_production: empty_fields`。
+- **判定：既有行为，非 v1.8.3 回归**——前端 `renderQualityPanelPro` 与 v1.8.2 的 `app.js` **逐行等价**
+  （59 行，唯一差异是 `export` 前缀；2026-09-16 脚本比对确认）。
+- 根因（两层）：
+  1. 后端 `app/models/api_models.py:136-144` 把 `kie_fields_count` / `kie_confidence_avg` /
+     `kie_production_hit` / `kie_production_reason` 的默认值定义为 `0` / `0.0` / `False` / `""` ——
+     **未跑 KIE 的任务照样带这些零值**（不是 `null`/缺省）；`kie_production_reason` 由
+     `document_pipeline_orchestrator.py:1052/1062` 的 `evaluate_kie_production_hit` 写入。
+  2. 前端 `modules/result-panels/quality.js` 的显示条件是「面板显示 = `kieAttempted || hasBackfill`，
+     KIE 行显示 = `kie_confidence_avg != null`」——layout 任务有 backfill（Tables 16）→ 面板正常显示
+     → KIE 行因默认值 `0.0` 而非 null 被一并显示。
+- 修复方向（二选一，未做）：
+  - **A 后端**：这些字段改 `Optional[...] = None`，前端 `!= null` 判断天然生效（零前端改动）；
+    代价 = 动契约（OpenAPI 快照 / `batch_export_service` CSV 列 / KIE 契约测试需同步）。
+  - **B 前端**：KIE 行显示条件从 `!= null` 收紧为 `kieAttempted`（或 `kie_stage` 非空）；
+    纯前端、风险小，但属行为变更，需补 vitest/e2e 覆盖。
+- 触发：并入 v1.9；若客户对结果面板"零值误导"有感知则提前。
+
+### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
+- 背景：v1.8.3 FRONT-C1 走查 + SPLIT-U4 期间，同一类缺口**两次暴露**——**"声明的东西是否真的被接上"没有巡检**。
+  1. **孤儿模块**：`frontend/modules/floating-progress.js`（D11，92 行）**不被任何文件 import**（v1.8.2 起其三个
+     函数就无外部调用者，`index.html` 有 DOM 无 JS 驱动）→ 浏览器从不加载。接线属行为变更，需单独决策。
+  2. **悬空测试**：4 个测试文件在 v1.8.2 拆分后与实现漂移（`tasks` / `process_document` 迁至 `app.core.runtime`），
+     且**不在 `kie-phase-a.yml` 列表、不在任何验收文档、本地跑不了（需 paddle）** → 靠云端全量偶然撞出
+     （`test_analyze_kie_options.py` 甚至中断了整个 collection）。2026-09-16 已修复（commit `579a454` / `8cf4dd7` / `ebf859d`）。
+- 共同缺口：模块要"被 import"、测试要"被某处登记并真的运行"——两者都缺机检。
+- 建议（不属 v1.8.3 范围）：
+  ① 前端**孤儿模块可达性审计**（本次为一次性人工核查，脚本未落地）；
+  ② `backend/tests/*.py` 必须出现在 `kie-phase-a.yml` 的 Phase A 列表**或**某个登记表里（悬空测试巡检）；
+  ③ 全量 pytest 口径加 `--continue-on-collection-errors`——本次一个 collection error 让 430 个用例一个都没跑。
+- 相关已知 gap：`lint_frontend.py` F6 是**名字级弱断言**，抓不到"在 deps 里被引用但漏 import"（v1.8.3 B5a 实际踩中一次，
+  靠 e2e + pageerror 探针定位）。彻底解法需作用域分析。
+
+### P-009 · `docs/release/README.md` 版本索引落后 4 版（2026-09-16，v1.8.3 发版时发现）
+- 现状：索引表最新一行是 **v1.6.0**；`v1.7.0` / `v1.8.0` / `v1.8.1.0` / `v1.8.2.0` 四个 tag 均未登记，
+  且 `RELEASE_1.7_NOTES.md` 及之后**都不存在**——v1.7 起实际简化了 NOTES/CHECKLIST 流程。
+- 影响：低。发版信息由 `CHANGELOG.md` 承载（每版都有段），索引表只是导航层；但从 `docs/release/README.md`
+  进入的读者会以为项目停在 v1.6.0。
+- 待决（二选一）：
+  ① 补齐 v1.7 → v1.8.3 五行（并决定是否恢复 NOTES 文件）；
+  ② **承认流程已简化**：把索引表的 Notes/Checklist 列改为"见 CHANGELOG 对应段"，删除失效引用。
+  ② 更符合近四版的实际做法（都没写 NOTES）。
+- 触发：下一次发版前，或并入 v1.9 的文档整理。

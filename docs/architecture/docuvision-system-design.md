@@ -4,7 +4,7 @@
 > **File**: `docuvision-system-design.md`（英文路径名；本文标题保留中文）  
 > 版本：v1.12  
 > 日期：2026-05-20  
-> 最近对照：v1.8.2.0 / tag v1.8.2.0 / commit 9665e58（2026-09-15）  
+> 最近对照：v1.8.3.0 / tag v1.8.3.0 / commit 704adcd（2026-09-16）  
 > 参考：Azure Document Intelligence Layout API（layout-checklist.jpg.json 等样本）
 
 **文档地图**

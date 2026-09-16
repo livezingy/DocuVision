@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.8.3] — 2026-09-16
 
-Tag: **v1.8.3**. Branch: `feature/v1.8.3`. Front-end split: `frontend/app.js`
+Tag: **v1.8.3.0**. Branch: `feature/v1.8.3`. Front-end split: `frontend/app.js`
 5708 → **211 lines / 1 function** (assembly + mediator only), 33 modules under
 `frontend/modules/**` (15 domains). Acceptance: local gates (lint F1-F6, C1-C8,
 `--syntax` 34/34 incl. app.js, vitest 80/80, e2e 14/14) plus **FRONT-C1** on

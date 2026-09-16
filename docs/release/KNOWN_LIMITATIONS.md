@@ -1,6 +1,6 @@
 # Known limitations
 
-> Applies through **v1.7.0 train** (tag pending). Queue persistence is v1.5; figure crops + artifact pack are v1.6; single-task result persistence is v1.7.  
+> Applies through **v1.7.0** (tag `v1.7.0`, 2026-09-07). Queue persistence is v1.5; figure crops + artifact pack are v1.6; single-task result persistence is v1.7.  
 > Release notes: [v1.7-roadmap.md](../architecture/v1.7-roadmap.md) · [RELEASE_1.6_NOTES.md](./RELEASE_1.6_NOTES.md) · [RELEASE_1.5_NOTES.md](./RELEASE_1.5_NOTES.md)  
 > Acceptance rules: [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
 

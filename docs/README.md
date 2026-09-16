@@ -23,7 +23,7 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 5. [architecture/batch-ui-roadmap.md](architecture/batch-ui-roadmap.md) — Batch UI roadmap
 6. [architecture/v1.5-roadmap.md](architecture/v1.5-roadmap.md) — v1.5 leftovers (searchable PDF, AcroForm, mail)
 7. [architecture/v1.6-roadmap.md](architecture/v1.6-roadmap.md) — v1.6.0 shipped (figure baseline + artifact pack; ZIP contract in system-design §9.1)
-8. [architecture/v1.7-roadmap.md](architecture/v1.7-roadmap.md) — v1.7.0 train (Pro single-task result persistence; tag pending)
+8. [architecture/v1.7-roadmap.md](architecture/v1.7-roadmap.md) — v1.7.0 shipped (Pro single-task result persistence; tag v1.7.0 cut 2026-09-07)
 9. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
 10. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
 11. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）

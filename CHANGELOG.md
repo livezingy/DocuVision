@@ -5,7 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.8.3] — 2026-09-16
+
+Tag: **v1.8.3**. Branch: `feature/v1.8.3`. Front-end split: `frontend/app.js`
+5708 → **211 lines / 1 function** (assembly + mediator only), 33 modules under
+`frontend/modules/**` (15 domains). Acceptance: local gates (lint F1-F6, C1-C8,
+`--syntax` 34/34 incl. app.js, vitest 80/80, e2e 14/14) plus **FRONT-C1** on
+Cloud Studio (38/38 assets 200 + JS MIME; walkthrough 9/9; cache revalidation
+green on a plain F5 via the gateway's content-MD5 ETag; SPLIT-C1 re-check green;
+SPLIT-U4 **430 passed / 0 failed**). See
+[docs/architecture/CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md)
+§ 阶段 FRONT-C1.
 
 ### Added
 - **v1.8.3 B0a — frontend governance & measurement baseline** (structure-only, no

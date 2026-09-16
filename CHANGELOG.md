@@ -400,16 +400,16 @@ Tag: **v1.8.0** (f2ad595). Branch: `feature/v1.8`.
 - `.gitignore`: ignore `backend/debug/` and `frontend/test-results/`.
 - `QualityLayer` 缺失 `table_backfill` 字段：`GET /api/v1/jobs/{id}/result` 的 `quality.table_backfill` 被 Pydantic (`extra=ignore`) 静默丢弃，BACKFILL-001 验收误判为未启用；补字段后可正常回传。
 
-## [Unreleased] — v1.7.0 train (tag pending)
+## [1.7.0] — 2026-09-07
 
-Target tag: **v1.7.0**. Branch: `feature/v1.7`.
+Tag: **v1.7.0** (commit `a72ec1d`). Branch: `feature/v1.7`.
 See [v1.7-roadmap.md](docs/architecture/v1.7-roadmap.md).
 
 ### Added
 - Pro single-task result persistence: `analyze_jobs` on the existing `QueueStore` SQLite plus `OUTPUT_DIR/{task_id}/result.json`. Startup hydrates the in-memory `tasks` dict. In-flight jobs become `interrupted` (no auto GPU resume). FIFO `TASK_KEEP_LAST_N` (default 50) deletes the DB row and output directory together. Builder: `analyze_job_store.py`. Tests: `backend/tests/test_task_persistence.py`. Cloud gate **TASK-PERSIST-001**.
 
 ### Changed
-- `APP_VERSION` default **1.7.0** (`/health` `api_version`). Tag `v1.7.0` is **not** cut in this commit.
+- `APP_VERSION` default **1.7.0** (`/health` `api_version`). Tag `v1.7.0` was cut on 2026-09-07 (commit `a72ec1d`), not in this commit.
 
 ## [1.6.0] — 2026-09-06
 

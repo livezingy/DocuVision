@@ -5,7 +5,7 @@
 ## 启动检查
 1. 读 `.codebuddy/rules/001-general.md`（通用约束，kernel 生成）。
 2. 读 `docs/R&D/PENDING.md`（待决决策；看"有 N 条结论待确认"）。
-3. 按任务读 `004-project.md`（环境/测试）或 `009-doc-sync.md`（文档同步）。
+3. 按任务读 `004-project.md`（环境/测试）、`009-doc-sync.md`（文档同步）或 `011-frontend.md`（前端架构 F1-F6）。
 
 ## 结论回流
 - 会话产生新结论 / 约定时：稳定结论晋升 `docs/architecture/`，待确认结论登记到 `docs/R&D/PENDING.md`。

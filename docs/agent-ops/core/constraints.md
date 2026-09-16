@@ -36,6 +36,9 @@
 - git push、git rebase、git reset --hard、强制推送。
 - 安装新的全局依赖或修改系统配置。
 - 公开发布（npm publish、部署生产、发文章等）。
+- 抬高棘轮上限（`scripts/file_size_allowlist.json` / `scripts/frontend_size_allowlist.json` 的既有计数只减不增）。
+- 扩大前端白名单（`scripts/frontend_domain_map.json` 的 `module_import_whitelist` / `leaf_services` / `shared_state_modules` 新增条目）。
+- 改 `frontend/index.html` 的入口脚本或加载顺序。
 
 ## 通用工程纪律
 - 改完主动跑验证，不要只改不验（Pro/Lite 验证在 Cloud/CI，给命令与期望）。

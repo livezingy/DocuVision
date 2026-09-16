@@ -1,7 +1,7 @@
 # 通用约束
 
 > 生成自 kernel `docs/agent-ops/core/`（constraints）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: constraints.md:1f7b80317eca38de -->
+<!-- kernel-ref: constraints.md:2d9384b84f473fdf -->
 
 ## 响应语言与代码语言
 - 回复默认中文；代码、注释、docstring、日志、UI 文案、命令、变量名一律英文（ASCII 优先）。
@@ -36,6 +36,9 @@
 - git push、git rebase、git reset --hard、强制推送。
 - 安装新的全局依赖或修改系统配置。
 - 公开发布（npm publish、部署生产、发文章等）。
+- 抬高棘轮上限（`scripts/file_size_allowlist.json` / `scripts/frontend_size_allowlist.json` 的既有计数只减不增）。
+- 扩大前端白名单（`scripts/frontend_domain_map.json` 的 `module_import_whitelist` / `leaf_services` / `shared_state_modules` 新增条目）。
+- 改 `frontend/index.html` 的入口脚本或加载顺序。
 
 ## 通用工程纪律
 - 改完主动跑验证，不要只改不验（Pro/Lite 验证在 Cloud/CI，给命令与期望）。

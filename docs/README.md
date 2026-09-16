@@ -71,6 +71,7 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 | [agent-ops/core/environment.md](agent-ops/core/environment.md) | Environment facts |
 | [agent-ops/core/testing.md](agent-ops/core/testing.md) | Testing & validation rules |
 | [agent-ops/core/doc-sync.md](agent-ops/core/doc-sync.md) | Doc sync mechanisms |
+| [agent-ops/core/frontend.md](agent-ops/core/frontend.md) | Frontend architecture rules (F1-F6, module landing, whitelist registry) |
 | [agent-ops/core/agents.md](agent-ops/core/agents.md) | Agent roster (role/mapping) |
 | [../AGENTS.md](../AGENTS.md) | Multi-agent rules entrypoint |
 

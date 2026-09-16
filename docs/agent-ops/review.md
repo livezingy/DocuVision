@@ -18,11 +18,12 @@
 ## 审查范围（按任务分流）
 - 纯逻辑/契约改动：本地 pytest 全绿 + 静态检查（`ruff check ... --select F401,F841`）。
 - GPU 依赖改动：mock 单测 + 在交付文档写 Cloud 验证步骤与验收标准（本机无 GPU，不跑推理）。
-- 前端改动：`node --check`；契约不变不跑 E2E；触及 UI 时列入云手测清单。
+- 前端改动：`python scripts/lint_frontend.py`（F1-F6）+ kernel `core/frontend.md`（落点 / 白名单判据）；契约不变不跑 E2E；触及 UI 时列入云手测清单。
 
 ## 审查红线（不可越过）
 - 不宣称 GPU / 云端功能"已验证"（本机无 GPU）。
 - 不改 `.env` / 密钥 / CI（`.github/workflows/**`）。
+- 不抬高棘轮上限、不扩大前端白名单、不改 `frontend/index.html` 入口（kernel `constraints.md` §自主边界，需用户授权）。
 - 不直接 push（kernel `constraints.md` §自主边界红线）。
 - 审查结论必须落盘，不口头。
 

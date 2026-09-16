@@ -1,11 +1,13 @@
-# Agent-ops audit — detect kernel-ref + living-doc drift.
+# Agent-ops audit — detect kernel-ref + living-doc drift + module-map recon.
 # Unified framework: scripts/audit_agent_ops.py (no third-party deps).
-# See docs/agent-ops/operations.md.
+# See docs/agent-ops/operations.md; check 3 (module-map) added by P-004.
 
 name: Agent-ops Audit
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
     paths:
@@ -16,6 +18,12 @@ on:
       - "scripts/audit_agent_ops.py"
       - "AGENTS.md"
       - ".gitignore"
+      # P-004: a domain/route/whitelist change must re-run the module-map audit
+      - "backend/app/routers/**"
+      - "frontend/modules/**"
+      - "scripts/frontend_domain_map.json"
+      - "docs/architecture/**"
+      - "docs/README.md"
 
 concurrency:
   group: agent-ops-audit-${{ github.ref }}
@@ -35,5 +43,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run agent-ops audit (kernel-ref + doc drift)
+      - name: Audit parser selftest (in-memory, P-004)
+        run: python scripts/audit_agent_ops.py --selftest
+
+      - name: Run agent-ops audit (kernel-ref + doc drift + module-map)
         run: python scripts/audit_agent_ops.py

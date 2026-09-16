@@ -12,6 +12,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import main as main_module
+from app.core.runtime import tasks
+from app.routers import analyzer as analyzer_module
 
 
 def _make_task(task_id: str, elements: list) -> dict:
@@ -53,17 +55,21 @@ def _elem(eid: str, kind: str, reading_order: int) -> dict:
 
 @pytest.fixture()
 def client(monkeypatch):
-    # Ensure no background processing interferes.
+    # Defensive only: these tests drive GET /blocks against a hand-built task
+    # entry and never post to analyze, so no background task would run anyway.
+    # The patch points at the router that owns the name binding
+    # (analyzer.py:284 -> background_tasks.add_task(process_document, ...));
+    # patching app.main would raise since the v1.8.2 split moved it away.
     async def _noop_process(task_id: str):
         pass
-    monkeypatch.setattr(main_module, "process_document", _noop_process)
+    monkeypatch.setattr(analyzer_module, "process_document", _noop_process)
     return TestClient(main_module.app)
 
 
 class TestBlocksReadingOrder:
     def test_reading_order_present_in_blocks(self, client):
         task_id = "ro-test-1"
-        main_module.tasks[task_id] = _make_task(
+        tasks[task_id] = _make_task(
             task_id,
             [_elem("e1", "text", 0), _elem("e2", "text", 1), _elem("e3", "figure", 2)],
         )
@@ -75,30 +81,30 @@ class TestBlocksReadingOrder:
             orders = [b["reading_order"] for b in blocks]
             assert orders == [0, 1, 2]
         finally:
-            main_module.tasks.pop(task_id, None)
+            tasks.pop(task_id, None)
 
     def test_reading_order_absent_defaults_to_zero(self, client):
         """Legacy elements without reading_order must not break the endpoint."""
         task_id = "ro-test-2"
         elem = _elem("e1", "text", 5)
         del elem["reading_order"]  # simulate legacy data
-        main_module.tasks[task_id] = _make_task(task_id, [elem])
+        tasks[task_id] = _make_task(task_id, [elem])
         try:
             resp = client.get(f"/api/v1/tasks/{task_id}/blocks?page_number=1")
             assert resp.status_code == 200, resp.text
             blocks = resp.json()["blocks"]
             assert blocks[0]["reading_order"] == 0
         finally:
-            main_module.tasks.pop(task_id, None)
+            tasks.pop(task_id, None)
 
     def test_incomplete_task_returns_400(self, client):
         task_id = "ro-test-3"
-        main_module.tasks[task_id] = {"status": "processing"}
+        tasks[task_id] = {"status": "processing"}
         try:
             resp = client.get(f"/api/v1/tasks/{task_id}/blocks")
             assert resp.status_code == 400
         finally:
-            main_module.tasks.pop(task_id, None)
+            tasks.pop(task_id, None)
 
     def test_unknown_task_returns_404(self, client):
         resp = client.get("/api/v1/tasks/nonexistent/blocks")

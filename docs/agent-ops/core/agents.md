@@ -24,7 +24,8 @@
 | `testing.md` | `004-project.mdc` | `004-project.md` |
 | `doc-sync.md` | `009-doc-sync.mdc` | `009-doc-sync.md` |
 | `routing.md` | `010-routing.mdc` | `010-routing.md` |
+| `frontend.md` | `011-frontend.mdc` | `011-frontend.md` |
 
 ## 生成与审计
 - 生成薄壳：`python scripts/sync_agent_rules.py`（写 kernel-ref 哈希，幂等）。
-- 审计漂移：`python scripts/audit_agent_ops.py`（校验 kernel-ref + doc drift，挂 PR→main CI）。
+- 审计漂移：`python scripts/audit_agent_ops.py`（kernel-ref + doc drift + module-map 对账 check 3；`--selftest` 解析回归；挂 PR→main CI，paths 覆盖 routers/modules/architecture）。

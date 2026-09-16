@@ -1,0 +1,48 @@
+# 前端架构规范（Frontend）
+
+> 唯一真源（kernel）。各 Agent 副本由 `scripts/sync_agent_rules.py` 生成，勿手改副本。
+> 生效前提：v1.8.3 前端拆分完成（`frontend/app.js` 211 行装配层；`frontend/modules/` 15 域）。
+> 地图与事实清单见 `docs/architecture/module-map.md`（§1 依赖律 / §3 域表 / §5 门禁表）。
+> **本文只写规则与义务，不复制清单**——清单的唯一真源是 `scripts/frontend_domain_map.json` 与 module-map §3。
+
+## 目标
+`app.js` 只做装配（imports + `initXxx({deps})` + boot + mediator），新 UI 函数一律进 `frontend/modules/**`；
+用机器可判的规则锁死模块边界与落点，使不同 Agent 新增前端功能时产出同构代码。
+
+## 硬规则（`lint_frontend.py` 机器判，违反 = CI 红）
+1. **F1 行数预算**：`frontend/app.js` + `modules/**` + `shared/**` 单文件 ≤500 行；存量棘轮在
+   `scripts/frontend_size_allowlist.json`，只减不增。
+2. **F2 入口棘轮**：`app.js` 顶层 `function` / `async function` 数 ≤ `app_js_functions`，只减不增。
+3. **F3 import 方向**：`modules/**` 禁 import `../app.js`、禁跨域 import 兄弟域；只许 `modules/utils/*`、
+   同目录兄弟文件、白名单文件、`shared/*`。
+4. **F4 装配形态**：`index.html` 唯一入口 `app.js`（`type="module"`）；模块文件不得被 `index.html` 直接加载。
+5. **F5 叶服务注册制**：`frontend_domain_map.json` 的 `module_import_whitelist.files` 每条必须登记于
+   `leaf_services` / `shared_state_modules`（日期 + evidence）；L1/L2/L3 判据不得放宽。
+6. **F6 init 必被装配**：`modules/**` 每个 `export function initXxx` 必须在 `app.js` 被调用
+   （名字级弱断言——见已知 gap）。
+
+## 依赖律（与 module-map §1 同源）
+- **L1 装配层唯一**：`app.js` 只装配不放域逻辑。
+- **L2 import 只许向下**：域 →（域内兄弟 | `utils/*` | `shared/*` | 白名单叶服务），禁环。
+- **L3 跨域调用经装配注入**：`initXxx({deps})` 装配期一次性完成，**禁 `window.*` 桥**。
+- **L4 共享状态走指定枢纽**：`preview-state` / `api-state`（唯一允许双向 live binding 的例外）。
+- **L5 例外注册制**：白名单是数据编辑（criterion L1+L2+L3 + evidence + 日期），不开代码口子。
+
+## 新增/修改前端代码的强制动作
+1. **落点**：新 UI 函数进对应域模块（域表见 module-map §3）；新域 → `frontend_domain_map.json` `domains`
+   + module-map §3 行 + `app.js` 装配；跨域需求 → 追加注入或提前把被调者出仓，禁建 `window.*` 桥。
+2. **同步事实源（缺一 CI 红）**：`scripts/frontend_domain_map.json`（域 / 白名单 / init 序列）、
+   `docs/architecture/module-map.md` §3/§5（域清单 / 文件数 / 门禁行）、`frontend/README_FRONTEND.md`（组件说明）。
+3. **白名单新增**：只走数据编辑，附 L1+L2+L3 判据与 evidence；叶服务一旦需要域状态或域分支，
+   即摘出白名单改为装配注入。
+4. **棘轮**：缩小后跑 `python scripts/check_frontend_baseline.py --update` 下调记录；**禁止上调**（kernel 红线）。
+
+## 本机 lint（stdlib / node，不碰 paddle）
+- `python scripts/lint_frontend.py`（F1-F6）
+- `python scripts/check_frontend_baseline.py --syntax`（`node --check` 全模块 + `app.js`）
+- `python scripts/audit_agent_ops.py`（check 3 对账 module-map §2/§3/§5 与事实源；`--selftest` 解析回归）
+
+## 已知 gap（记录在案，勿当作规则违反）
+- **F6 是名字级弱断言**：deps 里引用但漏 import 抓不到（v1.8.3 B5a 踩中一次，靠 e2e + pageerror 定位）；
+  彻底解法需作用域分析。
+- **孤儿模块无巡检**：`floating-progress.js`（D11）无 import 者仍常驻（P-008）；可达性机检未落地。

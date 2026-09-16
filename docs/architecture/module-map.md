@@ -4,6 +4,8 @@
 > 最近对照：v1.8.3.0 / commit 695414a（2026-09-16）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
+> 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F6 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-6 条——
+> 本图 §5 只登记「门禁与其实现」，不复述规则文本。
 > 本图回答「模块怎么摆、依赖往哪走、跨模块怎么对接、哪些门禁在守」。语义/契约向设计见
 > `docuvision-system-design.md`，两者互补不重叠。§2/§3/§5 由 `scripts/audit_agent_ops.py` 对账（§6）。
 

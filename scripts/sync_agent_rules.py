@@ -52,6 +52,7 @@ AGENTS = {
                     "- 006-cloud-testing（按需）：Cloud 验证速查（Cursor 专属）\n"
                     "- 009-doc-sync（globs docs/代码）：文档同步（kernel: doc-sync）\n"
                     "- 010-routing（globs backend/app）：后端路由架构规范（kernel: routing）\n"
+                    "- 011-frontend（globs frontend/）：前端架构规范（kernel: frontend）\n"
                     "- SKILLS.md：投标/试用/定制操作流程"
                 ),
             },
@@ -82,6 +83,15 @@ AGENTS = {
                     "globs": "backend/app/**/*.py",
                 },
             },
+            {
+                "out": "011-frontend.mdc",
+                "sources": ["frontend"],
+                "title": "前端架构规范",
+                "frontmatter": {
+                    "description": "前端架构规范（F1-F6 语义 / 模块落点 / 白名单注册 / 依赖律）",
+                    "globs": "frontend/**/*.js,frontend/**/*.html,frontend/**/*.css",
+                },
+            },
         ],
     },
     "codebuddy": {
@@ -110,6 +120,12 @@ AGENTS = {
                 "out": "010-routing.md",
                 "sources": ["routing"],
                 "title": "后端路由架构规范",
+                "frontmatter": None,
+            },
+            {
+                "out": "011-frontend.md",
+                "sources": ["frontend"],
+                "title": "前端架构规范",
                 "frontmatter": None,
             },
         ],

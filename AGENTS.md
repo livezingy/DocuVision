@@ -6,16 +6,16 @@
 ## 快速导航
 | 目标 | 路径 |
 |------|------|
-| 唯一真源（kernel） | `docs/agent-ops/core/constraints.md` / `environment.md` / `testing.md` / `doc-sync.md` / `routing.md` |
+| 唯一真源（kernel） | `docs/agent-ops/core/constraints.md` / `environment.md` / `testing.md` / `doc-sync.md` / `routing.md` / `frontend.md` |
 | Agent 花名册 | `docs/agent-ops/core/agents.md` |
 | 生成各 Agent 薄壳 | `python scripts/sync_agent_rules.py` |
-| 审计漂移（kernel-ref + doc） | `python scripts/audit_agent_ops.py` |
+| 审计漂移（kernel-ref + doc + module-map 对账） | `python scripts/audit_agent_ops.py`（`--selftest` 解析回归） |
 | 稳态运维（巡检 + KPI） | `docs/agent-ops/operations.md` |
 | 代码审查规范 | `docs/agent-ops/review.md` |
 | 待决决策清单 | `docs/R&D/PENDING.md` |
 
 ## 规则层次
-1. **共享约束（唯一真源）** → `docs/agent-ops/core/`（5 文件，约 60 行/个软上限）。
+1. **共享约束（唯一真源）** → `docs/agent-ops/core/`（6 文件，约 60 行/个软上限）。
 2. **各 Agent 副本（生成）** → `.cursor/rules/`、`.codebuddy/rules/`，由 sync 脚本派生并写 `kernel-ref` 哈希。
 3. **Agent 特有（本地，不参与 sync）** → 各目录的非生成文件（如 Cursor `002-python`/`003-git`）。
 4. **ZCode** → 无副本目录，原生加载本文件并直读 kernel（历史 GLM 规则已退役；patch 协议存档见 `docs/agent-ops/glm-sandbox-patch.md`）。
@@ -30,13 +30,16 @@
 - 安装新的全局依赖或修改系统配置。
 - 公开发布（npm publish、部署生产、发文章等）。
 - 本机无 GPU：不宣称 GPU / 云端功能"已验证"；GPU 依赖改动交付 mock 单测 + Cloud 验证步骤。
+- 抬高棘轮上限（`scripts/file_size_allowlist.json` / `scripts/frontend_size_allowlist.json` 的既有计数只减不增）。
+- 扩大前端白名单（`scripts/frontend_domain_map.json` 的 `module_import_whitelist` / `leaf_services` / `shared_state_modules` 新增条目）。
+- 改 `frontend/index.html` 的入口脚本或加载顺序。
 
 ### 任务分流
 | 任务 | 读 / 做 |
 |------|---------|
 | 纯逻辑/契约改动 | kernel `testing.md`（测试分层）+ 本地 pytest 全绿 + 小步 commit |
 | GPU 依赖改动 | mock 单测 + 交付文档写 Cloud 验证步骤与验收标准 |
-| 前端改动 | `node --check`；触及 UI 时列云手测清单 |
+| 前端改动 | kernel `frontend.md`（F1-F6 语义 / 落点 / 白名单注册）+ `python scripts/lint_frontend.py`；触及 UI 时列云手测清单 |
 | 试用/演示 | `docs/demo/TRIAL_REMOTE_60MIN.md` + `scripts/trial/trial_preflight.py` |
 | 审查任务 | `docs/agent-ops/review.md`（分级/证据/依据三要素） |
 

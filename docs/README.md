@@ -1,7 +1,7 @@
 # DocuVision Documentation
 
 > **Status**: living index — update when adding or renaming docs.  
-> 最近对照：v1.7.0 train open / tag pending（2026-09-06）；last shipped tag v1.6.0
+> 最近对照：v1.8.3.0 / tag v1.8.3.0 / commit 704adcd（2026-09-16）
 
 ## Onboarding
 

@@ -13,7 +13,8 @@
 
 ## Architecture (living)
 
-Read in this order when onboarding to the codebase:
+Read in this order when onboarding to the codebase.
+Start with [architecture/module-map.md](architecture/module-map.md) for the current module layout; the list below is historical reading order.
 
 1. [architecture/docuvision-system-design.md](architecture/docuvision-system-design.md) — system design hub
 2. [architecture/kie.md](architecture/kie.md) — KIE contract (Qwen2.5-VL)
@@ -26,6 +27,7 @@ Read in this order when onboarding to the codebase:
 9. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
 10. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
 11. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
+12. [architecture/module-map.md](architecture/module-map.md) — module map: backend router domains × frontend module domains, dependency laws, gate inventory (P-004)
 
 ## Validation and QA
 

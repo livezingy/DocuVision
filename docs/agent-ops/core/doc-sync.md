@@ -19,7 +19,7 @@
 | `backend/app/kie/**` | `kie.md`、`kie-custom-fields.md` |
 | `backend/app/orchestration/**` | `docuvision-system-design.md` §4 |
 | `backend/app/routers/batch*.py` | `batch-ui-roadmap.md` |
-| `backend/app/routers/**` | `docs/agent-ops/core/routing.md`（域归属 / 无 prefix / 禁 import app.main）|
+| `backend/app/routers/**` | `docs/agent-ops/core/routing.md`（规则：域归属 / 无 prefix / 禁 import app.main）、`docs/architecture/module-map.md` §2（域清单 / 端点数 / 对照行）|
 | `backend/app/core/runtime.py` | `docuvision-system-design.md`（共享单例 / 装配 `init_runtime()`）|
 | `backend/app/models/api_models.py` | `docuvision-system-design.md` §6（三层数据结构模型）|
 | `backend/app/services/export_service.py` | `docuvision-system-design.md` §9.1 |
@@ -28,7 +28,7 @@
 | `backend/app/services/persistence/queue_store.py` | `v1.5-roadmap.md` Epic Queue persistence；`v1.7-roadmap.md`（`analyze_jobs`） |
 | `backend/app/services/persistence/analyze_job_store.py` | `v1.7-roadmap.md`；`docuvision-system-design.md` §9.1「单任务 result 持久化」 |
 | `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
-| `frontend/**` | `frontend/README_FRONTEND.md` |
+| `frontend/**` | `frontend/README_FRONTEND.md`、`docs/architecture/module-map.md` §3（域清单 / 文件数 / 白名单 / 对照行） |
 
 改模块时按表同步 owning doc；表未覆盖的新模块，新增契约时一并补表。
 

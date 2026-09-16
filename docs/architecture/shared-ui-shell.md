@@ -18,9 +18,9 @@ Lite 与 Pro 共用三栏文档处理界面。本文定义**共享层边界**与
 | 模块 | 路径 | 用途 |
 |------|------|------|
 | Feature flags | [`frontend/shared/ui-features.js`](../../frontend/shared/ui-features.js) | Transactions/Mapped、Validation Dashboard 显隐 |
-| Notifications | [`frontend/shared/notifications.js`](../../frontend/shared/notifications.js) | Toast（`DocuVisionNotify.show`） |
+| Notifications | [`frontend/modules/notifications.js`](../../frontend/modules/notifications.js) | Toast（v1.8.3 B1 起迁入 modules/，F5 白名单叶服务，经装配注入） |
 | Export | [`frontend/shared/export-ui.js`](../../frontend/shared/export-ui.js) | Export 按钮绑定与下载（`DocuVisionExport.init`） |
-| Panel resize | [`frontend/shared/panel-resize.js`](../../frontend/shared/panel-resize.js) | 三栏拖拽 |
+| Panel resize | —（v1.8.3 B0b 已移除，`panel_resize_removed` flag） | 三栏拖拽（历史功能，必要时从 git 历史复活） |
 
 ## 2. 加载顺序
 

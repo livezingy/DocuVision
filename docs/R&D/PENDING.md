@@ -49,21 +49,6 @@
   + 对账体检（并入 `scripts/audit_agent_ops.py`：校验 map 内路径/脚本真实存在）+ `docs/README.md` 索引一行。
 - 前置已就绪：v1.8.2 后端段证据（`routers/` 13 域 / `core/runtime.py` / `models/api_models.py` / 双 lint 脚本 / 三条静态测试）。
 
-### P-005 · v1.8.3 FRONT-C1 云端走查待执行（2026-09-15）
-- 状态：**B0-B5b 全部落地并提交**（B5a `f024183` / B5b `71f228e`）；**FRONT-C1 是 v1.8.3 唯一未执行项**（设计稿 §7-FRONT-C1，属 U4 验收）。
-- 待执行（一次云会话办三件事）：
-  1. **FRONT-C1 走查**——Cloud Studio StaticFiles 下 ≥10 分钟人工交互（上传→分析→预览翻页→叠加层→导出 CSV/MD→批量→HITL resolve→trial key 拒绝→公式渲染），
-     DevTools Network 确认模块文件全 200 + JS MIME、无 404；
-  2. **缓存重验证实测**（D9 落地判据，**唯一部署层硬依赖**）——对 `frontend/**` 下发 `Cache-Control: no-cache` 或强 ETag，
-     然后「改模块 → 重新部署 → 普通刷新仍拿到新文件」三测；
-  3. **并入 v1.8.2 SPLIT-C1 复核**（快照零 diff + 路由冻结 + lint 双绿）**+ P-003① SPLIT-U4**（`DOCUVISION_CLOUD_TESTS=1`）。
-- 执行清单（local-only，含 PowerShell/curl 命令、判定表、排查点）：`docs/R&D/PLAN/v1.8.3-frontend-split/FRONT-C1-checklist.md`。
-- 本地已完成的等价部分：38/38 资产 200 + JS MIME、e2e 14/14、lint F1-F6 / C1-C8、`--syntax` 34/34（含 app.js）。
-- 冻结触发：若第 2 项「缓存重验证」失败（普通刷新拿到旧模块），**v1.8.3 不可发布**——需先在部署层修缓存策略。
-- 收口审计发现（既有状态，非本版回归；已写入清单附录 A）：`modules/floating-progress.js`（D11）是**唯一孤儿模块**——
-  v1.8.2 起 `showFloatingProgressCard` / `updateFloatingProgress` 就无外部调用者（`index.html` 有其 DOM 无 JS 驱动），
-  走查时「浮卡不出现」不算缺陷；接线属行为变更（v1.9 候选）。
-
 ### P-006 · `.zcode` 目录跟踪策略（2026-09-15）
 - 结论（已定）：`.zcode/` **纳入版本控制**（后续会有内容、可能值得提交），但 `.zcode/plans/` **不推远端**。
 - 已落地：`.gitignore` 新增 `.zcode/plans/`（与 `.codebuddy/plans/` 同款规则形制）。
@@ -94,3 +79,18 @@
   - **B 前端**：KIE 行显示条件从 `!= null` 收紧为 `kieAttempted`（或 `kie_stage` 非空）；
     纯前端、风险小，但属行为变更，需补 vitest/e2e 覆盖。
 - 触发：并入 v1.9；若客户对结果面板"零值误导"有感知则提前。
+
+### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
+- 背景：v1.8.3 FRONT-C1 走查 + SPLIT-U4 期间，同一类缺口**两次暴露**——**"声明的东西是否真的被接上"没有巡检**。
+  1. **孤儿模块**：`frontend/modules/floating-progress.js`（D11，92 行）**不被任何文件 import**（v1.8.2 起其三个
+     函数就无外部调用者，`index.html` 有 DOM 无 JS 驱动）→ 浏览器从不加载。接线属行为变更，需单独决策。
+  2. **悬空测试**：4 个测试文件在 v1.8.2 拆分后与实现漂移（`tasks` / `process_document` 迁至 `app.core.runtime`），
+     且**不在 `kie-phase-a.yml` 列表、不在任何验收文档、本地跑不了（需 paddle）** → 靠云端全量偶然撞出
+     （`test_analyze_kie_options.py` 甚至中断了整个 collection）。2026-09-16 已修复（commit `579a454` / `8cf4dd7` / `ebf859d`）。
+- 共同缺口：模块要"被 import"、测试要"被某处登记并真的运行"——两者都缺机检。
+- 建议（不属 v1.8.3 范围）：
+  ① 前端**孤儿模块可达性审计**（本次为一次性人工核查，脚本未落地）；
+  ② `backend/tests/*.py` 必须出现在 `kie-phase-a.yml` 的 Phase A 列表**或**某个登记表里（悬空测试巡检）；
+  ③ 全量 pytest 口径加 `--continue-on-collection-errors`——本次一个 collection error 让 430 个用例一个都没跑。
+- 相关已知 gap：`lint_frontend.py` F6 是**名字级弱断言**，抓不到"在 deps 里被引用但漏 import"（v1.8.3 B5a 实际踩中一次，
+  靠 e2e + pageerror 探针定位）。彻底解法需作用域分析。

@@ -412,6 +412,60 @@ cd backend
 python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
 ```
 
+### 阶段 FRONT-C1 — 前端拆分验收（v1.8.3，2026-09-16 已验证）
+
+> 背景：v1.8.3 把 `frontend/app.js`（5708 行）拆成 **211 行装配层 + `frontend/modules/**`（33 文件 / 15 域）**。
+> 模块 URL **不带版本令牌**（仅入口 `?v=`），因此"改了模块后用户能否拿到新文件"变成**部署层**问题（设计稿 R7 / D9）。
+> 本阶段一次覆盖三件事：**FRONT-C1 走查** + **缓存重验证** + **v1.8.2 SPLIT-C1 复核 / SPLIT-U4**。
+
+**前提**：Terminal 1 `DEBUG=false python run.py` 常驻——它同时提供 API 与 `/frontend`
+（`backend/app/main.py:127-143` 挂 `StaticFiles`，**直读磁盘**，改文件即"重新部署"，无需重启、无需 `git pull`）。
+
+```bash
+# Terminal 2 — ① 模块资产：38 个 JS 全 200 + JS MIME
+BASE=http://127.0.0.1:8000/frontend
+for f in app.js modules/api-base.js modules/api-config.js modules/api-state.js modules/batch.js \
+         modules/export-csv.js modules/hitl-review.js modules/kie-config.js modules/kie-mapping.js \
+         modules/notifications.js modules/options-dialog.js modules/overlay-render.js \
+         modules/pipeline/result.js modules/pipeline/run.js modules/preview-paging/core.js \
+         modules/preview-paging/nav.js modules/preview-paging/render.js modules/preview-state.js \
+         modules/result-panels/demo-transaction.js modules/result-panels/enhance.js \
+         modules/result-panels/figures.js modules/result-panels/json.js modules/result-panels/quality.js \
+         modules/result-panels/tables.js modules/result-panels/text.js modules/shell/tools.js \
+         modules/shell/ui.js modules/status-bar.js modules/upload-queue.js modules/utils/csv.js \
+         modules/utils/dom.js modules/utils/geometry.js modules/utils/text.js \
+         shared/demo-postprocess.js shared/export-ui.js shared/queue_preview.js \
+         shared/trial-key.js shared/ui-features.js; do
+  out=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/$f" | tr -d '\r')
+  case "$out" in 200*javascript*) ;; *) echo "BAD  $out  $f";; esac
+done
+# 期望：无 BAD 行（38/38 ok）。注意 floating-progress.js 不在列表：它不被任何文件 import，浏览器不加载（既有状态）
+
+# Terminal 2 — ② SPLIT-C1 复核（AST/静态，不需要 run.py）
+cd backend
+python -m pytest tests/test_route_contract_freeze.py tests/test_route_inventory.py -q    # 4 passed
+DOCUVISION_CLOUD_TESTS=1 python -m pytest tests/test_openapi_snapshot_full.py -q         # 2 passed（零 diff）
+python ../scripts/lint_routes.py && python ../scripts/lint_file_size.py                  # OK / OK
+
+# Terminal 2 — ③ SPLIT-U4（v1.8.2 拆分遗留项收口）
+DOCUVISION_CLOUD_TESTS=1 python -m pytest tests/ -q --tb=short --ignore=tests/test_live_api.py
+# 2026-09-16 实测：430 passed, 1 skipped, 0 failed, 0 error
+```
+
+**浏览器手工走查（≥10 min）**：上传 → layout / invoice(KIE) / receipt / table mapping 分析 → 预览翻页 →
+叠加层开关 → 导出 CSV/MD → 批量 → HITL resolve → trial key 拒绝 → KaTeX 公式渲染；
+DevTools Network 确认 JS **全 200、无 404**（`type="module"` 下任一模块 404 = 整站静默不执行）。
+
+**缓存重验证（R7 / D9 的落地判据）**：给任一模块追加一行注释 → **普通刷新（F5）** → Response 内能搜到该注释。
+
+> **2026-09-16 实测：通过。** CloudStudio Gateway 对 `/frontend/**` 返回 **内容 MD5 形式的 ETag** + `Last-Modified`
+> （不发 `Cache-Control`）；内容一变 ETag 必变 → 普通刷新即取回新模块，**无需部署层额外下发 `no-cache`**。
+> 判读要点：gzip 下 size 差异极小（探针仅 19 B），**"比 size"是弱判据**，强判据是 **Response 里能搜到新内容**。
+> 探针用完必须还原并验证（`git status` 干净 + `grep -c` 归 0）。
+
+**通过标准**：38/38 资产 200 + JS MIME；走查全过 + Network 无 404；缓存重验证 F5 拿到新内容；
+SPLIT-C1 复核全绿；SPLIT-U4 = **0 failed / 0 error**。
+
 ## 3. 结果字段说明
 
 | 字段 | 含义 |

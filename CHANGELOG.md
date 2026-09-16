@@ -5,6 +5,48 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **P-004 — current-state module map + fail-closed recon** (PR #21, merge `a88fdb4`):
+  - `docs/architecture/module-map.md`: backend `routers/` 13 domains × frontend
+    `modules/` 15 domains, dependency laws L1-L5, the cross-end consumer table, the
+    invariant gate table (R1-R3 / INV-1 / INV-2 / S-a/b/c / F1-F6 / C1-C8, incl. the
+    retired rows) and its own recon protocol A0-A5. Registered in `docs/README.md`;
+    owning rows added to `docs/agent-ops/core/doc-sync.md`.
+  - `scripts/audit_agent_ops.py` **check 3 (module-map recon)**, fail-closed:
+    ERROR on a missing/duplicated anchor, an empty or column-broken anchored table,
+    referenced-path drift, router-count / endpoint-count drift, frontend domain-set or
+    infra-count drift, gate-symbol drift and missing registration; WARN on 最近对照
+    freshness vs CHANGELOG. New `--selftest` (9 in-memory parser regressions).
+  - `docs/architecture/shared-ui-shell.md`: two stale references to files removed in
+    v1.8.3 B0b/B1 fixed — the last standing living-doc drift WARN; the audit is now
+    0 error / 0 warning.
+- **P-004 PR-B — frontend rules promoted into the kernel** (PR #23, merge `1853610`):
+  - `docs/agent-ops/core/frontend.md` (new, kernel file 7): frontend hard rules F1-F6,
+    dependency laws L1-L5, the mandatory actions for new or modified frontend code
+    (landing point / fact sources to sync / whitelist registration / ratchet), the local
+    lint commands and the known gaps (F6 is a name-level weak assertion; the orphan
+    module has no reachability check).
+  - `docs/agent-ops/core/constraints.md`: three self-protection red lines — raising a
+    ratchet cap (`*_size_allowlist.json` counts only decrease), widening the frontend
+    whitelist (`module_import_whitelist` / `leaf_services` / `shared_state_modules`) and
+    changing the `frontend/index.html` entry script or load order.
+  - `scripts/sync_agent_rules.py` maps `frontend.md` to `.cursor/rules/011-frontend.mdc`
+    and `.codebuddy/rules/011-frontend.md` (kernel and copies in one commit);
+    `AGENTS.md`'s frontend task-routing row now points at `frontend.md` +
+    `python scripts/lint_frontend.py` (previously `node --check` only).
+
+### Changed
+- `.github/workflows/agent-ops-audit.yml`: also runs on push to `main` and when
+  `backend/app/routers/**`, `frontend/modules/**`, `scripts/frontend_domain_map.json`,
+  `docs/architecture/**` or `docs/README.md` change; new `--selftest` step.
+- `docs/agent-ops/operations.md` / `docs/agent-ops/review.md` / `docs/README.md`:
+  module-map recon and `--selftest` added to the inspection routine, the review
+  checklist and the kernel index.
+- `docs/architecture/module-map.md`: 最近对照 refreshed to `v1.8.3.0 / commit 1853610`
+  (doc-sync mechanism 4 — refresh when merging to `main`).
+
 ## [1.8.3] — 2026-09-16
 
 Tag: **v1.8.3.0**. Branch: `feature/v1.8.3`. Front-end split: `frontend/app.js`

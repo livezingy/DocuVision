@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（6 组）
+## 待确认（8 组）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -94,3 +94,25 @@
   ② **承认流程已简化**：把索引表的 Notes/Checklist 列改为"见 CHANGELOG 对应段"，删除失效引用。
   ② 更符合近四版的实际做法（都没写 NOTES）。
 - 触发：下一次发版前，或并入 v1.9 的文档整理。
+
+### P-010 · 前端风格 linter 缺位（2026-09-17，P-004 收尾时登记）
+- 现状：`DEVELOPMENT.md` 第 4-6 条与 kernel `frontend.md` 只覆盖**结构与边界**（F1-F6 / C1-C8），
+  无代码风格检查；后端至少有 `ruff check backend/ packages/docuvision-core/ --select F401,F841`（kernel `testing.md` §死代码检查）。
+- 缺口：`frontend/modules/**` + `shared/**` 的**死代码 / 未用变量 / 未用导出**无任何机检，只能靠人读——
+  P-008 的孤儿模块 `floating-progress.js`（D11）正是这类缺口的表现。
+- 不做的理由（决定维持）：引入 ESLint/Prettier 会一次性报出大量既有问题（33 个模块 + shared + tests），
+  必须单独立项：① 只开 high-value 规则（`no-unused-vars` / `no-undef` / import 相关），
+  ② 分批清账到零，③ 最后才进 CI。
+- 触发：v1.9；或前端出现一次"死代码 / 未用导出"类事故时提前。
+- 相关：P-008（孤儿模块与悬空测试的巡检门禁）。
+
+### P-011 · CI 触发分支仍只覆盖 main（2026-09-17，P-004 收尾时登记）
+- 现状：`lint.yml`、`agent-ops-audit.yml`、`kie-phase-a.yml` 的 `pull_request` 均为 `branches: [main]`
+  （`agent-ops-audit.yml` 另有 push→main）→ **feature 分支阶段完全依赖 agent 自觉跑本机门禁**。
+- 本次实证代价：P-004 的 stacked PR #22 因 base 非 main，`statusCheckRollup: []`——**一次 CI 都没跑**，
+  只有 retarget 到 main 之后才被校验（`gh pr checks 22` → no checks reported）。
+- 选项：① `pull_request` 放开为 `["**"]`（CI 配额与噪声上升，需先确认）；
+  ② 维持 main-only，但把"本机四门禁 + `audit --selftest`"写进 feature 分支的 Definition of Done；
+  ③ 折中：只对 `docs/**`、`scripts/**`、`*.md` 这类低风险路径放开。
+- 触发：下一批 feature 分支开工前定；当前实际按 ② 运转（本机跑门禁 + 合 main 时 CI 复核）。
+- 相关：`.cursor/rules/003-git.mdc`（`[run ci]` 手动触发约定）、P-008、`lint.yml` 的路径过滤（docs-only PR 不触发 lint）。

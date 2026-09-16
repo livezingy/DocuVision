@@ -141,5 +141,6 @@ OpenAPI 全量快照：云端 pytest（上云前本机自查用 INV-2 契约冻�
 | A5 新鲜度 | 头部「最近对照」版本 vs CHANGELOG 第一个 `## [x.y.z]` 头：两侧各取前 3 段数字成元组比较，**doc < latest → WARN（含双方版本号）**；CHANGELOG 无匹配 → WARN skip；禁止字符串 rstrip 归一化 | WARN |
 
 刷新触发（owning 行）：新增/删除 routers 域文件或 modules 域 → 同步 §2/§3 行 + 端点数/文件数 +
-§5 门禁行 + 头部对照行。本机命令：`python scripts/audit_agent_ops.py`（与 CI 同一实现）；
+§5 门禁行 + 头部对照行。**对照行的 commit 写本 PR 的 base commit**（不是合入后的 merge commit；口径见
+kernel `docs/agent-ops/core/doc-sync.md` 机制 4）。本机命令：`python scripts/audit_agent_ops.py`（与 CI 同一实现）；
 解析器回归：`python scripts/audit_agent_ops.py --selftest`。

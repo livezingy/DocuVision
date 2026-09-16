@@ -46,6 +46,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checklist and the kernel index.
 - `docs/architecture/module-map.md`: 最近对照 refreshed to `v1.8.3.0 / commit 1853610`
   (doc-sync mechanism 4 — refresh when merging to `main`).
+- `docs/release/**` cleanup batch: the release index is now explicitly **historical**
+  (v1.6 and earlier), release notes are documented as living in this file **from v1.7
+  on** (no new `RELEASE_*_NOTES.md`), the known-limitations scope is bumped to v1.8.3,
+  and the `MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md` orphan link is restored.
+- `CHANGELOG.md`: the v1.7.0 release notes were moved out of a stale
+  `## [Unreleased] — v1.7.0 train (tag pending)` heading into a proper
+  `## [1.7.0] — 2026-09-07` section, and five places claiming "tag pending" /
+  "tag not cut" were corrected (`tag v1.7.0` was cut 2026-09-07, commit `a72ec1d`).
 
 ## [1.8.3] — 2026-09-16
 

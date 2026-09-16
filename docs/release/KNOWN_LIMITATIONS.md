@@ -1,6 +1,6 @@
 # Known limitations
 
-> Applies through **v1.7.0** (tag `v1.7.0`, 2026-09-07). Queue persistence is v1.5; figure crops + artifact pack are v1.6; single-task result persistence is v1.7.  
+> Applies through **v1.8.3** (tag `v1.8.3.0`, 2026-09-16). Queue persistence is v1.5; figure crops + artifact pack are v1.6; single-task result persistence is v1.7; frontend module split + doc governance are v1.8.3 (structure / docs only, no capability change — so the limits below are unaffected).  
 > Release notes: [v1.7-roadmap.md](../architecture/v1.7-roadmap.md) · [RELEASE_1.6_NOTES.md](./RELEASE_1.6_NOTES.md) · [RELEASE_1.5_NOTES.md](./RELEASE_1.5_NOTES.md)  
 > Acceptance rules: [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
 
@@ -79,7 +79,7 @@
 - **v1.5 leftovers**：可搜索 PDF、AcroForm、Webhook 持久化、邮件 IMAP 独立服务 — [v1.5-roadmap.md](../architecture/v1.5-roadmap.md)。
 - **Batch ZIP / Lite ZIP / 表格截图**：v1.6 明确不做；Batch ZIP 需单独体积/异步设计。
 - **Recent-tasks UI**：后端可恢复，刷新页仍会丢 `currentTaskId`。
-- **维护**：Playwright E2E P1/P2；文档漂移审计脚本（`009-doc-sync` 机制 5，暂不建）。
+- **维护**：Playwright E2E P1/P2；文档漂移审计脚本**已落地**——`scripts/audit_agent_ops.py`（kernel-ref 哈希 + living doc 引用路径存在性 + module-map 对账，P-004），已挂 PR→main CI；`009-doc-sync` 机制 5 里"grep 端点/字段对照代码符号表"的那一半仍未实现。
 
 Cloud 验收：[MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md)。
 

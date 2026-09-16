@@ -1,7 +1,7 @@
 # 文档同步（强制，防漂移）
 
 > 生成自 kernel `docs/agent-ops/core/`（doc-sync）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: doc-sync.md:bc5e56f7dcaed001 -->
+<!-- kernel-ref: doc-sync.md:930a99aaea9dfef3 -->
 
 ## 根因
 文档滞后源于：无强制触发 / 无归属 / 文档远离代码 / 无漂移检测 / 文档与测试脱节。以下机制对症。
@@ -29,6 +29,7 @@
 | `backend/app/services/persistence/analyze_job_store.py` | `v1.7-roadmap.md`；`docuvision-system-design.md` §9.1「单任务 result 持久化」 |
 | `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
 | `frontend/**` | `frontend/README_FRONTEND.md`、`docs/architecture/module-map.md` §3（域清单 / 文件数 / 白名单 / 对照行） |
+| `scripts/lint_file_size.py`、`lint_routes.py`、`lint_frontend.py`、`check_frontend_baseline.py`（六条硬规范的机检实现） | **`DEVELOPMENT.md`（规范型 owning doc，非派生视图）**——规则文本在 `DEVELOPMENT.md` 第 1-6 条；`docs/architecture/module-map.md` §5 只登记「门禁与其实现」，kernel `routing.md` / `frontend.md` 是同源规则（面向 Agent 的可执行措辞） |
 
 改模块时按表同步 owning doc；表未覆盖的新模块，新增契约时一并补表。
 
@@ -44,6 +45,9 @@
 > 最近对照：v1.4.0 / commit abc123（2026-07-25）
 ```
 - 不强制每次小改刷新，但**发版/合 main 时必须刷新**。
+- **刷新口径 = 本 PR 的 base commit**（该 PR 的分支创建时其 base 分支的 tip）——**不是**合入后的 merge commit。
+  后者会让文档在每次收口 PR 之后固定落后一格，而 A5 只比版本号、拦不住这种落后。
+  同一 PR 内已刷新过的文档，收口时无需再刷。
 - 漂移可见——读者一眼知道文档对照哪个版本。
 
 ## 机制 5：漂移审计脚本

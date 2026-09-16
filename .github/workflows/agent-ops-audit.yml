@@ -18,6 +18,8 @@ on:
       - "scripts/audit_agent_ops.py"
       - "AGENTS.md"
       - ".gitignore"
+      # The six hard rules' owning doc: a rule edit must re-run the audit.
+      - "DEVELOPMENT.md"
       # P-004: a domain/route/whitelist change must re-run the module-map audit
       - "backend/app/routers/**"
       - "frontend/modules/**"

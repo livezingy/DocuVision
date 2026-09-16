@@ -1,5 +1,5 @@
-# File-size + route-architecture gate (v1.8.2) + frontend structure gate (v1.8.3).
-# Rules: DEVELOPMENT.md; kernel: docs/agent-ops/core/routing.md.
+# File-size + route-architecture gate (v1.8.2) + frontend structure + baseline gates (v1.8.3).
+# Rules: DEVELOPMENT.md (owning doc); kernel: docs/agent-ops/core/routing.md + frontend.md.
 # All scripts are stdlib-only (no pip install needed).
 
 name: Lint
@@ -39,3 +39,6 @@ jobs:
 
       - name: Frontend structure lint
         run: python scripts/lint_frontend.py
+
+      - name: Frontend baseline gate (C1-C8)
+        run: python scripts/check_frontend_baseline.py

@@ -40,12 +40,12 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 | [../test_data/AutoTest/PRO_UI_E2E_PLAN.md](../test_data/AutoTest/PRO_UI_E2E_PLAN.md) | Playwright E2E plan |
 | [../backend/tests/KIE_ACCEPTANCE_CRITERIA.md](../backend/tests/KIE_ACCEPTANCE_CRITERIA.md) | KIE acceptance criteria |
 
-## Release (frozen per version)
+## Release
 
 | Doc | Purpose |
 |-----|---------|
-| [release/README.md](release/README.md) | Version index |
-| [release/KNOWN_LIMITATIONS.md](release/KNOWN_LIMITATIONS.md) | Known limitations (living summary) |
+| [release/README.md](release/README.md) | Historical release index (v1.6 and earlier); **from v1.7 on, [`../CHANGELOG.md`](../CHANGELOG.md) is the single entry point** for release notes |
+| [release/KNOWN_LIMITATIONS.md](release/KNOWN_LIMITATIONS.md) | Known limitations (living summary; applies through v1.8.3) |
 
 ## Component-local READMEs
 

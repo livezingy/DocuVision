@@ -84,17 +84,6 @@
 - 相关已知 gap：`lint_frontend.py` F6 是**名字级弱断言**，抓不到"在 deps 里被引用但漏 import"（v1.8.3 B5a 实际踩中一次，
   靠 e2e + pageerror 探针定位）。彻底解法需作用域分析。
 
-### P-009 · `docs/release/README.md` 版本索引落后 4 版（2026-09-16，v1.8.3 发版时发现）
-- 现状：索引表最新一行是 **v1.6.0**；`v1.7.0` / `v1.8.0` / `v1.8.1.0` / `v1.8.2.0` 四个 tag 均未登记，
-  且 `RELEASE_1.7_NOTES.md` 及之后**都不存在**——v1.7 起实际简化了 NOTES/CHECKLIST 流程。
-- 影响：低。发版信息由 `CHANGELOG.md` 承载（每版都有段），索引表只是导航层；但从 `docs/release/README.md`
-  进入的读者会以为项目停在 v1.6.0。
-- 待决（二选一）：
-  ① 补齐 v1.7 → v1.8.3 五行（并决定是否恢复 NOTES 文件）；
-  ② **承认流程已简化**：把索引表的 Notes/Checklist 列改为"见 CHANGELOG 对应段"，删除失效引用。
-  ② 更符合近四版的实际做法（都没写 NOTES）。
-- 触发：下一次发版前，或并入 v1.9 的文档整理。
-
 ### P-010 · 前端风格 linter 缺位（2026-09-17，P-004 收尾时登记）
 - 现状：`DEVELOPMENT.md` 第 4-6 条与 kernel `frontend.md` 只覆盖**结构与边界**（F1-F6 / C1-C8），
   无代码风格检查；后端至少有 `ruff check backend/ packages/docuvision-core/ --select F401,F841`（kernel `testing.md` §死代码检查）。
@@ -116,3 +105,17 @@
   ③ 折中：只对 `docs/**`、`scripts/**`、`*.md` 这类低风险路径放开。
 - 触发：下一批 feature 分支开工前定；当前实际按 ② 运转（本机跑门禁 + 合 main 时 CI 复核）。
 - 相关：`.cursor/rules/003-git.mdc`（`[run ci]` 手动触发约定）、P-008、`lint.yml` 的路径过滤（docs-only PR 不触发 lint）。
+
+### P-012 · 核实 `v1.7-roadmap.md` 的云端验收状态（`TASK-PERSIST-001`）（2026-09-17）
+- 来源：原 **P-009「发布文档清账批次」**把它明确列为"**待核实（勿凭猜测改）**"的一项。该批次已于 2026-09-17
+  按选项 ② 执行完毕并从本清单移除（`docs/release/README.md` 改为"历史快照 + v1.7 起 CHANGELOG 为唯一入口"、
+  `KNOWN_LIMITATIONS.md` 范围刷到 v1.8.3）；此项单独保留，以免随批次一起静默丢失。
+- 现象：`docs/architecture/v1.7-roadmap.md` 头部 `Status` 仍写 `Cloud **TASK-PERSIST-001** pending`，
+  而 `v1.7.0` 早已发版（tag `v1.7.0`，2026-09-07）。"pending" 有两种可能：
+  ① 该云端验收**确未执行**；② **已执行但未回写状态**。
+- 待核实（二选一）：
+  ① 确未执行 → 保留 pending，但在 roadmap 里注明原因与触发条件（何时必须执行、由哪一步阻塞）；
+  ② 已执行未回写 → 把 `Status` 更新为结论，并附可核验的 Cloud 证据（批次 / 命令 / 输出片段）。
+- 证据入口：`test_data/acceptance/MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md`（2026-09-17 实测存在）+
+  `docs/architecture/v1.7-roadmap.md` 的 Train identity 表。
+- 触发：下一次 v1.7 相关复核，或 v1.9 文档整理时一并处理。

@@ -71,6 +71,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     standing living contract — listed explicitly in footnote 2, so the empty cell becomes a stated conclusion
     instead of a question. The judge rule ("a carrier describes this module's own contract; a passing mention
     does not count") and the five near-miss mentions are recorded for the next reviewer.
+  - **CI cost/quota policy recorded** — `docs/agent-ops/operations.md` gains a "CI 成本与配额" section (2026-09-17):
+    the repository is **public**, so Actions minutes are free and only concurrency slots (~20) and signal quality
+    actually bind. Measured job durations (`gh run list` created→updated): Agent-ops Audit 11-12s, Lint 12-16s
+    (pre-ESLint; the new ESLint block is pending its first observed run), KIE Phase A 21-27s. GitHub bills per
+    job rounded up to the minute, so the ESLint-in-CI decision only carries a quota cost **if the repo becomes
+    private** — then a PR push costs 3-4 billed minutes (~500-650 pushes/month against the Free 2,000-minute
+    plan). The section records the re-evaluation order for that case (narrow `paths` by "can this flip the
+    verdict" -> drop coarse globs -> only then consider dropping the ESLint step, which is the only gate that can
+    see dead code) and the noise levers already in place (`cancel-in-progress`, `paths` filters, the `[run ci]`
+    gate, and the fact that an unprotected `main` makes checks advisory rather than blocking).
+    `lint.yml`'s header now points at it.
 - **P-004 — current-state module map + fail-closed recon** (PR #21, merge `a88fdb4`):
   - `docs/architecture/module-map.md`: backend `routers/` 13 domains × frontend
     `modules/` 15 domains, dependency laws L1-L5, the cross-end consumer table, the

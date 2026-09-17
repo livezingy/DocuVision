@@ -32,3 +32,32 @@
 module-map 对账输入 `backend/app/routers/**`、`frontend/modules/**`、`scripts/frontend_domain_map.json`、
 `docs/architecture/**`、`docs/README.md`，与 check 4 的真源 `backend/tests/**`（2026-09-17 起）。
 注：`paths` 只作用于 `pull_request`——`push` 到 main 无过滤，audit 每次必跑。
+
+## CI 成本与配额（2026-09-17 实测，含 ESLint 接入后的口径）
+
+**现状：公开仓（`livezingy/DocuVision`，PUBLIC）→ 标准 runner 的 Actions 分钟数免费、不计费**，
+所以"配额"**不是**本仓当下的约束。真正的约束是**并发槽位**（公开仓免费计划约 20 个并发 job，
+本仓每次 PR push 占 3-4 个 → 需 ~5-7 个 PR 同时推才可能碰到，单人仓可忽略）与**信号质量**。
+
+单次时长实测（`gh run list` 的 createdAt→updatedAt；每条 workflow = 1 个 job，
+GitHub 按 job 计费且**向上取整到 1 分钟**）：
+
+| workflow | 实测 | 备注 |
+|---|---|---|
+| Agent-ops Audit | 11-12s | 纯 stdlib，零安装 |
+| Lint（Python 四门禁） | 12-16s | 2026-09-17 之前的口径 |
+| Lint（**含 ESLint 块**） | **待首次 push 观测**（预估 60-90s：`npm ci` 冷启动 30-60s + `eslint .` 本机 1.4s；未验证） | 本仓**唯一的 node 依赖面**，也是唯一新增的"与代码无关"失败源（npm registry 抖动 / 缓存键变化） |
+| KIE Phase A | 21-27s | 已含 `cache: pip` 的依赖安装；push 事件默认 `skipped`（`[run ci]` 闸门生效） |
+
+**触发即重算：仓库转为私有**（或迁到带配额的 CI）→ 一次 PR push 跑 3-4 个 job = **3-4 计费分钟**；
+Free 计划 2,000 min/月 ≈ **500-650 次 PR push/月**。届时的取舍顺序：① 按"改动能否翻转判决"逐条收窄
+`paths`；② 把 `scripts/**` 一类宽路径改回精确清单；③ **最后**才考虑砍 ESLint 步骤——它是唯一能看到
+死代码/未用绑定的门禁（F1-F7、C1-C9 都是结构性的），砍它等于退回 P-010 之前。
+另：若给 `main` 加 branch protection 并勾选 required checks，噪声成本立刻从"注意力"变成"合并延迟"
+（每个 PR 至少等最慢的一条），那时更该精确化 `paths` 而不是全开。
+
+**噪声控制（比配额更真实）**：三条 workflow 均已开 `concurrency.cancel-in-progress: true`；
+`pull_request` 均按 `paths` 过滤；`kie-phase-a.yml` 另有 push 的 job 级 `[run ci]` 闸门；
+**`main` 无 branch protection**（`gh api .../protection` → 404），即检查是**提示而非阻塞**——
+所以噪声的主要形态是"红了没人被迫修 → 信号贬值"。唯一有效的原则是：
+**让每条 workflow 只在"改动能翻转其判决"时触发**，而不是"全开 + 习惯性忽略"。

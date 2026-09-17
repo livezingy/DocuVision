@@ -2,6 +2,7 @@
 # Rules: DEVELOPMENT.md (owning doc); kernel: docs/agent-ops/core/routing.md + frontend.md.
 # The Python scripts are stdlib-only; the final block is the one Node dependency
 # (frontend ESLint, P-010 stage 3) - it needs `npm ci`, hence the lockfile is authoritative.
+# Cost / trigger notes (job minutes, public-vs-private, noise policy): docs/agent-ops/operations.md.
 
 name: Lint
 

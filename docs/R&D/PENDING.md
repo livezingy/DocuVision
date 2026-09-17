@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（8 组）
+## 待确认（11 组）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -83,6 +83,17 @@
   ③ 全量 pytest 口径加 `--continue-on-collection-errors`——本次一个 collection error 让 430 个用例一个都没跑。
 - 相关已知 gap：`lint_frontend.py` F6 是**名字级弱断言**，抓不到"在 deps 里被引用但漏 import"（v1.8.3 B5a 实际踩中一次，
   靠 e2e + pageerror 探针定位）。彻底解法需作用域分析。
+- **状态（2026-09-17，治理批次已落地，①②③ 全部机检化——本组可结）**：
+  ① **孤儿模块** = lint **F7**（`modules/**` 必被 `app.js` / `index.html` / 其它脚本 import；例外登记
+  `frontend_domain_map.json` 的 `known_orphans`，每条附 `added` + evidence；**只登记不接线**）。
+  ② **悬空测试** = audit **check 4**（`scripts/test_registry_audit.py`：`backend/tests/test_registry.json`
+  ↔ 递归磁盘 `test_*.py` ↔ `kie-phase-a.yml` Phase A 列表三向对账；未登记 / 幽灵条目 / CI 跑到未登记或
+  kind≠`phase-a-ci` = ERROR，CI 侧漂移 = WARN）。
+  ③ **collection 容错** = `backend/pytest.ini` 的 `--continue-on-collection-errors`（仍以非零码退出）。
+  首次全量 F7 扫描（多行 import 感知）结果：**只有 `floating-progress.js`（D11）一个孤儿**，与 P-008 记载一致；
+  P-010 清账时又暴露第二个 —— `modules/utils/geometry.js`（其唯一生产 importer 是 app.js 的**死 import**，
+  删掉后成为孤儿；5 个函数现仅被 `tests/unit/geometry.test.js` 覆盖）。
+  **遗留 gap（保留在本组）**：F6 仍是名字级弱断言；F7 只判可达性、不判接线——两个已登记孤儿尚未接线/退役。
 
 ### P-010 · 前端风格 linter 缺位（2026-09-17，P-004 收尾时登记）
 - 现状：`DEVELOPMENT.md` 第 4-6 条与 kernel `frontend.md` 只覆盖**结构与边界**（F1-F6 / C1-C8），
@@ -94,6 +105,16 @@
   ② 分批清账到零，③ 最后才进 CI。
 - 触发：v1.9；或前端出现一次"死代码 / 未用导出"类事故时提前。
 - 相关：P-008（孤儿模块与悬空测试的巡检门禁）。
+- **状态（2026-09-17，阶段 1 已落地）**：`frontend/eslint.config.mjs`（flat config；只开
+  `no-unused-vars`（`args:"none"`）+ `no-undef`；browser globals + 4 个**真实**跨脚本全局
+  `DocuVisionExport` / `DocuVisionDemo` / `DocuVisionUiFeatures` / `katex`；作用域 = `app.js` +
+  `modules/**` + `shared/**`，`frontend/tests/**` 留第二批）+ `package.json` 的 `"lint": "eslint ."`。
+  首轮 **76 项**（其中 49 项在 app.js：v1.8.3 拆分后遗留的**死 import**）已清账到 **1 项**。
+  唯一剩余项不是风格问题而是**真实缺陷**（→ P-014），按 kernel「禁止顺手修无关缺陷」另开 commit，
+  故 **阶段 3（接 CI）暂缓**：`npm run lint` 当前退出码为 1。
+  回归证据：vitest **80/80**、e2e **14/14** 全绿；`frontend/app.js` 211 → **173** 行（棘轮已下调）。
+  3 个结构性测试的断言从"app.js import X"改为"X 被某消费者 import"——旧断言钉的正是这批**死 import**，
+  详见 `frontend/tests/unit/_sources.js` 头注。
 
 ### P-011 · CI 触发分支仍只覆盖 main（2026-09-17，P-004 收尾时登记）
 - 现状：`lint.yml`、`agent-ops-audit.yml`、`kie-phase-a.yml` 的 `pull_request` 均为 `branches: [main]`
@@ -105,6 +126,10 @@
   ③ 折中：只对 `docs/**`、`scripts/**`、`*.md` 这类低风险路径放开。
 - 触发：下一批 feature 分支开工前定；当前实际按 ② 运转（本机跑门禁 + 合 main 时 CI 复核）。
 - 相关：`.cursor/rules/003-git.mdc`（`[run ci]` 手动触发约定）、P-008、`lint.yml` 的路径过滤（docs-only PR 不触发 lint）。
+- **状态（2026-09-17，本次治理批次未改动 workflow——红线）**：三条 workflow 的触发分支与 paths 保持原样。
+- **新发现（2026-09-17，同批登记）**：`agent-ops-audit.yml` 的 `paths` **未覆盖 `backend/tests/**` 与
+  `backend/pytest.ini`**，而新增的 check 4 真源正是这两个 → **改了测试登记不会触发 audit CI**（本地跑仍会红）。
+  修它要动 workflow（红线），故随本条一并待决：下一轮放宽触发时把 `backend/tests/**` 加入 audit 的 paths。
 
 ### P-012 · 核实 `v1.7-roadmap.md` 的云端验收状态（`TASK-PERSIST-001`）（2026-09-17）
 - 来源：原 **P-009「发布文档清账批次」**把它明确列为"**待核实（勿凭猜测改）**"的一项。该批次已于 2026-09-17
@@ -119,3 +144,59 @@
 - 证据入口：`test_data/acceptance/MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md`（2026-09-17 实测存在）+
   `docs/architecture/v1.7-roadmap.md` 的 Train identity 表。
 - 触发：下一次 v1.7 相关复核，或 v1.9 文档整理时一并处理。
+- **状态（2026-09-17）**：本次治理批次仅**追加本条已登记、待云端核实**的备注——**不标记完成、不改 roadmap
+  的 pending**（本机无 GPU，无法核实云端 `TASK-PERSIST-001`；不宣称未验证结论）。待云端核实时仍按上述
+  ①② 二选一处理。
+
+### P-013 · 服务层模块的 owning doc 未核实（2026-09-17，doc-sync 归属表补全时登记）
+- 背景：补全 kernel `doc-sync.md` 机制 2 归属表时逐模块核实 owning doc。有把握的行已写入
+  `docs/agent-ops/doc-sync-ownership.md`；以下模块**只出现在 frozen release 文档或测试清单里**，
+  没有稳定的 living owning doc，故**只留 TODO、不猜**（P-012 教训）：
+  `backend/app/services/` 的 `batch_service`、`batch_export_service`、`hitl_policy`、`hitl_queue`、
+  `webhook_service`、`document_info_utils`、`document_profile`、`document_type_classifier`、
+  `file_type_detector`、`kie_fields_update`、`formula_service`、`seal_service`、`page_type_probe`、
+  `pdf_raster`、`pdf_tools_service`、`pymupdf_table_engine`、`single_file_pipeline`、
+  `unified_layout_service`、`_layout_order`；`backend/app/core/` 的 `aistudio_compat`、`debug_utils`、
+  `gpu_lib_path`、`trial_auth`；`backend/app/models/` 的 `analyze_options`、`layout_result`。
+- 待决（二选一）：① 若其契约确已有 living 载体 → 补进附表；② 若确实「无常驻 living 契约」→ 在附表脚注
+  显式标注（而不是留空让人猜）。
+- 触发：下一次契约/文档整理；或上述任一模块发生契约变更时（届时**先定归属再改**）。
+- 相关：`docs/agent-ops/doc-sync-ownership.md` 脚注 2。
+
+### P-014 · `shell/tools.js` 的 `startProcessing` 未绑定 + P-010 清账未清零（2026-09-17）
+- 现象（ESLint 首次全量扫描发现，也是唯一剩余报错）：`frontend/modules/shell/tools.js` 的
+  `initAnalysisView()` 内调用 `startProcessing()`，但该模块**没有**这个标识符的绑定——D4 的姊妹文件
+  `shell/ui.js` 通过 `initShellUi({ startProcessing })` 拿到了注入绑定，tools.js 漏了 → **L3 违规 +
+  潜在 ReferenceError**（v1.8.3 拆分的遗留）。
+- 影响面（**实测，非推测**）：该回调绑的 DOM id 是 `#startProcessBtn`，而 `index.html` 里**不存在**该 id
+  （真正的按钮是 `#runAnalysisBtn`，绑在 `shell/ui.js`）→ 监听器从未挂上，**当前无用户可见故障**；
+  本次 e2e **14/14** 全绿（含 UI-Q-01「Run Analysis 取选中项」）亦印证。
+- 未在本次治理批次修复的理由：kernel `constraints.md` §通用工程纪律「**禁止顺手修无关缺陷——要修就单独
+  commit/PR**」；而把不存在的全局"声明"进 ESLint `globals` 会**掩盖真实缺陷**，更不可取。因此 ESLint 当前
+  报 **1 error**、`npm run lint` 退出码 1，**P-010 阶段 3（接 CI）被此项阻塞**。
+- 待决（二选一，均属行为/契约变更，需单独 commit）：
+  ① **注入修复**：`initShellTools({ startProcessing, ... })` + 模块内绑定（与 `shell/ui.js` 同构），
+     并同步 `module-map.md` §3 D4 行的对接说明；运行期行为不变（元素不存在）。
+  ② **删除死回调**：删掉 `initAnalysisView` 内的 `#startProcessBtn` 监听块（保留函数本体以不动
+     `boot_sequence`），属死代码清理。
+- 触发：v1.9 前端批次；或任何一次要动 `shell/tools.js` / D4 装配的改动（届时一并处理）。
+- 相关：P-010（阶段 3 阻塞项）、P-008（同类拆分遗留）。
+
+### P-015 · 大文件与 Git LFS 取舍（2026-09-17，治理批次评估）
+- 背景：本批次按要求扫描 `test_data/testfiles/**` 与 `docs/architecture/media/**` 中 **>5MB** 的文件，
+  产出 LFS 候选清单（**只评估报告，不执行迁移**）。
+- 实测（2026-09-17；四个文件均经 `git ls-files` 确认**已被跟踪**，即已进 git 历史）：
+
+  | 大小 | 文件 |
+  |------|------|
+  | 17.69 MB | `test_data/testfiles/receipts/multipage/receipt_multipage_2p.pdf` |
+  | 9.33 MB | `docs/architecture/media/PDF Parsing Document AI.gif` |
+  | 8.56 MB | `test_data/testfiles/invoices/multipage/invoice_multipage_3p_items.pdf` |
+  | 5.30 MB | `test_data/testfiles/invoices/multipage/invoice_multipage_2p_header_detail.pdf` |
+
+- 性质：均为**测试夹具与文档演示媒体**（非构建产物），且 `test_data/testfiles/**` 是 `.gitignore`
+  负向规则**显式纳入**版本控制的（选择性跟踪二进制）→ 属"有意入库"，不是误提交。
+- 待决：① 维持现状（当前仓库规模尚可接受）；② 迁 Git LFS（仅新文件走 LFS 需工具链前置 + 文档化；
+  连历史一起迁则要 **改写已推送历史**，属红线级、须用户明确授权）。
+- 触发：clone 体积或 CI 时长成为实际问题时。
+- 相关：`.gitignore` 的 `!test_data/testfiles/**` 负向块（本次治理批次为 staging 目录补了末尾再忽略规则）。

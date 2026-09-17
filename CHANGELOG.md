@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-008 — docs-and-tests governance gates** (2026-09-17, governance batch):
+  - `scripts/lint_frontend.py`: new **F7** orphan-reachability rule — every
+    `frontend/modules/**` file must be imported by `app.js`, `index.html` or another script;
+    an acknowledged orphan is *registered* in `scripts/frontend_domain_map.json`
+    (`known_orphans`, with date + evidence) — registration is data, not a permission. The first
+    full scan found exactly one orphan (`floating-progress.js`, D11), matching P-008.
+    Also fixed `_iter_imports` to scan the whole file: a line-wise scan silently missed every
+    multi-line `import { ... } from "..."` (measured: it reported 11 of 33 wired modules as
+    orphans, and F3/F5 were blind to those same lines).
+  - `scripts/test_registry_audit.py` (**audit check 4**) + `backend/tests/test_registry.json`:
+    three-way reconciliation between the registration table, the `test_*.py` files on disk
+    (recursive, so `tests/kie/` counts) and the Phase A list in `.github/workflows/kie-phase-a.yml`
+    (parsed **read-only** — editing CI config is a red line). Unregistered test file / ghost entry /
+    a CI test that is unregistered or whose kind is not `phase-a-ci` = ERROR; a `phase-a-ci` entry
+    CI no longer runs = WARN. Six `--selftest` regressions added (9 → 15).
+  - `backend/pytest.ini`: `addopts = --continue-on-collection-errors` — P-008 measured that one
+    collection error left 430 tests unrun; errors are still reported and the exit code stays non-zero.
+  - `frontend/eslint.config.mjs` + `"lint": "eslint ."` (**P-010 stage 1**, CI not wired): flat
+    config with only `no-unused-vars` (`args:"none"`) + `no-undef`, scoped to `app.js` +
+    `modules/**` + `shared/**`   (`tests/**` is the second batch). First pass: 76 findings.
 - **P-004 — current-state module map + fail-closed recon** (PR #21, merge `a88fdb4`):
   - `docs/architecture/module-map.md`: backend `routers/` 13 domains × frontend
     `modules/` 15 domains, dependency laws L1-L5, the cross-end consumer table, the
@@ -38,6 +58,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `python scripts/lint_frontend.py` (previously `node --check` only).
 
 ### Changed
+- **P-008/P-010 governance batch** (2026-09-17):
+  - Repo governance: the 6 committed `test_data/testfiles/GeneralFiles_staging/` files are untracked
+    (`git rm --cached`, worktree kept) and the directory is re-ignored **after** the
+    `!test_data/testfiles/**` negations — the earlier ignore line alone did not hold, because those
+    negations re-include every PDF (verified with `git check-ignore`).
+  - `docs/architecture/v1.8-cloud-validation.md` → `docs/release/v1.8-cloud-validation.md`
+    (v1.8 pre-release validation manual; v1.8.0–v1.8.3 all shipped), internal link fixed and indexed
+    in `docs/release/README.md`. It had **no inbound references**: both `README.md` and
+    `docs/README.md` point at `docs/architecture/CLOUD_VALIDATION.md`, a different, still-living file.
+  - Kernel: `doc-sync.md` mechanism 2 ownership table extracted to the new appendix
+    `docs/agent-ops/doc-sync-ownership.md` (so the table can grow without pushing the kernel past its
+    ~60-line soft limit; 78 → 56 lines) and mechanism 1 now names the footer check as a PR-review gate;
+    `testing.md` gained the test-registration rule; `frontend.md` gained F7 and the "orphan module has
+    no reachability check" gap is closed. Copies re-derived with `scripts/sync_agent_rules.py`
+    (kernel + copies in one commit).
+  - `scripts/frontend_domain_map.json`: `known_orphans` added (2 entries); two write-only state entries
+    removed (`lastStatusUpdateTime`, `forcePureLayoutBboxOverlay`) with the status-bar leaf-service
+    evidence updated to match.
+  - ESLint cleanup (delete-only, no behaviour change): 49 dead imports in `frontend/app.js`
+    (211 → 173 lines; ratchet lowered with `--update`), 24 unused variables / catch bindings across 11
+    modules, `catch (e)` → `catch` where the binding was unused. `modules/utils/geometry.js` became a
+    registered orphan as a direct result — its only production importer was one of those dead imports
+    (its 5 functions are now covered only by `tests/unit/geometry.test.js`).
+  - 3 unit tests re-pointed: their assertion was "app.js imports X", i.e. it pinned exactly the dead
+    imports; it is now "X is imported by a consumer" (shared helper `frontend/tests/unit/_sources.js`),
+    which also mirrors F7's `known_orphans` exemption.
+  - `docs/architecture/module-map.md`: F7 and T1 (test registry) rows added to §5, D11 row updated,
+    §6 A4 widened to the owning-table appendix + new A6 row; `docs/agent-ops/operations.md` inspection
+    routine and `DEVELOPMENT.md` / `frontend/README_FRONTEND.md` updated for F1-F7 and `npm run lint`.
+  - `docs/R&D/PENDING.md`: P-008/P-010/P-011 status written back, P-012 recorded as
+    "registered, awaiting cloud verification" (**not** marked done), new P-013 (service-layer owning
+    docs unverified — TODO instead of guesswork), P-014 (`shell/tools.js` `startProcessing` unbound)
+    and P-015 (Git LFS assessment: 4 tracked files > 5MB, measured and listed; migration not done).
+  - **Known deviation (P-014)**: `npm run lint` still exits 1 with a single, real ERROR —
+    `startProcessing` is unbound in `modules/shell/tools.js::initAnalysisView` (the D4 sibling
+    `shell/ui.js` gets it injected; tools.js does not) and `#startProcessBtn` does not exist in
+    `index.html`, so the listener has never attached. Fixing or deleting it is an unrelated defect fix
+    (own commit) — it was deliberately **not** patched here, and it blocks P-010 stage 3 (CI wiring).
+    ESLint resolved to **10.10.0** (the plan said 9; flat config and both rules behave identically).
+  - Gate evidence: `lint_file_size` / `lint_routes` / `lint_frontend` (F1-F7) /
+    `check_frontend_baseline` (C1-C8) / `audit_agent_ops` (+`--selftest`, 15 cases) all green;
+    vitest **80/80**; Playwright **14/14**.
 - `.github/workflows/agent-ops-audit.yml`: also runs on push to `main` and when
   `backend/app/routers/**`, `frontend/modules/**`, `scripts/frontend_domain_map.json`,
   `docs/architecture/**` or `docs/README.md` change; new `--selftest` step.

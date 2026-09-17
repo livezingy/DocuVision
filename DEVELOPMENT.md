@@ -2,7 +2,8 @@
 
 > 每条都有对应的机检脚本，本地与 CI 同一实现，违反即红。
 > 后端三条由 `lint_file_size.py` / `lint_routes.py` 把关；前端三条由
-> `lint_frontend.py`（F1-F7）与 `check_frontend_baseline.py`（C1-C8）把关。
+> `lint_frontend.py`（F1-F7）、`check_frontend_baseline.py`（C1-C8 + C9 注入保真）与
+> ESLint（`cd frontend && npm run lint`，已接 CI）把关。
 
 ## 后端（三条）
 
@@ -33,13 +34,14 @@
 
 6. **模块必须被装配、依赖必须注入**：`frontend/modules/**` 的每个
    `export function initXxx` 必须在 app.js 被调用——漏装配会让该模块的注入依赖
-   留成空桩，用户一交互就炸，而语法与 F1-F7 全绿（机检：lint F6）。跨域调用与
+   留成空桩，用户一交互就炸，而语法与 F1-F7 全绿（机检：lint F6 + baseline C9——C9 断言 app.js 注入的
+  key 集合**恰好等于**模块体读取的 `deps.*` 集合，缺 key 与多 key 都红）。跨域调用与
    跨批的同域拆分调用一律经 app.js 的 `initXxx({ deps })` 注入，**禁建 `window.*`
    桥**（装配期一次性完成，见 `docs/R&D/PLAN/v1.8.3-frontend-split/cross-domain-edges.md`）。
    新增跨域边要么追加注入、要么提前被调者出仓，并在边表登记。（机检：baseline C8）
 
-> 已知 gap（记录在案，v1.9 候选）：F6 是名字级弱断言，抓不到"在 deps 里被引用但
-> 忘了 import"（v1.8.3 B5a 实际踩中一次，靠 e2e + pageerror 探针定位）。彻底解法
-> 需作用域分析。
+> 已知 gap（记录在案，v1.9 候选）：F6 只有名字级断言——deps 侧已由 **C9**（2026-09-17 落地，
+> P-008 gap 1）补齐；彻底解法（作用域分析）的中间态 = JSDoc + `tsc --allowJs --checkJs --noEmit`，
+> 留 v1.9 前端批次评估。
 > F7（模块可达性）只判"有没有被 import"，不判"接得对不对"：D11 `floating-progress.js`
 > 已登记 `known_orphans`（P-008），浏览器仍不加载它——接回管线属 v1.9 行为变更。

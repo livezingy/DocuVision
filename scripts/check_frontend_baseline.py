@@ -26,6 +26,9 @@ Measurement notes:
     "12 writes" was an under-count (see DESIGN_PREVIEW_WRITES below).
   * Coupling analysis (attribution, edge rows, state reads) lives in
     scripts/frontend_coupling.py + scripts/frontend_domain_map.json.
+  * C9 (injected-dependency fidelity, P-008 gap 1, 2026-09-17) is not a design number: it
+    is the permanent half of DEVELOPMENT.md rule 6 and lives in frontend_coupling.py too.
+    Its C-number continues the list, but unlike C1-C8 it never retires.
 
 Exit codes: 0 = pass, 1 = mismatch, 2 = cannot evaluate.
 """
@@ -373,6 +376,7 @@ def main(argv: list[str]) -> int:
     failures += check_utils_dom()
     failures += check_mime()
     failures += check_edges(lines)
+    failures += fc.check_injection_keys()
     print(f"\n[baseline] phase = {phase}")
 
     if failures:
@@ -381,7 +385,7 @@ def main(argv: list[str]) -> int:
             print(f"[FAIL] {item}")
         print(f"[baseline] {len(failures)} mismatch(es)")
         return 1
-    print("[baseline] OK (C1-C8 all match the design)")
+    print("[baseline] OK (C1-C8 match the design; C9 injections consistent)")
     return 0
 
 

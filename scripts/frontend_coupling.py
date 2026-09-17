@@ -232,3 +232,146 @@ def render_edges(lines: list[str]) -> str:
         *[f"| {o} | `{s}` | {r} | `{fn}` | {ln} |" for o, s, r, fn, ln in sorted(state_rows)],
     ]
     return "\n".join(out) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# C9 - injected-dependency fidelity (P-008 gap 1 / DEVELOPMENT.md rule 6, 2026-09-17)
+#
+# F6 (lint_frontend.py) asserts only that every ``export function initXxx`` is *called*.
+# It cannot see whether the call hands over what the module reads: each injected dep is a
+# module-level ``let foo;`` assigned behind ``typeof deps.foo === 'function'``, so a key
+# app.js forgets to pass leaves the stub standing **silently** - ``no-undef`` stays quiet
+# because the identifier *is* declared. That is the v1.8.3 B5a failure mode, and no other
+# gate (F1-F7, C1-C8, ESLint) can see it.
+#
+# C9 compares both directions for every module init that takes ``deps``:
+#   * every ``deps.<key>`` the body reads must be supplied -> else a stub stays behind;
+#   * every supplied key must be read -> else a dead injection (the call-site twin of the
+#     dead imports P-010 removed; ``no-unused-vars`` cannot see an object property that is
+#     passed as an argument, so nothing else covers this direction).
+# An init whose parameter is neither empty nor ``deps`` fails closed: an unevaluable
+# contract must be loud, never quietly skipped.
+#
+# Bracket-balanced extraction, not a JS parser - same discipline as the rest of this file.
+# ---------------------------------------------------------------------------
+
+_INIT_DECL_RE = re.compile(
+    r"^export\s+(?:async\s+)?function\s+(init[A-Za-z_$][\w$]*)", re.MULTILINE
+)
+_INIT_CALL_RE = re.compile(r"\b(init[A-Za-z_$][\w$]*)\s*\(")
+_DEPS_READ_RE = re.compile(
+    r"\bdeps\s*(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*[\"']([A-Za-z_$][\w$]*)[\"']\s*\])"
+)
+_CLOSER = {"(": ")", "{": "}", "[": "]"}
+
+
+def _group(text: str, index: int) -> str:
+    """Text inside the bracket group starting at ``text[index]`` (``(``, ``{`` or ``[``)."""
+    opener = text[index]
+    closer = _CLOSER[opener]
+    depth = 0
+    for i in range(index, len(text)):
+        if text[i] == opener:
+            depth += 1
+        elif text[i] == closer:
+            depth -= 1
+            if depth == 0:
+                return text[index + 1:i]
+    raise ValueError(f"unbalanced {opener!r} at offset {index}")
+
+
+def _object_keys(inner: str) -> set[str]:
+    """Top-level property names of an object literal (values may be arrow functions)."""
+    keys: set[str] = set()
+    depth, buf = 0, ""
+    for char in inner + ",":
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        if char == "," and depth == 0:
+            keys.add(buf.split(":", 1)[0].split("=", 1)[0].strip())
+            buf = ""
+        else:
+            buf += char
+    keys.discard("")
+    return keys
+
+
+def declared_deps(text: str) -> dict[str, set[str] | None]:
+    """``initXxx`` -> keys its body reads off ``deps``; ``None`` = unevaluable signature."""
+    out: dict[str, set[str] | None] = {}
+    for match in _INIT_DECL_RE.finditer(text):
+        paren = text.index("(", match.end())
+        raw = _group(text, paren)
+        params = raw.strip()
+        if not params:
+            out[match.group(1)] = set()
+        elif not params.startswith("deps"):
+            out[match.group(1)] = None
+        else:
+            body = _group(text, text.index("{", paren + 1 + len(raw)))
+            out[match.group(1)] = {a or b for a, b in _DEPS_READ_RE.findall(body)}
+    return out
+
+
+def supplied_deps(text: str) -> dict[str, set[str] | None]:
+    """``initXxx`` -> keys passed at its call site; ``None`` = non-object argument."""
+    out: dict[str, set[str] | None] = {}
+    for match in _INIT_CALL_RE.finditer(text):
+        args = _group(text, text.index("(", match.end() - 1)).strip()
+        if not args:
+            out.setdefault(match.group(1), set())
+        elif args.startswith("{"):
+            out[match.group(1)] = _object_keys(_group(args, 0))
+        else:
+            out.setdefault(match.group(1), None)
+    return out
+
+
+def check_injection_keys() -> list[str]:
+    """C9: app.js must inject exactly the keys each module init reads off ``deps``."""
+    origin: dict[str, str] = {}
+    declared: dict[str, set[str] | None] = {}
+    for path in sorted(MODULES_DIR.rglob("*.js")):
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        for name, keys in declared_deps(path.read_text(encoding="utf-8")).items():
+            origin[name] = rel
+            declared[name] = keys
+    supplied = supplied_deps("\n".join(app_lines()))
+    failures: list[str] = []
+    compared = 0
+    print(f"[baseline] C9 injected deps: {len(declared)} init export(s) in modules/**")
+    for name in sorted(declared):
+        want = declared[name]
+        if want is None:
+            failures.append(
+                f"C9 {origin[name]}: {name} takes a parameter that is not `deps` - the "
+                "injection contract cannot be evaluated (fail closed)"
+            )
+            continue
+        if name not in supplied:
+            print(f"    {name:<28} not called by app.js (F6 owns that)")
+            continue
+        have = supplied[name]
+        if have is None:
+            failures.append(
+                f"C9 {name}: app.js passes a non-object argument; expected {sorted(want)}"
+            )
+            continue
+        compared += 1
+        missing, extra = sorted(want - have), sorted(have - want)
+        flag = "ok" if not (missing or extra) else "FAIL"
+        print(f"    {name:<28} {len(want):>2} key(s) {flag}")
+        if missing:
+            failures.append(
+                f"C9 {name}: app.js does not inject {missing} - the module keeps its stub "
+                f"(declared in {origin[name]})"
+            )
+        if extra:
+            failures.append(
+                f"C9 {name}: app.js injects {extra} but {origin[name]} never reads them "
+                "off deps (dead injection)"
+            )
+    print(f"[baseline] C9 compared {compared} injected init(s)")
+    return failures

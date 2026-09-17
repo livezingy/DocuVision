@@ -58,10 +58,13 @@ frontend/
 >
 > 门禁：`python scripts/lint_frontend.py`（F1-F7；F7 = 孤儿模块可达性，例外登记
 > `scripts/frontend_domain_map.json` 的 `known_orphans`）+ `python scripts/check_frontend_baseline.py`
-> （C0-C8）+ `python scripts/check_frontend_baseline.py --edges`（跨域边表，须与设计稿一致）。
-> 风格 linter（P-010 阶段 1，2026-09-17 起）：`cd frontend && npm run lint`（ESLint flat config，
-> 仅 `no-unused-vars` + `no-undef`，作用域 `app.js` + `modules/**` + `shared/**`；`tests/**` 属第二批）。
-> **尚未接 CI**——清零并观察后再定（P-010 阶段 3）。
+> （C1-C8 设计基线 + **C9 注入保真**：`app.js` 传给每个 `initXxx` 的 key 集合必须恰好等于该模块体读取的
+> `deps.*` 集合；缺 key = 留空桩，多 key = 死注入）+ `python scripts/check_frontend_baseline.py --edges`
+> （跨域边表，须与设计稿一致）。
+> 风格 linter（P-010）：`cd frontend && npm run lint`（ESLint flat config，仅 `no-unused-vars` + `no-undef`，
+> 作用域 `app.js` + `modules/**` + `shared/**`；`tests/**` 属第二批）。**2026-09-17 起已接 CI**
+> （`lint.yml`：`actions/setup-node` 22 + `npm ci` + `npm run lint`，置于四个 stdlib 门禁之后）——
+> 首次清零后才接入，故 CI 上线即绿。
 
 ## 🔧 配置和初始化
 

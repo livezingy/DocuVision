@@ -28,6 +28,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `frontend/eslint.config.mjs` + `"lint": "eslint ."` (**P-010 stage 1**, CI not wired): flat
     config with only `no-unused-vars` (`args:"none"`) + `no-undef`, scoped to `app.js` +
     `modules/**` + `shared/**`   (`tests/**` is the second batch). First pass: 76 findings.
+  - **P-010 stage 3 — ESLint is a CI gate** (2026-09-17, authorized): `.github/workflows/lint.yml` gained
+    `actions/setup-node` (Node 22; eslint 10.10.0 needs `^20.19.0 || ^22.13.0 || >=24`), `npm ci`
+    (`working-directory: frontend`, lockfile already tracked) and `npm run lint`, placed **after** the four
+    stdlib gates so a stdlib failure never pays for `npm ci`. `frontend/**` was already in the workflow's
+    `paths`, so the trigger filter is untouched. ESLint is the only gate that can see dead code / unused
+    bindings — F1-F7 and C1-C8 are structural. Scope is still batch 1 (`frontend/tests/**` pending).
+  - **P-008 gap 1 closed (option B) — injected-dependency fidelity as C9**: `frontend_coupling.py`
+    `check_injection_keys()`, run by `check_frontend_baseline.py`, asserts that the key set `app.js` passes to
+    each `initXxx` **equals** the set of `deps.*` keys that module's body reads. F6 only checks that an init is
+    *called*: a missing key leaves the module's stub standing silently (`no-undef` cannot see it — the
+    identifier is declared; that is the v1.8.3 B5a failure mode), and a surplus key is a dead injection
+    (`no-unused-vars` cannot see an object property passed as an argument). An init whose parameter is neither
+    empty nor `deps` fails closed. Two landing choices, both toward "CI-enforceable": it went into the C-series
+    instead of a vitest test because vitest/e2e do **not** run in CI (a local-only test would not close the
+    gap), and the contract is derived from the module source rather than recorded in
+    `frontend_domain_map.json`, because a hand-kept copy goes stale exactly when a module grows a dependency —
+    the case it is meant to catch. Evidence: 25 init exports / 24 compared (one is injected rather than called)
+    plus five negative probes — missing key, surplus key, injection into a no-deps init, non-`deps` parameter,
+    and a clean baseline — all fired as designed. The intermediate scope-analysis answer (JSDoc +
+    `tsc --allowJs --checkJs --noEmit`) is recorded for the v1.9 frontend batch.
+  - **P-015 closed — big-binary policy**: LFS migration is declined (an environment without `git-lfs` yields
+    pointer files that e2e/C1-C8 would silently consume — a worse failure than a larger repository — and it
+    adds a toolchain prerequisite this repo deliberately avoids). Instead kernel `constraints.md` now requires
+    a new >5 MB binary to be justified in the PR description ("reason + is it a test fixture"), derived into
+    both rule copies by `sync_agent_rules.py`.
 - **P-004 — current-state module map + fail-closed recon** (PR #21, merge `a88fdb4`):
   - `docs/architecture/module-map.md`: backend `routers/` 13 domains × frontend
     `modules/` 15 domains, dependency laws L1-L5, the cross-end consumer table, the

@@ -1,6 +1,7 @@
 # File-size + route-architecture gate (v1.8.2) + frontend structure + baseline gates (v1.8.3).
 # Rules: DEVELOPMENT.md (owning doc); kernel: docs/agent-ops/core/routing.md + frontend.md.
-# All scripts are stdlib-only (no pip install needed).
+# The Python scripts are stdlib-only; the final block is the one Node dependency
+# (frontend ESLint, P-010 stage 3) - it needs `npm ci`, hence the lockfile is authoritative.
 
 name: Lint
 
@@ -40,5 +41,22 @@ jobs:
       - name: Frontend structure lint
         run: python scripts/lint_frontend.py
 
-      - name: Frontend baseline gate (C1-C8)
+      - name: Frontend baseline gate (C1-C8 + C9 injection fidelity)
         run: python scripts/check_frontend_baseline.py
+
+      # P-010: the only gate that sees dead code / unused bindings - F1-F7 and C1-C8 are
+      # structural and cannot. Kept last so the stdlib gates fail before npm ci runs.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend toolchain (from lockfile)
+        run: npm ci
+        working-directory: frontend
+
+      - name: Frontend ESLint (no-unused-vars + no-undef)
+        run: npm run lint
+        working-directory: frontend

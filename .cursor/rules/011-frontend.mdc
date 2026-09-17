@@ -6,13 +6,13 @@ globs: frontend/**/*.js,frontend/**/*.html,frontend/**/*.css
 # 前端架构规范
 
 > 生成自 kernel `docs/agent-ops/core/`（frontend）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: frontend.md:c6f2f3e98eaf7c17 -->
+<!-- kernel-ref: frontend.md:491e9799a47a66b2 -->
 
 ## 目标
 `app.js` 只做装配（imports + `initXxx({deps})` + boot + mediator），新 UI 函数一律进 `frontend/modules/**`；
 用机器可判的规则锁死模块边界与落点，使不同 Agent 新增前端功能时产出同构代码。
 
-## 硬规则（`lint_frontend.py` 机器判，违反 = CI 红）
+## 硬规则（`lint_frontend.py` + `check_frontend_baseline.py` 机器判，违反 = CI 红）
 1. **F1 行数预算**：`frontend/app.js` + `modules/**` + `shared/**` 单文件 ≤500 行；存量棘轮在
    `scripts/frontend_size_allowlist.json`，只减不增。
 2. **F2 入口棘轮**：`app.js` 顶层 `function` / `async function` 数 ≤ `app_js_functions`，只减不增。
@@ -22,10 +22,14 @@ globs: frontend/**/*.js,frontend/**/*.html,frontend/**/*.css
 5. **F5 叶服务注册制**：`frontend_domain_map.json` 的 `module_import_whitelist.files` 每条必须登记于
    `leaf_services` / `shared_state_modules`（日期 + evidence）；L1/L2/L3 判据不得放宽。
 6. **F6 init 必被装配**：`modules/**` 每个 `export function initXxx` 必须在 `app.js` 被调用
-   （名字级弱断言——见已知 gap）。
+   （名字级断言；**deps 侧由 C9 补齐**，见第 8 条）。
 7. **F7 孤儿模块可达性**：`modules/**` 每个文件必须被 `app.js` / `index.html` / 其它脚本 import；
    例外只登记在 `frontend_domain_map.json` 的 `known_orphans`（附日期与说明）。**登记 ≠ 接线**：
    把孤儿接回管线属行为变更，不在结构治理批次内做。
+8. **C9 注入保真**：`app.js` 传给每个 `initXxx` 的 key 集合必须**恰好等于**该模块体实际读取的 `deps.*`
+   集合——缺 key 会让模块留下空桩（v1.8.3 B5a 的失败形态，`no-undef` 看不见：标识符已声明）、
+   多 key 是死注入（`no-unused-vars` 看不见：对象属性作为实参）。签名非空且非 `deps` 一律 fail-closed。
+   机检 `frontend_coupling.py::check_injection_keys`，由 `check_frontend_baseline.py` 默认运行。
 
 ## 依赖律（与 module-map §1 同源）
 - **L1 装配层唯一**：`app.js` 只装配不放域逻辑。
@@ -45,11 +49,13 @@ globs: frontend/**/*.js,frontend/**/*.html,frontend/**/*.css
 
 ## 本机 lint（stdlib / node，不碰 paddle）
 - `python scripts/lint_frontend.py`（F1-F7）
+- `python scripts/check_frontend_baseline.py`（C1-C8 设计基线 + **C9 注入保真**）
+- `cd frontend && npm run lint`（ESLint `no-unused-vars` + `no-undef`；2026-09-17 起已接 CI）
 - `python scripts/check_frontend_baseline.py --syntax`（`node --check` 全模块 + `app.js`）
 - `python scripts/audit_agent_ops.py`（check 3 对账 module-map §2/§3/§5 与事实源；`--selftest` 解析回归）
 
 ## 已知 gap（记录在案，勿当作规则违反）
-- **F6 是名字级弱断言**：deps 里引用但漏 import 抓不到（v1.8.3 B5a 踩中一次，靠 e2e + pageerror 定位）；
-  彻底解法需作用域分析。
+- **F6 只有名字级**：deps 侧的"引用但没被注入"已由 **C9** 补上（2026-09-17 落地，P-008 gap 1 的选项 B）；
+  F6 自身仍只断言"被调用"。剩下的中间态解法（JSDoc + `tsc --allowJs --checkJs --noEmit`）留 v1.9 前端批次评估。
 - **F7 只判可达性、不判接线**：`floating-progress.js`（D11）已登记 `known_orphans`（P-008），浏览器仍不加载它——
   登记只让**新**孤儿暴露；把它接回管线（或删除）属 v1.9 行为变更决策。

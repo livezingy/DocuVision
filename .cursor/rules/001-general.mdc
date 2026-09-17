@@ -6,7 +6,7 @@ alwaysApply: true
 # 通用约束
 
 > 生成自 kernel `docs/agent-ops/core/`（constraints）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: constraints.md:2d9384b84f473fdf -->
+<!-- kernel-ref: constraints.md:0b9f105ce6bbdf64 -->
 
 ## 响应语言与代码语言
 - 回复默认中文；代码、注释、docstring、日志、UI 文案、命令、变量名一律英文（ASCII 优先）。
@@ -54,6 +54,8 @@ alwaysApply: true
 - **门禁/验收结论必须附证据**：可复制命令 + 实际输出片段 + 期望值；只写「已通过」视为未验证。
 - **结构性搬移/重构须有机器可判的等价性证据**（契约快照、冻结测试、零 diff），且**禁止顺手修无关缺陷**——要修就单独 commit/PR。
 - **基线类文件须可追溯**：快照/allowlist/冻结文件的来源 commit 与再生成命令必须写明；来源错（如取拆后而非拆前）则证明力归零。
+- **大二进制入库须声明**：新增 >5MB 的二进制（测试夹具、演示媒体）必须在 PR 描述写明「理由 + 是否测试夹具」。
+  夹具有意随仓库走（云端/CI 才能复现，见 P-015 的取舍），故不是禁止，而是要求可追溯；Git LFS 未采纳。
 
 ## 官方依据优先
 - 改代码/选 API/定参数先查官方文档/源码（优先级：官方源码 > 官方文档 > 官方 issue > 第三方博客）。

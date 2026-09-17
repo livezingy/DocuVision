@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（9 组；P-014 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
+## 待确认（8 组；P-014 / P-015 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -94,6 +94,21 @@
   P-010 清账时又暴露第二个 —— `modules/utils/geometry.js`（其唯一生产 importer 是 app.js 的**死 import**，
   删掉后成为孤儿；5 个函数现仅被 `tests/unit/geometry.test.js` 覆盖）。
   **遗留 gap（保留在本组）**：F6 仍是名字级弱断言；F7 只判可达性、不判接线——两个已登记孤儿尚未接线/退役。
+- **遗留 gap 1 已定并落地（2026-09-17，选项 B）**：新增 **C9 注入保真** —— `app.js` 传给每个 `initXxx` 的 key
+  集合必须**恰好等于**该模块体实际读取的 `deps.*` 集合（缺 key = 留空桩；多 key = 死注入；签名非空且非 `deps`
+  = fail-closed）。机检 `scripts/frontend_coupling.py::check_injection_keys`，由 `check_frontend_baseline.py`
+  默认运行 → **随 `lint.yml` 进 CI**。
+  落地取舍两条（与建议稿的差异，均取"能 CI 强制"的一侧）：**① 没做成 vitest 测试**——vitest / e2e 当前**不在 CI**，
+  只保护本机，不足关闭 gap；改落在 C 系列（`check_frontend_baseline.py` 已在 lint.yml 内）。
+  **② 没用"`frontend_domain_map.json` 填 `init_deps` 数据"的形态**——那是快照：模块新增依赖而数据未更新时仍然全绿，
+  恰是要防的失效形态；改为**从模块源码直接推导**（`deps.*` 读取集合），零维护。
+  证据：25 个 init 导出 / 24 个参与比对（`initAnnotationInteractions` 经注入而非调用，由 F6 管辖；`initializeAPIConnection`
+  名称前缀命中，无参故无副作用）+ 5 组负向测试（缺 key / 冗余 key / 给无参 init 注入 / 非 `deps` 参数 fail-closed /
+  真源码基线零误报）全通过。
+  **A 的中间态（JSDoc + `tsc --allowJs --checkJs --noEmit`）记为 v1.9 前端批次评估**（已定路线，非待决）。
+- **遗留 gap 2 仍待确认**：F7 只判可达性、不判接线。候选 B = e2e 运行时覆盖度报告 + pageerror/console 监听
+  （非阻塞，产出"死代码候选"清单一并喂 P-010 下一轮）；**待定**：报告类型 / 存放位置 / 查看频率。
+  A（DOM 桩 ↔ 脚本引用的静态对应）已评估为**否决**（启发式误报会让人开始忽略 F7）。
 
 ### P-010 · 前端风格 linter 缺位（2026-09-17，P-004 收尾时登记）
 - 现状：`DEVELOPMENT.md` 第 4-6 条与 kernel `frontend.md` 只覆盖**结构与边界**（F1-F6 / C1-C8），
@@ -111,8 +126,11 @@
   `modules/**` + `shared/**`，`frontend/tests/**` 留第二批）+ `package.json` 的 `"lint": "eslint ."`。
   首轮 **76 项**（其中 49 项在 app.js：v1.8.3 拆分后遗留的**死 import**）已清账到 **1 项**；
   唯一剩余项是 P-014 的**真实缺陷**，已于同日 follow-up 按选项 ②′ 解决 →
-  **`npm run lint` 现为 0 error（首次清零）**。**阶段 3（接 CI）仍待授权**：`.github/workflows/**`
-  属红线，本批次不碰——前置已满足，只差一句授权。
+  **`npm run lint` 现为 0 error（首次清零）**。
+  **阶段 3（接 CI）已落地（2026-09-17，用户授权）**：`.github/workflows/lint.yml` 追加 `actions/setup-node@v4`
+  （node `"22"`；eslint 10.10.0 的 `engines.node` = `^20.19.0 || ^22.13.0 || >=24`）+ `npm ci`（`working-directory: frontend`，
+  lockfile 已跟踪）+ `npm run lint`，且置于四个 stdlib 门禁**之后**（stdlib 先失败就不必装 node）。
+  `frontend/**` 本就在 lint.yml 的 paths 内 → **未改触发路径**。作用域仍为第一批：`frontend/tests/**` 未纳入（第二批）。
   回归证据：vitest **80/80**、e2e **14/14** 全绿；`frontend/app.js` 211 → **172** 行（棘轮已两次下调）。
   3 个结构性测试的断言从"app.js import X"改为"X 被某消费者 import"——旧断言钉的正是这批**死 import**，
   详见 `frontend/tests/unit/_sources.js` 头注。
@@ -192,7 +210,12 @@
 
 - 性质：均为**测试夹具与文档演示媒体**（非构建产物），且 `test_data/testfiles/**` 是 `.gitignore`
   负向规则**显式纳入**版本控制的（选择性跟踪二进制）→ 属"有意入库"，不是误提交。
-- 待决：① 维持现状（当前仓库规模尚可接受）；② 迁 Git LFS（仅新文件走 LFS 需工具链前置 + 文档化；
-  连历史一起迁则要 **改写已推送历史**，属红线级、须用户明确授权）。
-- 触发：clone 体积或 CI 时长成为实际问题时。
-- 相关：`.gitignore` 的 `!test_data/testfiles/**` 负向块（本次治理批次为 staging 目录补了末尾再忽略规则）。
+- **结论（2026-09-17 用户裁决，本组可结）**：取 **① 维持现状**，并补一条**轻量约束**——新增 >5MB 的二进制
+  （测试夹具 / 演示媒体）必须在 PR 描述写明「理由 + 是否测试夹具」。已写入 kernel
+  `docs/agent-ops/core/constraints.md` §通用工程纪律，经 `scripts/sync_agent_rules.py` 派生到
+  `.cursor/rules/001-general.mdc` + `.codebuddy/rules/001-general.md`（副本勿手改）。
+- 否决 ② 的理由：Git LFS 的失败模式比"仓库变大"更危险——未装 `git-lfs` 时 clone 得到的是**指针文件**，
+  e2e / C1-C8 会静默吃到坏夹具（很难归因）；且要求所有 clone/CI 前置安装，与本仓「无前置依赖」取向冲突。
+  否决"连历史一起迁"：改写已推送历史，红线级，收益（省几十 MB）远小于代价。
+- 触发（保留）：clone 体积或 CI 时长成为实际问题时重议 ②。
+- 相关：`.gitignore` 的 `!test_data/testfiles/**` 负向块；kernel 的"大二进制入库须声明"条款。

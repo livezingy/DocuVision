@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（11 组）
+## 待确认（10 组；P-014 已结，保留记录）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -109,10 +109,11 @@
   `no-unused-vars`（`args:"none"`）+ `no-undef`；browser globals + 4 个**真实**跨脚本全局
   `DocuVisionExport` / `DocuVisionDemo` / `DocuVisionUiFeatures` / `katex`；作用域 = `app.js` +
   `modules/**` + `shared/**`，`frontend/tests/**` 留第二批）+ `package.json` 的 `"lint": "eslint ."`。
-  首轮 **76 项**（其中 49 项在 app.js：v1.8.3 拆分后遗留的**死 import**）已清账到 **1 项**。
-  唯一剩余项不是风格问题而是**真实缺陷**（→ P-014），按 kernel「禁止顺手修无关缺陷」另开 commit，
-  故 **阶段 3（接 CI）暂缓**：`npm run lint` 当前退出码为 1。
-  回归证据：vitest **80/80**、e2e **14/14** 全绿；`frontend/app.js` 211 → **173** 行（棘轮已下调）。
+  首轮 **76 项**（其中 49 项在 app.js：v1.8.3 拆分后遗留的**死 import**）已清账到 **1 项**；
+  唯一剩余项是 P-014 的**真实缺陷**，已于同日 follow-up 按选项 ②′ 解决 →
+  **`npm run lint` 现为 0 error（首次清零）**。**阶段 3（接 CI）仍待授权**：`.github/workflows/**`
+  属红线，本批次不碰——前置已满足，只差一句授权。
+  回归证据：vitest **80/80**、e2e **14/14** 全绿；`frontend/app.js` 211 → **172** 行（棘轮已两次下调）。
   3 个结构性测试的断言从"app.js import X"改为"X 被某消费者 import"——旧断言钉的正是这批**死 import**，
   详见 `frontend/tests/unit/_sources.js` 头注。
 
@@ -163,7 +164,7 @@
 - 触发：下一次契约/文档整理；或上述任一模块发生契约变更时（届时**先定归属再改**）。
 - 相关：`docs/agent-ops/doc-sync-ownership.md` 脚注 2。
 
-### P-014 · `shell/tools.js` 的 `startProcessing` 未绑定 + P-010 清账未清零（2026-09-17）
+### P-014 · `shell/tools.js` 的 `startProcessing` 未绑定 + P-010 清账未清零（2026-09-17）✅ 已结（按 ②′ 整体退役）
 - 现象（ESLint 首次全量扫描发现，也是唯一剩余报错）：`frontend/modules/shell/tools.js` 的
   `initAnalysisView()` 内调用 `startProcessing()`，但该模块**没有**这个标识符的绑定——D4 的姊妹文件
   `shell/ui.js` 通过 `initShellUi({ startProcessing })` 拿到了注入绑定，tools.js 漏了 → **L3 违规 +
@@ -181,6 +182,16 @@
      `boot_sequence`），属死代码清理。
 - 触发：v1.9 前端批次；或任何一次要动 `shell/tools.js` / D4 装配的改动（届时一并处理）。
 - 相关：P-010（阶段 3 阻塞项）、P-008（同类拆分遗留）。
+- **状态（2026-09-17，已按选项 ②′ 执行完毕，本组可结）**：用户裁决「整体退役」→ 删除
+  `initAnalysisView` 函数本体，并移除 `app.js` 的 import 与引导调用；`boot_sequence` 与
+  `domains["D4 shell-init"]` **同 commit** 由 17 → 16（代码与数据必须同改，否则 C3 立即红）；
+  `module-map.md` §3「16 项」与 `frontend/README_FRONTEND.md` 引导片段同步；顺手修掉
+  `options-dialog.js` 第 9/24 行把 D6 钩子归属写成 `initAnalysisView` 的陈旧注释
+  （真实赋值点是 `shell/ui.js::initResultTabs` 调 `setSyncProcessingModeUI`）。
+  **等价性证据（机器可判）**：F6 由 26 → **25** 个 init 导出且全部被装配；C3「16 steps, all defined」、
+  C1-C8 全绿、`frontend/app.js` 173 → **172** 行（棘轮下调）；`bootstrap.test.js` 的引导顺序断言（数据驱动）绿；
+  vitest **80/80**、e2e **14/14**；**`npm run lint` 首次清零（0 error）** → P-010 阶段 3 的前置已解除
+  （接 CI 仍需授权）。历史保留在本条与 CHANGELOG + git，不再计入待确认。
 
 ### P-015 · 大文件与 Git LFS 取舍（2026-09-17，治理批次评估）
 - 背景：本批次按要求扫描 `test_data/testfiles/**` 与 `docs/architecture/media/**` 中 **>5MB** 的文件，

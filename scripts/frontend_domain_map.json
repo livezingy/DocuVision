@@ -10,7 +10,6 @@
     "initActionButtons",
     "initAnalysisOptionsDialog",
     "initEngineSelectors",
-    "initAnalysisView",
     "initExportButtons",
     "initBatchProcessing",
     "initHitlReviews",
@@ -49,7 +48,7 @@
     ],
     "D4 shell-init": [
       "initTabs", "initHelpButton", "initResultTabs", "initActionButtons",
-      "initEngineSelectors", "initAnalysisView", "initExportButtons", "initGlobalTooltip",
+      "initEngineSelectors", "initExportButtons", "initGlobalTooltip",
       "initAnnotationInteractions", "initPanelResize", "initJsonViewButtons", "initPdfTools"
     ],
     "D5 preview-paging": [

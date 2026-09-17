@@ -6,8 +6,8 @@
  *   - clearTableMappingEligibility / updateKieQueryFieldsAvailability /
  *     buildKieQueryFieldsPayload  (D7 kie-mapping)
  *   - updateEnhancementTabs       (D9 result-panels, not yet extracted - injected from app.js)
- *   - syncProcessingModeUI        (owned here; D4 initAnalysisView sets it via
- *     setSyncProcessingModeUI at boot)
+ *   - syncProcessingModeUI        (owned here; D4 shell-init sets it via
+ *     setSyncProcessingModeUI from shell/ui.js initResultTabs at boot)
  * The module-scope "same-name binding" trick keeps every call site byte-identical:
  * the bodies call the local let-bound names and app.js wires the real ones in.
  */
@@ -21,7 +21,9 @@ let updateEnhancementTabs = function () {};
 let syncProcessingModeUI = function () {};
 
 /**
- * Set the processing-mode UI sync hook (assigned by D4's initAnalysisView).
+ * Set the processing-mode UI sync hook (assigned by D4 shell-init:
+ * shell/ui.js initResultTabs - previously documented as initAnalysisView, which was
+ * retired in P-014).
  */
 export function setSyncProcessingModeUI(fn) {
     if (typeof fn === 'function') {

@@ -1,11 +1,18 @@
 /**
  * Shell tools (v1.8.3 B5a) - domain module (D4, tools half).
  *
- * View-level tooling: engine selectors, analysis view wiring, export buttons,
- * the PDF tools page (merge / metadata / split). No cross-half calls into ui.js.
+ * View-level tooling: engine selectors, export buttons, the PDF tools page
+ * (merge / metadata / split). No cross-half calls into ui.js.
  * The single cross-domain call (D1 refreshActiveEngineFooterLine) is injected at
  * boot; everything else is a whitelist import or a classic-script global
  * (DocuVisionExport from shared/export-ui.js).
+ *
+ * P-014 (2026-09-17): the `initAnalysisView` boot step was retired outright. Its only
+ * body wired a `#startProcessBtn` click listener - an id that does not exist in
+ * index.html, so the listener never attached - and `startProcessing` was never bound in
+ * this module (the D4 sibling shell/ui.js receives it via `initShellUi`). Run Analysis is
+ * wired there, in `initActionButtons`. Removing the step also removed the boot sequence
+ * entry (17 -> 16).
  */
 import { showNotification } from '../notifications.js';
 import { API_BASE_URL, API_ROOT_URL } from '../api-config.js';
@@ -47,23 +54,6 @@ export function initEngineSelectors() {
                 'ppstructure': 'PP-StructureV3'
             };
             showNotification(`Layout engine changed to ${engineNames[layoutSelect.value]}`, 'info');
-        });
-    }
-}
-
-/**
- * Initialize analysis view
- */
-export function initAnalysisView() {
-    // Start processing button
-    // P-010 note: `startProcessing` is NOT bound in this module (unlike the D4 sibling
-    // shell/ui.js, which receives it via initShellUi) and `#startProcessBtn` does not
-    // exist in index.html, so this listener has never been attached. Left untouched on
-    // purpose - fixing it is an unrelated defect fix (own commit); see PENDING P-014.
-    const startBtn = document.getElementById('startProcessBtn');
-    if (startBtn) {
-        startBtn.addEventListener('click', () => {
-            startProcessing();
         });
     }
 }

@@ -83,7 +83,7 @@ core/runtime.py（共享状态枢纽）
 - `frontend/shared/`（9 条目）：跨批共享 DOM/样式/试件（含 trial-key.js）。
 - F5 白名单叶服务（4）：`notifications`、`status-bar`、`api-config`、`kie-config`。
 - 共享状态模块（2）：`preview-state`、`api-state`（L4 例外）。
-- init 接线清单：`boot_sequence` 17 项（audit 只对账数量；顺序与接线完备性由 F6 管）。
+- init 接线清单：`boot_sequence` 16 项（audit 只对账数量；顺序与接线完备性由 F6 管）。
 
 ## §4 跨端对接表（谁消费谁；本表行数不机检，A1 只查路径存在）
 

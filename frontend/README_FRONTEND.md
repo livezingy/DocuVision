@@ -97,7 +97,7 @@ export const API_BASE_URL = resolveApiBaseUrl();  // 走 window.DOCUVISION_CONFI
    `updateResultsDisplay` 是唯一留在 `app.js` 的**域函数**（mediator）：D5/D8 两半都回调它，
    由它按固定顺序驱动 D9/D10 各面板。
 
-3. **`DOMContentLoaded` 引导序列（17 步，顺序被机检断言）**：
+3. **`DOMContentLoaded` 引导序列（16 步，顺序被机检断言）**：
 
    ```javascript
    document.addEventListener('DOMContentLoaded', () => {
@@ -107,14 +107,14 @@ export const API_BASE_URL = resolveApiBaseUrl();  // 走 window.DOCUVISION_CONFI
        initUploadZone();               // 上传区
        initTabs(); initHelpButton(); initResultTabs(); initActionButtons();
        initAnalysisOptionsDialog({ … });   // D6，deps 单行注入
-       initEngineSelectors(); initAnalysisView(); initExportButtons();
+       initEngineSelectors(); initExportButtons();
        initBatchProcessing({ getProcessingOptions });
        initHitlReviews(); initPdfTools(); initPreviewPagination();
        insertInitialSkeleton();        // 骨架屏（e2e 的就绪信号）
    });
    ```
 
-   > `scripts/frontend_domain_map.json` 的 `boot_sequence` 是这 17 步的权威副本；
+   > `scripts/frontend_domain_map.json` 的 `boot_sequence` 是这 16 步的权威副本；
    > `check_frontend_baseline.py` C3 校验步数与顺序。改动引导序列 = 同步改该文件。
 
 ## 📊 主要模块

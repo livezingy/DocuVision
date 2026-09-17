@@ -91,12 +91,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     "registered, awaiting cloud verification" (**not** marked done), new P-013 (service-layer owning
     docs unverified — TODO instead of guesswork), P-014 (`shell/tools.js` `startProcessing` unbound)
     and P-015 (Git LFS assessment: 4 tracked files > 5MB, measured and listed; migration not done).
-  - **Known deviation (P-014)**: `npm run lint` still exits 1 with a single, real ERROR —
-    `startProcessing` is unbound in `modules/shell/tools.js::initAnalysisView` (the D4 sibling
-    `shell/ui.js` gets it injected; tools.js does not) and `#startProcessBtn` does not exist in
-    `index.html`, so the listener has never attached. Fixing or deleting it is an unrelated defect fix
-    (own commit) — it was deliberately **not** patched here, and it blocks P-010 stage 3 (CI wiring).
-    ESLint resolved to **10.10.0** (the plan said 9; flat config and both rules behave identically).
+  - **P-014 resolved in its own follow-up commit** (user decision: retire outright, option 2-prime):
+    `npm run lint` now reports **0 errors**. The dead `initAnalysisView` boot step was removed end to
+    end — its only body wired a `#startProcessBtn` listener for an id that does not exist in
+    `index.html`, and `startProcessing` was never bound in `modules/shell/tools.js` (the D4 sibling
+    `shell/ui.js` receives it via `initShellUi`, and Run Analysis is wired there). `boot_sequence` and
+    `domains["D4 shell-init"]` went 17 -> 16 **in the same commit as the code** (C3 fails closed
+    otherwise), together with module-map section 3, the `README_FRONTEND.md` boot snippet, the ratchet
+    (173 -> 172) and two stale `options-dialog.js` comments that attributed the D6 hook to
+    `initAnalysisView` instead of `shell/ui.js::initResultTabs`. Evidence: F6 26 -> 25 init exports all
+    wired, C3 "16 steps, all defined", vitest 80/80, e2e 14/14.
+  - ESLint resolved to **10.10.0** (the plan said 9; flat config and both rules behave identically).
   - Gate evidence: `lint_file_size` / `lint_routes` / `lint_frontend` (F1-F7) /
     `check_frontend_baseline` (C1-C8) / `audit_agent_ops` (+`--selftest`, 15 cases) all green;
     vitest **80/80**; Playwright **14/14**.

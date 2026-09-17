@@ -63,7 +63,7 @@ import {
     initAnnotationInteractions,
 } from './modules/shell/ui.js';
 import {
-    initShellTools, initEngineSelectors, initAnalysisView, initExportButtons, initPdfTools,
+    initShellTools, initEngineSelectors, initExportButtons, initPdfTools,
 } from './modules/shell/tools.js';
 
 // --- v1.8.3 B2: D6 <-> D7 cycle wired at module scope (before any runtime call) ---
@@ -132,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initActionButtons();
     initAnalysisOptionsDialog({ clearTableMappingEligibility, updateKieQueryFieldsAvailability, buildKieQueryFieldsPayload, updateEnhancementTabs });
     initEngineSelectors();
-    initAnalysisView();
     initExportButtons();
     initBatchProcessing({ getProcessingOptions });
     initHitlReviews();

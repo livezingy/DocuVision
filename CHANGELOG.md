@@ -119,6 +119,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     asserts behaviour rather than "no page errors" - which is how the suite stayed green with the error
     present. A module-scope `setTimeout(() => adjustDocumentSize(), 100)` fallback currently masks the
     consequence; the fix is a separate frontend-behaviour commit (three options recorded in PENDING).
+  - **P-016 fixed at the root (option 1) - no inline handlers left in frontend code**: the three
+    `<img ... onload="adjustDocumentSize()">` templates (plus render.js's inline `onerror`) now go through a new
+    module-scope helper `core.js::bindDocumentImageLoad(onError?)`, called right after the HTML is inserted.
+    `image.complete` is re-checked because a cached image may never fire `load`, and the failure UI became
+    `render.js::showPreviewImageFailed()` instead of a doubly-escaped inline string.
+    `frontend_domain_map.json` registers the new D5 function in the same commit. Evidence: inline-handler
+    occurrences 3 -> 0; the runtime coverage report went from 8 pageerrors to **0**, and
+    "registered-but-never-fired" dropped 5 -> 4 (the preview core load listener now actually fires, so the fix
+    improved the coverage signal too); e2e 14/14 (11.4s), vitest 80/80, `npm run lint` 0, F1-F7 / C1-C9 / audit
+    all green. The reusable lesson - an inline handler evaluates in global scope and is a structural blind spot
+    for `no-undef` - is now a rule in kernel `frontend.md`.
 - **P-004 — current-state module map + fail-closed recon** (PR #21, merge `a88fdb4`):
   - `docs/architecture/module-map.md`: backend `routers/` 13 domains × frontend
     `modules/` 15 domains, dependency laws L1-L5, the cross-end consumer table, the

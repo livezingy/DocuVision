@@ -56,3 +56,7 @@
   F6 自身仍只断言"被调用"。剩下的中间态解法（JSDoc + `tsc --allowJs --checkJs --noEmit`）留 v1.9 前端批次评估。
 - **F7 只判可达性、不判接线**：`floating-progress.js`（D11）已登记 `known_orphans`（P-008），浏览器仍不加载它——
   登记只让**新**孤儿暴露；把它接回管线（或删除）属 v1.9 行为变更决策。
+- **模板串里的内联事件处理器是结构盲区**：`<img ... onload="adjustDocumentSize()">` 这类写法在**全局作用域**求值，
+  模块内绑定不可见 → 运行时 `ReferenceError`，而 `no-undef` 不分析字符串、C1-C9/F1-F7 全是结构性的（P-016 实测
+  3 处，2026-09-17 已清零）。**新增/修改模板一律用 `element.addEventListener('load'|'error', fn)` 在插入 HTML 后接线，
+  不要写 `on*=` 属性**；注意缓存命中时 `load` 可能不触发，需按 `element.complete` 补一次调用。

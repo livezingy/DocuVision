@@ -49,4 +49,5 @@
 > `test_data/TestResult/PhaseUI/coverage-<date>.md`（模块加载覆盖 / 各模块监听器"注册 vs 触发" /
 > 目录聚合 / 运行时错误），`PW_COVERAGE=0` 可关闭打点。**它是报告不是门禁**（永不红）——用来给
 > P-010 的清账提供机器写的死代码候选。首次运行即抓到 `onload="adjustDocumentSize()"` 的
-> ReferenceError（内联处理器是 `no-undef` 的盲区，见 PENDING P-016）。
+> ReferenceError（内联处理器是 `no-undef` 的盲区）——该缺陷已于同日按根治方案修完（P-016 结）：
+> 三处内联 handler 换成 `core.js::bindDocumentImageLoad()` 的真实监听器，报告回到 **0 runtime error**。

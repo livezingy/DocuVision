@@ -14,12 +14,27 @@ import {
 } from '../preview-state.js';
 import {
     resolveResultPageCount, syncPreviewPaginationControls, revokeCurrentPageImageUrl,
-    getPdfPageImage, adjustDocumentSize,
+    getPdfPageImage, adjustDocumentSize, bindDocumentImageLoad,
 } from './core.js';
 
 // --- cross-domain deps (D10 overlay), injected at boot ---
 let renderDocumentWithAnnotations = async function () {};
 let renderTextPreview = function () {};
+
+/**
+ * Failure UI for a preview image that never loads.
+ *
+ * Was an inline `onerror` attribute in the template string (P-016): inline handlers are
+ * evaluated in global scope, so anything they reference must be a global - a rule that is
+ * invisible to `no-undef` and to every structural gate. This is the module-scope replacement.
+ */
+function showPreviewImageFailed() {
+    const image = document.getElementById('documentImage');
+    if (!image || !image.parentElement) return;
+    image.parentElement.innerHTML =
+        '<div class="empty-state" style="padding: 40px; text-align: center; color: #f43f5e;">'
+        + 'Failed to load PDF image. Please try again.</div>';
+}
 
 /**
  * Wire preview-render cross-domain dependencies (app.js assembly).
@@ -84,9 +99,10 @@ export async function updatePreviewView(viewType) {
                         let html = '<div class="document-preview-content">';
                         revokeCurrentPageImageUrl();
                         setPageImageUrl(await getPdfPageImage(currentTaskId, currentPreviewPage));
-                        html += `<img id="documentImage" src="${currentPageImageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()" onerror="this.parentElement.innerHTML=\'<div class=\\\'empty-state\\\' style=\\\'padding: 40px; text-align: center; color: #f43f5e;\\\'>Failed to load PDF image. Please try again.</div>\'">`;
+                        html += `<img id="documentImage" src="${currentPageImageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document">`;
                         html += '</div>';
                         documentPage.innerHTML = html;
+                        bindDocumentImageLoad(showPreviewImageFailed);
 
                         // Adjust document size after rendering
                         setTimeout(() => {
@@ -100,9 +116,10 @@ export async function updatePreviewView(viewType) {
                     // For image files, display directly
                     syncPreviewPaginationControls(1, 1);
                     let html = '<div class="document-preview-content">';
-                    html += `<img id="documentImage" src="${currentOriginalFileUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()">`;
+                    html += `<img id="documentImage" src="${currentOriginalFileUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document">`;
                     html += '</div>';
                     documentPage.innerHTML = html;
+                    bindDocumentImageLoad();
 
                     // Adjust document size after rendering
                     setTimeout(() => {

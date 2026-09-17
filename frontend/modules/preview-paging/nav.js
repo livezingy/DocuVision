@@ -17,7 +17,7 @@ import {
 } from '../preview-state.js';
 import {
     previewHelpers, resolveResultPageCount, syncPreviewPaginationControls,
-    revokeCurrentPageImageUrl, getPdfPageImage, adjustDocumentSize,
+    revokeCurrentPageImageUrl, getPdfPageImage, adjustDocumentSize, bindDocumentImageLoad,
 } from './core.js';
 import { updatePreviewView } from './render.js';
 
@@ -105,9 +105,10 @@ export async function goToPreviewPage(pageNum) {
                 documentImage.src = currentPageImageUrl;
             } else {
                 let html = '<div class="document-preview-content">';
-                html += `<img id="documentImage" src="${currentPageImageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document" onload="adjustDocumentSize()">`;
+                html += `<img id="documentImage" src="${currentPageImageUrl}" style="width: auto; height: auto; object-fit: contain; border: none; border-radius: 8px; display: block;" alt="Document">`;
                 html += '</div>';
                 documentPage.innerHTML = html;
+                bindDocumentImageLoad();
             }
             setTimeout(() => adjustDocumentSize(), 100);
         } catch (error) {

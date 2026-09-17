@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（8 组；P-013 / P-014 / P-015 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
+## 待确认（7 组；P-013 / P-014 / P-015 / P-016 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -282,3 +282,15 @@
   （模板里出现 `on\w+="` 即报）或写进 kernel `frontend.md` 的已知 gap。
 - 触发：v1.9 前端批次；或任何一次要动 D5 预览渲染的改动（届时一并处理）。
 - 相关：P-008 gap 2（发现它的报告）、P-014（同类"错误真实但影响面待实测"）、P-010。
+- **状态（2026-09-17 用户裁决"根治方案"= 选项 ①，已修完，本组可结）**：三处模板的内联 handler 全部换成
+  模块内的真实监听器——新增 `core.js::bindDocumentImageLoad(onError?)`（`addEventListener('load', …)`；
+  `onerror` 仅在 render.js 传回调；`image.complete` 时立即补一次调用以覆盖**缓存命中不触发 load** 的情形），
+  `nav.js:108` / `render.js:87,103` 的 `onload=` `onerror=` 属性删除，改为插入 HTML 后调用；
+  render.js 的失败 UI 提为模块内函数 `showPreviewImageFailed()`（不再依赖 `this.parentElement` 字符串转义）。
+  `frontend_domain_map.json` 的 D5 函数清单同 commit 登记新函数。
+  **证据**：① 全仓 `on(load|error|click|…)=` 内联 handler 计数 **3 → 0**（唯一残留是 core.js 里说明本修复的注释）；
+  ② 覆盖度报告 `0 runtime error(s)`（修复前 8 条），"注册了但从未触发"由 5 → 4（`preview-paging/core.js` 的
+  load 监听器现在真的触发了 —— 修复顺带改善了覆盖信号）；③ e2e **14/14**（11.4s）、vitest **80/80**、
+  `npm run lint` 0、F1-F7 / C1-C9 / audit 全绿。
+  **未做（可选）**：给"模板里出现内联 handler"加一条机检（本轮是 3 处、已清零，属预防性）；
+  可复用结论"内联 handler 在全局作用域求值、是 `no-undef` 的结构性盲区"已写进 kernel `frontend.md` 的已知 gap。

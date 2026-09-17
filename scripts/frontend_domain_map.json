@@ -56,7 +56,7 @@
       "syncPreviewPaginationControls", "revokeCurrentPageImageUrl", "goToPreviewPage",
       "initPreviewPagination", "uploadFileForPreview", "switchToQueueItem",
       "getPdfPageImage", "updatePreviewView", "updateDocumentPreview", "fetchAuthedImage",
-      "adjustDocumentSize"
+      "adjustDocumentSize", "bindDocumentImageLoad"
     ],
     "D6 options-dialog": [
       "initAnalysisOptionsDialog", "openAnalysisOptionsDialog", "saveAnalysisOptions",

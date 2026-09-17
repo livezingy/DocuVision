@@ -83,6 +83,24 @@ export async function getPdfPageImage(taskId, pageNum = 1) {
 }
 
 /**
+ * Wire the freshly rendered preview image to the sizing helper.
+ *
+ * The templates used to carry `onload="adjustDocumentSize()"`, and the browser evaluates an
+ * inline handler in **global scope** - where this module's binding does not exist, so every
+ * preview load threw `ReferenceError: adjustDocumentSize is not defined` (P-016, found by the
+ * runtime coverage report). render.js had the same problem with an inline `onerror`. Attached
+ * as real listeners the calls stay module-scope; `onError` is optional (only render.js has a
+ * failure UI). `complete` is checked because a cached image may have fired `load` first.
+ */
+export function bindDocumentImageLoad(onError) {
+    const documentImage = document.getElementById('documentImage');
+    if (!documentImage) return;
+    documentImage.addEventListener('load', adjustDocumentSize);
+    if (onError) documentImage.addEventListener('error', onError);
+    if (documentImage.complete) adjustDocumentSize();
+}
+
+/**
  * Adjust document size to fit container - show full page without scrollbar
  */
 export function adjustDocumentSize() {

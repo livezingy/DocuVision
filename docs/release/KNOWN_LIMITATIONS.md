@@ -81,6 +81,6 @@
 - **Recent-tasks UI**：后端可恢复，刷新页仍会丢 `currentTaskId`。
 - **维护**：Playwright E2E P1/P2；文档漂移审计脚本**已落地**——`scripts/audit_agent_ops.py`（kernel-ref 哈希 + living doc 引用路径存在性 + module-map 对账，P-004），已挂 PR→main CI；`009-doc-sync` 机制 5 里"grep 端点/字段对照代码符号表"的那一半仍未实现。
 
-Cloud 验收：[MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md)。
+Cloud 验收：[MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md](MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md)、[MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.5_CLOUD_CHECKLIST.md)。
 
 路线图：[v1.7-roadmap.md](../architecture/v1.7-roadmap.md)、[RELEASE_1.6_NOTES.md](./RELEASE_1.6_NOTES.md)、[v1.6-roadmap.md](../architecture/v1.6-roadmap.md)。

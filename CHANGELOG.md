@@ -147,6 +147,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the train-open commit so it cannot be read as the current version (`main` reports `1.8.3`).
 - `docs/R&D/PENDING.md`: **P-012 closed and removed** — its conclusion was promoted into
   `docs/architecture/v1.7-roadmap.md` per the file's own rule (pending: 10 -> 9 groups).
+- `docs/release/MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md` (**moved** from `test_data/acceptance/`): the v1.7 merge-gate
+  checklist is archived and frozen now that its gate is verified. Internal links were re-pointed for the new depth,
+  the header no longer says the tag is pending, and an archive note warns that section 0 is stale (`feature/v1.7` no
+  longer exists; the `docuvision-core[lite]` extra was dropped in v1.8). The three inbound references
+  (`docs/architecture/v1.7-roadmap.md`, `docs/release/README.md`, `docs/release/KNOWN_LIMITATIONS.md`) were updated,
+  and the release index now lists this file under the archived validation material.
+- `03_page11.pdf` provenance is recorded instead of left open: it is page 11 extracted from
+  `test_data/testfiles/PDF_Parsing/03_paper_arxiv-mamba_multicolumn_glyph-tables.pdf` (operator-confirmed). The roadmap
+  also records why neither ① nor ② is filled in for the historical question — there is no in-repo evidence either way
+  (`git grep TASK-PERSIST` hits documents only, the KIE run tracker has no v1.7 row, and the tag shares the feature
+  commit's date) — so what gets written down is the absence of a record, not a guess.
+- `docs/R&D/PENDING.md` P-011 wording corrected: the audit workflow's `paths` filter applies to `pull_request` only
+  (`push` to main has no filter, so the audit always runs there). The gap is narrower but real: in a PR, editing
+  `backend/tests/**`, `backend/pytest.ini`, `scripts/test_registry_audit.py` or the Phase A workflow does not trigger
+  the audit, so a check-4 regression would only surface after merging.
 
 ## [1.8.3] — 2026-09-16
 

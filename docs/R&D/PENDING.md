@@ -128,9 +128,11 @@
 - 触发：下一批 feature 分支开工前定；当前实际按 ② 运转（本机跑门禁 + 合 main 时 CI 复核）。
 - 相关：`.cursor/rules/003-git.mdc`（`[run ci]` 手动触发约定）、P-008、`lint.yml` 的路径过滤（docs-only PR 不触发 lint）。
 - **状态（2026-09-17，本次治理批次未改动 workflow——红线）**：三条 workflow 的触发分支与 paths 保持原样。
-- **新发现（2026-09-17，同批登记）**：`agent-ops-audit.yml` 的 `paths` **未覆盖 `backend/tests/**` 与
-  `backend/pytest.ini`**，而新增的 check 4 真源正是这两个 → **改了测试登记不会触发 audit CI**（本地跑仍会红）。
-  修它要动 workflow（红线），故随本条一并待决：下一轮放宽触发时把 `backend/tests/**` 加入 audit 的 paths。
+- **新发现（2026-09-17 登记，同日修正措辞）**：`agent-ops-audit.yml` 的 `paths` 过滤**只作用于 `pull_request`**
+  （`push` 到 main 无 paths 过滤，audit 每次必跑）；而该 paths **未覆盖 `backend/tests/**`、`backend/pytest.ini`、
+  `scripts/test_registry_audit.py` 与 `.github/workflows/kie-phase-a.yml`** —— 这几个正是 check 4 的真源
+  → **PR 中改测试登记 / 删测试文件不会触发 audit**（本机跑会红，但只有合 main 后才被 CI 补跑）。
+  修它要动 workflow（红线），随本条一并待决：下一轮放宽触发时把上述路径加入 audit 的 `pull_request.paths`。
 
 ### P-013 · 服务层模块的 owning doc 未核实（2026-09-17，doc-sync 归属表补全时登记）
 - 背景：补全 kernel `doc-sync.md` 机制 2 归属表时逐模块核实 owning doc。有把握的行已写入

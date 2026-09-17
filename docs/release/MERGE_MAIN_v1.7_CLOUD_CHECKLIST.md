@@ -1,10 +1,14 @@
 # feature/v1.7 — Cloud Studio acceptance checklist
 
 Last updated: 2026-09-06
-Target tag: **`v1.7.0`** (pending — wait for Cloud **TASK-PERSIST-001**)
+Target tag: **`v1.7.0`** (已切 2026-09-07；Cloud **TASK-PERSIST-001** 于 2026-09-17 验证通过 — 见下方归档说明)
 Shell: **zsh/bash** (Tencent) / bash (Baidu)
 
-Related: [v1.7-roadmap.md](../../docs/architecture/v1.7-roadmap.md), [MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md](./MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md)
+> **归档（2026-09-17）**：本清单对应的 v1.7 云门禁 `TASK-PERSIST-001` 已于 2026-09-17 在 `main` 基线验证通过
+> （判据与**基线口径**见 [v1.7-roadmap.md](../architecture/v1.7-roadmap.md) §Acceptance）。本文件**归档冻结、不再维护**：
+> §0 的 `feature/v1.7` 分支与 `docuvision-core[lite]` extra 均已不存在，复现请以 roadmap §Acceptance 为准。
+
+Related: [v1.7-roadmap.md](../architecture/v1.7-roadmap.md), [MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md)
 
 **Scope delta vs v1.6**: version identity `APP_VERSION=1.7.0`; Pro single-task result persistence (`analyze_jobs` + `OUTPUT_DIR/{task_id}/result.json`). ZIP / figure contracts unchanged.
 
@@ -18,7 +22,7 @@ Related: [v1.7-roadmap.md](../../docs/architecture/v1.7-roadmap.md), [MERGE_MAIN
 |---|-------|------|
 | 0 | Env | Pro `:8000` health **200**; `api_version` **1.7.0** |
 | 1 | Local mock | `pytest backend/tests/test_task_persistence.py tests/test_queue_persistence.py -q` **all passed** (本机或 Cloud，不触 paddle) |
-| 2 | v1.6 regression | [MERGE_MAIN_v1.6](./MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md) **PACK-ZIP-001** still green if pack files are touched |
+| 2 | v1.6 regression | [MERGE_MAIN_v1.6](../../test_data/acceptance/MERGE_MAIN_v1.6_CLOUD_CHECKLIST.md) **PACK-ZIP-001** still green if pack files are touched |
 | 3 | **TASK-PERSIST-001** | analyze completes → kill `:8000` → start again → same `task_id` serves result + ZIP (`PK`) + at least one figure GET **200** |
 
 ---

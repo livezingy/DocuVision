@@ -24,4 +24,13 @@
 
 Cross-cutting: [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) · [CHANGELOG.md](../../CHANGELOG.md)
 
+## Pre-release validation manuals（归档）
+
+发版**前**的逐版本验证手册：版本发出后即归档于此（不再更新，只备查）；通用回归手册仍在
+[`../architecture/CLOUD_VALIDATION.md`](../architecture/CLOUD_VALIDATION.md)。
+
+| Manual | Scope |
+|--------|-------|
+| [v1.8-cloud-validation.md](v1.8-cloud-validation.md) | v1.8 发版前 **Cloud Studio GPU** 验证手册（文本层选择性回填 / 页信任守门器 / Lite 收编）；v1.8.0–v1.8.3 均已发出，归档备查 |
+
 Design reference: [docuvision-system-design.md](../architecture/docuvision-system-design.md)

@@ -97,7 +97,19 @@ function recorder() {
 
 // Kill switch: `PW_COVERAGE=0 npm run test:e2e` runs the suite untouched. A report must be
 // dismissible without editing code, and an A/B run is how the recorder itself gets validated.
+// It also disables the runtime-error assertion below (the escape hatch has to be total).
 const ENABLED = process.env.PW_COVERAGE !== '0';
+
+/**
+ * Runtime errors that are *expected* on this suite - RegExp matched against the
+ * `pageerror: <msg>` / `console.error: <msg>` lines the fixture collects.
+ *
+ * Empty on purpose (2026-09-17): the first full run measured **0** errors, so this starts at
+ * zero rather than at "a few we agreed to live with" - the same rule the ESLint gate was wired
+ * under. Every entry weakens the signal this assertion exists to provide, so an entry needs
+ * the reason it is expected next to it.
+ */
+const EXPECTED_ERRORS = [];
 
 function fragmentName(file, title) {
   const stem = `${path.basename(file, '.e2e.js')}-${title}`;
@@ -109,6 +121,9 @@ function fragmentName(file, title) {
 const test = base.test.extend({
   page: async ({ page }, use, testInfo) => {
     const errors = [];
+    // Instrumentation problems are reported, never fatal: they are about the recorder, not the
+    // application (a page that closed early must not look like a product bug).
+    const notes = [];
     page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
     page.on('console', (msg) => {
       if (msg.type() === 'error') errors.push(`console.error: ${msg.text()}`);
@@ -124,8 +139,9 @@ const test = base.test.extend({
         loaded: performance.getEntriesByType('resource').map((entry) => entry.name),
       }));
     } catch (err) {
-      errors.push(`coverage snapshot unavailable: ${err.message}`);
+      notes.push(`coverage snapshot unavailable: ${err.message}`);
     }
+    // Fragment first: the assertion below must not cost us the coverage data it is about.
     try {
       fs.mkdirSync(FRAGMENT_DIR, { recursive: true });
       fs.writeFileSync(
@@ -134,12 +150,28 @@ const test = base.test.extend({
           title: testInfo.title,
           file: path.relative(REPO_ROOT, testInfo.file),
           errors,
+          notes,
           ...snapshot,
         }),
         'utf8',
       );
     } catch (err) {
       console.log(`[coverage] fragment not written: ${err.message}`);
+    }
+    for (const note of notes) console.log(`[coverage] note (${testInfo.title}): ${note}`);
+
+    // P-008 gap 2, step 1 (2026-09-17): a report depends on someone reading it; this assertion
+    // does not. It is what would have caught P-016 (8 pageerrors behind a 14/14 green suite).
+    // Local-only by design - it needs no CI change and no branch protection to be useful.
+    const unexpected = errors.filter((line) => !EXPECTED_ERRORS.some((re) => re.test(line)));
+    if (unexpected.length) {
+      throw new Error(
+        `${unexpected.length} runtime error(s) during this test:`
+        + `\n  ${unexpected.join('\n  ')}`
+        + '\nThe app threw or logged an error while this scenario ran. Fix the cause; only if it'
+        + ' is genuinely expected, add a pattern *with its reason* to EXPECTED_ERRORS in'
+        + ' frontend/tests/e2e/helpers/coverage.js (or run with PW_COVERAGE=0 to skip entirely).',
+      );
     }
   },
 });

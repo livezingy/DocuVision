@@ -130,6 +130,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     improved the coverage signal too); e2e 14/14 (11.4s), vitest 80/80, `npm run lint` 0, F1-F7 / C1-C9 / audit
     all green. The reusable lesson - an inline handler evaluates in global scope and is a structural blind spot
     for `no-undef` - is now a rule in kernel `frontend.md`.
+  - **P-008 gap 2, step 1 - runtime errors are asserted, not just reported** (2026-09-17, authorized): the e2e
+    fixture now fails a test whose page threw or logged an error, on top of writing the coverage report. This is
+    the half of gap 2 that needs neither a CI change nor branch protection to be useful, and it is exactly what
+    would have caught P-016 (8 pageerrors behind a 14/14 green suite). `EXPECTED_ERRORS` starts empty because the
+    first full run measured zero - the same "clean it before you wire it" rule ESLint was gated under - and
+    `PW_COVERAGE=0` disables the recorder and the assertion together. Verified in both directions: a probe whose
+    test body passes but whose page logs `console.error` fails with the error text and both remedies; the same
+    probe passes once its error is listed in `EXPECTED_ERRORS` (and the report still records it honestly); the
+    full suite is 14/14 with 0 runtime errors. Step 2 - gating it in CI - stays open: of the three candidate
+    scopes, the runtime-error gate is the only one worth wiring, the module-loading gate overlaps F7, and a
+    listener-coverage gate is rejected because coverage is not a correctness property (and editing tests would
+    flip its colour).
 - **P-004 — current-state module map + fail-closed recon** (PR #21, merge `a88fdb4`):
   - `docs/architecture/module-map.md`: backend `routers/` 13 domains × frontend
     `modules/` 15 domains, dependency laws L1-L5, the cross-end consumer table, the

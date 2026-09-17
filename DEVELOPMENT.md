@@ -51,3 +51,6 @@
 > P-010 的清账提供机器写的死代码候选。首次运行即抓到 `onload="adjustDocumentSize()"` 的
 > ReferenceError（内联处理器是 `no-undef` 的盲区）——该缺陷已于同日按根治方案修完（P-016 结）：
 > 三处内联 handler 换成 `core.js::bindDocumentImageLoad()` 的真实监听器，报告回到 **0 runtime error**。
+> **报告之外还有一条断言**（2026-09-17 起）：fixture 断言本次运行 `pageerror` / `console.error` 为空
+> （测试体绿但页面报错 = 判红；`EXPECTED_ERRORS` 从零开始，加条目须写理由；`PW_COVERAGE=0` 同时关闭
+> 记录与断言）。**本机生效，不需要 CI 改动**——接 CI 属另一步，前提是 e2e 进 CI。

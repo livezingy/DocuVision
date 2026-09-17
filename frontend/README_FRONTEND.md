@@ -66,7 +66,9 @@ frontend/
 > 监听器"注册 vs 触发"（含"注册了但从未触发"）/ 按目录聚合 / 运行时 pageerror+console.error；
 > 记录点由 `helpers/coverage.js` 注入（patch `EventTarget.prototype.addEventListener`，按注册点堆栈归属到模块），
 > 由 `helpers/coverage-report.js`（globalTeardown）合并、`helpers/coverage-setup.js` 每次清空。
-> **报告不是门禁**（永不红），`PW_COVERAGE=0 npm run test:e2e` 可关闭打点。
+> **报告本身不是门禁**（永不由报告判红）；但 fixture **还断言本次运行无 `pageerror` / `console.error`**
+> （测试体绿而页面报错 = 判红；允许清单 `EXPECTED_ERRORS` 刻意从空开始，加条目须写理由）。
+> `PW_COVERAGE=0 npm run test:e2e` 可同时关闭打点与断言。
 > 风格 linter（P-010）：`cd frontend && npm run lint`（ESLint flat config，仅 `no-unused-vars` + `no-undef`，
 > 作用域 `app.js` + `modules/**` + `shared/**`；`tests/**` 属第二批）。**2026-09-17 起已接 CI**
 > （`lint.yml`：`actions/setup-node` 22 + `npm ci` + `npm run lint`，置于四个 stdlib 门禁之后）——

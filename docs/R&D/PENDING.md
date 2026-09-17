@@ -151,12 +151,23 @@
   ③ 折中：只对 `docs/**`、`scripts/**`、`*.md` 这类低风险路径放开。
 - 触发：下一批 feature 分支开工前定；当前实际按 ② 运转（本机跑门禁 + 合 main 时 CI 复核）。
 - 相关：`.cursor/rules/003-git.mdc`（`[run ci]` 手动触发约定）、P-008、`lint.yml` 的路径过滤（docs-only PR 不触发 lint）。
-- **状态（2026-09-17，本次治理批次未改动 workflow——红线）**：三条 workflow 的触发分支与 paths 保持原样。
-- **新发现（2026-09-17 登记，同日修正措辞）**：`agent-ops-audit.yml` 的 `paths` 过滤**只作用于 `pull_request`**
-  （`push` 到 main 无 paths 过滤，audit 每次必跑）；而该 paths **未覆盖 `backend/tests/**`、`backend/pytest.ini`、
-  `scripts/test_registry_audit.py` 与 `.github/workflows/kie-phase-a.yml`** —— 这几个正是 check 4 的真源
-  → **PR 中改测试登记 / 删测试文件不会触发 audit**（本机跑会红，但只有合 main 后才被 CI 补跑）。
-  修它要动 workflow（红线），随本条一并待决：下一轮放宽触发时把上述路径加入 audit 的 `pull_request.paths`。
+- **状态（2026-09-17，治理批次未改动 workflow——红线）**：该批次的触发分支与 paths 保持原样；
+  **同日稍后由用户授权单独改了 `paths`**（见下）。
+- **机制澄清（2026-09-17）**：`agent-ops-audit.yml` 的 `paths` 过滤**只作用于 `pull_request`**——`push` 到 main
+  无 paths 过滤，audit 每次必跑 → 所有缺口都只发生在 **PR 阶段**（评审门），不是"永远不跑"。
+- **已处置（2026-09-17，用户授权）**：`backend/tests/**` 已加入该 `pull_request.paths`。**同时修正本条的措辞
+  错误**：`backend/pytest.ini` **不是** check 4 的真源——check 4 只读 `backend/tests/test_registry.json` +
+  递归 `backend/tests/**/test_*.py` + `.github/workflows/kie-phase-a.yml`（`scripts/test_registry_audit.py:36/37/41`）。
+  附带结论：pytest.ini 的 `--continue-on-collection-errors`（P-008 ③）**目前无任何机检覆盖**——要守它得加一条
+  断言，而不是加 paths。
+- **仍未覆盖（判定规则：改动这里能否翻转 audit 的判决？逐项过）**，待下一轮裁决：
+  `.github/workflows/kie-phase-a.yml`（check 4 解析它）、`scripts/test_registry_audit.py`（check 4 的实现体）、
+  `scripts/frontend_coupling.py`（2026-09-17 起 audit check 3 经它读 A6 事实）、§5 门禁表引用的
+  `scripts/lint_file_size.py` / `lint_routes.py` / `lint_frontend.py` / `check_frontend_baseline.py`（A0 查其符号
+  是否存在）、`CHANGELOG.md`（A5 新鲜度输入）。
+  两条路线：**逐条精确补**（清单会长、且会漂——本轮就漂了一次）vs **粗粒度** `scripts/**` + `CHANGELOG.md`
+  + `kie-phase-a.yml`（代价≈每次脚本改动多跑一次 11s 的 audit）。
+  可选治本：让 audit 自检"我的输入 ⊆ workflow 的 paths"（只读解析 workflow，不写），把漂移变红灯——需单独授权。
 
 ### P-013 · 服务层模块的 owning doc 未核实（2026-09-17，doc-sync 归属表补全时登记）
 - 背景：补全 kernel `doc-sync.md` 机制 2 归属表时逐模块核实 owning doc。有把握的行已写入

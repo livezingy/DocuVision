@@ -3,7 +3,6 @@
 > 状态：§1-§3 为 v1.8/v1.8.1 **已实现行为**（分支 `feature/v1.8.1`，c37e35c）；§4-§5 为 **v1.9 提案**（PENDING P-002，未实现）。
 > 代码归属：`backend/app/services/table_backfill.py`（漏斗）、`page_text_trust.py`（页信任）、
 > `proof_render.py` / `proof_report.py` / `proof_pack.py`（证明包）。
-> 设计稿：`docs/R&D/PLAN/v1.8.1-proof-pack-design.md`（本地规划区）。
 
 ## 1. Review 覆盖范围（现有行为）
 

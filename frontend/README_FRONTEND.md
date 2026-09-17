@@ -147,7 +147,8 @@ export const API_BASE_URL = resolveApiBaseUrl();  // 走 window.DOCUVISION_CONFI
 | 纯函数工具 | `modules/utils/{geometry,csv,text,dom}.js` | 坐标换算、CSV/Markdown、文本归一、HTML 转义 |
 
 > 权威边界：`scripts/frontend_domain_map.json`（域 → 函数清单 + 状态归属 + 导入白名单）
-> 与设计稿 `docs/R&D/PLAN/v1.8.3-frontend-split/cross-domain-edges.md`（跨域调用与注入矩阵）。
+> 与 `docs/architecture/module-map.md` §3（域 → 文件 → 对接方式）；跨域调用与注入矩阵由
+> `python scripts/check_frontend_baseline.py --edges` 复现（实现 `scripts/frontend_coupling.py`）。
 > 本文不再逐函数列举——直接读模块文件是更可靠的入口。
 
 ### 4. 导出功能
@@ -412,6 +413,7 @@ export const API_BASE_URL = resolveApiBaseUrl();  // 由 window.DOCUVISION_CONFI
 **维护者**: DocuVision Team
 
 > 拆分后的权威入口是**模块文件本身** + `scripts/frontend_domain_map.json`（域边界）+
-> 设计稿 `docs/R&D/PLAN/v1.8.3-frontend-split/`（边表与注入矩阵）。本文的「🔌 API 交互」
+> `docs/architecture/module-map.md` §3（域表与对接方式）；边表与注入矩阵用
+> `python scripts/check_frontend_baseline.py --edges` 复现。本文的「🔌 API 交互」
 > 「🎨 UI 布局」「📱 响应式设计」「🚀 性能优化」等节保留为功能性描述（端点与布局未变），
 > 但其函数名示例以模块文件为准——`app.js` 现在只有装配与 mediator。

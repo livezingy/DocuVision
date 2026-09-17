@@ -37,7 +37,8 @@
    留成空桩，用户一交互就炸，而语法与 F1-F7 全绿（机检：lint F6 + baseline C9——C9 断言 app.js 注入的
   key 集合**恰好等于**模块体读取的 `deps.*` 集合，缺 key 与多 key 都红）。跨域调用与
    跨批的同域拆分调用一律经 app.js 的 `initXxx({ deps })` 注入，**禁建 `window.*`
-   桥**（装配期一次性完成，见 `docs/R&D/PLAN/v1.8.3-frontend-split/cross-domain-edges.md`）。
+   桥**（装配期一次性完成；跨域边表可由 `python scripts/check_frontend_baseline.py --edges`
+   复现，实现见 `scripts/frontend_coupling.py`）。
    新增跨域边要么追加注入、要么提前被调者出仓，并在边表登记。（机检：baseline C8）
 
 > 已知 gap（记录在案，v1.9 候选）：F6 只有名字级断言——deps 侧已由 **C9**（2026-09-17 落地，

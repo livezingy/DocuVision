@@ -126,9 +126,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`TASK-PERSIST-001` verified on cloud — `v1.7-roadmap.md` no longer says `pending`** (2026-09-17):
   a completed Pro analyze task survives an `:8000` restart. Run on `main` `a73468b`
   (`git describe` = `v1.8.3.0-23-ga73468b`), Tencent Cloud Studio A10, `backend/install_pro_gpu.sh`;
-  `task_id = 0691cc4a-5366-4259-9a83-c5d2842bfc07`, document `test_data/testfiles/PDF_Parsing/03_page11.pdf`
-  (**that fixture is not in version control** — `git ls-files` has no entry and `git check-ignore` shows it is
-  *not* ignored, i.e. committable but never committed; reproducing the run needs an equivalent table+figure doc).
+  `task_id = 0691cc4a-5366-4259-9a83-c5d2842bfc07`, `/health` `api_version = 1.8.3` (operator-confirmed, matched
+  expectation), document `test_data/testfiles/PDF_Parsing/03_page11.pdf` (1 page / 408,464 B; uploaded to the
+  cloud instance manually for the run, then **committed in the same batch** so a clone reproduces with the same
+  fixture).
   Pre- and post-restart both 4/4: task **200 `completed`**; result **200** (`tables=1`,
   `figures.figure_count=2`); ZIP **200** with magic `PK`, `manifest.json`, `tables/`x3, `figures/`x3;
   figure `p1_e3` **200** with `\x89PNG` header. Evidence table lives in the roadmap's Acceptance section.
@@ -137,8 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   orchestration layers were refactored by v1.8.2 SPLIT-U (`routers/tasks.py` +219,
   `routers/tasks_content.py` +425, `document_pipeline_orchestrator.py` +47, `core/config.py` 11 lines;
   106 commits since the tag). The conclusion is "persistence works across restart on the main
-  baseline", **not** a byte-for-byte replay of the tag-time gate. Not collected: the `/health`
-  `api_version` field (the commit SHA identifies the baseline).
+  baseline", **not** a byte-for-byte replay of the tag-time gate. Not collected: `SQLITE_DB_PATH` / `OUTPUT_DIR`
+  resolved values (not gate criteria).
 - `docs/architecture/v1.7-roadmap.md`: Train identity row `Tag \`v1.7.0\` = not cut` corrected to
   `shipped (2026-09-07, commit a72ec1d)` — a sixth residual of the P-009 release-docs batch, which had
   fixed five other "tag pending" / "tag not cut" claims but missed this one, and it contradicted the

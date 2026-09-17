@@ -42,7 +42,7 @@ export function updateContentFormulas(formulas) {
             try {
                 html += `<div class="formula-rendered">${katex.renderToString(latex, { throwOnError: false, displayMode: true })}</div>`;
                 html += `<div class="formula-latex"><code>${escapeHtml(latex)}</code></div>`;
-            } catch (e) {
+            } catch {
                 html += `<div class="formula-latex"><code>${escapeHtml(latex)}</code></div>`;
             }
         } else {

@@ -66,7 +66,7 @@ export async function goToPreviewPage(pageNum) {
         try {
             const result = JSON.parse(resultJson);
             totalPages = resolveResultPageCount(result, currentQueueItem);
-        } catch (e) {
+        } catch {
             totalPages = resolveResultPageCount(null, currentQueueItem);
         }
     } else {

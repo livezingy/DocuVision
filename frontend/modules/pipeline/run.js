@@ -294,7 +294,6 @@ export async function pollTaskStatus(taskId, item, progressBar, status) {
                     const data = JSON.parse(event.data);
                     const eventType = data.type;
                     const message = data.message || '';
-                    const progress = data.progress !== undefined ? Math.floor(data.progress) : undefined;
                     // (duplicate suppression removed — backend now avoids re-sending current_event)
 
                     console.log(`[WebSocket] Event received - type: ${eventType}, message: ${message.substring(0, 50)}...`);

@@ -4,13 +4,12 @@
  * Moved verbatim out of app.js (functions + their presentation-only state). No imports:
  * it touches only the DOM and the timers, so L1 holds trivially and any domain may import
  * updateStatusBar / updateStatusBarThrottled without coupling. Its state is throttling
- * bookkeeping (queue, last message/time) and is never read by another domain.
+ * bookkeeping (queue, last message) and is never read by another domain.
  */
 
 let statusUpdateQueue = [];
 let isProcessingQueue = false;
 let lastStatusMessage = '';
-let lastStatusUpdateTime = 0;
 const STATUS_UPDATE_MIN_INTERVAL = 100; // Minimum 100ms between status updates (reduced for real-time updates)
 
 /**
@@ -53,7 +52,6 @@ export function processStatusQueue() {
 
     // Update tracking variables
     lastStatusMessage = message;
-    lastStatusUpdateTime = Date.now();
 
     // Schedule next item
     if (statusUpdateQueue.length > 0) {

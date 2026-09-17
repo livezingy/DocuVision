@@ -30,7 +30,7 @@
         return fromUrl;
       }
       return window.localStorage.getItem(STORE_KEY) || "";
-    } catch (e) {
+    } catch {
       return "";
     }
   }
@@ -96,7 +96,7 @@
     if (!p || typeof p.then !== "function") return p;
     return p.then(function (response) {
       if (response && response.status === 401 && !response.__trialAuthHandled) {
-        try { response.__trialAuthHandled = true; } catch (e) { /* frozen response — ignore */ }
+        try { response.__trialAuthHandled = true; } catch { /* frozen response — ignore */ }
         showKeyRequired();
       }
       return response;
@@ -111,7 +111,7 @@
         var u = new URL(url, window.location.href);
         if (!u.searchParams.get("key")) u.searchParams.set("key", trialKey);
         url = u.toString();
-      } catch (e) { /* non-standard URL — pass through untouched */ }
+      } catch { /* non-standard URL — pass through untouched */ }
       return protocols === undefined ? new NativeWS(url) : new NativeWS(url, protocols);
     };
     PatchedWS.prototype = NativeWS.prototype;
@@ -137,7 +137,7 @@
       var u = new URL(url, window.location.href);
       if (!u.searchParams.get("key")) u.searchParams.set("key", trialKey);
       return u.toString();
-    } catch (e) {
+    } catch {
       return url;
     }
   };

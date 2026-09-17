@@ -36,7 +36,6 @@ export function initAnalysisOptionsDialog(deps = {}) {
     if (typeof deps.updateEnhancementTabs === 'function') updateEnhancementTabs = deps.updateEnhancementTabs;
 
     const modal = document.getElementById('analysisOptionsModal');
-    const openBtn = document.getElementById('analysisOptionsBtn');
     const closeBtn = document.getElementById('closeAnalysisOptionsBtn');
     const cancelBtn = document.getElementById('cancelOptionsBtn');
     const saveBtn = document.getElementById('saveOptionsBtn');

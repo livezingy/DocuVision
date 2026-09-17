@@ -228,7 +228,7 @@ export function formatKieFieldForExtract(field, depth) {
     if (d > 8) {
         try {
             return '<pre class="kie-json">' + escapeHtml(JSON.stringify(field, null, 2)) + '</pre>';
-        } catch (e) {
+        } catch {
             return escapeHtml(String(field));
         }
     }
@@ -313,7 +313,7 @@ export function formatKieFieldForExtract(field, depth) {
     }
     try {
         return '<pre class="kie-json">' + escapeHtml(JSON.stringify(field, null, 2)) + '</pre>';
-    } catch (e) {
+    } catch {
         return escapeHtml(String(field));
     }
 }

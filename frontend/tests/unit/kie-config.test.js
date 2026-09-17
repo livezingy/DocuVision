@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { importedBySomeSource } from './_sources.js';
 import {
     KIE_DOC_TYPES,
     KIE_FIELD_NAME_RE,
@@ -40,9 +41,9 @@ describe('kie-config', () => {
         ]);
     });
 
-    it('app.js imports it and no longer declares the constants', () => {
+    it('is imported by a consumer and no longer declared in app.js', () => {
         const appJs = fs.readFileSync(path.join(frontendDir, 'app.js'), 'utf8');
-        expect(appJs).toContain("'./modules/kie-config.js'");
+        expect(importedBySomeSource(frontendDir, 'kie-config')).toBe(true);
         for (const name of domainMap.shared_modules['frontend/modules/kie-config.js']) {
             const declared = new RegExp(`^(?:const|let|var)\\s+${name}\\b`, 'm').test(appJs);
             expect(declared, `app.js still declares ${name}`).toBe(false);

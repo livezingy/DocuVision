@@ -56,8 +56,12 @@ frontend/
 > 白名单叶服务/共享状态与 `../shared/*`；**禁 import `../app.js`、禁跨域 import 兄弟域模块**
 > （跨域一律经 app.js 装配注入）；新模块文件不得出现在 `index.html`（由 app.js import 链加载）。
 >
-> 门禁：`python scripts/lint_frontend.py`（F1-F6）+ `python scripts/check_frontend_baseline.py`
+> 门禁：`python scripts/lint_frontend.py`（F1-F7；F7 = 孤儿模块可达性，例外登记
+> `scripts/frontend_domain_map.json` 的 `known_orphans`）+ `python scripts/check_frontend_baseline.py`
 > （C0-C8）+ `python scripts/check_frontend_baseline.py --edges`（跨域边表，须与设计稿一致）。
+> 风格 linter（P-010 阶段 1，2026-09-17 起）：`cd frontend && npm run lint`（ESLint flat config，
+> 仅 `no-unused-vars` + `no-undef`，作用域 `app.js` + `modules/**` + `shared/**`；`tests/**` 属第二批）。
+> **尚未接 CI**——清零并观察后再定（P-010 阶段 3）。
 
 ## 🔧 配置和初始化
 

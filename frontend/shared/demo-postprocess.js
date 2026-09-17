@@ -138,7 +138,7 @@
         _mappingConfig = await res.json();
         return _mappingConfig;
       }
-    } catch (_) { /* fallback */ }
+    } catch { /* fallback */ }
     _mappingConfig = DEFAULT_MAPPINGS;
     return _mappingConfig;
   }

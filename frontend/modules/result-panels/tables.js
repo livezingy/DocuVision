@@ -26,8 +26,6 @@ export function initResultPanelsTables(deps = {}) {
  */
 export function renderTableCard(table, index, total) {
     const tableData = table.data || [];
-    const rows = table.rows || tableData.length || 0;
-    const columns = table.columns || (tableData[0] ? tableData[0].length : 0);
     const page = table.page || '?';
     const confidencePct = tableConfidencePct(table);
     const tableCaption = String(table.caption || '').trim();

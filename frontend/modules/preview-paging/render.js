@@ -48,7 +48,7 @@ export async function updatePreviewView(viewType) {
                         const result = JSON.parse(resultJson);
                         const docInfo = result.document_info || {};
                         fileName = docInfo.file_name || 'Document';
-                    } catch (e) {
+                    } catch {
                         // Use default
                     }
                 } else {
@@ -138,7 +138,7 @@ export async function updatePreviewView(viewType) {
                             r.style.outlineOffset = '4px';
                         });
                     }, 100);
-                } catch (e) {
+                } catch {
                     documentPage.innerHTML = '<div class="empty-state" style="padding: 40px; text-align: center; color: #6b7280;">Analysis results not available yet. Processing in progress...</div>';
                 }
             } else {
@@ -155,8 +155,6 @@ export async function updateDocumentPreview(result) {
     const documentPage = document.getElementById('documentPage');
     if (!documentPage) return;
 
-    const docInfo = result.document_info || {};
-    const fileName = docInfo.file_name || 'Document';
     const pages = resolveResultPageCount(result, currentQueueItem);
 
     syncPreviewPaginationControls(pages, currentPreviewPage);

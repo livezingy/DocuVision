@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { importedBySomeSource } from './_sources.js';
 import * as state from '../../modules/preview-state.js';
 import {
     normalizeApiBaseUrl,
@@ -49,11 +50,12 @@ describe('shared_modules export surface', () => {
         expect(stillDeclared).toEqual([]);
     });
 
-    it('app.js imports the shared modules and no module uses a default export', () => {
-        const appJs = readFile('app.js');
-        expect(appJs).toContain("'./modules/preview-state.js'");
-        expect(appJs).toContain("'./modules/api-config.js'");
+    it('every shared module is imported by a consumer and uses no default export', () => {
         for (const rel of Object.keys(domainMap.shared_modules)) {
+            expect(
+                importedBySomeSource(frontendDir, path.basename(rel, '.js')),
+                `${rel} is imported by nobody`,
+            ).toBe(true);
             expect(readFile(rel.replace(/^frontend\//, ''))).not.toMatch(/export\s+default/);
         }
     });

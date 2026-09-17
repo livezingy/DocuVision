@@ -27,7 +27,6 @@ import { escapeHtml } from './utils/dom.js';
 import { formatAzureRoleLabel } from './utils/text.js';
 
 let enableOverlaySha256Validation = false;
-let forcePureLayoutBboxOverlay = false;
 const overlayLayerVisibility = {
     text: true,
     table: true,
@@ -184,8 +183,6 @@ export async function renderDocumentWithAnnotations(result, pageNum = currentPre
 
     setLastRenderedAnalysisResult(result);
 
-    const docInfo = result.document_info || {};
-    const fileName = docInfo.file_name || 'Document';
     const totalPages = resolveResultPageCount(result, currentQueueItem);
     const page = previewHelpers().normalizePreviewPage
         ? previewHelpers().normalizePreviewPage(pageNum, totalPages)

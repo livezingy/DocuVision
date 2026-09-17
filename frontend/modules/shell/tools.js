@@ -56,6 +56,10 @@ export function initEngineSelectors() {
  */
 export function initAnalysisView() {
     // Start processing button
+    // P-010 note: `startProcessing` is NOT bound in this module (unlike the D4 sibling
+    // shell/ui.js, which receives it via initShellUi) and `#startProcessBtn` does not
+    // exist in index.html, so this listener has never been attached. Left untouched on
+    // purpose - fixing it is an unrelated defect fix (own commit); see PENDING P-014.
     const startBtn = document.getElementById('startProcessBtn');
     if (startBtn) {
         startBtn.addEventListener('click', () => {

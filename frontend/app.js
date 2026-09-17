@@ -3,55 +3,17 @@
  * Frontend Interaction Script
  */
 
-// --- v1.8.3 B0b: extracted pure helpers (see frontend/modules/utils/) ---
+// --- P-010 (2026-09-17): app.js imports only what the assembly layer itself uses. The
+// pure helpers (modules/utils/*) and the shared constants (api-config / kie-config) are
+// imported directly by the modules that consume them; the split had left over-broad
+// import lists here, and `no-unused-vars` reported every one of them as dead.
+// --- v1.8.3 B1a: shared preview/result state lives in modules/preview-state.js; the reads
+// are imported by the modules that use them, the writes go through the setters below ---
 import {
-    normalizeAnnotationBbox,
-    bboxFromPolygon,
-    normalizeCoordSpace,
-    normalizeBboxToImageMatrix,
-    remapBboxToImageSpace,
-} from './modules/utils/geometry.js';
-import {
-    convertToCSV,
-    convertToMarkdown,
-    tableConfidencePct,
-    formatTableCsvBanner,
-    excelSafeCell,
-    escapeCsvCell,
-    buildSingleTableCsv,
-    singleTableCsvFilename,
-} from './modules/utils/csv.js';
-import {
-    formatAzureRoleLabel,
-    normalizeTextForDisplay,
-    normalizePanelParagraphText,
-    isLikelyCollapsedText,
-    toAzureTypeLabel,
-} from './modules/utils/text.js';
-import { escapeHtml } from './modules/utils/dom.js';
-// --- v1.8.3 B1a: API constants moved to modules/api-config.js (leaf service) ---
-import { API_BASE_URL, API_ROOT_URL, HEALTH_URL, ENGINES_URL } from './modules/api-config.js';
-// --- v1.8.3 B2 prep: KIE / table-mapping constants moved to modules/kie-config.js ---
-import {
-    KIE_DOC_TYPES, KIE_FIELD_NAME_RE, TABLE_MAPPING_MODE, TABLE_MAPPING_ELIGIBLE,
-    TABLE_MAPPING_IMAGE_EXTENSIONS,
-} from './modules/kie-config.js';
-// --- v1.8.3 B1a: shared preview/result state lives in modules/preview-state.js; reads stay
-// byte-identical through live bindings, writes go through the setters below ---
-import {
-    // reads: live bindings, every read expression stays byte-identical
-    currentOriginalFileUrl, currentTaskId, currentQueueItem, currentPreviewPage,
-    currentPageImageUrl, previewPaginationInitialized, lastRenderedAnalysisResult,
-    lastFetchedBlocks,
-    // writes: the only channel, module code cannot assign to an imported binding
-    setOriginalFileUrl, setTaskId, setQueueItem, setPreviewPage, setPageImageUrl,
-    setPreviewPaginationInitialized, setLastRenderedAnalysisResult, setLastFetchedBlocks,
-    resetPreviewState,
+    setLastRenderedAnalysisResult, setLastFetchedBlocks,
 } from './modules/preview-state.js';
 // --- v1.8.3 B1b: extracted leaf services + shared api state ---
-import { updateStatusBar, updateStatusBarThrottled } from './modules/status-bar.js';
-import { showNotification } from './modules/notifications.js';
-import { lastHealthPayload } from './modules/api-state.js';
+import { updateStatusBar } from './modules/status-bar.js';
 import {
     initializeAPIConnection, checkApiReachable, applyHealthToFooter, refreshActiveEngineFooterLine,
 } from './modules/api-base.js';
@@ -92,8 +54,8 @@ import {
     initPipelineResult, fetchTaskBlocks, completeProcessing, clearResultsDisplay,
 } from './modules/pipeline/result.js';
 import {
-    initUploadQueue, insertInitialSkeleton, initUploadZone, handleFiles, createQueueItem,
-    handleQueueItemDeletion, updateQueueCount, resetQueueItemForReprocessing, simulateProcessing,
+    initUploadQueue, insertInitialSkeleton, initUploadZone,
+    handleQueueItemDeletion, resetQueueItemForReprocessing, simulateProcessing,
     processNextInQueue, failProcessing,
 } from './modules/upload-queue.js';
 import {

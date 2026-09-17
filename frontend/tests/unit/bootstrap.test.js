@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { importedBySomeSource } from './_sources.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.resolve(here, '..', '..');
@@ -98,10 +99,12 @@ describe('extracted utils modules', () => {
         expect(stillDeclared).toEqual([]);
     });
 
-    it('app.js imports every extracted module', () => {
-        for (const moduleKey of Object.keys(domainMap.utils_modules)) {
-            expect(appJs).toContain(`'./modules/${moduleKey}.js'`);
-        }
+    it('no extracted module is an unregistered orphan (static mirror of lint F7)', () => {
+        const known = new Set(Object.keys(domainMap.known_orphans || {}));
+        const orphans = Object.keys(domainMap.utils_modules)
+            .filter((moduleKey) => !known.has(`frontend/modules/${moduleKey}.js`))
+            .filter((moduleKey) => !importedBySomeSource(frontendDir, moduleKey));
+        expect(orphans).toEqual([]);
     });
 });
 

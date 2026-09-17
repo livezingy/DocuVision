@@ -117,11 +117,6 @@ export async function downloadBatchExport(batchId, kind) {
         json: `batch_${batchId}.json`,
         xlsx: `batch_${batchId}.xlsx`,
     };
-    const mimeTypes = {
-        csv: 'text/csv;charset=utf-8',
-        json: 'application/json',
-        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    };
     const path = paths[kind];
     if (!path) return;
 
@@ -238,7 +233,7 @@ export async function pollBatchStatus(batchId) {
                 showNotification(`Batch ${batch.status}: ${batch.completed_tasks}/${batch.total_tasks} completed`,
                     batch.status === 'completed' ? 'success' : 'warning');
             }
-        } catch (error) {
+        } catch {
             clearInterval(pollInterval);
         }
     }, 2000);

@@ -23,6 +23,16 @@
     ["D8 pipeline", "D7 kie-mapping"],
     ["D8 pipeline", "D9 result-panels"]
   ],
+  "known_orphans": {
+    "frontend/modules/floating-progress.js": {
+      "added": "2026-09-17",
+      "evidence": "D11. Unreachable since v1.8.2: app.js imports the other 32 modules, index.html keeps the #floatingProgressCard DOM but no script drives it, and no module imports it. This is NOT a whitelist entry - it grants nothing, it only records an acknowledged orphan so F7 can flag a NEW one. Wiring showFloatingProgressCard/updateFloatingProgress/hideFloatingProgressCard back into the pipeline is a behaviour change and is deferred to v1.9 (P-008)."
+    },
+    "frontend/modules/utils/geometry.js": {
+      "added": "2026-09-17",
+      "evidence": "Revealed by the P-010 cleanup (same commit): app.js was its only production importer and that import was itself dead - all five helpers (normalizeAnnotationBbox / bboxFromPolygon / normalizeCoordSpace / normalizeBboxToImageMatrix / remapBboxToImageSpace) were unused in app.js, so `no-unused-vars` reported them and removing the dead import exposed the module. Its five functions are now exercised only by frontend/tests/unit/geometry.test.js; C6 in check_frontend_baseline.py still locates them here, so the module is not broken, just unreferenced. Registering (not deleting, not wiring) per the F7 rule: either a module consumes it (F3/L1 review) or it retires with its test - a v1.9 decision, tracked with P-008."
+    }
+  },
   "domains": {
     "D1 api-base": [
       "checkApiReachable", "truncateFooterEngineLine", "refreshActiveEngineFooterLine",
@@ -149,7 +159,7 @@
       "approved_in": "B1",
       "criterion": "L1+L2+L3",
       "callers": "12 call sites / 3 domains (D8 6, D1 4, D3 2)",
-      "evidence": "Touches only DOM; owns only presentation state (statusUpdateQueue, isProcessingQueue, lastStatusMessage, lastStatusUpdateTime, STATUS_UPDATE_MIN_INTERVAL) and no other domain reads it (state_owners D2 is read cross-domain: never); every caller gets the same throttled rendering behaviour. Needed in B1 because D1 api-base is extracted in that batch and calls updateStatusBar 4 times."
+      "evidence": "Touches only DOM; owns only presentation state (statusUpdateQueue, isProcessingQueue, lastStatusMessage, STATUS_UPDATE_MIN_INTERVAL) and no other domain reads it (state_owners D2 is read cross-domain: never); every caller gets the same throttled rendering behaviour. Needed in B1 because D1 api-base is extracted in that batch and calls updateStatusBar 4 times. lastStatusUpdateTime was written but never read and was removed in the P-010 cleanup (2026-09-17)."
     },
     "frontend/modules/kie-config.js": {
       "added": "2026-09-15",
@@ -210,8 +220,7 @@
       "kieHealthRefreshTimer"
     ],
     "D2 status-bar": [
-      "statusUpdateQueue", "isProcessingQueue", "lastStatusMessage", "lastStatusUpdateTime",
-      "STATUS_UPDATE_MIN_INTERVAL"
+      "statusUpdateQueue", "isProcessingQueue", "lastStatusMessage", "STATUS_UPDATE_MIN_INTERVAL"
     ],
     "D5 preview-paging": [
       "currentOriginalFileUrl", "currentTaskId", "currentQueueItem", "currentPreviewPage",
@@ -225,7 +234,7 @@
     "D8 pipeline": ["lastRenderedAnalysisResult", "lastFetchedBlocks"],
     "D9 result-panels": ["TABLE_TEMPLATE_COLUMNS"],
     "D10 overlay": [
-      "enableOverlaySha256Validation", "forcePureLayoutBboxOverlay", "overlayLayerVisibility"
+      "enableOverlaySha256Validation", "overlayLayerVisibility"
     ],
     "D15 hitl-review": [
       "hitlSelectedReviewId", "hitlSelectedTaskId", "hitlCurrentProfile",

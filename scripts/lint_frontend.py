@@ -37,6 +37,10 @@ Rules (design rev2 section 6 / DEVELOPMENT.md frontend rules):
                       So the whitelist cannot grow silently, and a registered module can
                       never become a hub (or close a cycle) - not even by being
                       re-registered as a shared-state module.
+  F7  orphan modules  every ``frontend/modules/**`` file must be imported by ``app.js``,
+                      ``index.html`` or another script (P-008: floating-progress.js was
+                      unreachable since v1.8.2 and nothing noticed). An acknowledged orphan
+                      is *registered* in ``known_orphans`` with a date - never auto-wired.
 
 Line counts use ``str.splitlines()`` - the same metric as ``lint_file_size.py``.
 Never use PowerShell ``(Get-Content x).Count``: it under-reports ``frontend/app.js``
@@ -113,19 +117,21 @@ def _import_whitelist() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ..
 
 
 def _iter_imports(rel: str):
-    """Yield ``(lineno, spec, repo-relative target)`` per import of a module file.
+    """Yield ``(lineno, spec, repo-relative target)`` per static import in a file.
 
-    ``target`` is ``None`` for bare specifiers (no relative resolution possible).
+    The whole file is scanned, not line by line: a named ``import { a, b } from "..."``
+    may span lines, and a line-wise scan misses those - hiding F3 violations and calling
+    11 of 33 wired modules orphans (measured 2026-09-17). Comment lines are skipped.
+    ``target`` is ``None`` for bare specifiers.
     """
     path = REPO_ROOT / rel
     if not path.is_file():
         return
-    for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        stripped = line.strip()
-        if stripped.startswith("//") or stripped.startswith("*"):
-            continue
-        match = _IMPORT_RE.search(line)
-        if not match:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    text = "\n".join(lines)
+    for match in _IMPORT_RE.finditer(text):
+        lineno = text.count("\n", 0, match.start()) + 1
+        if lines[lineno - 1].strip().startswith(("//", "*")):
             continue
         spec = match.group(1)
         if not spec.startswith("."):
@@ -137,7 +143,10 @@ _FN_RE = re.compile(r"^(?:async\s+)?function\s+[A-Za-z_$][\w$]*", re.MULTILINE)
 _SCRIPT_RE = re.compile(r"<script\b([^>]*)>(.*?)</script>", re.IGNORECASE | re.DOTALL)
 _SRC_RE = re.compile(r"""\bsrc\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
 _TYPE_RE = re.compile(r"""\btype\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
-_IMPORT_RE = re.compile(r"""\bimport\s+(?:[^'"]*?\s+from\s+)?["']([^"']+)["']""")
+# DOTALL: ``} from "..."`` (import continuation) must resolve like a one-line import.
+_IMPORT_RE = re.compile(
+    r"""(?:\bimport\s*(?:[^;'"]*?\bfrom\s*)?|\bfrom\s*)["']([^"']+)["']""", re.DOTALL
+)
 
 
 def _load_allowlist() -> dict:
@@ -409,7 +418,7 @@ def check_f6(tracked: list[str]) -> list[str]:
     is never called from app.js silently no-ops at runtime - its module-level deps
     stay stubs and the first user interaction that reaches them throws. This closes
     the failure mode the dependency-wiring design is most exposed to (a forgotten
-    init call survives ``node --check``, lint F1-F5 and C1-C8; only e2e would trip,
+    init call survives ``node --check``, lint F1-F5/F7 and C1-C8; only e2e would trip,
     late and with poor attribution). Name-based on purpose: deps completeness is a
     runtime property, but "an init exists and is never invoked" is static and the
     high-signal half of the risk.
@@ -435,6 +444,31 @@ def check_f6(tracked: list[str]) -> list[str]:
     return violations
 
 
+def check_f7(tracked: list[str]) -> list[str]:
+    """Orphan reachability: a ``modules/**`` file must be imported by a loaded script.
+
+    Sources = ``app.js`` + ``index.html`` + every ``modules/``/``shared/`` script.
+    ``known_orphans`` only *records* an acknowledged orphan; wiring it is a behaviour
+    change (v1.9 decision, P-008) and never part of a structure-only lint fix.
+    """
+    referenced: set[str] = set()
+    for rel in [ENTRY, INDEX_HTML, *tracked]:
+        scannable = rel.endswith(".js") and (
+            rel.startswith(MODULES_PREFIX) or rel.startswith(SHARED_PREFIX))
+        if rel not in (ENTRY, INDEX_HTML) and not scannable:
+            continue
+        referenced.update(t for _lineno, _spec, t in _iter_imports(rel) if t)
+    known = set(_domain_map().get("known_orphans") or {})
+    violations = [
+        f"F7 {rel}: orphan module (imported nowhere, not in known_orphans)"
+        for rel in sorted(tracked)
+        if rel.startswith(MODULES_PREFIX) and rel.endswith(".js")
+        and rel not in referenced and rel not in known
+    ]
+    print(f"[lint_frontend] F7 {len(referenced)} target(s), {len(known)} known orphan(s)")
+    return violations
+
+
 def main() -> int:
     allowlist = _load_allowlist()
     tracked, mode = _tracked_files()
@@ -447,6 +481,7 @@ def main() -> int:
     violations += check_f4(allowlist)
     violations += check_f5(tracked)
     violations += check_f6(tracked)
+    violations += check_f7(tracked)
 
     if violations:
         for v in violations:
@@ -455,7 +490,7 @@ def main() -> int:
         return 1
     print(
         "[lint_frontend] OK (F1 line budget / F2 entry ratchet / F3 import direction / "
-        "F4 assembly shape / F5 leaf-service registry / F6 assembly completeness)"
+        "F4 assembly shape / F5 leaf-service registry / F6 assembly completeness / F7)"
     )
     return 0
 

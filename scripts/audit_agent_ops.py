@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-"""Unified agent-ops audit: agent-rules drift + living-doc drift + module-map recon.
+"""Unified agent-ops audit: agent-rules + living-doc + module-map + test-registry.
 
-1. agent-rules drift: generated copies must match the kernel (re-render + diff,
-   as `sync_agent_rules.py --check`) -> ERROR.
-2. living-doc drift: paths referenced by docs/architecture/*.md + docs/README.md
-   must exist (DOC_DRIFT_ALLOW_PREFIXES exempt) -> WARN.
+1. agent-rules drift: a generated copy must match the kernel (`sync_agent_rules.py --check`) -> ERROR.
+2. living-doc drift: every path referenced by docs/architecture/*.md or docs/README.md must exist (DOC_DRIFT_ALLOW_PREFIXES exempt) -> WARN.
 3. module-map recon (P-004): docs/architecture/module-map.md vs its fact sources -
-   routers/*.py route counts (AST matcher reused from test_route_inventory, frozen
-   55), frontend_domain_map.json (domain set / leaf services / shared-state / boot
-   sequence), gate-table script symbols, README/doc-sync registration, CHANGELOG
-   freshness (WARN). Fail-closed parsing (A0): missing/duplicated anchor, empty
-   block or broken table = ERROR, never silent. --selftest = in-memory regressions.
-Usage: python scripts/audit_agent_ops.py [--json | --selftest]
-Exit: 1 if any ERROR (or failed selftest), else 0.
+   routers/*.py route counts (AST matcher reused from test_route_inventory, frozen 55),
+   frontend_domain_map.json (domain set / leaf services / shared-state / boot sequence),
+   gate-table script symbols, README/doc-sync registration, CHANGELOG freshness (WARN);
+   fail-closed parsing (A0): missing/duplicated anchor or empty/broken table = ERROR.
+4. test-registry recon (P-008): `scripts/test_registry_audit.py` (own module, so this file keeps its script budget).
+Usage: python scripts/audit_agent_ops.py [--json | --selftest] - exit 1 on any ERROR.
 """
 
 from __future__ import annotations
@@ -28,6 +25,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import sync_agent_rules as sync_mod  # noqa: E402
+import test_registry_audit as test_registry  # noqa: E402
 
 REPO_ROOT = sync_mod.REPO_ROOT
 
@@ -351,8 +349,10 @@ def check_module_map() -> list[dict]:
     for rel, needle, label in (
         ("docs/README.md", "architecture/module-map.md",
          "module-map.md not registered in docs/README.md Architecture section"),
-        ("docs/agent-ops/core/doc-sync.md", "module-map.md",
-         "module-map.md not registered in doc-sync.md owning table"),
+        ("docs/agent-ops/doc-sync-ownership.md", "module-map.md",
+         "module-map.md not registered in the doc-sync owning table"),
+        ("docs/README.md", "doc-sync-ownership.md",
+         "doc-sync-ownership.md not registered in docs/README.md"),
     ):
         try:
             content = (REPO_ROOT / rel).read_text(encoding="utf-8")
@@ -387,7 +387,7 @@ def run_selftest() -> int:
     gate_hdr = "| 规则 | 断言 | 机检实现 | 状态 |\n"
     good = ("| 域 | 文件 | 端点数 |\n|---|---|---|\n"
             "| system | backend/app/routers/system.py | 4 |\n")
-    cases: list[tuple[str, bool]] = []
+    cases: list[tuple[str, bool]] = list(test_registry.selftest_cases())
 
     def ok(name: str, cond: bool) -> None:
         cases.append((name, bool(cond)))
@@ -475,7 +475,7 @@ def main() -> int:
     argv = sys.argv[1:]
     if "--selftest" in argv:
         return run_selftest()
-    issues = check_agent_rules() + check_doc_drift() + check_module_map()
+    issues = (check_agent_rules() + check_doc_drift() + check_module_map() + test_registry.check_test_registry())
     errors = [i for i in issues if i["level"] == "ERROR"]
     warnings = [i for i in issues if i["level"] == "WARN"]
     if "--json" in argv:

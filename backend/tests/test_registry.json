@@ -1,0 +1,192 @@
+{
+  "test_hitl_policy.py": {
+    "kind": "phase-a-ci",
+    "note": "HITL policy contract (mock, no Paddle)"
+  },
+  "test_kie_field_metrics.py": {
+    "kind": "phase-a-ci",
+    "note": "KIE field metrics contract (mock)"
+  },
+  "test_kie_return_raw_contract.py": {
+    "kind": "phase-a-ci",
+    "note": "KIE return_raw contract (mock)"
+  },
+  "test_kie_service.py": {
+    "kind": "phase-a-ci",
+    "note": "KIE service contract (mock)"
+  },
+  "test_orchestrator_order.py": {
+    "kind": "phase-a-ci",
+    "note": "Pipeline stage order (mock)"
+  },
+  "test_pdf_tools_service.py": {
+    "kind": "phase-a-ci",
+    "note": "PDF tools contract (mock; excluded from PYTEST_IGNORE)"
+  },
+  "test_route_contract_freeze.py": {
+    "kind": "phase-a-ci",
+    "note": "Route contract freeze (pure AST scan, no app import)"
+  },
+  "test_route_inventory.py": {
+    "kind": "phase-a-ci",
+    "note": "Route inventory, frozen 55 endpoints (pure AST scan)"
+  },
+  "test_table_template_analyze.py": {
+    "kind": "phase-a-ci",
+    "note": "Table template analyze contract (mock)"
+  },
+  "test_task_kie_fields_patch.py": {
+    "kind": "phase-a-ci",
+    "note": "Task KIE-fields patch contract (mock)"
+  },
+  "test_live_api.py": {
+    "kind": "live-gpu",
+    "note": "Needs a live server on :8000 (cloud GPU); never part of a local run"
+  },
+  "test_api_contract_smoke.py": {
+    "kind": "manual-script",
+    "note": "Manual REPL contract smoke on cloud"
+  },
+  "test_api_pipeline.py": {
+    "kind": "manual-script",
+    "note": "Manual REPL; polls /analyze to completion"
+  },
+  "kie/test_value_typer.py": {
+    "kind": "full"
+  },
+  "test_analyze_kie_options.py": {
+    "kind": "full"
+  },
+  "test_analyze_options.py": {
+    "kind": "full"
+  },
+  "test_batch_export_service.py": {
+    "kind": "full"
+  },
+  "test_blocks_reading_order.py": {
+    "kind": "full"
+  },
+  "test_config_kie_env.py": {
+    "kind": "full"
+  },
+  "test_coordinate_alignment.py": {
+    "kind": "full"
+  },
+  "test_document_page_count.py": {
+    "kind": "full"
+  },
+  "test_document_type_classifier.py": {
+    "kind": "full"
+  },
+  "test_envelope_builder.py": {
+    "kind": "full"
+  },
+  "test_export_service.py": {
+    "kind": "full"
+  },
+  "test_figure_caption_binding.py": {
+    "kind": "full"
+  },
+  "test_figure_service.py": {
+    "kind": "full"
+  },
+  "test_file_type_detector.py": {
+    "kind": "full"
+  },
+  "test_file_type_detector_pages.py": {
+    "kind": "full"
+  },
+  "test_formula_service_grading.py": {
+    "kind": "full"
+  },
+  "test_golden_backfill.py": {
+    "kind": "full"
+  },
+  "test_gt_diff.py": {
+    "kind": "full"
+  },
+  "test_kie_acceptance_baseline.py": {
+    "kind": "full"
+  },
+  "test_kie_field_merge.py": {
+    "kind": "full"
+  },
+  "test_kie_field_validation.py": {
+    "kind": "full"
+  },
+  "test_kie_pages_parse.py": {
+    "kind": "full"
+  },
+  "test_kie_query_fields.py": {
+    "kind": "full"
+  },
+  "test_kie_qwen_model_path.py": {
+    "kind": "full"
+  },
+  "test_kie_schema_templates.py": {
+    "kind": "full"
+  },
+  "test_layout_page_id.py": {
+    "kind": "full"
+  },
+  "test_layout_page_skip.py": {
+    "kind": "full"
+  },
+  "test_layout_reading_order.py": {
+    "kind": "full"
+  },
+  "test_layout_types.py": {
+    "kind": "full"
+  },
+  "test_openapi_snapshot.py": {
+    "kind": "full"
+  },
+  "test_openapi_snapshot_full.py": {
+    "kind": "full"
+  },
+  "test_pack_export_service.py": {
+    "kind": "full"
+  },
+  "test_page_text_trust.py": {
+    "kind": "full"
+  },
+  "test_phase1_analyze_form.py": {
+    "kind": "full"
+  },
+  "test_proof_pack_cli.py": {
+    "kind": "full"
+  },
+  "test_proof_render.py": {
+    "kind": "full"
+  },
+  "test_proof_report.py": {
+    "kind": "full"
+  },
+  "test_queue_persistence.py": {
+    "kind": "full"
+  },
+  "test_seal_service_grading.py": {
+    "kind": "full"
+  },
+  "test_table_backfill.py": {
+    "kind": "full"
+  },
+  "test_table_header_structure.py": {
+    "kind": "full"
+  },
+  "test_table_pseudo_filter.py": {
+    "kind": "full"
+  },
+  "test_table_strategy_meta.py": {
+    "kind": "full"
+  },
+  "test_task_persistence.py": {
+    "kind": "full"
+  },
+  "test_trial_auth.py": {
+    "kind": "full"
+  },
+  "test_webhook_service.py": {
+    "kind": "full"
+  }
+}

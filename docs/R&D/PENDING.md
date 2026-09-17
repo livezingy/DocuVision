@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（10 组；P-014 已结，保留记录）
+## 待确认（9 组；P-014 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -131,23 +131,6 @@
 - **新发现（2026-09-17，同批登记）**：`agent-ops-audit.yml` 的 `paths` **未覆盖 `backend/tests/**` 与
   `backend/pytest.ini`**，而新增的 check 4 真源正是这两个 → **改了测试登记不会触发 audit CI**（本地跑仍会红）。
   修它要动 workflow（红线），故随本条一并待决：下一轮放宽触发时把 `backend/tests/**` 加入 audit 的 paths。
-
-### P-012 · 核实 `v1.7-roadmap.md` 的云端验收状态（`TASK-PERSIST-001`）（2026-09-17）
-- 来源：原 **P-009「发布文档清账批次」**把它明确列为"**待核实（勿凭猜测改）**"的一项。该批次已于 2026-09-17
-  按选项 ② 执行完毕并从本清单移除（`docs/release/README.md` 改为"历史快照 + v1.7 起 CHANGELOG 为唯一入口"、
-  `KNOWN_LIMITATIONS.md` 范围刷到 v1.8.3）；此项单独保留，以免随批次一起静默丢失。
-- 现象：`docs/architecture/v1.7-roadmap.md` 头部 `Status` 仍写 `Cloud **TASK-PERSIST-001** pending`，
-  而 `v1.7.0` 早已发版（tag `v1.7.0`，2026-09-07）。"pending" 有两种可能：
-  ① 该云端验收**确未执行**；② **已执行但未回写状态**。
-- 待核实（二选一）：
-  ① 确未执行 → 保留 pending，但在 roadmap 里注明原因与触发条件（何时必须执行、由哪一步阻塞）；
-  ② 已执行未回写 → 把 `Status` 更新为结论，并附可核验的 Cloud 证据（批次 / 命令 / 输出片段）。
-- 证据入口：`test_data/acceptance/MERGE_MAIN_v1.7_CLOUD_CHECKLIST.md`（2026-09-17 实测存在）+
-  `docs/architecture/v1.7-roadmap.md` 的 Train identity 表。
-- 触发：下一次 v1.7 相关复核，或 v1.9 文档整理时一并处理。
-- **状态（2026-09-17）**：本次治理批次仅**追加本条已登记、待云端核实**的备注——**不标记完成、不改 roadmap
-  的 pending**（本机无 GPU，无法核实云端 `TASK-PERSIST-001`；不宣称未验证结论）。待云端核实时仍按上述
-  ①② 二选一处理。
 
 ### P-013 · 服务层模块的 owning doc 未核实（2026-09-17，doc-sync 归属表补全时登记）
 - 背景：补全 kernel `doc-sync.md` 机制 2 归属表时逐模块核实 owning doc。有把握的行已写入

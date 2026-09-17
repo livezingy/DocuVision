@@ -122,6 +122,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `## [1.7.0] — 2026-09-07` section, and five places claiming "tag pending" /
   "tag not cut" were corrected (`tag v1.7.0` was cut 2026-09-07, commit `a72ec1d`).
 
+### Fixed
+- **`TASK-PERSIST-001` verified on cloud — `v1.7-roadmap.md` no longer says `pending`** (2026-09-17):
+  a completed Pro analyze task survives an `:8000` restart. Run on `main` `a73468b`
+  (`git describe` = `v1.8.3.0-23-ga73468b`), Tencent Cloud Studio A10, `backend/install_pro_gpu.sh`;
+  `task_id = 0691cc4a-5366-4259-9a83-c5d2842bfc07`, document `test_data/testfiles/PDF_Parsing/03_page11.pdf`
+  (**that fixture is not in version control** — `git ls-files` has no entry and `git check-ignore` shows it is
+  *not* ignored, i.e. committable but never committed; reproducing the run needs an equivalent table+figure doc).
+  Pre- and post-restart both 4/4: task **200 `completed`**; result **200** (`tables=1`,
+  `figures.figure_count=2`); ZIP **200** with magic `PK`, `manifest.json`, `tables/`x3, `figures/`x3;
+  figure `p1_e3` **200** with `\x89PNG` header. Evidence table lives in the roadmap's Acceptance section.
+  **Baseline caveat (recorded on purpose)**: this ran on `main`, not on the `v1.7.0` tag —
+  `backend/app/services/persistence/**` is unchanged since the tag (zero diff), but the route and
+  orchestration layers were refactored by v1.8.2 SPLIT-U (`routers/tasks.py` +219,
+  `routers/tasks_content.py` +425, `document_pipeline_orchestrator.py` +47, `core/config.py` 11 lines;
+  106 commits since the tag). The conclusion is "persistence works across restart on the main
+  baseline", **not** a byte-for-byte replay of the tag-time gate. Not collected: the `/health`
+  `api_version` field (the commit SHA identifies the baseline).
+- `docs/architecture/v1.7-roadmap.md`: Train identity row `Tag \`v1.7.0\` = not cut` corrected to
+  `shipped (2026-09-07, commit a72ec1d)` — a sixth residual of the P-009 release-docs batch, which had
+  fixed five other "tag pending" / "tag not cut" claims but missed this one, and it contradicted the
+  same file's own header plus `git tag -l v1.7*`. The `APP_VERSION 1.7.0` line is now explicitly scoped
+  to the train-open commit so it cannot be read as the current version (`main` reports `1.8.3`).
+- `docs/R&D/PENDING.md`: **P-012 closed and removed** — its conclusion was promoted into
+  `docs/architecture/v1.7-roadmap.md` per the file's own rule (pending: 10 -> 9 groups).
+
 ## [1.8.3] — 2026-09-16
 
 Tag: **v1.8.3.0**. Branch: `feature/v1.8.3`. Front-end split: `frontend/app.js`

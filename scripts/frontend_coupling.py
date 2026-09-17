@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -59,6 +60,12 @@ KNOWN_EDGE_PAIRS = {tuple(pair) for pair in DATA["known_edge_pairs"]}
 IMPORT_WHITELIST: dict[str, list[str]] = DATA.get(
     "module_import_whitelist", DEFAULT_IMPORT_WHITELIST
 )
+# F7's acknowledged-orphan registry. Registration grants nothing - it exists so F7 can flag a
+# NEW orphan - so it needs a staleness reminder (A6 below) or it becomes a parking lot.
+KNOWN_ORPHANS: dict[str, dict] = DATA.get("known_orphans") or {}
+# ~1 quarter: long enough that a deferral is not nagged every batch, short enough that it
+# cannot outlive the release line that deferred it.
+ORPHAN_STALE_DAYS = 90
 DOMAINS: dict[str, list[str]] = {**FRONTEND_DOMAINS, **UTILS_MODULES}
 NAME_TO_DOMAIN = {name: dom for dom, names in DOMAINS.items() for name in names}
 STATE_OWNER = {name: dom for dom, names in STATE_OWNERS.items() for name in names}
@@ -326,6 +333,35 @@ def supplied_deps(text: str) -> dict[str, set[str] | None]:
             out[match.group(1)] = _object_keys(_group(args, 0))
         else:
             out.setdefault(match.group(1), None)
+    return out
+
+
+def check_orphan_staleness(known_orphans: dict | None = None,
+                           today: date | None = None) -> list[tuple[str, str]]:
+    """A6: a registered orphan must carry a date, and an old one must be re-decided.
+
+    Registration is a deferral, not a decision (see the F7 rule): an entry nobody revisits
+    turns ``known_orphans`` into a parking lot for dead code. So every entry must carry an
+    ISO ``added`` date (missing or malformed = ERROR, fail closed), and an entry older than
+    ``ORPHAN_STALE_DAYS`` = WARN -- which turns "remember to re-read the table" into a line
+    in the audit output (P-008 gap 2). Returns ``(level, message)`` pairs.
+    """
+    entries = KNOWN_ORPHANS if known_orphans is None else known_orphans
+    today = today or date.today()
+    out: list[tuple[str, str]] = []
+    for rel, meta in sorted((entries or {}).items()):
+        added = (meta or {}).get("added") if isinstance(meta, dict) else None
+        try:
+            age = (today - date.fromisoformat(added)).days
+        except (TypeError, ValueError):
+            out.append(("ERROR", f"known_orphans[{rel}].added must be an ISO date, got {added!r}"))
+            continue
+        if age > ORPHAN_STALE_DAYS:
+            out.append((
+                "WARN",
+                f"known_orphans[{rel}] registered {added} ({age} days ago) - re-decide "
+                "wire-or-retire and record the decision in PENDING (P-008 gap 2)",
+            ))
     return out
 
 

@@ -23,6 +23,7 @@
 | `backend/app/services/pack_export_service.py` | `docuvision-system-design.md` §9.1；`v1.6-roadmap.md`（发版后以 §9.1 为准） |
 | `backend/app/services/persistence/queue_store.py` | `v1.5-roadmap.md`（Epic Queue persistence）；`v1.7-roadmap.md`（`analyze_jobs`） |
 | `backend/app/services/persistence/analyze_job_store.py` | `v1.7-roadmap.md`；`docuvision-system-design.md` §9.1（单任务 result 持久化） |
+| `backend/app/services/batch_service.py`、`hitl_queue.py` | `v1.5-roadmap.md`（Epic Queue persistence：`batches` / `_items` 结构、`load_from_db()` 语义、模块级单例签名不变）；批处理消费方另见 `batch-ui-roadmap.md` |
 | `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
 | `frontend/**` | `frontend/README_FRONTEND.md`、`module-map.md` §3（域清单 / 文件数 / 白名单 / 对照行） |
 | `scripts/lint_file_size.py`、`lint_routes.py`、`lint_frontend.py`、`check_frontend_baseline.py`、`audit_agent_ops.py`、`test_registry_audit.py` | **`DEVELOPMENT.md`（规范型 owning doc，非派生视图）**：规则文本在第 1-6 条；`module-map.md` §5 只登记「门禁与其实现」；kernel `routing.md` / `frontend.md` 是同源规则（面向 Agent 的可执行措辞） |
@@ -31,13 +32,26 @@
 
 1. **owning doc 的判定**：只认「改这个模块就必须同步的 living 文档」。`docs/release/*` 为 frozen
    （发版快照），`docs/R&D/*` 为 local-only，两者都不作 owning doc——frozen 文档里的引用只算历史证据。
-2. **尚未单列的服务层模块（TODO，登记于 `docs/R&D/PENDING.md` P-013）**：这些模块目前只在 frozen
-   release 文档或测试清单里被引用，没有稳定的 living owning doc，**未经核实不填**（P-012 教训）：
-   `batch_service.py`、`batch_export_service.py`、`hitl_policy.py`、`hitl_queue.py`、`webhook_service.py`、
-   `document_info_utils.py`、`document_profile.py`、`document_type_classifier.py`、`file_type_detector.py`、
-   `kie_fields_update.py`、`formula_service.py`、`seal_service.py`、`page_type_probe.py`、`pdf_raster.py`、
-   `pdf_tools_service.py`、`pymupdf_table_engine.py`、`single_file_pipeline.py`、`unified_layout_service.py`、
-   `_layout_order.py`；`backend/app/core/{aistudio_compat,debug_utils,gpu_lib_path,trial_auth}.py`；
-   `backend/app/models/{analyze_options,layout_result}.py`。
+2. **服务层模块的归属已二分（2026-09-17，`PENDING.md` P-013 选项 C 执行完毕）**。判定规则：
+   **「载体」= 该 living 文档在描述本模块自身的契约**（结构 / 签名 / 行为约束），改其契约就必须同步它；
+   **仅在别处被引用名字**（表格单元格、示例、他人文档里的调用点）**不计**载体。
+   - **有载体（已补入主表）**：`batch_service.py`、`hitl_queue.py` → `v1.5-roadmap.md`。
+   - **无常驻 living 契约（23 个；改其内部实现无须同步任何 living 文档）**：`batch_export_service.py`、
+     `hitl_policy.py`、`webhook_service.py`、`document_info_utils.py`、`document_profile.py`、
+     `document_type_classifier.py`、`file_type_detector.py`、`kie_fields_update.py`、`formula_service.py`、
+     `seal_service.py`、`page_type_probe.py`、`pdf_raster.py`、`pdf_tools_service.py`、`pymupdf_table_engine.py`、
+     `single_file_pipeline.py`、`unified_layout_service.py`、`_layout_order.py`；
+     `backend/app/core/{aistudio_compat,debug_utils,gpu_lib_path,trial_auth}.py`；
+     `backend/app/models/{analyze_options,layout_result}.py`。
+     **触发条件**：任一模块发生契约变更时**先定归属再改**——届时有契约就补入主表。
+   - **仅被提及、按规则不计载体（线索留档，供将来复核）**：`hitl_policy` @ `kie.md`；`seal_service` @
+     `pp-structurev3-official-findings.md`；`pdf_raster` @ `kie.md`；`layout_result` @
+     `pp-structurev3-fix-plan.md`；另 `batch_export_service.py` 的实现伙伴 `routers/batch_export.py` 已归属
+     `batch-ui-roadmap.md`，但该文档未描述本服务契约。
+   - 证据（2026-09-17）：对上述 25 个模块做**双重**扫描——模块/文件名 与 派生类名（`BatchService` /
+     `HitlReviewQueue` / `FormulaService` / …）——在 living 文档集（`docs/architecture/*.md` +
+     `docs/agent-ops/**` + `DEVELOPMENT.md` + `frontend/README_FRONTEND.md`；`docs/release/**` frozen、
+     `docs/R&D/**` local-only，均不计）内命中。两条口径结论一致（仅 `batch_service` / `hitl_queue` 命中），
+     故「无载体」不是命名口径造成的假阴性。
 3. 本表由人工维护（无机检对账，因「模块→文档」是判断而非可推导事实）；**能机检的是**该表所属的
    kernel 文件仍被 `docs/README.md` 索引、且表内仍含 `module-map.md` 归属行（audit check 3 A4）。

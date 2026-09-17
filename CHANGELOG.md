@@ -53,6 +53,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     adds a toolchain prerequisite this repo deliberately avoids). Instead kernel `constraints.md` now requires
     a new >5 MB binary to be justified in the PR description ("reason + is it a test fixture"), derived into
     both rule copies by `sync_agent_rules.py`.
+  - **P-011 (the part that was authorized) — `backend/tests/**` added to the audit workflow's
+    `pull_request.paths`**: check 4's truth sources are the registry and the test files themselves, so a PR
+    that adds / renames / deletes a test must re-run the audit. Measured before changing it: `backend/tests/`
+    holds no untracked files at all (only ignored `__pycache__/*.pyc`), and a `paths` filter only ever sees
+    committed diffs — so the extra trigger costs nothing (the `push` trigger has no filter and always ran).
+    `docs/agent-ops/operations.md` mirrors the list.
+  - **P-008 gap 2, the half that can be machine-checked — audit A6 orphan staleness**:
+    `frontend_coupling.py` `check_orphan_staleness()` requires every `known_orphans` entry to carry an ISO
+    `added` date (missing or malformed = ERROR, fail closed) and WARNs once an entry is older than
+    `ORPHAN_STALE_DAYS = 90`, turning "remember to re-read the registry" into a line of audit output instead
+    of a human habit. Registered as A6 in module-map §6; `--selftest` case16 covers stale / missing-date /
+    fresh. The runtime-coverage report (option B proper) stays open.
+  - **P-013 closed (option C) — service-layer ownership split into two buckets**: a double scan (module
+    filename *and* derived class name) of the living doc set shows 2 of the 25 modules have a carrier
+    (`batch_service.py` / `hitl_queue.py` -> `v1.5-roadmap.md`, now rows of the owning table) and 23 have no
+    standing living contract — listed explicitly in footnote 2, so the empty cell becomes a stated conclusion
+    instead of a question. The judge rule ("a carrier describes this module's own contract; a passing mention
+    does not count") and the five near-miss mentions are recorded for the next reviewer.
 - **P-004 — current-state module map + fail-closed recon** (PR #21, merge `a88fdb4`):
   - `docs/architecture/module-map.md`: backend `routers/` 13 domains × frontend
     `modules/` 15 domains, dependency laws L1-L5, the cross-end consumer table, the

@@ -26,6 +26,10 @@ on:
       - "scripts/frontend_domain_map.json"
       - "docs/architecture/**"
       - "docs/README.md"
+      # P-011: check 4's truth sources are the registry and the test files themselves, so a PR
+      # that adds / renames / deletes a test must re-run the audit (this filter only affects
+      # `pull_request`; `push` to main has no filter and always runs).
+      - "backend/tests/**"
 
 concurrency:
   group: agent-ops-audit-${{ github.ref }}

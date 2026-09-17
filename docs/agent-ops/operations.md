@@ -28,5 +28,7 @@
 ## CI 挂载（已落地）
 `.github/workflows/agent-ops-audit.yml`（2026-09-16 起）：pull_request + push(main) 触发；
 步骤 = `--selftest` → 全量 audit；paths 覆盖 `docs/agent-ops/**`、`.cursor/rules/**`、`.codebuddy/rules/**`、
-`scripts/sync_agent_rules.py`、`scripts/audit_agent_ops.py`、`AGENTS.md`、`.gitignore`，以及 module-map 对账输入
-`backend/app/routers/**`、`frontend/modules/**`、`scripts/frontend_domain_map.json`、`docs/architecture/**`、`docs/README.md`。
+`scripts/sync_agent_rules.py`、`scripts/audit_agent_ops.py`、`AGENTS.md`、`.gitignore`、`DEVELOPMENT.md`，以及
+module-map 对账输入 `backend/app/routers/**`、`frontend/modules/**`、`scripts/frontend_domain_map.json`、
+`docs/architecture/**`、`docs/README.md`，与 check 4 的真源 `backend/tests/**`（2026-09-17 起）。
+注：`paths` 只作用于 `pull_request`——`push` 到 main 无过滤，audit 每次必跑。

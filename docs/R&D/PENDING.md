@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（8 组；P-014 / P-015 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
+## 待确认（7 组；P-013 / P-014 / P-015 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -109,6 +109,12 @@
 - **遗留 gap 2 仍待确认**：F7 只判可达性、不判接线。候选 B = e2e 运行时覆盖度报告 + pageerror/console 监听
   （非阻塞，产出"死代码候选"清单一并喂 P-010 下一轮）；**待定**：报告类型 / 存放位置 / 查看频率。
   A（DOM 桩 ↔ 脚本引用的静态对应）已评估为**否决**（启发式误报会让人开始忽略 F7）。
+- **gap 2 中"可机检的那一半"已落地（2026-09-17，用户裁决）**：audit check 3 新增 **A6 孤儿登记时效**——
+  `known_orphans` 每条必须带 ISO `added`（缺失 / 格式错 = ERROR，fail-closed），超过 `ORPHAN_STALE_DAYS = 90`
+  仍在册 = **WARN**（文案即"re-decide wire-or-retire and record the decision in PENDING"）→ 把"定期巡表"
+  降为"看告警"。实现在 `frontend_coupling.py::check_orphan_staleness`（纯函数；`--selftest` case16 覆盖
+  stale / 无日期 / 新鲜三态），由 `audit_agent_ops.py` 调用；N=90 的理由：超过一个季度就不再算"下一批再说"。
+  **仍未决**：候选 B 的运行时覆盖度报告形态（报告类型 / 存放位置 / 查看频率）——已给出形态示例，待确认后再实施。
 
 ### P-010 · 前端风格 linter 缺位（2026-09-17，P-004 收尾时登记）
 - 现状：`DEVELOPMENT.md` 第 4-6 条与 kernel `frontend.md` 只覆盖**结构与边界**（F1-F6 / C1-C8），
@@ -162,10 +168,14 @@
   `pdf_raster`、`pdf_tools_service`、`pymupdf_table_engine`、`single_file_pipeline`、
   `unified_layout_service`、`_layout_order`；`backend/app/core/` 的 `aistudio_compat`、`debug_utils`、
   `gpu_lib_path`、`trial_auth`；`backend/app/models/` 的 `analyze_options`、`layout_result`。
-- 待决（二选一）：① 若其契约确已有 living 载体 → 补进附表；② 若确实「无常驻 living 契约」→ 在附表脚注
-  显式标注（而不是留空让人猜）。
-- 触发：下一次契约/文档整理；或上述任一模块发生契约变更时（届时**先定归属再改**）。
-- 相关：`docs/agent-ops/doc-sync-ownership.md` 脚注 2。
+- **状态（2026-09-17 用户裁决选项 C 并执行完毕，本组可结）**：对上述 25 个模块做**双重**扫描（模块/文件名 +
+  派生类名）比对 living 文档集 → **2 个有载体**（`batch_service.py` / `hitl_queue.py` → `v1.5-roadmap.md`，
+  已补入主表）、**23 个无常驻 living 契约**（在附表脚注 2 **显式列出**，不再"留空让人猜"）。
+  判定规则与 5 条"仅被提及不计载体"的线索一并写入脚注；触发条件改为常驻条款：
+  **任一模块发生契约变更时先定归属再改**。
+- 结论固化位置：`docs/agent-ops/doc-sync-ownership.md`（主表 + 脚注 2）——该表本身即机制 2 的结论载体，
+  故不另晋升 `docs/architecture/`。
+- 相关：`docs/agent-ops/doc-sync-ownership.md` 脚注 2；kernel `core/doc-sync.md` 机制 2。
 
 ### P-014 · `shell/tools.js` 的 `startProcessing` 未绑定 + P-010 清账未清零（2026-09-17）✅ 已结（按 ②′ 整体退役）
 - 现象（ESLint 首次全量扫描发现，也是唯一剩余报错）：`frontend/modules/shell/tools.js` 的

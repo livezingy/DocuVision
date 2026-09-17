@@ -133,7 +133,7 @@ R1-R3 沿用 kernel `routing.md` 硬规则编号；lint_file_size 内部编号 R
 
 OpenAPI 全量快照：云端 pytest（上云前本机自查用 INV-2 契约冻结测试）——发版路径，非 PR 门禁。
 
-## §6 对账协议（audit_agent_ops.py check 3，A0-A5）
+## §6 对账协议（audit_agent_ops.py check 3，A0-A6）
 
 | 断言 | 内容 | 级别 |
 | A0 解析守卫 | 3 个锚各**恰好出现一次**（缺失/重复 = ERROR）；锚块数据行非空；数据行列数 == 表头列数；列按表头名定位（缺列 = ERROR）；§5 状态列 ∈ {active, retired, 时点工具}；「机检实现」单元格符合语法 `<path>` 或 `<path>（\`symbol\`）`：全大写 symbol → 该文件须有 `<symbol> =` 赋值；**其余一律按 `def <symbol>` 查找，查不到 = ERROR（fail-closed；未知 symbol 形态同样落到此错）**；无 symbol → 只断言 path 存在；状态列必须是裸枚举值，备注一律写进断言列 | ERROR |
@@ -142,6 +142,7 @@ OpenAPI 全量快照：云端 pytest（上云前本机自查用 INV-2 契约冻�
 | A3 基建对账 | §3 基建 5 个登记数字与名单：utils 文件数（4）/ shared 条目数（9）/ `leaf_services`（4，且名单与 json 键 basename 一致）/ `shared_state_modules`（2，同前）/ `boot_sequence`（17） | ERROR |
 | A4 登记完备 | 本文件出现在 docs/README.md Architecture 节；doc-sync owning 表（`docs/agent-ops/doc-sync-ownership.md`）含 module-map.md 行；该附表本身被 docs/README.md 索引 | ERROR |
 | A5 新鲜度 | 头部「最近对照」版本 vs CHANGELOG 第一个 `## [x.y.z]` 头：两侧各取前 3 段数字成元组比较，**doc < latest → WARN（含双方版本号）**；CHANGELOG 无匹配 → WARN skip；禁止字符串 rstrip 归一化 | WARN |
+| A6 孤儿登记时效 | `known_orphans` 每条须带 ISO `added`（缺失/格式错 = ERROR，fail-closed）；超过 `ORPHAN_STALE_DAYS`（90 天）仍在册 = **WARN**，要求重新裁决「接线或退役」并记入 PENDING（把"定期巡表"降为"看告警"；P-008 gap 2）——见 `frontend_coupling.py::check_orphan_staleness` | ERROR / WARN |
 | A6 测试登记 | check 4（`scripts/test_registry_audit.py`）：`backend/tests/test_registry.json` ↔ 磁盘 `test_*.py` ↔ Phase A 列表三向对账；未登记 / 幽灵条目 / CI 跑未登记测试 = ERROR，CI 侧漂移 = WARN | ERROR/WARN |
 
 刷新触发（owning 行）：新增/删除 routers 域文件或 modules 域 → 同步 §2/§3 行 + 端点数/文件数 +

@@ -2,13 +2,11 @@
 """Unified agent-ops audit: agent-rules + living-doc + module-map + test-registry.
 
 1. agent-rules drift: a generated copy must match the kernel (`sync_agent_rules.py --check`) -> ERROR.
-2. living-doc drift: every path referenced by docs/architecture/*.md or docs/README.md must exist (DOC_DRIFT_ALLOW_PREFIXES exempt) -> WARN.
-3. module-map recon (P-004): docs/architecture/module-map.md vs its fact sources -
-   routers/*.py route counts (AST matcher reused from test_route_inventory, frozen 55),
-   frontend_domain_map.json (domain set / leaf services / shared-state / boot sequence),
-   gate-table script symbols, README/doc-sync registration, CHANGELOG freshness (WARN);
-   fail-closed parsing (A0): missing/duplicated anchor or empty/broken table = ERROR.
-4. test-registry recon (P-008): `scripts/test_registry_audit.py` (own module, so this file keeps its script budget).
+2. living-doc drift: every path referenced by docs/architecture/*.md or docs/README.md must exist -> WARN.
+3. module-map recon (P-004): module-map.md vs its fact sources - routers/*.py counts (AST, frozen 55),
+   frontend_domain_map.json (domains / leaf services / shared state / boot sequence + A6 orphan staleness
+   -> WARN), gate-table symbols, README/doc-sync registration, CHANGELOG freshness; fail-closed (A0).
+4. test-registry recon (P-008): `scripts/test_registry_audit.py` (own module = this file keeps its budget).
 Usage: python scripts/audit_agent_ops.py [--json | --selftest] - exit 1 on any ERROR.
 """
 
@@ -18,12 +16,13 @@ import ast
 import json
 import re
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import frontend_coupling as frontend_map  # noqa: E402
 import sync_agent_rules as sync_mod  # noqa: E402
 import test_registry_audit as test_registry  # noqa: E402
 
@@ -51,14 +50,12 @@ ANCHOR_BACKEND = "<!-- audit:backend-domains -->"
 ANCHOR_FRONTEND = "<!-- audit:frontend-domains -->"
 ANCHOR_GATES = "<!-- audit:gates -->"
 
-# Path references inside module-map.md: same shape as PATH_REF_RE, with the
-# prefix set the map actually uses (packages/ in; apps/supabase out).
+# Same shape as PATH_REF_RE but with the map's prefix set (packages/ in; apps/supabase out).
 MODULE_MAP_PATH_RE = re.compile(
     r"\b(?:backend|frontend|scripts|docs|packages)/[A-Za-z0-9_/.\-]+"
     r"\.(?:py|js|ts|tsx|jsx|md|json|yaml|yml|sql|ps1|sh)\b"
 )
-# §2/§3 cells enumerate directory-domain files as `{a,b,c}.js`; `（N 文件）`
-# cells claim a count that must match the expansion.
+# §2/§3 cells: `{a,b,c}.js` must expand to real files and match any `（N 文件）` claim.
 MODULE_MAP_BRACE_RE = re.compile(
     r"\b((?:backend|frontend|scripts|docs|packages)/[A-Za-z0-9_/\-]+"
     r"\{([A-Za-z0-9_,\-]+)\}\.(?:py|js))\b"
@@ -369,14 +366,15 @@ def check_module_map() -> list[dict]:
         changelog = ""
     log_match = re.search(r"^##\s*\[([\d.]+)\]", changelog, re.M)
     if doc_match is None or log_match is None:
-        issues.append(_module_map_issue(
-            "WARN", "freshness skipped (no 最近对照 line or no CHANGELOG [x.y.z] header)"))
+        issues.append(_module_map_issue("WARN", "freshness skipped (no 最近对照 / CHANGELOG)"))
     else:
         doc_v, latest_v = _ver_tuple(doc_match.group(1)), _ver_tuple(log_match.group(1))
         if doc_v < latest_v:
             issues.append(_module_map_issue(
                 "WARN", f"module-map 对照落后：map v{'.'.join(map(str, doc_v))} < "
                         f"CHANGELOG v{'.'.join(map(str, latest_v))}"))
+    for level, msg in frontend_map.check_orphan_staleness((fact or {}).get("known_orphans")):
+        issues.append(_module_map_issue(level, msg))  # A6: stale orphan registration (P-008 gap 2)
     return issues
 
 
@@ -422,6 +420,10 @@ def run_selftest() -> int:
     ok("case8-symbol", _symbol_in_source("def check_f1(x):\n    pass\n", "check_f1")
        and _symbol_in_source("DEFAULT_BUDGET = 500\n", "DEFAULT_BUDGET")
        and not _symbol_in_source("# def check_gone(x)\n", "check_gone"))
+
+    orphan = frontend_map.check_orphan_staleness  # A6: stale -> WARN; no date -> ERROR; fresh -> quiet
+    ok("case16-orphan-staleness", [lv for lv, _ in orphan({"a.js": {"added": "2026-01-01"}}, date(2026, 12, 31))] == ["WARN"]
+       and orphan({"b.js": {}}, date(2026, 9, 17))[0][0] == "ERROR" and orphan({"c.js": {"added": "2026-09-01"}}, date(2026, 9, 17)) == [])
 
     failed = [name for name, passed in cases if not passed]
     if failed:

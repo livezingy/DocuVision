@@ -25,6 +25,15 @@
 4. Canonical 真源：逻辑断言以 pytest 为准；`kie/_smoke_check.py` 仅薄封装不重复断言。
 5. 交付附建议 pytest 范围；本机跑过的 mock 可声称通过，**不得**声称本地 live API / GPU 已通过。
 
+## 测试登记口径（新测试必登记）
+- 新增 `backend/tests/**/test_*.py` **必须**同步在 `backend/tests/test_registry.json` 登记一条：`kind` ∈
+  `phase-a-ci`（Phase A CI 列表在跑）/ `live-gpu`（需 :8000 活服务器）/ `manual-script`（REPL 手动）/
+  `full`（本机或云端全量）。**删除测试文件时一并删除条目**（无 `retired` 态，历史由 git 承担）。
+- 登记表是机检唯一真源：`scripts/audit_agent_ops.py` **check 4** 双向对账（未登记文件 / 幽灵条目 /
+  与 `kie-phase-a.yml` Phase A 列表不一致，见 `scripts/test_registry_audit.py`）。漏登记 = audit 红。
+- 全量 pytest 走 `backend/pytest.ini` 的 `--continue-on-collection-errors`：单个 collection error 不再
+  中断其余用例（P-008：曾致 430 用例全灭），但仍以非零码退出——容错不掩盖错误。
+
 ## 死代码检查
 - 仅扫 touched 文件：未用 import、不可达分支、注释遗留块、已移除调用方但仍定义的符号。
 - 移除符号/文件前全库搜索（code+tests+docs+`.github`），列出每处引用。

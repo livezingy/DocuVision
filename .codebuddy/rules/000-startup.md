@@ -5,7 +5,7 @@
 ## 启动检查
 1. 读 `.codebuddy/rules/001-general.md`（通用约束，kernel 生成）。
 2. 读 `docs/R&D/PENDING.md`（待决决策；看"有 N 条结论待确认"）。
-3. 按任务读 `004-project.md`（环境/测试）、`009-doc-sync.md`（文档同步）或 `011-frontend.md`（前端架构 F1-F6）。
+3. 按任务读 `004-project.md`（环境/测试）、`009-doc-sync.md`（文档同步）或 `011-frontend.md`（前端架构 F1-F7）。
 
 ## 执行能力（默认：本机终端已加载）
 - **默认前提**：本会话**默认加载本机终端**（`execute_command`，跑在用户本机的 Windows/PowerShell 上）。

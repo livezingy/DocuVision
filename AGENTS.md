@@ -39,7 +39,7 @@
 |------|---------|
 | 纯逻辑/契约改动 | kernel `testing.md`（测试分层）+ 本地 pytest 全绿 + 小步 commit |
 | GPU 依赖改动 | mock 单测 + 交付文档写 Cloud 验证步骤与验收标准 |
-| 前端改动 | kernel `frontend.md`（F1-F6 语义 / 落点 / 白名单注册）+ `python scripts/lint_frontend.py`；触及 UI 时列云手测清单 |
+| 前端改动 | kernel `frontend.md`（F1-F7 语义 / 落点 / 白名单注册）+ `python scripts/lint_frontend.py`；触及 UI 时列云手测清单 |
 | 试用/演示 | `docs/demo/TRIAL_REMOTE_60MIN.md` + `scripts/trial/trial_preflight.py` |
 | 审查任务 | `docs/agent-ops/review.md`（分级/证据/依据三要素） |
 

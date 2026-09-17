@@ -11,26 +11,10 @@
 - `updated <doc> §<节>` —— 已同步
 - `N/A（未触及任何 living 契约）` —— 显式声明，须说明未触及哪类
 - `drift: <doc> 仍写旧 <字段/端点>，待修` —— 记录漂移，列入后续修复
-不允许沉默跳过。
+不允许沉默跳过。**PR 评审必检项**：footer 缺 Doc sync，或声明与 diff 不符（改契约却写 `N/A`）→ 驳回。
 
 ## 机制 2：文档归属表（改哪个模块→同步哪个文档）
-| 代码模块 | owning living doc |
-|---------|-------------------|
-| `backend/app/kie/**` | `kie.md`、`kie-custom-fields.md` |
-| `backend/app/orchestration/**` | `docuvision-system-design.md` §4 |
-| `backend/app/routers/batch*.py` | `batch-ui-roadmap.md` |
-| `backend/app/routers/**` | `docs/agent-ops/core/routing.md`（规则：域归属 / 无 prefix / 禁 import app.main）、`docs/architecture/module-map.md` §2（域清单 / 端点数 / 对照行）|
-| `backend/app/core/runtime.py` | `docuvision-system-design.md`（共享单例 / 装配 `init_runtime()`）|
-| `backend/app/models/api_models.py` | `docuvision-system-design.md` §6（三层数据结构模型）|
-| `backend/app/services/export_service.py` | `docuvision-system-design.md` §9.1 |
-| `backend/app/services/figure_service.py` | `docuvision-system-design.md` §9.1 / §11「图形导出」 |
-| `backend/app/services/pack_export_service.py` | `docuvision-system-design.md` §9.1；`v1.6-roadmap.md`（Epic: Artifact pack，发版后以 §9.1 为准） |
-| `backend/app/services/persistence/queue_store.py` | `v1.5-roadmap.md` Epic Queue persistence；`v1.7-roadmap.md`（`analyze_jobs`） |
-| `backend/app/services/persistence/analyze_job_store.py` | `v1.7-roadmap.md`；`docuvision-system-design.md` §9.1「单任务 result 持久化」 |
-| `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
-| `frontend/**` | `frontend/README_FRONTEND.md`、`docs/architecture/module-map.md` §3（域清单 / 文件数 / 白名单 / 对照行） |
-| `scripts/lint_file_size.py`、`lint_routes.py`、`lint_frontend.py`、`check_frontend_baseline.py`（六条硬规范的机检实现） | **`DEVELOPMENT.md`（规范型 owning doc，非派生视图）**——规则文本在 `DEVELOPMENT.md` 第 1-6 条；`docs/architecture/module-map.md` §5 只登记「门禁与其实现」，kernel `routing.md` / `frontend.md` 是同源规则（面向 Agent 的可执行措辞） |
-
+逐模块 owning doc 见附表 [`../doc-sync-ownership.md`](../doc-sync-ownership.md)（含未核实 TODO、判定口径）。
 改模块时按表同步 owning doc；表未覆盖的新模块，新增契约时一并补表。
 
 ## 机制 3：契约 = 测试 = 权威
@@ -68,10 +52,5 @@
 
 ## README / CHANGELOG 格式
 - README 须含：项目简介、安装说明、使用方法、许可证（贡献指南按需，不强制）。
-- CHANGELOG 条目格式：
-  ```
-  ## v1.x.0
-  - 新增功能: <desc>
-  - 修复bug: <desc>
-  ```
+- CHANGELOG 条目格式：`## v1.x.0` 段下依次 `- 新增功能: <desc>` / `- 修复bug: <desc>`。
 - 文档中引用代码示例、命令、路径、标识符用英文。

@@ -18,7 +18,7 @@
 ## 审查范围（按任务分流）
 - 纯逻辑/契约改动：本地 pytest 全绿 + 静态检查（`ruff check ... --select F401,F841`）。
 - GPU 依赖改动：mock 单测 + 在交付文档写 Cloud 验证步骤与验收标准（本机无 GPU，不跑推理）。
-- 前端改动：`python scripts/lint_frontend.py`（F1-F6）+ kernel `core/frontend.md`（落点 / 白名单判据）；契约不变不跑 E2E；触及 UI 时列入云手测清单。
+- 前端改动：`python scripts/lint_frontend.py`（F1-F7）+ `cd frontend && npm run lint`（P-010 风格 linter，**未接 CI**）+ kernel `core/frontend.md`（落点 / 白名单判据）；契约不变不跑 E2E；触及 UI 时列入云手测清单。
 
 ## 审查红线（不可越过）
 - 不宣称 GPU / 云端功能"已验证"（本机无 GPU）。

@@ -71,7 +71,8 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 | [agent-ops/core/environment.md](agent-ops/core/environment.md) | Environment facts |
 | [agent-ops/core/testing.md](agent-ops/core/testing.md) | Testing & validation rules |
 | [agent-ops/core/doc-sync.md](agent-ops/core/doc-sync.md) | Doc sync mechanisms |
-| [agent-ops/core/frontend.md](agent-ops/core/frontend.md) | Frontend architecture rules (F1-F6, module landing, whitelist registry) |
+| [agent-ops/doc-sync-ownership.md](agent-ops/doc-sync-ownership.md) | 归属表（`doc-sync.md` 机制 2 附表：改哪个模块 → 同步哪个文档） |
+| [agent-ops/core/frontend.md](agent-ops/core/frontend.md) | Frontend architecture rules (F1-F7, module landing, whitelist registry, known orphans) |
 | [agent-ops/core/agents.md](agent-ops/core/agents.md) | Agent roster (role/mapping) |
 | [../AGENTS.md](../AGENTS.md) | Multi-agent rules entrypoint |
 
@@ -86,6 +87,7 @@ Exploratory drafts: [R&D/README.md](R&D/README.md) — not authoritative; promot
 | Pro contract (mock) | `backend/tests/test_kie_*.py`, Phase A list in `CLOUD_VALIDATION.md` | PR / Cloud Phase A |
 | Pro live GPU | `backend/tests/test_live_api.py` | Cloud only, server on `:8000`; ignore in full `pytest` |
 | Pro manual script | `backend/tests/test_api_contract_smoke.py`（契约快检）、`test_api_pipeline.py`（含 analyze 轮询） | Cloud REPL, optional |
+| Test registration | `backend/tests/test_registry.json`（每文件一条 `kind`；audit check 4 与 Phase A 列表对账，漏登记 = 红） | audit（本地 / `agent-ops-audit`） |
 | Core lib | `packages/docuvision-core/tests/` | Cloud |
 | E2E UI (planned) | `frontend/tests/e2e/` | Local/Cloud with mock API |
 

@@ -1,12 +1,12 @@
 ---
-description: 前端架构规范（F1-F6 语义 / 模块落点 / 白名单注册 / 依赖律）
+description: 前端架构规范（F1-F7 语义 / 模块落点 / 白名单注册 / 依赖律）
 globs: frontend/**/*.js,frontend/**/*.html,frontend/**/*.css
 ---
 
 # 前端架构规范
 
 > 生成自 kernel `docs/agent-ops/core/`（frontend）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: frontend.md:f04cbeef0d09dbc0 -->
+<!-- kernel-ref: frontend.md:c6f2f3e98eaf7c17 -->
 
 ## 目标
 `app.js` 只做装配（imports + `initXxx({deps})` + boot + mediator），新 UI 函数一律进 `frontend/modules/**`；
@@ -23,6 +23,9 @@ globs: frontend/**/*.js,frontend/**/*.html,frontend/**/*.css
    `leaf_services` / `shared_state_modules`（日期 + evidence）；L1/L2/L3 判据不得放宽。
 6. **F6 init 必被装配**：`modules/**` 每个 `export function initXxx` 必须在 `app.js` 被调用
    （名字级弱断言——见已知 gap）。
+7. **F7 孤儿模块可达性**：`modules/**` 每个文件必须被 `app.js` / `index.html` / 其它脚本 import；
+   例外只登记在 `frontend_domain_map.json` 的 `known_orphans`（附日期与说明）。**登记 ≠ 接线**：
+   把孤儿接回管线属行为变更，不在结构治理批次内做。
 
 ## 依赖律（与 module-map §1 同源）
 - **L1 装配层唯一**：`app.js` 只装配不放域逻辑。
@@ -34,18 +37,19 @@ globs: frontend/**/*.js,frontend/**/*.html,frontend/**/*.css
 ## 新增/修改前端代码的强制动作
 1. **落点**：新 UI 函数进对应域模块（域表见 module-map §3）；新域 → `frontend_domain_map.json` `domains`
    + module-map §3 行 + `app.js` 装配；跨域需求 → 追加注入或提前把被调者出仓，禁建 `window.*` 桥。
-2. **同步事实源（缺一 CI 红）**：`scripts/frontend_domain_map.json`（域 / 白名单 / init 序列）、
+2. **同步事实源（缺一 CI 红）**：`scripts/frontend_domain_map.json`（域 / 白名单 / init 序列 / 已知孤儿）、
    `docs/architecture/module-map.md` §3/§5（域清单 / 文件数 / 门禁行）、`frontend/README_FRONTEND.md`（组件说明）。
 3. **白名单新增**：只走数据编辑，附 L1+L2+L3 判据与 evidence；叶服务一旦需要域状态或域分支，
    即摘出白名单改为装配注入。
 4. **棘轮**：缩小后跑 `python scripts/check_frontend_baseline.py --update` 下调记录；**禁止上调**（kernel 红线）。
 
 ## 本机 lint（stdlib / node，不碰 paddle）
-- `python scripts/lint_frontend.py`（F1-F6）
+- `python scripts/lint_frontend.py`（F1-F7）
 - `python scripts/check_frontend_baseline.py --syntax`（`node --check` 全模块 + `app.js`）
 - `python scripts/audit_agent_ops.py`（check 3 对账 module-map §2/§3/§5 与事实源；`--selftest` 解析回归）
 
 ## 已知 gap（记录在案，勿当作规则违反）
 - **F6 是名字级弱断言**：deps 里引用但漏 import 抓不到（v1.8.3 B5a 踩中一次，靠 e2e + pageerror 定位）；
   彻底解法需作用域分析。
-- **孤儿模块无巡检**：`floating-progress.js`（D11）无 import 者仍常驻（P-008）；可达性机检未落地。
+- **F7 只判可达性、不判接线**：`floating-progress.js`（D11）已登记 `known_orphans`（P-008），浏览器仍不加载它——
+  登记只让**新**孤儿暴露；把它接回管线（或删除）属 v1.9 行为变更决策。

@@ -88,7 +88,7 @@ AGENTS = {
                 "sources": ["frontend"],
                 "title": "前端架构规范",
                 "frontmatter": {
-                    "description": "前端架构规范（F1-F6 语义 / 模块落点 / 白名单注册 / 依赖律）",
+                    "description": "前端架构规范（F1-F7 语义 / 模块落点 / 白名单注册 / 依赖律）",
                     "globs": "frontend/**/*.js,frontend/**/*.html,frontend/**/*.css",
                 },
             },

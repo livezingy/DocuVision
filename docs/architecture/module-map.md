@@ -4,7 +4,7 @@
 > 最近对照：v1.8.3.0 / commit 1853610（2026-09-17，v1.8.3 合 main 后的 P-004 收尾）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
-> 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F6 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-6 条——
+> 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F7 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-6 条——
 > 本图 §5 只登记「门禁与其实现」，不复述规则文本。
 > 本图回答「模块怎么摆、依赖往哪走、跨模块怎么对接、哪些门禁在守」。语义/契约向设计见
 > `docuvision-system-design.md`，两者互补不重叠。§2/§3/§5 由 `scripts/audit_agent_ops.py` 对账（§6）。
@@ -72,7 +72,7 @@ core/runtime.py（共享状态枢纽）
 | D8 pipeline | frontend/modules/pipeline/{run,result}.js（2 文件） | 目录域 | init 装配；提交 /analyze、轮询/取结果；known_edge_pairs → D5/D7/D9 经注入 |
 | D9 result-panels | frontend/modules/result-panels/{demo-transaction,enhance,figures,json,quality,tables,text}.js（7 文件） | 目录域 | init 装配（黄金样例 json.js）；渲染注入数据 |
 | D10 overlay | frontend/modules/overlay-render.js | 普通域 | init 装配；overlay 图层渲染（直接 fetch 图片 src） |
-| D11 floating-progress | frontend/modules/floating-progress.js | unwired（P-008） | 无 import 者；浏览器从不加载（接线待 P-008 决策） |
+| D11 floating-progress | frontend/modules/floating-progress.js | unwired（P-008，F7 `known_orphans`） | 无 import 者；浏览器从不加载（接回管线 / 删除待 v1.9 决策） |
 | D12 export-csv | frontend/modules/export-csv.js | 普通域 | init 装配；导出经注入 URL 下载 |
 | D13 notifications | frontend/modules/notifications.js | 叶服务（F5 白名单） | 任何域可直 import |
 | D14 batch | frontend/modules/batch.js | 普通域 | init 装配；批量生命周期全套端点 |
@@ -121,6 +121,8 @@ core/runtime.py（共享状态枢纽）
 | F4 | 装配形态 | scripts/lint_frontend.py（`check_f4`） | 第 5 条 | active |
 | F5 | 叶服务注册制 | scripts/lint_frontend.py（`check_f5`） | 第 4 条 | active |
 | F6 | init 必被装配（名字级弱断言；P-008 gap 在案） | scripts/lint_frontend.py（`check_f6`） | 第 6 条 | active |
+| F7 | 孤儿模块可达性：modules/** 每个文件须被 app.js/index.html/其它脚本 import，例外登记 `known_orphans`（P-008） | scripts/lint_frontend.py（`check_f7`） | — | active |
+| T1 | 测试登记与 Phase A CI 列表对账（登记表 ↔ 磁盘 ↔ workflow；P-008） | scripts/test_registry_audit.py（`check_test_registry`） | — | active |
 | C1-C8 | B0 基线校准（设计 rev2 断言；--report-out 存档） | scripts/check_frontend_baseline.py | — | 时点工具 |
 | C4 | shared 反向依赖（B5 后由 F3 取代） | scripts/check_frontend_baseline.py | — | retired |
 | C5 | preview-state 例外存在性（模块常驻后失效） | scripts/check_frontend_baseline.py | — | retired |
@@ -137,8 +139,9 @@ OpenAPI 全量快照：云端 pytest（上云前本机自查用 INV-2 契约冻�
 | A1 路径存在 | 全文抽 `backend/ frontend/ scripts/ docs/ packages/` 前缀路径（含行号剥离、glob 字符拒绝）+ §2/§3 单元格 `{a,b}.js` 花括号展开，逐个须存在于 worktree；无豁免前缀（出现运行时产物路径 = ERROR，届时带证据再加豁免） | ERROR |
 | A2 计数守恒 | §2 行数 == routers/*.py（除 __init__）数；**逐行**：端点数列 == 该文件 AST 实测（复用 `test_route_inventory._route_from_decorator`，import 失败 = ERROR）；**三条腿**：§2 端点数合计 == AST 合计 == `EXPECTED_COUNT`（55）；§3 第一列**集合** == `domains.keys()`；§3 `（N 文件）`单元格 == 展开后实际存在的文件数 | ERROR |
 | A3 基建对账 | §3 基建 5 个登记数字与名单：utils 文件数（4）/ shared 条目数（9）/ `leaf_services`（4，且名单与 json 键 basename 一致）/ `shared_state_modules`（2，同前）/ `boot_sequence`（17） | ERROR |
-| A4 登记完备 | 本文件出现在 docs/README.md Architecture 节；doc-sync.md owning 表含 module-map.md | ERROR |
+| A4 登记完备 | 本文件出现在 docs/README.md Architecture 节；doc-sync owning 表（`docs/agent-ops/doc-sync-ownership.md`）含 module-map.md 行；该附表本身被 docs/README.md 索引 | ERROR |
 | A5 新鲜度 | 头部「最近对照」版本 vs CHANGELOG 第一个 `## [x.y.z]` 头：两侧各取前 3 段数字成元组比较，**doc < latest → WARN（含双方版本号）**；CHANGELOG 无匹配 → WARN skip；禁止字符串 rstrip 归一化 | WARN |
+| A6 测试登记 | check 4（`scripts/test_registry_audit.py`）：`backend/tests/test_registry.json` ↔ 磁盘 `test_*.py` ↔ Phase A 列表三向对账；未登记 / 幽灵条目 / CI 跑未登记测试 = ERROR，CI 侧漂移 = WARN | ERROR/WARN |
 
 刷新触发（owning 行）：新增/删除 routers 域文件或 modules 域 → 同步 §2/§3 行 + 端点数/文件数 +
 §5 门禁行 + 头部对照行。**对照行的 commit 写本 PR 的 base commit**（不是合入后的 merge commit；口径见

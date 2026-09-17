@@ -65,6 +65,10 @@ Free 计划 2,000 min/月 ≈ **500-650 次 PR push/月**。届时的取舍顺�
 （过渡期 `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION` 届时失效）。升级前已用 `gh api` 读各 tag 的 `action.yml`
 逐个核实 `runs.using`（v4/v5 旧 major = `node20`，上述新 major = `node24`）。
 变更面仅 3 个 workflow、均为裸调用或常规参数（无 `fetch-depth` / submodules / token 覆盖）。
+**已验证（2026-09-17，push `ebbf825` 的 run）**：`Lint` run 35198052898 绿、job 14s、12 个步骤全 success，
+**run 上不再出现 Node 20 弃用注解**；`Agent-ops Audit` 同一 push 绿（15s）；`KIE Phase A` 被触发但 job
+按 `[run ci]` 闸门 **skipped**（符合设计）。三个 workflow 的 YAML 已用 `yaml.safe_load` 复核：步骤数与
+`uses:` 版本均符合预期。
 
 **噪声控制（比配额更真实）**：三条 workflow 均已开 `concurrency.cancel-in-progress: true`；
 `pull_request` 均按 `paths` 过滤；`kie-phase-a.yml` 另有 push 的 job 级 `[run ci]` 闸门；

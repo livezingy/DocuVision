@@ -15,6 +15,22 @@
 
 **文档阅读顺序**：仓库实现 → [docuvision-system-design.md](./docuvision-system-design.md) → [kie.md](./kie.md) → [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)（回归时）。
 
+## v1.9 前端候选：巨函数切分（2026-09-17 保底摘录）
+
+> 来源：v1.8.3 前端拆分设计稿 §12「附 B — 巨函数切分建议图」（local-only 草稿，已按 kernel
+> 「用完即删」清理）。**行区间是 v1.8.1.0 快照、拆分后已失效且不可再复现**，故此处只保留
+> 「函数 → 现归属模块 → 建议切分线」三项；动用前先用 `scripts/lint_file_size.py` 与模块文件重测。
+> 本版（v1.8.3）明确**禁执行**巨函数切分——本表是 v1.9 输入，不是待办。
+
+| 函数 | 现归属模块（2026-09-17 实测行数） | 建议切分线 |
+|---|---|---|
+| `pollTaskStatus` | `frontend/modules/pipeline/run.js`（474） | 轮询循环体 / 超时与错误分支 / 完成回调（`completeProcessing` 调用点）三段 |
+| `startProcessing` | `frontend/modules/pipeline/run.js`（474） | 参数组装（options 合并）/ API 调用与错误处理 / 入队与 UI 渲染三段 |
+| `updateContentFigures` | `frontend/modules/result-panels/figures.js`（305） | 数据遍历 / 卡片 DOM 构建（`renderFigureCard` 交界）/ 缩放与下载绑定 |
+| `renderTableCard` | `frontend/modules/result-panels/tables.js`（347） | 表头 / 表体行循环 / 置信度徽章 / CSV 导出绑定四段 |
+| `updateContentText` | `frontend/modules/result-panels/text.js`（226） | 按页分组（原分组注释所在处）/ 段落渲染 / 折叠判定三段 |
+| `renderDocumentWithAnnotations` | `frontend/modules/overlay-render.js`（390） | SVG 构建 / 类型过滤与开关 / 交互绑定三段（`utils/geometry.js` 已在 B0 出仓） |
+
 ## 测试入口
 
 ```bash

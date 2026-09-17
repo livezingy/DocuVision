@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/coverage');
 const { installProApiMocks } = require('./helpers/mock-pro-api');
 const { gotoApp } = require('./helpers/app-boot');
 const { samplePdfPath } = require('./helpers/e2e-fixtures');

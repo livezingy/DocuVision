@@ -84,6 +84,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     see dead code) and the noise levers already in place (`cancel-in-progress`, `paths` filters, the `[run ci]`
     gate, and the fact that an unprotected `main` makes checks advisory rather than blocking).
     `lint.yml`'s header now points at it.
+  - **Node 20 deadline handled - every action upgraded to a node24 major** (2026-09-17, authorized): the run's
+    deprecation annotation was not cosmetic. GitHub's changelog (2025-09-19, edit notes through 2026-08-25)
+    has runners defaulting to Node 24 since 2026-06-16 and **removing Node 20 on 2026-09-23**, after which
+    actions still declaring `node20` stop working - and all three workflows used such actions. Verified per tag
+    by reading each action's own `action.yml` through `gh api` (`runs.using`): `actions/checkout@v4`,
+    `actions/setup-python@v5` and `actions/setup-node@v4` declare node20, while `checkout@v5`,
+    `setup-python@v6` and `setup-node@v5` declare node24. 7 occurrences across 3 workflows, all bare calls or
+    plain parameters (no `fetch-depth`, submodules or token overrides).
+  - **P-011 closed via route B (coarse paths)**: the audit's `pull_request.paths` now covers every
+    verdict-relevant input - `scripts/**` replaced the enumerated script entries (the audit's implementation
+    modules, the gate scripts A0 looks symbols up in, `frontend_domain_map.json`), and `CHANGELOG.md` (A5
+    freshness input) plus `.github/workflows/kie-phase-a.yml` (check 4 parses it) joined the
+    `backend/tests/**` entry. Chosen over the precise list because the precise list had already drifted once
+    (making `frontend_coupling.py` an implementation dependency did not update it) and a missed input fails
+    silently, whereas the coarse cost is ~12s per run on a public repository.
+  - **P-008 gap 2 MVP - e2e runtime coverage report**: `npm run test:e2e` now also writes
+    `test_data/TestResult/PhaseUI/coverage-<date>.md` (module loading, per-module listener registered-vs-fired,
+    directory roll-up, runtime errors) through `helpers/coverage.js` (a recorder installed via the `page`
+    fixture that attributes each registration to a module by walking the registration stack),
+    `helpers/coverage-report.js` (the globalTeardown merge) and `helpers/coverage-setup.js` (globalSetup, clears
+    stale fragments); the four Pro specs each changed one import line. It is a report, never a gate, and
+    `PW_COVERAGE=0` disables the recorder. First run: 14/14 in 12.2s, 31 of 33 modules loaded (the two missing
+    are exactly the registered orphans - an independent cross-check of F7), 5 modules registered listeners that
+    never fired, and **8 real pageerrors** (next item). Two defects in the report itself were found by running
+    the suite rather than by reading it: a wrapper that forgot to forward `type` (registering every listener
+    under a garbage event name, which turned the suite red 14/14) and fragments from a previous run being
+    merged as if current.
+  - **P-016 registered - `onload="adjustDocumentSize()"` throws on every preview image load**: found by the
+    report above. `modules/preview-paging/nav.js:108` and `render.js:87,103` build
+    `<img ... onload="adjustDocumentSize()">` inside template literals; inline handlers evaluate in global
+    scope, where the module-scoped binding does not exist. Every other gate is structurally blind to it -
+    `no-undef` does not analyse strings, C9 compares `deps.*` key sets, F6/F7/C1-C9 are structural, and e2e
+    asserts behaviour rather than "no page errors" - which is how the suite stayed green with the error
+    present. A module-scope `setTimeout(() => adjustDocumentSize(), 100)` fallback currently masks the
+    consequence; the fix is a separate frontend-behaviour commit (three options recorded in PENDING).
 - **P-004 — current-state module map + fail-closed recon** (PR #21, merge `a88fdb4`):
   - `docs/architecture/module-map.md`: backend `routers/` 13 domains × frontend
     `modules/` 15 domains, dependency laws L1-L5, the cross-end consumer table, the

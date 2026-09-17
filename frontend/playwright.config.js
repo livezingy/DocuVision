@@ -18,6 +18,10 @@ module.exports = defineConfig({
   testIgnore: '**/lite/**',
   timeout: 120 * 1000,
   retries: 0,
+  // P-008 gap 2 (MVP): clear stale fragments before the run and merge this run's into
+  // test_data/TestResult/PhaseUI/coverage-<date>.md. A report, not a gate - see the header.
+  globalSetup: path.join(__dirname, 'tests', 'e2e', 'helpers', 'coverage-setup.js'),
+  globalTeardown: path.join(__dirname, 'tests', 'e2e', 'helpers', 'coverage-report.js'),
   use: {
     headless: true,
     viewport: { width: 1280, height: 720 },

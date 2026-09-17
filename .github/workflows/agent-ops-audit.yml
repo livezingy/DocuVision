@@ -14,21 +14,26 @@ on:
       - "docs/agent-ops/**"
       - ".cursor/rules/**"
       - ".codebuddy/rules/**"
-      - "scripts/sync_agent_rules.py"
-      - "scripts/audit_agent_ops.py"
+      # P-011 route B: every script is an audit input - its own implementation modules, the
+      # gate scripts A0 looks symbols up in, `frontend_domain_map.json`. Pinned coarsely on
+      # purpose: the precise list drifted once already (adding frontend_coupling.py as an
+      # implementation dependency did not update it), and one missed input is silent.
+      - "scripts/**"
       - "AGENTS.md"
       - ".gitignore"
       # The six hard rules' owning doc: a rule edit must re-run the audit.
       - "DEVELOPMENT.md"
+      # A5 freshness compares module-map's version against the CHANGELOG's first [x.y.z] header.
+      - "CHANGELOG.md"
       # P-004: a domain/route/whitelist change must re-run the module-map audit
       - "backend/app/routers/**"
       - "frontend/modules/**"
-      - "scripts/frontend_domain_map.json"
       - "docs/architecture/**"
       - "docs/README.md"
-      # P-011: check 4's truth sources are the registry and the test files themselves, so a PR
-      # that adds / renames / deletes a test must re-run the audit (this filter only affects
-      # `pull_request`; `push` to main has no filter and always runs).
+      # check 4 parses this workflow read-only for the Phase A test list, so editing it changes
+      # the verdict. (This filter only affects `pull_request`; `push` to main has none.)
+      - ".github/workflows/kie-phase-a.yml"
+      # check 4's other truth sources: the registration table and the test files themselves.
       - "backend/tests/**"
 
 concurrency:
@@ -42,10 +47,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 

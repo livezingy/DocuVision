@@ -61,6 +61,12 @@ frontend/
 > （C1-C8 设计基线 + **C9 注入保真**：`app.js` 传给每个 `initXxx` 的 key 集合必须恰好等于该模块体读取的
 > `deps.*` 集合；缺 key = 留空桩，多 key = 死注入）+ `python scripts/check_frontend_baseline.py --edges`
 > （跨域边表，须与设计稿一致）。
+> **运行时覆盖度报告（P-008 gap 2 的 MVP，2026-09-17 起）**：`npm run test:e2e` 顺带产出
+> `test_data/TestResult/PhaseUI/coverage-<date>.md` —— 模块加载覆盖（loaded vs `modules/**`）/ 各模块
+> 监听器"注册 vs 触发"（含"注册了但从未触发"）/ 按目录聚合 / 运行时 pageerror+console.error；
+> 记录点由 `helpers/coverage.js` 注入（patch `EventTarget.prototype.addEventListener`，按注册点堆栈归属到模块），
+> 由 `helpers/coverage-report.js`（globalTeardown）合并、`helpers/coverage-setup.js` 每次清空。
+> **报告不是门禁**（永不红），`PW_COVERAGE=0 npm run test:e2e` 可关闭打点。
 > 风格 linter（P-010）：`cd frontend && npm run lint`（ESLint flat config，仅 `no-unused-vars` + `no-undef`，
 > 作用域 `app.js` + `modules/**` + `shared/**`；`tests/**` 属第二批）。**2026-09-17 起已接 CI**
 > （`lint.yml`：`actions/setup-node` 22 + `npm ci` + `npm run lint`，置于四个 stdlib 门禁之后）——

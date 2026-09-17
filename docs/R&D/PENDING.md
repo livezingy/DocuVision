@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（7 组；P-013 / P-014 / P-015 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
+## 待确认（8 组；P-013 / P-014 / P-015 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
 
 ### P-001 · Upwork 切片与改造建议（2026-08-31）
 - 来源：2026-08-31 会话（Upwork 切片与改造建议，口头交付）
@@ -114,7 +114,19 @@
   仍在册 = **WARN**（文案即"re-decide wire-or-retire and record the decision in PENDING"）→ 把"定期巡表"
   降为"看告警"。实现在 `frontend_coupling.py::check_orphan_staleness`（纯函数；`--selftest` case16 覆盖
   stale / 无日期 / 新鲜三态），由 `audit_agent_ops.py` 调用；N=90 的理由：超过一个季度就不再算"下一批再说"。
-  **仍未决**：候选 B 的运行时覆盖度报告形态（报告类型 / 存放位置 / 查看频率）——已给出形态示例，待确认后再实施。
+  **候选 B 已落地为 MVP（2026-09-17，用户裁决）**：`frontend/tests/e2e/helpers/coverage.js`
+  （包装 `page` fixture 注入记录器：patch `EventTarget.prototype.addEventListener` /
+  `removeEventListener` 打点，按**注册点堆栈**归属到模块）+ `coverage-report.js`（Playwright
+  `globalTeardown`：合并 `test_data/TestResult/PhaseUI/coverage-fragments/` 的碎片 →
+  `coverage-<date>.md`）+ `coverage-setup.js`（`globalSetup`：每次跑前清空碎片）+ `playwright.config.js`
+  接线；4 套 Pro spec 各只改一行 import。**报告不是门禁**（永不红），`PW_COVERAGE=0` 关闭打点。
+  **首次运行结果（14/14 通过，12.2s）**：33 模块加载 31 —— 未加载的正是两个已知孤儿（与 F7 结论互证）；
+  14 模块注册了监听器，**5 个"注册了但从未触发"**（`batch.js` / `hitl-review.js` /
+  `preview-paging/core.js` / `pipeline/result.js` / `shared/export-ui.js`），22 个零监听器（多为纯函数/配置叶）；
+  **并抓到 8 条真实 pageerror** → 已另立 **P-016**。开发期两个缺陷全靠"跑真套件"暴露并修掉：
+  ① wrapper 调 `addEventListener` 时**漏传 `type`**（监听器被注册到垃圾类型上 → 一次都不触发 → 14/14 全红）；
+  ② 未清碎片 → 把上一次的结果当成本次（补 `globalSetup` 解决）。
+  **仍未决**：是否升级为门禁（前提是 e2e 进 CI，另属红线）；在此之前"定期看报告"仍靠人。
 
 ### P-010 · 前端风格 linter 缺位（2026-09-17，P-004 收尾时登记）
 - 现状：`DEVELOPMENT.md` 第 4-6 条与 kernel `frontend.md` 只覆盖**结构与边界**（F1-F6 / C1-C8），
@@ -166,14 +178,15 @@
   递归 `backend/tests/**/test_*.py` + `.github/workflows/kie-phase-a.yml`（`scripts/test_registry_audit.py:36/37/41`）。
   附带结论：pytest.ini 的 `--continue-on-collection-errors`（P-008 ③）**目前无任何机检覆盖**——要守它得加一条
   断言，而不是加 paths。
-- **仍未覆盖（判定规则：改动这里能否翻转 audit 的判决？逐项过）**，待下一轮裁决：
-  `.github/workflows/kie-phase-a.yml`（check 4 解析它）、`scripts/test_registry_audit.py`（check 4 的实现体）、
-  `scripts/frontend_coupling.py`（2026-09-17 起 audit check 3 经它读 A6 事实）、§5 门禁表引用的
-  `scripts/lint_file_size.py` / `lint_routes.py` / `lint_frontend.py` / `check_frontend_baseline.py`（A0 查其符号
-  是否存在）、`CHANGELOG.md`（A5 新鲜度输入）。
-  两条路线：**逐条精确补**（清单会长、且会漂——本轮就漂了一次）vs **粗粒度** `scripts/**` + `CHANGELOG.md`
-  + `kie-phase-a.yml`（代价≈每次脚本改动多跑一次 11s 的 audit）。
-  可选治本：让 audit 自检"我的输入 ⊆ workflow 的 paths"（只读解析 workflow，不写），把漂移变红灯——需单独授权。
+- **已处置（2026-09-17，用户裁决走"路线 B 粗粒度"）**：`pull_request.paths` 现覆盖 audit 的全部
+  判决相关输入——新增/替换为 **`scripts/**`**（吸收原先逐条列举的实现模块、A0 查符号的门禁脚本、
+  `frontend_domain_map.json`）、`CHANGELOG.md`（A5 输入）、`.github/workflows/kie-phase-a.yml`（check 4 输入）；
+  `backend/tests/**` 同日已加。选 B 而非"逐条精确补"的理由：精确清单**已经漂过一次**（新增
+  `scripts/frontend_coupling.py` 作为实现依赖时未同步），而漏一个输入的代价是**静默**；粗粒度的代价实测
+  仅 ~12s/次且公开仓分钟数免费。
+- **重估触发**：仓库转私有（开始计费）、audit 变慢、或 `main` 开 branch protection 时，回到"逐条精确"。
+- **未做（可选治本）**：让 audit 自检"我的输入 ⊆ workflow 的 paths"（只读解析 workflow，不写）——把这类漂移
+  变成红灯；代价是"改 audit 实现必须同 commit 改红线文件"，需豁免机制，故本轮不做。
 
 ### P-013 · 服务层模块的 owning doc 未核实（2026-09-17，doc-sync 归属表补全时登记）
 - 背景：补全 kernel `doc-sync.md` 机制 2 归属表时逐模块核实 owning doc。有把握的行已写入
@@ -246,3 +259,26 @@
   否决"连历史一起迁"：改写已推送历史，红线级，收益（省几十 MB）远小于代价。
 - 触发（保留）：clone 体积或 CI 时长成为实际问题时重议 ②。
 - 相关：`.gitignore` 的 `!test_data/testfiles/**` 负向块；kernel 的"大二进制入库须声明"条款。
+
+### P-016 · `onload="adjustDocumentSize()"` 内联处理器 ReferenceError（2026-09-17，覆盖度报告首跑发现）
+- 现象：每次预览图加载都抛 `ReferenceError: adjustDocumentSize is not defined`——8 个 e2e 用例各命中一次。
+  证据：`test_data/TestResult/PhaseUI/coverage-2026-09-17.md` §4（由 P-008 gap 2 的运行时覆盖度报告产出，
+  非人工观察）。
+- 根因：`frontend/modules/preview-paging/nav.js:108`、`render.js:87` 与 `render.js:103` 在**模板字符串**里拼出
+  `<img id="documentImage" ... onload="adjustDocumentSize()">`。**内联事件处理器在全局作用域求值**，而
+  `adjustDocumentSize` 是模块内绑定（`preview-paging/core.js` 导出；`overlay-render.js` 经 `deps` 注入）→
+  全局查不到 → 必抛。全仓该模式共 **3 处**，均在 D5 预览域。
+- 为什么此前所有门禁都看不见（这条比缺陷本身更值钱）：ESLint `no-undef` **只分析代码、不分析字符串**
+  （引用在模板字面量里）；C9 只比对 `deps.*` 键集合；F6/F7/C1-C9 全是结构性；e2e 只断言 UI 行为、
+  **不断言"无 pageerror"** → 于是 14/14 全绿同时带着这个错误。
+- 影响面（需实测确认，不过度断言）：同一路径另有模块作用域的 `setTimeout(() => adjustDocumentSize(), 100)`
+  兜底（`nav.js:112` / `render.js:93,109`），故**当前未观察到用户可见故障**；但每次预览都污染控制台/错误上报，
+  且"依赖兜底恰好存在"很脆。与 P-014 同类：错误真实，影响面由实测决定。
+- 候选修法（三选一，均属前端行为/结构变更，**需单独 commit**）：
+  ① 模板改为 `data-*` + `addEventListener('load', …)`（根治，顺带清掉内联 handler）；
+  ② 在模块内 `el.onload = adjustDocumentSize`（需先拿到元素，改动最小）；
+  ③ 保留内联写法但显式 `window.adjustDocumentSize = …`——**不推荐**，新增全局桥，违反 L3 / DEVELOPMENT.md 第 6 条。
+- 可复用结论：**内联事件处理器是 `no-undef` 的结构性盲区**。修 ① 时可考虑同时补一条 lint
+  （模板里出现 `on\w+="` 即报）或写进 kernel `frontend.md` 的已知 gap。
+- 触发：v1.9 前端批次；或任何一次要动 D5 预览渲染的改动（届时一并处理）。
+- 相关：P-008 gap 2（发现它的报告）、P-014（同类"错误真实但影响面待实测"）、P-010。

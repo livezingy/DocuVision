@@ -56,9 +56,16 @@ Free 计划 2,000 min/月 ≈ **500-650 次 PR push/月**。届时的取舍顺�
 另：若给 `main` 加 branch protection 并勾选 required checks，噪声成本立刻从"注意力"变成"合并延迟"
 （每个 PR 至少等最慢的一条），那时更该精确化 `paths` 而不是全开。
 
-**观察（2026-09-17，非错误）**：run 35195278470 带一条 GitHub 弃用告警——`actions/checkout@v4` /
-`actions/setup-node@v4` / `actions/setup-python@v5` 当前被强制运行在 Node 24 上
-（GitHub 2025-09-19 公告）。升级到新的 action major 可消除该告警，但属 CI 配置改动（红线），按需再议。
+**待办（有硬期限，不是纯告警）**：run 35195278470 带 GitHub 弃用告警——本仓三个 workflow 使用的
+`actions/checkout@v4`（3 处）、`actions/setup-python@v5`（3 处）、`actions/setup-node@v4`（1 处），
+在各自 tag 上的 `action.yml` 均声明 `runs.using: node20`（2026-09-17 经 `gh api` 逐个核实），
+当前被强制运行在 Node 24 上。官方时间线（github.blog changelog「Deprecation of Node 20 on GitHub
+Actions runners」2025-09-19，编辑注记更新至 2026-08-25）：**2026-06-16 runner 默认切到 Node24；
+2026-09-23 从 runner 移除 Node20**——移除后仍声明 `node20` 的 action **将无法工作**（硬失败点；
+过渡期的 `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION` 届时失效）。已核实的 node24 替代 major：
+`checkout@v5` / `@v6`、`setup-node@v5`、`setup-python@v6`（同一 `action.yml` 核实）。
+属 CI 配置改动（红线），需授权后升级；升级面 = 3 个 workflow 共 7 处，均为裸调用或常规参数
+（无 `fetch-depth` / submodules / token 覆盖）。
 
 **噪声控制（比配额更真实）**：三条 workflow 均已开 `concurrency.cancel-in-progress: true`；
 `pull_request` 均按 `paths` 过滤；`kie-phase-a.yml` 另有 push 的 job 级 `[run ci]` 闸门；

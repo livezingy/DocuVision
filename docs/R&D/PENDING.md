@@ -139,7 +139,8 @@
   `frontend/**` 本就在 lint.yml 的 paths 内 → **未改触发路径**。作用域仍为第一批：`frontend/tests/**` 未纳入（第二批）。
   **成本口径已落档**（2026-09-17）：ESLint 块是本仓唯一的 node 依赖面，其"配额"效应只在**仓库转私有**
   （或迁到带配额 CI）时才成立——公开仓分钟数免费。触发即重算的口径、各 workflow 实测时长（Audit 11-12s /
-  Lint 12-16s、含 ESLint 待观测 / Phase A 21-27s）与"转私有后的取舍顺序"写在
+  Lint **19s**，其中 ESLint 块 +6s：`setup-node` 1s + `npm ci` 4s【冷缓存】+ `eslint .` 1s / Phase A 21-27s）
+  与"转私有后的取舍顺序"写在
   `docs/agent-ops/operations.md` §CI 成本与配额；`lint.yml` 头部注释指向该节。
   **触发**：仓库转私有、或 `main` 开 branch protection 时，按该节的 ①→③ 顺序重算并收窄 `paths`。
   回归证据：vitest **80/80**、e2e **14/14** 全绿；`frontend/app.js` 211 → **172** 行（棘轮已两次下调）。

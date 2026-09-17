@@ -46,7 +46,7 @@ GitHub 按 job 计费且**向上取整到 1 分钟**）：
 |---|---|---|
 | Agent-ops Audit | 11-12s | 纯 stdlib，零安装 |
 | Lint（Python 四门禁） | 12-16s | 2026-09-17 之前的口径 |
-| Lint（**含 ESLint 块**） | **待首次 push 观测**（预估 60-90s：`npm ci` 冷启动 30-60s + `eslint .` 本机 1.4s；未验证） | 本仓**唯一的 node 依赖面**，也是唯一新增的"与代码无关"失败源（npm registry 抖动 / 缓存键变化） |
+| Lint（**含 ESLint 块**） | **19s**（2026-09-17 首次实测：run 35195278470 / job 105116921946，job 16s。ESLint 块只 +6s = `setup-node` 1s + `npm ci` **4s**（**冷** npm 缓存，且无 Actions 缓存）+ `eslint .` 1s —— 远低于预估的 30-60s） | 本仓**唯一的 node 依赖面**，也是唯一新增的"与代码无关"失败源（npm registry 抖动 / 缓存键变化） |
 | KIE Phase A | 21-27s | 已含 `cache: pip` 的依赖安装；push 事件默认 `skipped`（`[run ci]` 闸门生效） |
 
 **触发即重算：仓库转为私有**（或迁到带配额的 CI）→ 一次 PR push 跑 3-4 个 job = **3-4 计费分钟**；
@@ -55,6 +55,10 @@ Free 计划 2,000 min/月 ≈ **500-650 次 PR push/月**。届时的取舍顺�
 死代码/未用绑定的门禁（F1-F7、C1-C9 都是结构性的），砍它等于退回 P-010 之前。
 另：若给 `main` 加 branch protection 并勾选 required checks，噪声成本立刻从"注意力"变成"合并延迟"
 （每个 PR 至少等最慢的一条），那时更该精确化 `paths` 而不是全开。
+
+**观察（2026-09-17，非错误）**：run 35195278470 带一条 GitHub 弃用告警——`actions/checkout@v4` /
+`actions/setup-node@v4` / `actions/setup-python@v5` 当前被强制运行在 Node 24 上
+（GitHub 2025-09-19 公告）。升级到新的 action major 可消除该告警，但属 CI 配置改动（红线），按需再议。
 
 **噪声控制（比配额更真实）**：三条 workflow 均已开 `concurrency.cancel-in-progress: true`；
 `pull_request` 均按 `paths` 过滤；`kie-phase-a.yml` 另有 push 的 job 级 `[run ci]` 闸门；

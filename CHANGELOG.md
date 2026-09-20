@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.9.0] — 2026-09-20
 
-Tag: **v1.9.0**（未切；本地切 tag 与远端推送为单独步骤，同 v1.8.4 口径）。`APP_VERSION` 1.8.4 → 1.9.0。
+Tag: **v1.9.0**（本地已切 2026-09-20；远端推送为单独一步，同 v1.8.4 口径）。`APP_VERSION` 1.8.4 → 1.9.0。
 本版是**前端批次**：范围、逐项实测与验收记录在 [v1.9-roadmap.md](docs/architecture/v1.9-roadmap.md)。
 
 ### Fixed

@@ -59,7 +59,7 @@ GitHub 按 job 计费且**向上取整到 1 分钟**）：
 | Lint（Python 四门禁） | 12-16s | 2026-09-17 之前的口径 |
 | Lint（**含 ESLint 块**） | **19s**（2026-09-17 首次实测：run 35195278470 / job 105116921946，job 16s。ESLint 块只 +6s = `setup-node` 1s + `npm ci` **4s**（**冷** npm 缓存，且无 Actions 缓存）+ `eslint .` 1s —— 远低于预估的 30-60s）。**2026-09-20 复测 18s**（run 35485821396：新增 E1 步骤后仍为同量级） | 与 2026-09-20 新增的 `e2e` job 并列为本仓两个 node 依赖面，也是新增的"与代码无关"失败源（npm registry 抖动 / 缓存键变化） |
 | KIE Phase A | 21-27s | 已含 `cache: pip` 的依赖安装；push 事件默认 `skipped`（`[run ci]` 闸门生效） |
-| Lint（**`e2e` job**，2026-09-20 起） | **44s**（首次实测：run **35485821396** / job **106011880370**，2026-09-20T03:09:04→03:09:48。分步：`npm ci` ~2s（npm 缓存命中）+ 缓存查询 1s + **`install --with-deps chromium` 19s**（冷缓存，含下载 Chrome for Testing 145 / ffmpeg / headless shell）+ 套件 **7.6s（14 passed，2 workers）** + 工件上传 1s + post 步骤 ~7s。首次运行已写入浏览器缓存（键 = lockfile 哈希）→ 后续运行预计再省 ~10s） | 第二个 node 依赖面。浏览器缓存键跟 `frontend/package-lock.json`（`@playwright/test` 版本由 lock 钉死，故缓存不会跨版本复用）；实测冷缓存的代价只有 19s——**原先 1.5-3 min 的估算高了一个数量级**。**已知成本**：job 挂在 `lint.yml` 内、无 job 级 `paths`，所以 backend-only 的 PR 也会跑它（44s，非分钟级）；替代方案是拆独立 workflow（`paths: ["frontend/**"]`），为保持 workflow 数量不增而未选 |
+| Lint（**`e2e` job**，2026-09-20 起） | **44s**（首次实测：run **35485821396** / job **106011880370**，2026-09-20T03:09:04→03:09:48。分步：`npm ci` ~2s（npm 缓存命中）+ 缓存查询 1s + **`install --with-deps chromium` 19s**（冷缓存，含下载 Chrome for Testing 145 / ffmpeg / headless shell）+ 套件 **7.6s（14 passed，2 workers）** + 工件上传 1s + post 步骤 ~7s。首次运行已写入浏览器缓存（键 = lockfile 哈希）→ **第二次实测 32s**（run 35486645577，2026-09-20T03:28:12→03:28:44，浏览器缓存命中） | 第二个 node 依赖面。浏览器缓存键跟 `frontend/package-lock.json`（`@playwright/test` 版本由 lock 钉死，故缓存不会跨版本复用）；实测冷缓存的代价只有 19s——**原先 1.5-3 min 的估算高了一个数量级**。**已知成本**：job 挂在 `lint.yml` 内、无 job 级 `paths`，所以 backend-only 的 PR 也会跑它（44s 冷 / 32s 热，均非分钟级）；替代方案是拆独立 workflow（`paths: ["frontend/**"]`），为保持 workflow 数量不增而未选 |
 
 **触发即重算：仓库转为私有**（或迁到带配额的 CI）→ 一次 PR push 跑 **4-5 个 job = 4-5 计费分钟**
 （2026-09-20 起 `lint.yml` 自带 `lint` + `e2e` 两个 job；同日实测：`lint` 18s / `e2e` 44s / `audit` 7s，
@@ -87,6 +87,9 @@ Playwright 的 `install --with-deps`（apt 依赖）都跑在 runner 镜像上�
 agent-ops-audit.yml、kie-phase-a.yml），把"被动漂移"改成"显式升级"。
 **剩余触发（常驻）**：升级到 Ubuntu 26 应当是主动动作 —— 先本地/分支验证 `--with-deps` 在该镜像可用
 （或等 Playwright 声明支持），再改这个 pin；届时可与 P-010/P-011 的配额重算合并做一次 CI 巡检。
+**已验证（2026-09-20，push `3eb8c2c` 的 run 35486645577）**：`ubuntu-24.04` 下两个 job 均绿
+（`lint` **15s** / `e2e` **32s**，浏览器缓存命中），且**四个 check-run 的注解数全部为 0** ——
+即那条 ubuntu-latest 迁移提醒确实因固定镜像而消失，Node 弃用告警也仍为 0。
 
 **已验证（2026-09-17，push `ebbf825` 的 run）**：`Lint` run 35198052898 绿、job 14s、12 个步骤全 success，
 **run 上不再出现 Node 20 弃用注解**；`Agent-ops Audit` 同一 push 绿（15s）；`KIE Phase A` 被触发但 job

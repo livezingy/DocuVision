@@ -52,9 +52,14 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   - **B 前端**：KIE 行显示条件从 `!= null` 收紧为 `kieAttempted`（或 `kie_stage` 非空）；
     纯前端、风险小，但属行为变更，需补 vitest/e2e 覆盖。
 - 触发：并入 v1.9；若客户对结果面板"零值误导"有感知则提前。
-- **状态（2026-09-20，用户裁决：方案 B，已立项 v1.9）**：显示条件从 `!= null` 收紧为 `kieAttempted`
-  （或 `kie_stage` 非空）——纯前端、不动 OpenAPI 契约；必须同批补 vitest（两态）+ e2e（跑 layout 任务后
-  KIE 行不出现）。范围与验收口径见 `docs/architecture/v1.9-roadmap.md` §Scope S1。
+- **状态（2026-09-20，用户裁决：方案 B，已立项 v1.9）**：判据**分两段**（2026-09-20 读码审核修正）——
+  summary 行（`KIE confidence` / `KIE fields`）用 `quality.kie_confidence_source != ""` gate
+  （`document_pipeline_orchestrator.py:1077-1080` 保证只在 `attempted && succeeded` 时非空；
+  **不能只按 `kieAttempted`**：`skipped_doc_type` / `service_unavailable` / `runtime_error` 等失败路径
+  同为 `attempted=True`（`:537/571/597/724`），只按它 gate 会留下失败态 "0%" 误显，P-007 修一半）；
+  KIE 警告块按 `kieAttempted` gate。纯前端、不动 OpenAPI 契约；vitest **4 态** + e2e 1 例
+  （需先扩 `mock-pro-api.js` 的 quality preset——现有 mock 使 quality 面板永远走隐藏路径）。
+  范围与验收口径见 `docs/architecture/v1.9-roadmap.md` §Scope S1。
   **本组仍留在清单**（实施未开始）：完成并云端/本机走查后回写结论，再按本文件规则移除。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）

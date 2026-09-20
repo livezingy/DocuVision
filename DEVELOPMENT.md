@@ -2,7 +2,8 @@
 
 > 每条都有对应的机检脚本，本地与 CI 同一实现，违反即红。
 > 后端三条由 `lint_file_size.py` / `lint_routes.py` 把关；前端三条由
-> `lint_frontend.py`（F1-F7）、`check_frontend_baseline.py`（C1-C8 + C9 注入保真）与
+> `lint_frontend.py`（F1-F7）、`check_frontend_baseline.py`（C1-C8 + C9 注入保真）、
+> `check_e2e_allowlist.py`（E1：e2e 白名单与套件钉死）与
 > ESLint（`cd frontend && npm run lint`，已接 CI）把关。
 
 ## 后端（三条）
@@ -53,5 +54,9 @@
 > ReferenceError（内联处理器是 `no-undef` 的盲区）——该缺陷已于同日按根治方案修完（P-016 结）：
 > 三处内联 handler 换成 `core.js::bindDocumentImageLoad()` 的真实监听器，报告回到 **0 runtime error**。
 > **报告之外还有一条断言**（2026-09-17 起）：fixture 断言本次运行 `pageerror` / `console.error` 为空
-> （测试体绿但页面报错 = 判红；`EXPECTED_ERRORS` 从零开始，加条目须写理由；`PW_COVERAGE=0` 同时关闭
-> 记录与断言）。**本机生效，不需要 CI 改动**——接 CI 属另一步，前提是 e2e 进 CI。
+> （测试体绿但页面报错 = 判红；允许清单从零开始，加条目须写理由；`PW_COVERAGE=0` 同时关闭记录与断言）。
+> **2026-09-20 起已在 CI**（`lint.yml` 的 `e2e` job：14 用例 + chromium 缓存 + 工件上传；`main-only`
+> 触发、无 branch protection 时仍是**提示而非阻塞**）。白名单随之下沉为数据文件
+> `frontend/tests/e2e/expected-errors.json`：条目须带 `reason` + `added`、`match` 是**字面量子串**、
+> 受棘轮上限约束、超 90 天 WARN；套件用例数同样钉死（防 `test.skip` 静默缩水）。机检 **E1** =
+> `python scripts/check_e2e_allowlist.py`（`--selftest` 33 例）。

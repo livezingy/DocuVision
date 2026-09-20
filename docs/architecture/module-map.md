@@ -123,6 +123,7 @@ core/runtime.py（共享状态枢纽）
 | F6 | init 必被装配（名字级；deps 侧由 C9 承接） | scripts/lint_frontend.py（`check_f6`） | 第 6 条 | active |
 | F7 | 孤儿模块可达性：modules/** 每个文件须被 app.js/index.html/其它脚本 import，例外登记 `known_orphans`（P-008） | scripts/lint_frontend.py（`check_f7`） | — | active |
 | T1 | 测试登记与 Phase A CI 列表对账（登记表 ↔ 磁盘 ↔ workflow；P-008） | scripts/test_registry_audit.py（`check_test_registry`） | — | active |
+| E1 | e2e 运行时错误允许清单的格式/时效/棘轮（数据文件，非许可）+ 套件用例数钉死防缩水（P-008 gap 2，2026-09-20 落 CI） | scripts/check_e2e_allowlist.py（`check_allowlist`） | — | active |
 | C1-C8 | B0 基线校准（设计 rev2 断言；--report-out 存档） | scripts/check_frontend_baseline.py | — | 时点工具 |
 | C9 | 注入保真：app.js 传入每个 initXxx 的 key 集合 == 模块体读取的 deps.* 集合（缺/多均红，不可判定签名 fail-closed；P-008 gap 1，2026-09-17 起常驻） | scripts/frontend_coupling.py（`check_injection_keys`） | 第 6 条 | active |
 | C4 | shared 反向依赖（B5 后由 F3 取代） | scripts/check_frontend_baseline.py | — | retired |

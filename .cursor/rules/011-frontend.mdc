@@ -6,7 +6,7 @@ globs: frontend/**/*.js,frontend/**/*.html,frontend/**/*.css
 # 前端架构规范
 
 > 生成自 kernel `docs/agent-ops/core/`（frontend）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: frontend.md:a08dca33c444eb11 -->
+<!-- kernel-ref: frontend.md:47fccc06ab242d3f -->
 
 ## 目标
 `app.js` 只做装配（imports + `initXxx({deps})` + boot + mediator），新 UI 函数一律进 `frontend/modules/**`；
@@ -52,6 +52,7 @@ globs: frontend/**/*.js,frontend/**/*.html,frontend/**/*.css
 - `python scripts/check_frontend_baseline.py`（C1-C8 设计基线 + **C9 注入保真**）
 - `cd frontend && npm run lint`（ESLint `no-unused-vars` + `no-undef`；2026-09-17 起已接 CI）
 - `python scripts/check_frontend_baseline.py --syntax`（`node --check` 全模块 + `app.js`）
+- `python scripts/check_e2e_allowlist.py`（**E1**：e2e 白名单格式/时效/棘轮 + 套件用例数钉死；`--selftest`）
 - `python scripts/audit_agent_ops.py`（check 3 对账 module-map §2/§3/§5 与事实源；`--selftest` 解析回归）
 
 ## 已知 gap（记录在案，勿当作规则违反）
@@ -63,3 +64,6 @@ globs: frontend/**/*.js,frontend/**/*.html,frontend/**/*.css
   模块内绑定不可见 → 运行时 `ReferenceError`，而 `no-undef` 不分析字符串、C1-C9/F1-F7 全是结构性的（P-016 实测
   3 处，2026-09-17 已清零）。**新增/修改模板一律用 `element.addEventListener('load'|'error', fn)` 在插入 HTML 后接线，
   不要写 `on*=` 属性**；注意缓存命中时 `load` 可能不触发，需按 `element.complete` 补一次调用。
+- **e2e 运行时错误白名单是数据，不是许可**：`frontend/tests/e2e/expected-errors.json` 每条须带 `reason` +
+  `added`（`match` 是**字面量子串**，禁正则元字符），条目数受棘轮上限约束、超 90 天 WARN；**扩容必须同
+  commit 给理由**，能修因就不要加条目（机检 **E1** = `scripts/check_e2e_allowlist.py`，2026-09-20 起进 CI）。

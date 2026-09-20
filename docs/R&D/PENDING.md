@@ -125,6 +125,23 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   (b) **模块加载门禁 = 不单独设**（与 F7 静态可达性高度重叠，增量仅剩"服务端未提供/MIME"这类，而 C7 已查 MIME）；
   (c) **监听器覆盖门禁 = 否决**（覆盖率指标不是正确性属性；设成门禁只会逼着补 e2e 场景或加白名单，
   且**改测试会改变红绿**，信号性质很差）。
+  **第 2 步已落地（2026-09-20，用户裁决）——口径 (a) 运行时错误门禁，附完整的防腐化措施**：
+  `lint.yml` 新增 `e2e` job（`checkout → setup-python 3.11 → setup-node 22 + npm ci →
+  actions/cache@v5（`~/.cache/ms-playwright`，键跟 lockfile）→ `install --with-deps chromium` →
+  `npm run test:e2e` → 工件 `always()` 上传）；`playwright.config.js` 在 CI 下 `workers: 2`、
+  `retries: 0` 不变（retry 会掩盖恰要暴露的 flake）。白名单同步**下沉为数据**：
+  `frontend/tests/e2e/expected-errors.json`（条目须带 `reason` + `added`；`match` 是**字面量子串**，
+  禁正则元字符 —— 一个 `.*` 会整类放行而看起来只是一行配置）+ `scripts/e2e_allowlist_ratchet.json`
+  （上限 5 = headroom，`--update` 只降不升）+ 套件钉死 `scripts/e2e_suite_pin.json`（4 spec / 14 用例，
+  `test.skip|fixme` 任一出现即 ERROR，防门禁靠"缩水"失效）；机检 **E1** =
+  `scripts/check_e2e_allowlist.py`（33 例 `--selftest`；格式/未来日期/元字符/boilerplate/未知键/超限
+  = ERROR，>90 天 = WARN）。**E1 刻意放在 `lint` job 的 stdlib 段**：即使将来 paths 或 job 条件跳过
+  `e2e` job，白名单规则仍被评估。证据：e2e **14/14**（本地 11.7s / `CI=true` 19.3s），**0 runtime error**；
+  探针（白名单损坏）→ 加载期显式抛错而非静默放行。
+  **残留（本组不因此关闭）**：① **仍非阻塞** —— `main` 无 branch protection，CI 红只是提示；
+  ② **触发范围仍 main-only**（P-011 现状），feature 分支要本机跑；③ CI 侧实测时长待首次上云回填
+  （`operations.md` §CI 成本与配额）；④ e2e / vitest **仍未进 required checks**，protected 分支策略是
+  独立决策。
 
 ### P-010 · 前端风格 linter 缺位（2026-09-17，P-004 收尾时登记）
 - 现状：`DEVELOPMENT.md` 第 4-6 条与 kernel `frontend.md` 只覆盖**结构与边界**（F1-F6 / C1-C8），
@@ -185,6 +202,9 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
 - **重估触发**：仓库转私有（开始计费）、audit 变慢、或 `main` 开 branch protection 时，回到"逐条精确"。
 - **未做（可选治本）**：让 audit 自检"我的输入 ⊆ workflow 的 paths"（只读解析 workflow，不写）——把这类漂移
   变成红灯；代价是"改 audit 实现必须同 commit 改红线文件"，需豁免机制，故本轮不做。
+- **已裁决（2026-09-20，用户裁决）**：新增 `e2e` job 时**维持 main-only**，与三个既有 workflow 一致
+  （即继续按选项 ② 运转：本机门禁 + 合 main 时 CI 复核）。同一裁决也覆盖了新 job 的触发范围，
+  故"feature 分支不跑 CI"的现状不变；重估触发如上。
 
 ### P-013 · 服务层模块的 owning doc 未核实（2026-09-17，doc-sync 归属表补全时登记）
 - 背景：补全 kernel `doc-sync.md` 机制 2 归属表时逐模块核实 owning doc。有把握的行已写入

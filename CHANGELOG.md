@@ -8,6 +8,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-008 gap 2, step 2 — the Pro e2e suite is a CI gate, and the gate's own hygiene is checked**
+  (2026-09-20, user-authorized):
+  - `.github/workflows/lint.yml` gains an **`e2e` job**: `checkout@v5` → `setup-python@v6` (3.11, the
+    Playwright `webServer` runs `scripts/e2e_static_server.py` with python3) → `setup-node@v5`
+    (22, `cache: npm`) → `npm ci` → **`actions/cache@v5`** on `~/.cache/ms-playwright` keyed by
+    `frontend/package-lock.json` (the lock pins `@playwright/test`, so a stale cache cannot outlive a
+    version bump) → `npx playwright install --with-deps chromium` → `npm run test:e2e` → report
+    artifacts (`if: always()` + `if-no-files-found: ignore`, 7 days). Trigger stays **main-only**
+    (P-011 status quo, re-decided 2026-09-20) and, with no branch protection on `main`, the job is
+    **advisory** — that half of gap 2 stays open and is recorded as such. Actions use node24 majors
+    (`cache@v5`, `upload-artifact@v6`; `upload-artifact@v5` still declares node20, which is removed on
+    2026-09-23).
+  - Why it is worth its cost: the runtime-error assertion (2026-09-17) is the only gate that sees a
+    page which throws while every DOM assertion still passes — P-016 was **8 pageerrors behind a 14/14
+    green suite**. Until now it protected a local run only.
+  - The assertion's tolerance list became **data**: `frontend/tests/e2e/expected-errors.json`
+    (`.gitignore` re-includes it, like `backend/tests/test_registry.json`, because the fixture reads it
+    and it *is* the gate's tolerance). Entries carry `match` / `reason` / `added`; `match` is a
+    **literal substring** (regex metacharacters rejected — one `.*` would tolerate a whole class of
+    failures while looking like a single line of config); `PW_COVERAGE=0` remains the total escape
+    hatch. A malformed file now fails loudly at import instead of silently deciding the tolerance.
+  - New **E1** gate `scripts/check_e2e_allowlist.py` (stdlib, so it runs in the **`lint` job's stdlib
+    block**, not in the e2e job: a path filter that skips the browser work must not skip these rules):
+    fail-closed on a missing/unknown field, a short or boilerplate match, a regex metacharacter, a
+    malformed or future date, an entry count above the ratchet cap (`scripts/e2e_allowlist_ratchet.json`,
+    5 as headroom, lowered only by `--update`), a `test.skip` / `test.fixme` in the counted specs, or a
+    suite that no longer matches `scripts/e2e_suite_pin.json` (**4 spec files / 14 cases** — a gate also
+    rots by shrinking silently); `added` older than 90 days = WARN (A6's mechanism). 33 in-memory
+    `--selftest` cases. The pin lives here rather than in a vitest test because vitest is **not** in CI,
+    where such a test would have protected the local run only.
+  - Evidence: e2e **14/14 with 0 runtime errors** (11.7s locally, 19.3s under `CI=true`), E1 `--selftest`
+    **33/33**, E1 clean on the repo; probe: a deliberately malformed allowlist fails the module load
+    with the file path and line, i.e. it fails closed in both directions rather than silently tolerating
+    everything or silently tolerating nothing.
 - **P-001 retired — the 2026-08-31 Upwork slice & retrofit advice group is removed by user decision**
   (2026-09-20): `docs/R&D/PENDING.md` drops the group (pending: 7 → 6) and nothing is kept as an archive —
   a direction that returns gets a fresh proposal. Verified with a tree-wide search that no other file
@@ -179,6 +213,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `python scripts/lint_frontend.py` (previously `node --check` only).
 
 ### Changed
+- **`lint.yml` is two jobs; the suite's own config is CI-aware** (2026-09-20): the `lint` job keeps
+  the four stdlib gates plus the new E1 step and ESLint; the `e2e` job runs the browser suite.
+  `frontend/playwright.config.js` pins `workers: 2` under CI (over-subscribing is the failure mode the
+  256-deep accept backlog in `scripts/e2e_static_server.py` exists for) and keeps `retries: 0`
+  everywhere — a flake that disappears on retry is a finding, not noise, and a red run ships its
+  trace/report as an artifact. Known accepted cost: the `e2e` job has no job-level `paths`, so
+  backend-only PRs run it too (~2-3 min; a separate `frontend/**`-paths workflow was the alternative,
+  declined to keep the workflow count unchanged). Recorded in `docs/agent-ops/operations.md`.
 - **P-008/P-010 governance batch** (2026-09-17):
   - Repo governance: the 6 committed `test_data/testfiles/GeneralFiles_staging/` files are untracked
     (`git rm --cached`, worktree kept) and the directory is re-ignored **after** the

@@ -18,12 +18,16 @@
 | 记忆回流及时率 | 结论 N 天内固化到 `MEMORY.md` / `architecture/` | 100% |
 
 ## 巡检动作
-1. 跑 `python scripts/audit_agent_ops.py --selftest`（解析器回归，15 例）+ `python scripts/audit_agent_ops.py`。
+1. 跑 `python scripts/audit_agent_ops.py --selftest`（2026-09-20 实测输出 `all 16 checks passed`）+ `python scripts/audit_agent_ops.py`。
+   （此前记的"15 例"与实际输出不一致——以命令输出为准；`--selftest` 含 check 4 的登记回归。）
 2. ERROR `agent-rules`（kernel-ref 漂移）→ 跑 `python scripts/sync_agent_rules.py` 重新派生，commit kernel + 副本。
 3. ERROR `module-map`（check 3）→ 按 module-map §6 断言定位：路径缺失改文档 / 计数漂移同步 §2-§3 的端点数与文件数 / 门禁符号缺失修 §5 行 / 登记缺失补 `docs/README.md` 或 owning 附表 `docs/agent-ops/doc-sync-ownership.md`。
 4. ERROR `test-registry`（check 4）→ 按输出补登记 `backend/tests/test_registry.json`（或删幽灵条目）；WARN 表示 Phase A CI 列表与登记不一致，需人工裁决（实现 `scripts/test_registry_audit.py`）。
 5. WARN `doc-drift` → 修文档引用或登记 `docs/R&D/PENDING.md`；WARN `module-map`（A5 新鲜度）→ 发版后刷新 module-map 头部「最近对照」。
 6. 检查 `PENDING.md` 待决项，确认后晋升 / 移除。
+7. e2e 门禁回归（改 e2e / 白名单 / 前端渲染时）：`python scripts/check_e2e_allowlist.py --selftest` +
+   `python scripts/check_e2e_allowlist.py`（module-map §5 的 **E1**）；白名单条目超 90 天会 WARN，
+   棘轮上限可用 `--update` 只降不升地收紧。
 
 ## CI 挂载（已落地）
 `.github/workflows/agent-ops-audit.yml`（2026-09-16 起）：pull_request + push(main) 触发；
@@ -34,6 +38,11 @@ A0 查符号的全部门禁脚本、`frontend_domain_map.json`）、module-map �
 `frontend/modules/**`、`docs/architecture/**`、`docs/README.md`，以及 check 4 的两个输入
 `backend/tests/**`、`.github/workflows/kie-phase-a.yml`。
 注：`paths` 只作用于 `pull_request`——`push` 到 main 无过滤，audit 每次必跑。
+
+`lint.yml`（2026-09-20 起为**两个 job**）：`lint` job = 4 个 stdlib 门禁 + **E1 e2e 白名单/钉死**
+（`check_e2e_allowlist.py`，stdlib、零安装）+ ESLint；`e2e` job = Playwright 14 用例
+（浏览器缓存 → `--with-deps chromium` → `test:e2e` → 工件上传）。E1 刻意留在 stdlib 段内：
+即使将来某次 `paths`/job 条件跳过了 `e2e` job，白名单防腐化的规则仍会被评估。
 
 ## CI 成本与配额（2026-09-17 实测，含 ESLint 接入后的口径）
 
@@ -48,13 +57,16 @@ GitHub 按 job 计费且**向上取整到 1 分钟**）：
 |---|---|---|
 | Agent-ops Audit | 11-12s | 纯 stdlib，零安装 |
 | Lint（Python 四门禁） | 12-16s | 2026-09-17 之前的口径 |
-| Lint（**含 ESLint 块**） | **19s**（2026-09-17 首次实测：run 35195278470 / job 105116921946，job 16s。ESLint 块只 +6s = `setup-node` 1s + `npm ci` **4s**（**冷** npm 缓存，且无 Actions 缓存）+ `eslint .` 1s —— 远低于预估的 30-60s） | 本仓**唯一的 node 依赖面**，也是唯一新增的"与代码无关"失败源（npm registry 抖动 / 缓存键变化） |
+| Lint（**含 ESLint 块**） | **19s**（2026-09-17 首次实测：run 35195278470 / job 105116921946，job 16s。ESLint 块只 +6s = `setup-node` 1s + `npm ci` **4s**（**冷** npm 缓存，且无 Actions 缓存）+ `eslint .` 1s —— 远低于预估的 30-60s） | 与 2026-09-20 新增的 `e2e` job 并列为本仓两个 node 依赖面，也是新增的"与代码无关"失败源（npm registry 抖动 / 缓存键变化） |
 | KIE Phase A | 21-27s | 已含 `cache: pip` 的依赖安装；push 事件默认 `skipped`（`[run ci]` 闸门生效） |
+| Lint（**`e2e` job**，2026-09-20 起） | **待回填**（本地 `CI=true` 模式：14/14、19.3s；CI 侧还要 `npm ci` + `install --with-deps chromium`（浏览器缓存命中时只剩 apt 系统依赖），预估 1.5-3 min，首次上云后按 `gh run list` 回填） | 第二个 node 依赖面。浏览器缓存键跟 `frontend/package-lock.json`（`@playwright/test` 版本由 lock 钉死，故缓存不会跨版本复用）。**已知成本**：job 挂在 `lint.yml` 内、无 job 级 `paths`，所以 backend-only 的 PR 也会跑它（~2-3 min）；替代方案是拆独立 workflow（`paths: ["frontend/**"]`），为保持 workflow 数量不增而未选 |
 
-**触发即重算：仓库转为私有**（或迁到带配额的 CI）→ 一次 PR push 跑 3-4 个 job = **3-4 计费分钟**；
-Free 计划 2,000 min/月 ≈ **500-650 次 PR push/月**。届时的取舍顺序：① 按"改动能否翻转判决"逐条收窄
-`paths`；② 把 `scripts/**` 一类宽路径改回精确清单；③ **最后**才考虑砍 ESLint 步骤——它是唯一能看到
-死代码/未用绑定的门禁（F1-F7、C1-C9 都是结构性的），砍它等于退回 P-010 之前。
+**触发即重算：仓库转为私有**（或迁到带配额的 CI）→ 一次 PR push 跑 **4-5 个 job = 4-5 计费分钟**
+（2026-09-20 起 `lint.yml` 自带 `lint` + `e2e` 两个 job）；Free 计划 2,000 min/月 ≈ **400-500 次 PR push/月**。
+届时的取舍顺序：① 按"改动能否翻转判决"逐条收窄 `paths`；② 把 `scripts/**` 一类宽路径改回精确清单，
+并让 `e2e` job 只在 `frontend/**` 变化时触发（拆独立 workflow 或 paths-filter）；
+③ **最后**才考虑砍 ESLint / e2e 步骤——ESLint 是唯一能看到死代码/未用绑定的门禁（F1-F7、C1-C9 都是
+结构性的），e2e 是唯一能看到"DOM 断言全绿但页面抛错"的门禁（P-016 实测 8 条 pageerror 藏在 14/14 里）。
 另：若给 `main` 加 branch protection 并勾选 required checks，噪声成本立刻从"注意力"变成"合并延迟"
 （每个 PR 至少等最慢的一条），那时更该精确化 `paths` 而不是全开。
 

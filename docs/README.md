@@ -89,7 +89,8 @@ Exploratory drafts: [R&D/README.md](R&D/README.md) — not authoritative; promot
 | Pro manual script | `backend/tests/test_api_contract_smoke.py`（契约快检）、`test_api_pipeline.py`（含 analyze 轮询） | Cloud REPL, optional |
 | Test registration | `backend/tests/test_registry.json`（每文件一条 `kind`；audit check 4 与 Phase A 列表对账，漏登记 = 红） | audit（本地 / `agent-ops-audit`） |
 | Core lib | `packages/docuvision-core/tests/` | Cloud |
-| E2E UI (planned) | `frontend/tests/e2e/` | Local/Cloud with mock API |
+| E2E UI | `frontend/tests/e2e/`（4 spec / 14 用例） | CI（`lint.yml` 的 `e2e` job，main-only）+ 本地；mock API，不需后端/GPU |
+| E2E gate hygiene (E1) | `scripts/check_e2e_allowlist.py`（白名单格式/时效/棘轮 + 套件用例数钉死） | CI（`lint.yml` 的 stdlib 段，与 F1-F7 同级） |
 
 New features: add **contract tests** first; extend `MERGE_MAIN_v*.md` only at release — do not duplicate scenarios across `test_live_api` and Phase A mocks.
 

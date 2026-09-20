@@ -433,13 +433,13 @@ for f in app.js modules/api-base.js modules/api-config.js modules/api-state.js m
          modules/result-panels/figures.js modules/result-panels/json.js modules/result-panels/quality.js \
          modules/result-panels/tables.js modules/result-panels/text.js modules/shell/tools.js \
          modules/shell/ui.js modules/status-bar.js modules/upload-queue.js modules/utils/csv.js \
-         modules/utils/dom.js modules/utils/geometry.js modules/utils/text.js \
+         modules/utils/dom.js modules/utils/text.js \
          shared/demo-postprocess.js shared/export-ui.js shared/queue_preview.js \
          shared/trial-key.js shared/ui-features.js; do
   out=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/$f" | tr -d '\r')
   case "$out" in 200*javascript*) ;; *) echo "BAD  $out  $f";; esac
 done
-# 期望：无 BAD 行（38/38 ok）。注意 floating-progress.js 不在列表：v1.9 S4 已将其退役（2026-09-20），此前它也不被任何文件 import
+# 期望：无 BAD 行（37/37 ok）。floating-progress.js 与 utils/geometry.js 不在列表：v1.9 S4 已将两者退役（2026-09-20）
 
 # Terminal 2 — ② SPLIT-C1 复核（AST/静态，不需要 run.py）
 cd backend

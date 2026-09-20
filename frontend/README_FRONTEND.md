@@ -29,7 +29,7 @@ frontend/
 ├── app.js              # 装配层：imports + 依赖注入 + 17 步引导序列 + mediator
 │                       #   （B5a 终态 211 行 / 1 个顶层函数，棘轮管理）
 ├── modules/            # 原生 ESM 模块（v1.8.3 起，无构建工具、无打包）
-│   ├── utils/          # 纯函数工具：geometry / csv / text / dom
+│   ├── utils/          # 纯函数工具：csv / text / dom（geometry 已于 v1.9 S4 退役）
 │   ├── shell/          # D4 页面骨架：ui.js（页签/标注/面板/JSON 视图）+ tools.js（引擎/导出/PDF 工具）
 │   ├── preview-paging/ # D5 预览分页：core（共享基座）+ nav + render
 │   ├── pipeline/       # D8 处理链：run（发起/轮询）+ result（结果落地）
@@ -143,7 +143,7 @@ export const API_BASE_URL = resolveApiBaseUrl();  // 走 window.DOCUVISION_CONFI
 | D4 页面骨架 | `modules/shell/{ui,tools}.js` | 导航页签、结果页签、标注 tooltip、面板拖拽、JSON 视图；引擎选择、导出按钮、PDF 工具 |
 | 批处理 / HITL / 导出 | `batch.js`、`hitl-review.js`、`export-csv.js` | D14 / D15 / D12（D11 floating-progress 已于 v1.9 S4 退役） |
 | 叶服务与共享状态 | `notifications.js`、`status-bar.js`、`api-base.js`、`api-config.js`、`api-state.js`、`preview-state.js`、`kie-config.js` | 通知 / 状态栏 / 健康检查 / 静态配置 / 可变缓存（白名单，见 `DEVELOPMENT.md` 第 4 条） |
-| 纯函数工具 | `modules/utils/{geometry,csv,text,dom}.js` | 坐标换算、CSV/Markdown、文本归一、HTML 转义 |
+| 纯函数工具 | `modules/utils/{csv,text,dom}.js` | CSV/Markdown、文本归一、HTML 转义（geometry 已于 v1.9 S4 退役） |
 
 > 权威边界：`scripts/frontend_domain_map.json`（域 → 函数清单 + 状态归属 + 导入白名单）
 > 与 `docs/architecture/module-map.md` §3（域 → 文件 → 对接方式）；跨域调用与注入矩阵由

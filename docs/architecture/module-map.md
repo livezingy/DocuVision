@@ -1,7 +1,7 @@
 # DocuVision Module Map（当前态模块地图）
 
 > Status: living — 结构变化时同步（owning 行见 `docs/agent-ops/core/doc-sync.md`）
-> 最近对照：v1.8.4.0 / commit b571d21（2026-09-20，v1.9 S4-A：D11 floating-progress 退役，§3 15→14 域）
+> 最近对照：v1.8.4.0 / commit ff26efc（2026-09-20，v1.9 S4：D11 floating-progress + utils/geometry 退役，§3 15→14 域）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
 > 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F7 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-6 条——
@@ -78,7 +78,7 @@ core/runtime.py（共享状态枢纽）
 | D15 hitl-review | frontend/modules/hitl-review.js | 普通域 | init 装配；复核队列/提交端点 |
 
 基建（非域；A3 对账本节全部登记数字与名单，格式勿改）：
-- `frontend/modules/utils/`（4 文件）：纯工具，任何域可 import。
+- `frontend/modules/utils/`（3 文件）：纯工具，任何域可 import（geometry 已于 v1.9 S4 退役）。
 - `frontend/shared/`（9 条目）：跨批共享 DOM/样式/试件（含 trial-key.js）。
 - F5 白名单叶服务（4）：`notifications`、`status-bar`、`api-config`、`kie-config`。
 - 共享状态模块（2）：`preview-state`、`api-state`（L4 例外）。
@@ -121,7 +121,7 @@ core/runtime.py（共享状态枢纽）
 | F4 | 装配形态 | scripts/lint_frontend.py（`check_f4`） | 第 5 条 | active |
 | F5 | 叶服务注册制 | scripts/lint_frontend.py（`check_f5`） | 第 4 条 | active |
 | F6 | init 必被装配（名字级；deps 侧由 C9 承接） | scripts/lint_frontend.py（`check_f6`） | 第 6 条 | active |
-| F7 | 孤儿模块可达性：modules/** 每个文件须被 app.js/index.html/其它脚本 import，例外登记 `known_orphans`（P-008） | scripts/lint_frontend.py（`check_f7`） | — | active |
+| F7 | 孤儿模块可达性：modules/** 每个文件须被 app.js/index.html/其它脚本 import，例外登记 `known_orphans`（P-008；当前在册 0 条——两个孤儿已于 v1.9 S4 退役） | scripts/lint_frontend.py（`check_f7`） | — | active |
 | T1 | 测试登记与 Phase A CI 列表对账（登记表 ↔ 磁盘 ↔ workflow；P-008） | scripts/test_registry_audit.py（`check_test_registry`） | — | active |
 | E1 | e2e 运行时错误允许清单的格式/时效/棘轮（数据文件，非许可）+ 套件用例数钉死防缩水（P-008 gap 2，2026-09-20 落 CI） | scripts/check_e2e_allowlist.py（`check_allowlist`） | — | active |
 | C1-C8 | B0 基线校准（设计 rev2 断言；--report-out 存档） | scripts/check_frontend_baseline.py | — | 时点工具 |

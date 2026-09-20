@@ -22,12 +22,7 @@
     ["D8 pipeline", "D7 kie-mapping"],
     ["D8 pipeline", "D9 result-panels"]
   ],
-  "known_orphans": {
-    "frontend/modules/utils/geometry.js": {
-      "added": "2026-09-17",
-      "evidence": "Revealed by the P-010 cleanup (same commit): app.js was its only production importer and that import was itself dead - all five helpers (normalizeAnnotationBbox / bboxFromPolygon / normalizeCoordSpace / normalizeBboxToImageMatrix / remapBboxToImageSpace) were unused in app.js, so `no-unused-vars` reported them and removing the dead import exposed the module. Its five functions are now exercised only by frontend/tests/unit/geometry.test.js; C6 in check_frontend_baseline.py still locates them here, so the module is not broken, just unreferenced. Registering (not deleting, not wiring) per the F7 rule: either a module consumes it (F3/L1 review) or it retires with its test - a v1.9 decision, tracked with P-008."
-    }
-  },
+  "known_orphans": {},
   "domains": {
     "D1 api-base": [
       "checkApiReachable", "truncateFooterEngineLine", "refreshActiveEngineFooterLine",
@@ -190,10 +185,6 @@
     ]
   },
   "utils_modules": {
-    "utils/geometry": [
-      "normalizeAnnotationBbox", "bboxFromPolygon", "normalizeCoordSpace",
-      "normalizeBboxToImageMatrix", "remapBboxToImageSpace"
-    ],
     "utils/csv": [
       "convertToCSV", "convertToMarkdown", "tableConfidencePct", "formatTableCsvBanner",
       "excelSafeCell", "escapeCsvCell", "buildSingleTableCsv", "singleTableCsvFilename"

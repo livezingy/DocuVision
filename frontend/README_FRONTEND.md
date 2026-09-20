@@ -41,7 +41,6 @@ frontend/
 │   ├── batch.js               # D14 批处理
 │   ├── hitl-review.js         # D15 人工复核
 │   ├── export-csv.js          # D12 CSV 导出
-│   ├── floating-progress.js   # D11 浮动进度卡
 │   └── 叶服务 / 共享状态：notifications、status-bar、api-base、api-config、
 │       api-state、preview-state、kie-config
 ├── shared/             # 经典脚本 + CSS（过渡期保留；新模块一律不进 index.html）
@@ -142,7 +141,7 @@ export const API_BASE_URL = resolveApiBaseUrl();  // 走 window.DOCUVISION_CONFI
 | D9 结果面板 | `modules/result-panels/*.js` | 七子面板：quality / text / tables / figures / enhance / json / demo-transaction |
 | D10 叠加渲染 | `modules/overlay-render.js` | 页图坐标绑定、SVG 叠加、标注命中高亮 |
 | D4 页面骨架 | `modules/shell/{ui,tools}.js` | 导航页签、结果页签、标注 tooltip、面板拖拽、JSON 视图；引擎选择、导出按钮、PDF 工具 |
-| 批处理 / HITL / 导出 / 进度 | `batch.js`、`hitl-review.js`、`export-csv.js`、`floating-progress.js` | D14 / D15 / D12 / D11 |
+| 批处理 / HITL / 导出 | `batch.js`、`hitl-review.js`、`export-csv.js` | D14 / D15 / D12（D11 floating-progress 已于 v1.9 S4 退役） |
 | 叶服务与共享状态 | `notifications.js`、`status-bar.js`、`api-base.js`、`api-config.js`、`api-state.js`、`preview-state.js`、`kie-config.js` | 通知 / 状态栏 / 健康检查 / 静态配置 / 可变缓存（白名单，见 `DEVELOPMENT.md` 第 4 条） |
 | 纯函数工具 | `modules/utils/{geometry,csv,text,dom}.js` | 坐标换算、CSV/Markdown、文本归一、HTML 转义 |
 

@@ -1,7 +1,7 @@
 # DocuVision Module Map（当前态模块地图）
 
 > Status: living — 结构变化时同步（owning 行见 `docs/agent-ops/core/doc-sync.md`）
-> 最近对照：v1.8.4.0 / commit 39ddd83（2026-09-20，v1.8.4 收口：治理批次 + e2e 进 CI；§5 新增 E1 行）
+> 最近对照：v1.8.4.0 / commit b571d21（2026-09-20，v1.9 S4-A：D11 floating-progress 退役，§3 15→14 域）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
 > 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F7 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-6 条——
@@ -15,7 +15,7 @@
 后端栈                                前端栈
 main.py（装配：include_router）        app.js（装配：imports + initXxx({deps})）
   ↓ import 只许向下                      ↓ import 只许向下（F3）
-routers/ 13 域                          modules/ 15 域（D1-D15）
+routers/ 13 域                          modules/ 14 域（D1-D15，D11 已退役）
   ↓                                      ↓（域内兄弟 | utils/* | F5 白名单叶服务）
 services/（业务）                        shared/* · preview-state · api-state（共享状态）
   ↓                                      （D4 shell / D5 preview-paging / D8 pipeline / D9 result-panels 为目录域）
@@ -58,7 +58,7 @@ core/runtime.py（共享状态枢纽）
 - **service → orchestration / core**：业务模块经编排层进管线；共享状态唯一枢纽 `core/runtime.py`（禁 import app.main）。
 - **装配**：`main.py` 逐域 `include_router`（无 prefix，路径全量——R2）。
 
-## §3 前端段：modules/ 15 域（集合守恒：本表第一列 == domain_map.json domains 键集）
+## §3 前端段：modules/ 14 域（集合守恒：本表第一列 == domain_map.json domains 键集）
 
 <!-- audit:frontend-domains -->
 | 域 | 文件 | 性质 | 对接方式 |
@@ -72,7 +72,6 @@ core/runtime.py（共享状态枢纽）
 | D8 pipeline | frontend/modules/pipeline/{run,result}.js（2 文件） | 目录域 | init 装配；提交 /analyze、轮询/取结果；known_edge_pairs → D5/D7/D9 经注入 |
 | D9 result-panels | frontend/modules/result-panels/{demo-transaction,enhance,figures,json,quality,tables,text}.js（7 文件） | 目录域 | init 装配（黄金样例 json.js）；渲染注入数据 |
 | D10 overlay | frontend/modules/overlay-render.js | 普通域 | init 装配；overlay 图层渲染（直接 fetch 图片 src） |
-| D11 floating-progress | frontend/modules/floating-progress.js | unwired（P-008，F7 `known_orphans`） | 无 import 者；浏览器从不加载（接回管线 / 删除待 v1.9 决策） |
 | D12 export-csv | frontend/modules/export-csv.js | 普通域 | init 装配；导出经注入 URL 下载 |
 | D13 notifications | frontend/modules/notifications.js | 叶服务（F5 白名单） | 任何域可直 import |
 | D14 batch | frontend/modules/batch.js | 普通域 | init 装配；批量生命周期全套端点 |
@@ -103,7 +102,8 @@ core/runtime.py（共享状态枢纽）
 | trial | 无前端消费（shared/trial-key.js 是 fetch/WebSocket 鉴权桥，不调 trial 端点；gt-diff 由操作方调用） | — |
 
 注：前端 URL 多以 `API_BASE_URL`（已含 `/api/v1`）拼接，全文检索时勿只搜 `/api/v1/` 字面量。
-/ocr 无 JS 消费（index.html 仅遗留标签文案）。D11 floating-progress 未接线，不列为任何域的消费者。
+/ocr 无 JS 消费（index.html 仅遗留标签文案）。D11 floating-progress 已于 v1.9 S4 退役（2026-09-20，
+用户裁决：接线属新增行为且无需求方），不再列为任何域的消费者。
 
 ## §5 不变量门禁表（单元格语法见 §6 A0；状态列管退役）
 

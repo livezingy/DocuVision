@@ -45,8 +45,8 @@
 > 已知 gap（记录在案，v1.9 候选）：F6 只有名字级断言——deps 侧已由 **C9**（2026-09-17 落地，
 > P-008 gap 1）补齐；彻底解法（作用域分析）的中间态 = JSDoc + `tsc --allowJs --checkJs --noEmit`，
 > 留 v1.9 前端批次评估。
-> F7（模块可达性）只判"有没有被 import"，不判"接得对不对"：D11 `floating-progress.js`
-> 已登记 `known_orphans`（P-008），浏览器仍不加载它——接回管线属 v1.9 行为变更。
+> F7（模块可达性）只判"有没有被 import"，不判"接得对不对"：孤儿例外登记 `known_orphans`（P-008）。
+> v1.9 S4（2026-09-20）：两个在册孤儿均已退役（D11 floating-progress + utils/geometry），登记表现为空。
 > **运行时覆盖度报告（2026-09-17，P-008 gap 2 的 MVP）**：`cd frontend && npm run test:e2e` 顺带产出
 > `test_data/TestResult/PhaseUI/coverage-<date>.md`（模块加载覆盖 / 各模块监听器"注册 vs 触发" /
 > 目录聚合 / 运行时错误），`PW_COVERAGE=0` 可关闭打点。**它是报告不是门禁**（永不红）——用来给

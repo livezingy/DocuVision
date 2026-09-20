@@ -15,7 +15,7 @@
  * (api-base calls status-bar, which would conflict with L1, so it cannot be a
  * whitelist target itself).
  *
- * Consumers: api-base, floating-progress, export-csv, hitl-review, overlay, shell-init,
+ * Consumers: api-base, export-csv, hitl-review, overlay, shell-init,
  * pipeline - they import the constants and keep every call site byte-identical.
  */
 

@@ -439,7 +439,7 @@ for f in app.js modules/api-base.js modules/api-config.js modules/api-state.js m
   out=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/$f" | tr -d '\r')
   case "$out" in 200*javascript*) ;; *) echo "BAD  $out  $f";; esac
 done
-# 期望：无 BAD 行（38/38 ok）。注意 floating-progress.js 不在列表：它不被任何文件 import，浏览器不加载（既有状态）
+# 期望：无 BAD 行（38/38 ok）。注意 floating-progress.js 不在列表：v1.9 S4 已将其退役（2026-09-20），此前它也不被任何文件 import
 
 # Terminal 2 — ② SPLIT-C1 复核（AST/静态，不需要 run.py）
 cd backend

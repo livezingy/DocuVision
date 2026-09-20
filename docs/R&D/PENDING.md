@@ -86,7 +86,9 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   首次全量 F7 扫描（多行 import 感知）结果：**只有 `floating-progress.js`（D11）一个孤儿**，与 P-008 记载一致；
   P-010 清账时又暴露第二个 —— `modules/utils/geometry.js`（其唯一生产 importer 是 app.js 的**死 import**，
   删掉后成为孤儿；5 个函数现仅被 `tests/unit/geometry.test.js` 覆盖）。
-  **遗留 gap（保留在本组）**：F6 仍是名字级弱断言；F7 只判可达性、不判接线——两个已登记孤儿尚未接线/退役。
+  **孤儿裁决（2026-09-20，v1.9 S4，用户确认）：两个孤儿均退役**（D11 连同 DOM/CSS；geometry 连同其单测），
+  各自单独 commit、事实源同 commit 同步；`known_orphans` 清空（A6 告警在此之前完成裁决，未触发）。
+  **遗留 gap（保留在本组）**：F6 仍是名字级弱断言；F7 只判可达性、不判接线（规则本身保留）。
 - **遗留 gap 1 已定并落地（2026-09-17，选项 B）**：新增 **C9 注入保真** —— `app.js` 传给每个 `initXxx` 的 key
   集合必须**恰好等于**该模块体实际读取的 `deps.*` 集合（缺 key = 留空桩；多 key = 死注入；签名非空且非 `deps`
   = fail-closed）。机检 `scripts/frontend_coupling.py::check_injection_keys`，由 `check_frontend_baseline.py`

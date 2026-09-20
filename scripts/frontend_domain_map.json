@@ -23,10 +23,6 @@
     ["D8 pipeline", "D9 result-panels"]
   ],
   "known_orphans": {
-    "frontend/modules/floating-progress.js": {
-      "added": "2026-09-17",
-      "evidence": "D11. Unreachable since v1.8.2: app.js imports the other 32 modules, index.html keeps the #floatingProgressCard DOM but no script drives it, and no module imports it. This is NOT a whitelist entry - it grants nothing, it only records an acknowledged orphan so F7 can flag a NEW one. Wiring showFloatingProgressCard/updateFloatingProgress/hideFloatingProgressCard back into the pipeline is a behaviour change and is deferred to v1.9 (P-008)."
-    },
     "frontend/modules/utils/geometry.js": {
       "added": "2026-09-17",
       "evidence": "Revealed by the P-010 cleanup (same commit): app.js was its only production importer and that import was itself dead - all five helpers (normalizeAnnotationBbox / bboxFromPolygon / normalizeCoordSpace / normalizeBboxToImageMatrix / remapBboxToImageSpace) were unused in app.js, so `no-unused-vars` reported them and removing the dead import exposed the module. Its five functions are now exercised only by frontend/tests/unit/geometry.test.js; C6 in check_frontend_baseline.py still locates them here, so the module is not broken, just unreferenced. Registering (not deleting, not wiring) per the F7 rule: either a module consumes it (F3/L1 review) or it retires with its test - a v1.9 decision, tracked with P-008."
@@ -88,9 +84,6 @@
       "computeImageSha256Hex", "validateImageCoordinateBinding", "getSvgAnnotationColors",
       "getOverlayLayerType", "shouldRenderOverlayType", "renderDocumentWithAnnotations",
       "renderTextPreview", "highlightResultItem"
-    ],
-    "D11 floating-progress": [
-      "showFloatingProgressCard", "updateFloatingProgress", "hideFloatingProgressCard"
     ],
     "D12 export-csv": [
       "exportResults", "downloadCurrentTableCsv", "bindTableCardCsvExport", "downloadFile"

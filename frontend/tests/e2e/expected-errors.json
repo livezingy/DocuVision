@@ -1,0 +1,4 @@
+{
+  "note": "Runtime errors that are EXPECTED on the Pro e2e suite. Data, not code, so the rules below are machine-checked by scripts/check_e2e_allowlist.py (runs in CI with the stdlib gates). Required fields per entry: match (a LITERAL substring of the reported line - no regex metacharacters, >= 12 chars, no boilerplate phrases), reason (>= 20 chars, i.e. a real reason), added (ISO date; an entry older than 90 days gets a WARN so it is re-decided). The entry cap lives in scripts/e2e_allowlist_ratchet.json and only ever goes down. Every entry weakens the signal the assertion exists to provide - prefer fixing the cause.",
+  "entries": []
+}

@@ -1,0 +1,4 @@
+{
+  "max_entries": 5,
+  "note": "Ratchet for frontend/tests/e2e/expected-errors.json (same shape as file_size_allowlist.json / frontend_size_allowlist.json: counts only ever go down). The baseline on 2026-09-20 - the day the suite joined CI - was 0 entries, so the cap starts at 5 as headroom for a genuinely expected browser/third-party message, not as a budget. Lowering it is a one-command decision (`python scripts/check_e2e_allowlist.py --update`, which never raises a cap); raising it is the red-line-grade decision (kernel constraints.md ratchet discipline) and needs its reason in the commit message. Enforced by scripts/check_e2e_allowlist.py."
+}

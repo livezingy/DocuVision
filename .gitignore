@@ -217,6 +217,9 @@ backend/outputs/
 !backend/tests/snapshots/*.json
 # Test registration table (P-008 check 4) - the audit reads it, so it must be versioned
 !backend/tests/test_registry.json
+# E2E runtime-error allowlist (P-008 gap 2, step 2) - the Playwright fixture reads it and it is
+# the gate's own tolerance list, so it must be versioned and reviewable as data
+!frontend/tests/e2e/expected-errors.json
 
 # Upload files (user uploaded files)
 uploads/
@@ -280,6 +283,9 @@ scripts/*
 !scripts/frontend_size_allowlist.json
 !scripts/frontend_domain_map.json
 !scripts/e2e_static_server.py
+!scripts/check_e2e_allowlist.py
+!scripts/e2e_allowlist_ratchet.json
+!scripts/e2e_suite_pin.json
 !scripts/trial/
 !scripts/trial/**
 !scripts/aistudio_setup.sh

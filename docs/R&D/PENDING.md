@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（6 组；P-007 / P-013 / P-014 / P-015 / P-016 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
+## 待确认（3 组；P-007 / P-008 / P-010 / P-011 / P-013 / P-014 / P-015 / P-016 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
 P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
 
 ### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
@@ -93,9 +93,11 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   各自单独 commit、事实源同 commit 同步；`known_orphans` 清空（A6 告警在此之前完成裁决，未触发）。
   **遗留 gap**：F6 仍是名字级弱断言（中间态评估见下）；F7 只判可达性、不判接线（规则本身保留）。
   **状态更新（2026-09-20，v1.9 收口）**：两个在册孤儿已按裁决**全部退役**（`known_orphans` 清空，见 S4-A/B）。
-  **gap 2 残留（本组仍开）**：e2e job 已进 CI 但**无 branch protection = 只提示不阻塞**；vitest 已进 lint job。
-  该残留属独立决策（roadmap Out of scope 表：branch protection / required checks = P-008 残留① + P-011），
-  **本组不因 v1.9 关闭**。
+  **gap 2 残留（2026-09-20 用户裁决"选项 b 完整保护"）→ ✅ 已结**：main 由 ruleset
+  `main-branch-protection`（id 23724962）保护——**必需 PR** + 必需检查 `lint` / `e2e` / `agent-ops-audit`
+  （三者已在每次 PR 必跑，见 P-011）+ 禁删除 / 禁 force-push，**无 bypass**（对管理员同样生效）；
+  e2e 从"提示"变为**阻塞检查**。前置引导（PR 触发去 paths 化）先于 ruleset 落 main，避免"必需检查停在
+  Expected"的自锁；并用 P-010 第二批的 PR 端到端验证了整套流程。**本组关闭。**
   **F6 中间态结论（2026-09-20，v1.9 S3）**：JSDoc + `tsc --allowJs --checkJs --noEmit` **不引入**——
   实测 272 错中无一是类型系统独有信号，且对"deps 引用但未注入"只有手工维护键表才覆盖（= 快照形态）；
   详见 roadmap §S3。
@@ -191,6 +193,13 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   Lint **19s**，其中 ESLint 块 +6s：`setup-node` 1s + `npm ci` 4s【冷缓存】+ `eslint .` 1s / Phase A 21-27s）
   与"转私有后的取舍顺序"写在
   `docs/agent-ops/operations.md` §CI 成本与配额；`lint.yml` 头部注释指向该节。
+  **✅ 已结（2026-09-20，第二批落地）**：`frontend/tests/**` 纳入 ESLint（flat config 两个 scoped override：
+  `tests/unit/**` = ESM + browser globals（jsdom）；`tests/e2e/**` = CommonJS + node globals（Playwright）；
+  规则同第一批）。首扫仅 **5 项**：1 项真死绑定（`coverage-report.js` 解构 `loaded` 未用）+ 4 项
+  `coverage.js` 混合环境（Node 文件内含 `page.addInitScript` 注入的浏览器代码）→ 以文件级
+  `/* global window, document */` 精确声明而非全局放宽。`npm run lint` 0 error，vitest 67/67、
+  e2e 15/15 回归绿。第一批 + 第二批全部落地，**本组关闭**；"格式化器（Prettier 类）"不在本组范围，
+  若有诉求属新立项（全量重排与 F1/C1 行数棘轮冲突，需先裁决）。
   **触发**：仓库转私有、或 `main` 开 branch protection 时，按该节的 ①→③ 顺序重算并收窄 `paths`。
   回归证据：vitest **80/80**、e2e **14/14** 全绿；`frontend/app.js` 211 → **172** 行（棘轮已两次下调）。
   3 个结构性测试的断言从"app.js import X"改为"X 被某消费者 import"——旧断言钉的正是这批**死 import**，
@@ -227,6 +236,12 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
 - **已裁决（2026-09-20，用户裁决）**：新增 `e2e` job 时**维持 main-only**，与三个既有 workflow 一致
   （即继续按选项 ② 运转：本机门禁 + 合 main 时 CI 复核）。同一裁决也覆盖了新 job 的触发范围，
   故"feature 分支不跑 CI"的现状不变；重估触发如上。
+- **✅ 已结（2026-09-20，重估触发"main 开 branch protection"已触发并处置）**：main 启用 ruleset
+  `main-branch-protection`（required PR + 必需检查，见 P-008）→ 直推 main 被**拒绝**，一切改动走
+  feature 分支 + PR；同 commit 将 `lint.yml` 与 `agent-ops-audit.yml` 的 **`pull_request.paths` 移除**
+  （必需检查必须在每个 PR 上报，否则停在 "Expected" 卡死 PR），`push.paths` 保留（仅供 bypass 场景）。
+  2026-09-17 的"翻转判决"paths 清单保留为**转计费后重新收窄**的参照；公开仓每 PR 成本 ~1 min（免费）。
+  **本组关闭**；重开条件：仓库转私有（计费）或 audit 明显变慢。
 
 ### P-013 · 服务层模块的 owning doc 未核实（2026-09-17，doc-sync 归属表补全时登记）
 - 背景：补全 kernel `doc-sync.md` 机制 2 归属表时逐模块核实 owning doc。有把握的行已写入

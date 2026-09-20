@@ -17,6 +17,11 @@
 const fs = require('fs');
 const path = require('path');
 
+// Mixed-environment file: the Node half drives Playwright, `recorder()` below runs inside
+// the page (via addInitScript / page.evaluate) and touches browser globals. Declared here
+// so `no-undef` stays meaningful for the Node half instead of being disabled file-wide.
+/* global window, document */
+
 const base = require('@playwright/test');
 
 // frontend/tests/e2e/helpers -> repo root

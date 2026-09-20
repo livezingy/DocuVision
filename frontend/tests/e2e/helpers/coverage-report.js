@@ -97,7 +97,7 @@ function directoryRollup(byModule) {
 }
 
 function renderReport(fragments, modules, stamp) {
-  const { byModule, loaded, missing, errors } = aggregate(fragments, modules);
+  const { byModule, missing, errors } = aggregate(fragments, modules);
   const withListeners = [...byModule].filter(([, bucket]) => bucket.registered > 0);
   const neverFired = withListeners.filter(([, bucket]) => bucket.fired === 0);
   const inert = [...byModule].filter(([, bucket]) => bucket.registered === 0);

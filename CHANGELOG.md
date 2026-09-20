@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **v1.9 opened — the train is a frontend batch, decided before any code is written** (2026-09-20):
+  `docs/architecture/v1.9-roadmap.md` (registered in `docs/README.md`, with the giant-function table in
+  `main-tracked-issues.md` handing over to it). Scope: **S1** P-007 option B (the KIE meta row must stop
+  being rendered for non-KIE tasks — a frontend display-condition fix, no contract change, with vitest
+  and e2e coverage because the e2e suite is now a CI gate); **S2** the six giant-function splits, with
+  the module line counts re-measured today (474/347/305/226/390 — unchanged since 2026-09-17) and the
+  warning that the table's old line *ranges* are a v1.8.1.0 snapshot that must be re-derived per module;
+  **S3** a *conclusion-only* evaluation of JSDoc + `tsc --allowJs --checkJs --noEmit` as the fix for F6's
+  name-level weak assertion (introducing it stays a separate decision); **S4** wire-or-retire for the two
+  registered orphans (`floating-progress.js` D11 and `modules/utils/geometry.js`), each in its own commit
+  with the fact sources (`frontend_domain_map.json`, module-map §3/§5, README_FRONTEND, ratchets) updated
+  together. Explicitly out of scope: P-002 (needs real customer documents), the retired P-001 items, and
+  branch protection / required checks (P-008 residual, P-011). The document carries its own acceptance
+  command list and an adversarial section, including the honest note that this train adds **no** cloud
+  GPU gate because it has no GPU-dependent work.
 - **P-008 gap 2, step 2 — the Pro e2e suite is a CI gate, and the gate's own hygiene is checked**
   (2026-09-20, user-authorized):
   - `.github/workflows/lint.yml` gains an **`e2e` job**: `checkout@v5` → `setup-python@v6` (3.11, the

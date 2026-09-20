@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（7 组；P-013 / P-014 / P-015 / P-016 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
+## 待确认（6 组；P-007 / P-013 / P-014 / P-015 / P-016 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
 P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
 
 ### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
@@ -60,7 +60,10 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   KIE 警告块按 `kieAttempted` gate。纯前端、不动 OpenAPI 契约；vitest **4 态** + e2e 1 例
   （需先扩 `mock-pro-api.js` 的 quality preset——现有 mock 使 quality 面板永远走隐藏路径）。
   范围与验收口径见 `docs/architecture/v1.9-roadmap.md` §Scope S1。
-  **本组仍留在清单**（实施未开始）：完成并云端/本机走查后回写结论，再按本文件规则移除。
+  **✅ 已结（2026-09-20）**：v1.9 S1 落地（commit `b571d21`）——`renderQualityPanelPro` 的 summary 行改按
+  `kie_confidence_source` gate、警告块按 `kieAttempted` gate；覆盖同批补齐（vitest 4 态、e2e 1 例，
+  并把 e2e mock 的 quality 换成真实后端形态 + `qualityPreset`）。证据：vitest 67/67、e2e 15/15 且
+  `0 runtime error`、F1-F7 / C1-C9 / E1 / audit 全绿；scope 与验收口径保留在 roadmap §S1（本组按规则移除）。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 - 背景：v1.8.3 FRONT-C1 走查 + SPLIT-U4 期间，同一类缺口**两次暴露**——**"声明的东西是否真的被接上"没有巡检**。
@@ -88,7 +91,14 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   删掉后成为孤儿；5 个函数现仅被 `tests/unit/geometry.test.js` 覆盖）。
   **孤儿裁决（2026-09-20，v1.9 S4，用户确认）：两个孤儿均退役**（D11 连同 DOM/CSS；geometry 连同其单测），
   各自单独 commit、事实源同 commit 同步；`known_orphans` 清空（A6 告警在此之前完成裁决，未触发）。
-  **遗留 gap（保留在本组）**：F6 仍是名字级弱断言；F7 只判可达性、不判接线（规则本身保留）。
+  **遗留 gap**：F6 仍是名字级弱断言（中间态评估见下）；F7 只判可达性、不判接线（规则本身保留）。
+  **状态更新（2026-09-20，v1.9 收口）**：两个在册孤儿已按裁决**全部退役**（`known_orphans` 清空，见 S4-A/B）。
+  **gap 2 残留（本组仍开）**：e2e job 已进 CI 但**无 branch protection = 只提示不阻塞**；vitest 已进 lint job。
+  该残留属独立决策（roadmap Out of scope 表：branch protection / required checks = P-008 残留① + P-011），
+  **本组不因 v1.9 关闭**。
+  **F6 中间态结论（2026-09-20，v1.9 S3）**：JSDoc + `tsc --allowJs --checkJs --noEmit` **不引入**——
+  实测 272 错中无一是类型系统独有信号，且对"deps 引用但未注入"只有手工维护键表才覆盖（= 快照形态）；
+  详见 roadmap §S3。
 - **遗留 gap 1 已定并落地（2026-09-17，选项 B）**：新增 **C9 注入保真** —— `app.js` 传给每个 `initXxx` 的 key
   集合必须**恰好等于**该模块体实际读取的 `deps.*` 集合（缺 key = 留空桩；多 key = 死注入；签名非空且非 `deps`
   = fail-closed）。机检 `scripts/frontend_coupling.py::check_injection_keys`，由 `check_frontend_baseline.py`

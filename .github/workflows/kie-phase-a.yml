@@ -27,7 +27,9 @@ concurrency:
 jobs:
   kie-contract:
     if: github.event_name != 'push' || contains(github.event.head_commit.message, '[run ci]')
-    runs-on: ubuntu-latest
+    # Pinned (2026-09-20): the ubuntu-latest label migrates to Ubuntu 26 on 2026-10-19; see
+    # .github/workflows/lint.yml for the rationale and docs/agent-ops/operations.md for the record.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:

@@ -22,7 +22,10 @@ concurrency:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    # Pinned, not `ubuntu-latest`: GitHub announced that the label migrates to Ubuntu 26 on
+    # 2026-10-19, and setup-python / Playwright's --with-deps both run on the image - a passive
+    # migration would turn an unrelated Tuesday into a red CI. Upgrade this on purpose.
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:
@@ -77,7 +80,7 @@ jobs:
   # It also runs for backend-only changes (workflow-level `paths`), an accepted ~2 min cost - see
   # operations.md. A separate workflow with frontend-only paths was the alternative.
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:

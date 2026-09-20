@@ -100,16 +100,40 @@ function recorder() {
 // It also disables the runtime-error assertion below (the escape hatch has to be total).
 const ENABLED = process.env.PW_COVERAGE !== '0';
 
+// P-008 gap 2, step 2 (2026-09-20): the allowlist is DATA (frontend/tests/e2e/expected-errors.json),
+// not a code array, so it can be reviewed and machine-checked on its own. Entries are LITERAL
+// substrings, not regexes: one `.*` would tolerate a whole class of failures while looking like a
+// single line, and the format (required fields / no metacharacters / cap / 90-day staleness) is
+// enforced by scripts/check_e2e_allowlist.py in the stdlib lint job, not by this file.
+const EXPECTED_ERRORS_FILE = path.join(__dirname, '..', 'expected-errors.json');
+
+function loadExpectedErrors() {
+  // Fail closed and loud: an unreadable allowlist must not quietly keep the gate running with an
+  // unknown tolerance, and a malformed one must never be "fixed" by editing it into a wildcard.
+  const raw = JSON.parse(fs.readFileSync(EXPECTED_ERRORS_FILE, 'utf8'));
+  const entries = Array.isArray(raw) ? raw : raw.entries;
+  if (!Array.isArray(entries)) {
+    throw new Error(`${EXPECTED_ERRORS_FILE}: expected an array or an { entries: [...] } object`);
+  }
+  return entries.map((entry, index) => {
+    const match = entry && entry.match;
+    if (typeof match !== 'string' || !match) {
+      throw new Error(`${EXPECTED_ERRORS_FILE}: entries[${index}] needs a non-empty "match" substring`);
+    }
+    return match;
+  });
+}
+
 /**
- * Runtime errors that are *expected* on this suite - RegExp matched against the
+ * Runtime errors that are *expected* on this suite, matched as literal substrings against the
  * `pageerror: <msg>` / `console.error: <msg>` lines the fixture collects.
  *
- * Empty on purpose (2026-09-17): the first full run measured **0** errors, so this starts at
- * zero rather than at "a few we agreed to live with" - the same rule the ESLint gate was wired
- * under. Every entry weakens the signal this assertion exists to provide, so an entry needs
- * the reason it is expected next to it.
+ * Empty on purpose (baseline 2026-09-17, when the assertion first ran): the first full run
+ * measured **0** errors, so this starts at zero rather than at "a few we agreed to live with" -
+ * the same rule the ESLint gate was wired under. Every entry weakens the signal, so an entry
+ * needs its reason and its `added` date, and it occupies a slot under the ratchet cap.
  */
-const EXPECTED_ERRORS = [];
+const EXPECTED_ERRORS = ENABLED ? loadExpectedErrors() : [];
 
 function fragmentName(file, title) {
   const stem = `${path.basename(file, '.e2e.js')}-${title}`;
@@ -162,15 +186,17 @@ const test = base.test.extend({
 
     // P-008 gap 2, step 1 (2026-09-17): a report depends on someone reading it; this assertion
     // does not. It is what would have caught P-016 (8 pageerrors behind a 14/14 green suite).
-    // Local-only by design - it needs no CI change and no branch protection to be useful.
-    const unexpected = errors.filter((line) => !EXPECTED_ERRORS.some((re) => re.test(line)));
+    // Step 2 (2026-09-20): the assertion now runs in CI (lint.yml job `e2e`, main-only), which
+    // is why the allowlist moved to a checked data file.
+    const unexpected = errors.filter((line) => !EXPECTED_ERRORS.some((needle) => line.includes(needle)));
     if (unexpected.length) {
       throw new Error(
         `${unexpected.length} runtime error(s) during this test:`
         + `\n  ${unexpected.join('\n  ')}`
         + '\nThe app threw or logged an error while this scenario ran. Fix the cause; only if it'
-        + ' is genuinely expected, add a pattern *with its reason* to EXPECTED_ERRORS in'
-        + ' frontend/tests/e2e/helpers/coverage.js (or run with PW_COVERAGE=0 to skip entirely).',
+        + ' is genuinely expected, add a literal substring *with its reason and date* to the'
+        + ' `entries` list in frontend/tests/e2e/expected-errors.json (format, cap and staleness'
+        + ' are checked by scripts/check_e2e_allowlist.py; or run with PW_COVERAGE=0 to skip).',
       );
     }
   },

@@ -1,7 +1,7 @@
 # DocuVision Documentation
 
 > **Status**: living index — update when adding or renaming docs.  
-> 最近对照：v1.8.3.0 / tag v1.8.3.0 / commit 704adcd（2026-09-16）
+> 最近对照：v1.8.4.0 / tag v1.8.4.0 / commit 39ddd83（2026-09-20）
 
 ## Onboarding
 

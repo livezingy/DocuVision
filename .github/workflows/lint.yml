@@ -73,6 +73,14 @@ jobs:
         run: npm run lint
         working-directory: frontend
 
+      # v1.9 S0: vitest joins CI. S1's acceptance depends on unit tests actually running
+      # (otherwise they are paper-verified, the P-008 "declared but never run" shape), and the
+      # existing 80 unit tests (geometry's only coverage, preview-state semantics, envelope
+      # display) get CI protection. ~27s locally with jsdom; ~40-60s expected on CI runners.
+      - name: Frontend unit tests (vitest)
+        run: npm run test:unit
+        working-directory: frontend
+
   # P-008 gap 2, step 2 (2026-09-20): the runtime-error assertion now guards the merged code, not
   # just a local run - it is the only gate that sees a page which throws while the DOM assertions
   # still pass (P-016 was 8 pageerrors behind a 14/14 green suite). Advisory: branch protection is

@@ -414,7 +414,8 @@ python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
 
 ### 阶段 FRONT-C1 — 前端拆分验收（v1.8.3，2026-09-16 已验证）
 
-> 背景：v1.8.3 把 `frontend/app.js`（5708 行）拆成 **211 行装配层 + `frontend/modules/**`（33 文件 / 15 域）**。
+> 背景：v1.8.3 把 `frontend/app.js`（5708 行）拆成 **211 行装配层 + `frontend/modules/**`（33 文件 / 15 域）**
+> （v1.9 收口后为 **172 行装配层 + 32 文件 / 14 域**：D11 与 utils/geometry 退役、pipeline 新增 task-socket.js）。
 > 模块 URL **不带版本令牌**（仅入口 `?v=`），因此"改了模块后用户能否拿到新文件"变成**部署层**问题（设计稿 R7 / D9）。
 > 本阶段一次覆盖三件事：**FRONT-C1 走查** + **缓存重验证** + **v1.8.2 SPLIT-C1 复核 / SPLIT-U4**。
 
@@ -427,19 +428,21 @@ BASE=http://127.0.0.1:8000/frontend
 for f in app.js modules/api-base.js modules/api-config.js modules/api-state.js modules/batch.js \
          modules/export-csv.js modules/hitl-review.js modules/kie-config.js modules/kie-mapping.js \
          modules/notifications.js modules/options-dialog.js modules/overlay-render.js \
-         modules/pipeline/result.js modules/pipeline/run.js modules/preview-paging/core.js \
+         modules/pipeline/result.js modules/pipeline/run.js modules/pipeline/task-socket.js \
+         modules/preview-paging/core.js \
          modules/preview-paging/nav.js modules/preview-paging/render.js modules/preview-state.js \
          modules/result-panels/demo-transaction.js modules/result-panels/enhance.js \
          modules/result-panels/figures.js modules/result-panels/json.js modules/result-panels/quality.js \
          modules/result-panels/tables.js modules/result-panels/text.js modules/shell/tools.js \
          modules/shell/ui.js modules/status-bar.js modules/upload-queue.js modules/utils/csv.js \
-         modules/utils/dom.js modules/utils/geometry.js modules/utils/text.js \
+         modules/utils/dom.js modules/utils/text.js \
          shared/demo-postprocess.js shared/export-ui.js shared/queue_preview.js \
          shared/trial-key.js shared/ui-features.js; do
   out=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/$f" | tr -d '\r')
   case "$out" in 200*javascript*) ;; *) echo "BAD  $out  $f";; esac
 done
-# 期望：无 BAD 行（38/38 ok）。注意 floating-progress.js 不在列表：它不被任何文件 import，浏览器不加载（既有状态）
+# 期望：无 BAD 行（38/38 ok）。floating-progress.js 与 utils/geometry.js 不在列表：v1.9 S4 已将两者退役（2026-09-20）；
+# task-socket.js 已加入：v1.9 S2-5 新增（pipeline 域的同域兄弟）
 
 # Terminal 2 — ② SPLIT-C1 复核（AST/静态，不需要 run.py）
 cd backend

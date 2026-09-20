@@ -14,6 +14,52 @@ function jsonResponse(body, status = 200) {
   };
 }
 
+/**
+ * Real-shape quality payloads (v1.9 S1 / P-007). Field names and values mirror
+ * backend/app/models/api_models.py defaults + document_pipeline_orchestrator.py writes:
+ * `kie_confidence_source` is non-empty only on attempted && succeeded; kie_stage is
+ * "" / "completed" / "runtime_error" / "skipped_doc_type" (the backend never produces
+ * the legacy 'skipped' the old mock used, which kept the quality panel hidden forever).
+ */
+function buildQuality(options = {}) {
+  switch (options.qualityPreset) {
+    case 'kie_ok':
+      return {
+        kie_attempted: true,
+        kie_stage: 'completed',
+        kie_confidence_source: 'qwen2.5-vl',
+        kie_confidence_avg: 0.873,
+        kie_fields_count: 12,
+        kie_production_hit: true,
+        kie_production_reason: '',
+        kie_error_message: '',
+      };
+    case 'kie_failed':
+      return {
+        kie_attempted: true,
+        kie_stage: 'runtime_error',
+        kie_confidence_source: '',
+        kie_confidence_avg: 0.0,
+        kie_fields_count: 0,
+        kie_production_hit: false,
+        kie_production_reason: '',
+        kie_error_message: 'KIE engine failed: runtime error',
+      };
+    default:
+      // layout / backfill: KIE never attempted (non-KIE run).
+      return {
+        kie_attempted: false,
+        kie_stage: '',
+        kie_confidence_source: '',
+        kie_confidence_avg: 0.0,
+        kie_fields_count: 0,
+        kie_production_hit: false,
+        kie_production_reason: '',
+        kie_error_message: '',
+      };
+  }
+}
+
 function mockResult(pageCount, options = {}) {
   const base = {
     document_info: { pages: pageCount, file_name: 'sample.pdf' },
@@ -21,7 +67,7 @@ function mockResult(pageCount, options = {}) {
     text_blocks: [{ content: 'Hello world', page: 1 }],
     tables: [],
     view: { fields: {} },
-    quality: { kie_stage: 'skipped' },
+    quality: buildQuality(options),
   };
 
   if (options.useMappedResult) {
@@ -40,6 +86,24 @@ function mockResult(pageCount, options = {}) {
           balance: '1,250.00',
         },
       ],
+    };
+  }
+
+  if (options.qualityPreset === 'backfill') {
+    // Non-KIE run with selective text-layer backfill: quality panel must show
+    // Tables + Backfill but no KIE lines (P-007 e2e case).
+    return {
+      ...base,
+      view: { fields: {}, tables: Array.from({ length: 16 }, () => ({})) },
+      quality: {
+        ...base.quality,
+        table_backfill: {
+          enabled: true,
+          cells_candidates: 588,
+          cells_backfilled: 89,
+          backfill_rate: 0.15136054421768708,
+        },
+      },
     };
   }
 
@@ -66,6 +130,7 @@ function mockHealthPayload(apiVersion = '1.4.0') {
  * @param {string} [options.suggestedDocumentType] classifier hint shown as non-binding UI suggestion (default 'auto' = hidden)
  * @param {number} [options.classificationConfidence] 0-1 confidence for the suggestion (default 0 = hidden)
  * @param {string} [options.apiVersion]
+ * @param {string} [options.qualityPreset] backfill | kie_ok | kie_failed (default = non-KIE run)
  */
 async function installProApiMocks(page, options = {}) {
   const pageCount = options.pageCount ?? 1;

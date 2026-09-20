@@ -1,6 +1,6 @@
 # Known limitations
 
-> Applies through **v1.8.4** (tag `v1.8.4.0`, 2026-09-20). Queue persistence is v1.5; figure crops + artifact pack are v1.6; single-task result persistence is v1.7; frontend module split + doc governance are v1.8.3; v1.8.4 is governance / CI only (e2e in CI + doc gates, no capability change — so the limits below are unaffected).  
+> Applies through **v1.9.0** (tag `v1.9.0` pending, 2026-09-20). Queue persistence is v1.5; figure crops + artifact pack are v1.6; single-task result persistence is v1.7; frontend module split + doc governance are v1.8.3; v1.8.4 is governance / CI only; v1.9.0 is the frontend batch (P-007 KIE-row display fix, retirement of the dead floating-progress card and `utils/geometry.js`, giant-function splits — **no capability change**, so the limits below are unaffected).  
 > Release notes: [v1.7-roadmap.md](../architecture/v1.7-roadmap.md) · [RELEASE_1.6_NOTES.md](./RELEASE_1.6_NOTES.md) · [RELEASE_1.5_NOTES.md](./RELEASE_1.5_NOTES.md)  
 > Acceptance rules: [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
 

@@ -1,7 +1,7 @@
 # 前端架构规范
 
 > 生成自 kernel `docs/agent-ops/core/`（frontend）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: frontend.md:47fccc06ab242d3f -->
+<!-- kernel-ref: frontend.md:2d0f0ef97202f59b -->
 
 ## 目标
 `app.js` 只做装配（imports + `initXxx({deps})` + boot + mediator），新 UI 函数一律进 `frontend/modules/**`；
@@ -53,8 +53,9 @@
 ## 已知 gap（记录在案，勿当作规则违反）
 - **F6 只有名字级**：deps 侧的"引用但没被注入"已由 **C9** 补上（2026-09-17 落地，P-008 gap 1 的选项 B）；
   F6 自身仍只断言"被调用"。剩下的中间态解法（JSDoc + `tsc --allowJs --checkJs --noEmit`）留 v1.9 前端批次评估。
-- **F7 只判可达性、不判接线**：`floating-progress.js`（D11）已登记 `known_orphans`（P-008），浏览器仍不加载它——
-  登记只让**新**孤儿暴露；把它接回管线（或删除）属 v1.9 行为变更决策。
+- **F7 只判可达性、不判接线**：登记 `known_orphans` 只让**新**孤儿暴露（P-008）。v1.9 S4 已把两个在册孤儿
+  全部退役（2026-09-20，用户裁决：D11 floating-progress 连同 DOM/CSS，utils/geometry 连同其单测），
+  `known_orphans` 现为空——把孤儿接回管线仍是行为变更决策，不属 lint 修复。
 - **模板串里的内联事件处理器是结构盲区**：`<img ... onload="adjustDocumentSize()">` 这类写法在**全局作用域**求值，
   模块内绑定不可见 → 运行时 `ReferenceError`，而 `no-undef` 不分析字符串、C1-C9/F1-F7 全是结构性的（P-016 实测
   3 处，2026-09-17 已清零）。**新增/修改模板一律用 `element.addEventListener('load'|'error', fn)` 在插入 HTML 后接线，

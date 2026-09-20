@@ -29,10 +29,10 @@ frontend/
 ├── app.js              # 装配层：imports + 依赖注入 + 17 步引导序列 + mediator
 │                       #   （B5a 终态 211 行 / 1 个顶层函数，棘轮管理）
 ├── modules/            # 原生 ESM 模块（v1.8.3 起，无构建工具、无打包）
-│   ├── utils/          # 纯函数工具：geometry / csv / text / dom
+│   ├── utils/          # 纯函数工具：csv / text / dom（geometry 已于 v1.9 S4 退役）
 │   ├── shell/          # D4 页面骨架：ui.js（页签/标注/面板/JSON 视图）+ tools.js（引擎/导出/PDF 工具）
 │   ├── preview-paging/ # D5 预览分页：core（共享基座）+ nav + render
-│   ├── pipeline/       # D8 处理链：run（发起/轮询）+ result（结果落地）
+│   ├── pipeline/       # D8 处理链：run（发起/轮询）+ result（结果落地）+ task-socket（WS/回退轮询）
 │   ├── result-panels/  # D9 结果面板：quality / text / tables / figures / enhance / json / demo-transaction
 │   ├── overlay-render.js      # D10 SVG 叠加渲染 + 标注命中
 │   ├── options-dialog.js      # D6 分析选项对话框（含处理模式钩子）
@@ -41,13 +41,12 @@ frontend/
 │   ├── batch.js               # D14 批处理
 │   ├── hitl-review.js         # D15 人工复核
 │   ├── export-csv.js          # D12 CSV 导出
-│   ├── floating-progress.js   # D11 浮动进度卡
 │   └── 叶服务 / 共享状态：notifications、status-bar、api-base、api-config、
 │       api-state、preview-state、kie-config
 ├── shared/             # 经典脚本 + CSS（过渡期保留；新模块一律不进 index.html）
 ├── styles.css          # 样式表和主题
 └── tests/
-    ├── e2e/            # Playwright（4 套 *.e2e.js，走 mock API；需 npx playwright install chromium）
+    ├── e2e/            # Playwright（5 套 *.e2e.js，走 mock API；需 npx playwright install chromium）
     └── unit/           # vitest + jsdom
 ```
 
@@ -138,13 +137,13 @@ export const API_BASE_URL = resolveApiBaseUrl();  // 走 window.DOCUVISION_CONFI
 | D5 预览分页 | `modules/preview-paging/{core,nav,render}.js` | 页图加载与分页控件（core 为共享基座）、页导航、预览渲染与叠加触发 |
 | D6 选项对话框 | `modules/options-dialog.js` | Analysis Options 模态、处理模式读取、`syncProcessingModeUI` 钩子 |
 | D7 KIE 映射 | `modules/kie-mapping.js` | 文档画像预扫、表格映射资格、KIE 字段解析与 Fields 渲染 |
-| D8 处理链 | `modules/pipeline/{run,result}.js` | 发起分析/轮询进度（run）、结果落地（result，经 mediator） |
+| D8 处理链 | `modules/pipeline/{run,result,task-socket}.js` | 发起分析/轮询进度（run）、结果落地（result，经 mediator）、WebSocket/回退轮询传输（task-socket，v1.9 S2-5） |
 | D9 结果面板 | `modules/result-panels/*.js` | 七子面板：quality / text / tables / figures / enhance / json / demo-transaction |
 | D10 叠加渲染 | `modules/overlay-render.js` | 页图坐标绑定、SVG 叠加、标注命中高亮 |
 | D4 页面骨架 | `modules/shell/{ui,tools}.js` | 导航页签、结果页签、标注 tooltip、面板拖拽、JSON 视图；引擎选择、导出按钮、PDF 工具 |
-| 批处理 / HITL / 导出 / 进度 | `batch.js`、`hitl-review.js`、`export-csv.js`、`floating-progress.js` | D14 / D15 / D12 / D11 |
+| 批处理 / HITL / 导出 | `batch.js`、`hitl-review.js`、`export-csv.js` | D14 / D15 / D12（D11 floating-progress 已于 v1.9 S4 退役） |
 | 叶服务与共享状态 | `notifications.js`、`status-bar.js`、`api-base.js`、`api-config.js`、`api-state.js`、`preview-state.js`、`kie-config.js` | 通知 / 状态栏 / 健康检查 / 静态配置 / 可变缓存（白名单，见 `DEVELOPMENT.md` 第 4 条） |
-| 纯函数工具 | `modules/utils/{geometry,csv,text,dom}.js` | 坐标换算、CSV/Markdown、文本归一、HTML 转义 |
+| 纯函数工具 | `modules/utils/{csv,text,dom}.js` | CSV/Markdown、文本归一、HTML 转义（geometry 已于 v1.9 S4 退役） |
 
 > 权威边界：`scripts/frontend_domain_map.json`（域 → 函数清单 + 状态归属 + 导入白名单）
 > 与 `docs/architecture/module-map.md` §3（域 → 文件 → 对接方式）；跨域调用与注入矩阵由

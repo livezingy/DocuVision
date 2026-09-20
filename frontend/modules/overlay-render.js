@@ -2,8 +2,10 @@
  * Document overlay rendering (v1.8.3 B3) - domain module (D10).
  *
  * The geometry half (normalizeAnnotationBbox / bboxFromPolygon / normalizeCoordSpace /
- * normalizeBboxToImageMatrix / remapBboxToImageSpace) already lives in utils/geometry.js
- * (B0b). This module holds the rendering half, moved verbatim.
+ * normalizeBboxToImageMatrix / remapBboxToImageSpace) used to live in utils/geometry.js
+ * (B0b) and was retired in v1.9 S4: the module had no production importer left, so those
+ * helpers no longer exist anywhere - the rendering half below is self-contained. It was
+ * moved verbatim from app.js.
  *
  * Cross-domain deps are injected at boot because F3 forbids domain->domain imports:
  *   - D5 preview-paging: previewHelpers / resolveResultPageCount /
@@ -174,6 +176,149 @@ export function shouldRenderOverlayType(type) {
     return overlayLayerVisibility[layerType] !== false;
 }
 
+/** Backend page-image URL when a task exists, else the locally uploaded file URL. */
+async function resolveOverlayImageUrl(page) {
+    let imageUrl = currentOriginalFileUrl;
+    if (currentTaskId) {
+        try {
+            // Always use backend page-image endpoint after analysis so the displayed
+            // image stays in the same coordinate space as /blocks bboxes.
+            revokeCurrentPageImageUrl();
+            setPageImageUrl(await getPdfPageImage(currentTaskId, page));
+            imageUrl = currentPageImageUrl;
+        } catch (error) {
+            console.error('Failed to get backend page image:', error);
+            imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/${page}`;
+        }
+    }
+    return imageUrl;
+}
+
+/** Image + empty SVG overlay markup that annotations are drawn into. */
+function buildDocumentPreviewHtml(imageUrl) {
+    return `
+        <div class="document-preview-content">
+            <div class="svg-annotation-wrapper">
+                <img id="documentImage" src="${imageUrl || ''}"
+                     style="display:block; max-width:100%; height:auto; border-radius:8px;"
+                     alt="Document">
+                <svg id="annotationSvgOverlay"
+                     style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"
+                     preserveAspectRatio="none"></svg>
+            </div>
+        </div>`;
+}
+
+/**
+ * Reading-order badge (P0-C): drawn on top of a rect, never stealing its clicks.
+ *
+ * The /blocks endpoint surfaces reading_order from the envelope view layer; the badge
+ * sits at the top-left of text/title regions so multi-column reading sequence is
+ * visible. Figure/table boxes keep the number in the tooltip only (PaddleX often leaves
+ * image block_order as None, so a badge would be a fallback counter). Gated by the
+ * readingOrder overlay toggle; pointer-events stay disabled so rect clicks are never
+ * stolen.
+ */
+function appendReadingOrderBadge(svg, svgNS, box, colors, type, readingOrder) {
+    if (!(readingOrder > 0) || overlayLayerVisibility.readingOrder === false
+        || getOverlayLayerType(type) !== 'text') return;
+
+    const badgeFontSize = Math.max(12, Math.min(box.w, box.h) * 0.12);
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', box.x1 + 4);
+    label.setAttribute('y', box.y1 + badgeFontSize + 2);
+    label.setAttribute('font-size', badgeFontSize);
+    label.setAttribute('font-family', 'Inter, system-ui, sans-serif');
+    label.setAttribute('font-weight', '700');
+    label.setAttribute('fill', colors.stroke);
+    label.setAttribute('stroke', '#ffffff');
+    label.setAttribute('stroke-width', '0.4');
+    label.setAttribute('paint-order', 'stroke');
+    label.classList.add('svg-reading-order-badge');
+    label.dataset.elementType = type;
+    label.style.pointerEvents = 'none';
+    label.textContent = String(readingOrder);
+    svg.appendChild(label);
+}
+
+/** One annotation rect - geometry guard, type filter, tooltip and reading-order badge. */
+function appendAnnotationRect(svg, block, idx) {
+    const bbox = block.bbox || [];
+    const x1 = Number(bbox[0] || 0);
+    const y1 = Number(bbox[1] || 0);
+    const x2 = Number(bbox[2] || 0);
+    const y2 = Number(bbox[3] || 0);
+    const w = Math.max(0, x2 - x1);
+    const h = Math.max(0, y2 - y1);
+    if (w <= 0 || h <= 0) return;
+
+    const type = String(block.type || block.role || 'paragraph').toLowerCase();
+    if (!shouldRenderOverlayType(type)) return;
+
+    const colors = getSvgAnnotationColors(type);
+    const role = formatAzureRoleLabel(type);
+    const text = String(block.text || block.content || '');
+    const displayContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
+    const rawConf = Number(block.confidence || 0);
+    const confidencePercent = rawConf > 1 ? rawConf : rawConf * 100;
+    const bboxStr = `${x1.toFixed(0)}, ${y1.toFixed(0)}, ${w.toFixed(0)} × ${h.toFixed(0)}`;
+
+    const readingOrder = Number(block.reading_order);
+    const hasReadingOrder = !isNaN(readingOrder) && readingOrder > 0;
+
+    const tooltipData = { role, content: text, displayContent, bbox: bboxStr, confidence: confidencePercent, readingOrder: hasReadingOrder ? readingOrder : null };
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const rect = document.createElementNS(svgNS, 'rect');
+    rect.setAttribute('x', x1);
+    rect.setAttribute('y', y1);
+    rect.setAttribute('width', w);
+    rect.setAttribute('height', h);
+    rect.setAttribute('fill', colors.fill);
+    rect.setAttribute('stroke', colors.stroke);
+    rect.setAttribute('stroke-width', '2');
+    rect.setAttribute('rx', '3');
+    rect.classList.add('svg-annotation');
+    rect.dataset.tooltipData = JSON.stringify(tooltipData);
+    rect.dataset.elementType = type;
+    rect.dataset.elementIndex = String(idx);
+    rect.style.pointerEvents = 'auto';
+    rect.style.cursor = 'pointer';
+    svg.appendChild(rect);
+
+    // Reading-order badge (P0-C). Drawn after the rect so it sits on top.
+    appendReadingOrderBadge(svg, svgNS, { x1, y1, w, h }, colors, type, readingOrder);
+}
+
+/**
+ * Fetch this page's blocks and draw the annotation overlay, then hand the
+ * blocks to the text panel and re-bind the annotation interactions.
+ */
+async function renderAnnotationBlocks(image, page) {
+    adjustDocumentSize();
+    if (!currentTaskId) return;
+
+    const blocks = await fetchTaskBlocks(currentTaskId, page);
+    if (!blocks || !Array.isArray(blocks.blocks) || blocks.blocks.length === 0) return;
+    setLastFetchedBlocks(blocks);
+
+    const svg = document.getElementById('annotationSvgOverlay');
+    if (!svg) return;
+
+    const imgW = Number(blocks.image_width) || image.naturalWidth || 1;
+    const imgH = Number(blocks.image_height) || image.naturalHeight || 1;
+    svg.setAttribute('viewBox', `0 0 ${imgW} ${imgH}`);
+
+    blocks.blocks.forEach((block, idx) => {
+        appendAnnotationRect(svg, block, idx);
+    });
+
+    if (lastRenderedAnalysisResult) {
+        updateContentText(lastRenderedAnalysisResult);
+    }
+    initAnnotationInteractions();
+}
+
 /**
  * Render document with annotations overlay
  */
@@ -191,131 +336,14 @@ export async function renderDocumentWithAnnotations(result, pageNum = currentPre
     syncPreviewPaginationControls(totalPages, page);
     setLastFetchedBlocks(null);
 
-    let imageUrl = currentOriginalFileUrl;
-    if (currentTaskId) {
-        try {
-            // Always use backend page-image endpoint after analysis so the displayed
-            // image stays in the same coordinate space as /blocks bboxes.
-            revokeCurrentPageImageUrl();
-            setPageImageUrl(await getPdfPageImage(currentTaskId, page));
-            imageUrl = currentPageImageUrl;
-        } catch (error) {
-            console.error('Failed to get backend page image:', error);
-            imageUrl = `${API_BASE_URL}/tasks/${currentTaskId}/page-image/${page}`;
-        }
-    }
+    const imageUrl = await resolveOverlayImageUrl(page);
 
-    const html = `
-        <div class="document-preview-content">
-            <div class="svg-annotation-wrapper">
-                <img id="documentImage" src="${imageUrl || ''}"
-                     style="display:block; max-width:100%; height:auto; border-radius:8px;"
-                     alt="Document">
-                <svg id="annotationSvgOverlay"
-                     style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"
-                     preserveAspectRatio="none"></svg>
-            </div>
-        </div>`;
-
-    documentPage.innerHTML = html;
+    documentPage.innerHTML = buildDocumentPreviewHtml(imageUrl);
 
     const image = document.getElementById('documentImage');
     if (!image) return;
 
-    const renderBlocks = async () => {
-        adjustDocumentSize();
-        if (!currentTaskId) return;
-
-        const blocks = await fetchTaskBlocks(currentTaskId, page);
-        if (!blocks || !Array.isArray(blocks.blocks) || blocks.blocks.length === 0) return;
-        setLastFetchedBlocks(blocks);
-
-        const svg = document.getElementById('annotationSvgOverlay');
-        if (!svg) return;
-
-        const imgW = Number(blocks.image_width) || image.naturalWidth || 1;
-        const imgH = Number(blocks.image_height) || image.naturalHeight || 1;
-        svg.setAttribute('viewBox', `0 0 ${imgW} ${imgH}`);
-
-        const svgNS = 'http://www.w3.org/2000/svg';
-        blocks.blocks.forEach((block, idx) => {
-            const bbox = block.bbox || [];
-            const x1 = Number(bbox[0] || 0);
-            const y1 = Number(bbox[1] || 0);
-            const x2 = Number(bbox[2] || 0);
-            const y2 = Number(bbox[3] || 0);
-            const w = Math.max(0, x2 - x1);
-            const h = Math.max(0, y2 - y1);
-            if (w <= 0 || h <= 0) return;
-
-            const type = String(block.type || block.role || 'paragraph').toLowerCase();
-            if (!shouldRenderOverlayType(type)) return;
-
-            const colors = getSvgAnnotationColors(type);
-            const role = formatAzureRoleLabel(type);
-            const text = String(block.text || block.content || '');
-            const displayContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
-            const rawConf = Number(block.confidence || 0);
-            const confidencePercent = rawConf > 1 ? rawConf : rawConf * 100;
-            const bboxStr = `${x1.toFixed(0)}, ${y1.toFixed(0)}, ${w.toFixed(0)} × ${h.toFixed(0)}`;
-
-            // GLM trial P0-C: reading-order overlay. The /blocks endpoint
-            // surfaces reading_order from the envelope view layer; we draw a
-            // small badge at the top-left of text/title regions so
-            // multi-column reading sequence is visible. Figure/table boxes
-            // keep the number in the tooltip only (PaddleX often leaves
-            // image block_order as None, so a badge would be a fallback
-            // counter). Gated by the readingOrder overlay toggle.
-            const readingOrder = Number(block.reading_order);
-            const hasReadingOrder = !isNaN(readingOrder) && readingOrder > 0;
-
-            const tooltipData = { role, content: text, displayContent, bbox: bboxStr, confidence: confidencePercent, readingOrder: hasReadingOrder ? readingOrder : null };
-
-            const rect = document.createElementNS(svgNS, 'rect');
-            rect.setAttribute('x', x1);
-            rect.setAttribute('y', y1);
-            rect.setAttribute('width', w);
-            rect.setAttribute('height', h);
-            rect.setAttribute('fill', colors.fill);
-            rect.setAttribute('stroke', colors.stroke);
-            rect.setAttribute('stroke-width', '2');
-            rect.setAttribute('rx', '3');
-            rect.classList.add('svg-annotation');
-            rect.dataset.tooltipData = JSON.stringify(tooltipData);
-            rect.dataset.elementType = type;
-            rect.dataset.elementIndex = String(idx);
-            rect.style.pointerEvents = 'auto';
-            rect.style.cursor = 'pointer';
-            svg.appendChild(rect);
-
-            // Reading-order badge (P0-C). Drawn after the rect so it sits
-            // on top; pointer-events disabled so it never steals rect clicks.
-            const overlayLayer = getOverlayLayerType(type);
-            if (hasReadingOrder && overlayLayerVisibility.readingOrder !== false && overlayLayer === 'text') {
-                const badgeFontSize = Math.max(12, Math.min(w, h) * 0.12);
-                const label = document.createElementNS(svgNS, 'text');
-                label.setAttribute('x', x1 + 4);
-                label.setAttribute('y', y1 + badgeFontSize + 2);
-                label.setAttribute('font-size', badgeFontSize);
-                label.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-                label.setAttribute('font-weight', '700');
-                label.setAttribute('fill', colors.stroke);
-                label.setAttribute('stroke', '#ffffff');
-                label.setAttribute('stroke-width', '0.4');
-                label.setAttribute('paint-order', 'stroke');
-                label.classList.add('svg-reading-order-badge');
-                label.dataset.elementType = type;
-                label.style.pointerEvents = 'none';
-                label.textContent = String(readingOrder);
-                svg.appendChild(label);
-            }
-        });
-
-        if (lastRenderedAnalysisResult) {
-            updateContentText(lastRenderedAnalysisResult);
-        }
-        initAnnotationInteractions();
-    };
+    const renderBlocks = () => renderAnnotationBlocks(image, page);
 
     if (image.complete && image.naturalWidth > 0) {
         await renderBlocks();

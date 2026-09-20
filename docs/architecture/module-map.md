@@ -1,7 +1,7 @@
 # DocuVision Module Map（当前态模块地图）
 
 > Status: living — 结构变化时同步（owning 行见 `docs/agent-ops/core/doc-sync.md`）
-> 最近对照：v1.8.4.0 / commit 39ddd83（2026-09-20，v1.8.4 收口：治理批次 + e2e 进 CI；§5 新增 E1 行）
+> 最近对照：v1.9.0 / commit 0b01eb6（2026-09-20，v1.9 收口：S1 P-007 修复 + S2 六函数切分（含 §3 D8 新增 task-socket.js）+ S4 两孤儿退役，§3 15→14 域）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
 > 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F7 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-6 条——
@@ -15,7 +15,7 @@
 后端栈                                前端栈
 main.py（装配：include_router）        app.js（装配：imports + initXxx({deps})）
   ↓ import 只许向下                      ↓ import 只许向下（F3）
-routers/ 13 域                          modules/ 15 域（D1-D15）
+routers/ 13 域                          modules/ 14 域（D1-D15，D11 已退役）
   ↓                                      ↓（域内兄弟 | utils/* | F5 白名单叶服务）
 services/（业务）                        shared/* · preview-state · api-state（共享状态）
   ↓                                      （D4 shell / D5 preview-paging / D8 pipeline / D9 result-panels 为目录域）
@@ -58,7 +58,7 @@ core/runtime.py（共享状态枢纽）
 - **service → orchestration / core**：业务模块经编排层进管线；共享状态唯一枢纽 `core/runtime.py`（禁 import app.main）。
 - **装配**：`main.py` 逐域 `include_router`（无 prefix，路径全量——R2）。
 
-## §3 前端段：modules/ 15 域（集合守恒：本表第一列 == domain_map.json domains 键集）
+## §3 前端段：modules/ 14 域（集合守恒：本表第一列 == domain_map.json domains 键集）
 
 <!-- audit:frontend-domains -->
 | 域 | 文件 | 性质 | 对接方式 |
@@ -69,17 +69,16 @@ core/runtime.py（共享状态枢纽）
 | D5 preview-paging | frontend/modules/preview-paging/{core,nav,render}.js（3 文件） | 目录域 | init 装配；预览上传 /upload + 页图调 tasks 端点 |
 | D6 options-dialog | frontend/modules/options-dialog.js | 普通域 | init 装配；引擎/模式选择经表单提交 |
 | D7 kie-mapping | frontend/modules/kie-mapping.js | 普通域 | init 装配；文档画像调 /document/profile |
-| D8 pipeline | frontend/modules/pipeline/{run,result}.js（2 文件） | 目录域 | init 装配；提交 /analyze、轮询/取结果；known_edge_pairs → D5/D7/D9 经注入 |
+| D8 pipeline | frontend/modules/pipeline/{run,result,task-socket}.js（3 文件） | 目录域 | init 装配；提交 /analyze、轮询/取结果；known_edge_pairs → D5/D7/D9 经注入 |
 | D9 result-panels | frontend/modules/result-panels/{demo-transaction,enhance,figures,json,quality,tables,text}.js（7 文件） | 目录域 | init 装配（黄金样例 json.js）；渲染注入数据 |
 | D10 overlay | frontend/modules/overlay-render.js | 普通域 | init 装配；overlay 图层渲染（直接 fetch 图片 src） |
-| D11 floating-progress | frontend/modules/floating-progress.js | unwired（P-008，F7 `known_orphans`） | 无 import 者；浏览器从不加载（接回管线 / 删除待 v1.9 决策） |
 | D12 export-csv | frontend/modules/export-csv.js | 普通域 | init 装配；导出经注入 URL 下载 |
 | D13 notifications | frontend/modules/notifications.js | 叶服务（F5 白名单） | 任何域可直 import |
 | D14 batch | frontend/modules/batch.js | 普通域 | init 装配；批量生命周期全套端点 |
 | D15 hitl-review | frontend/modules/hitl-review.js | 普通域 | init 装配；复核队列/提交端点 |
 
 基建（非域；A3 对账本节全部登记数字与名单，格式勿改）：
-- `frontend/modules/utils/`（4 文件）：纯工具，任何域可 import。
+- `frontend/modules/utils/`（3 文件）：纯工具，任何域可 import（geometry 已于 v1.9 S4 退役）。
 - `frontend/shared/`（9 条目）：跨批共享 DOM/样式/试件（含 trial-key.js）。
 - F5 白名单叶服务（4）：`notifications`、`status-bar`、`api-config`、`kie-config`。
 - 共享状态模块（2）：`preview-state`、`api-state`（L4 例外）。
@@ -103,7 +102,8 @@ core/runtime.py（共享状态枢纽）
 | trial | 无前端消费（shared/trial-key.js 是 fetch/WebSocket 鉴权桥，不调 trial 端点；gt-diff 由操作方调用） | — |
 
 注：前端 URL 多以 `API_BASE_URL`（已含 `/api/v1`）拼接，全文检索时勿只搜 `/api/v1/` 字面量。
-/ocr 无 JS 消费（index.html 仅遗留标签文案）。D11 floating-progress 未接线，不列为任何域的消费者。
+/ocr 无 JS 消费（index.html 仅遗留标签文案）。D11 floating-progress 已于 v1.9 S4 退役（2026-09-20，
+用户裁决：接线属新增行为且无需求方），不再列为任何域的消费者。
 
 ## §5 不变量门禁表（单元格语法见 §6 A0；状态列管退役）
 
@@ -121,7 +121,7 @@ core/runtime.py（共享状态枢纽）
 | F4 | 装配形态 | scripts/lint_frontend.py（`check_f4`） | 第 5 条 | active |
 | F5 | 叶服务注册制 | scripts/lint_frontend.py（`check_f5`） | 第 4 条 | active |
 | F6 | init 必被装配（名字级；deps 侧由 C9 承接） | scripts/lint_frontend.py（`check_f6`） | 第 6 条 | active |
-| F7 | 孤儿模块可达性：modules/** 每个文件须被 app.js/index.html/其它脚本 import，例外登记 `known_orphans`（P-008） | scripts/lint_frontend.py（`check_f7`） | — | active |
+| F7 | 孤儿模块可达性：modules/** 每个文件须被 app.js/index.html/其它脚本 import，例外登记 `known_orphans`（P-008；当前在册 0 条——两个孤儿已于 v1.9 S4 退役） | scripts/lint_frontend.py（`check_f7`） | — | active |
 | T1 | 测试登记与 Phase A CI 列表对账（登记表 ↔ 磁盘 ↔ workflow；P-008） | scripts/test_registry_audit.py（`check_test_registry`） | — | active |
 | E1 | e2e 运行时错误允许清单的格式/时效/棘轮（数据文件，非许可）+ 套件用例数钉死防缩水（P-008 gap 2，2026-09-20 落 CI） | scripts/check_e2e_allowlist.py（`check_allowlist`） | — | active |
 | C1-C8 | B0 基线校准（设计 rev2 断言；--report-out 存档） | scripts/check_frontend_baseline.py | — | 时点工具 |

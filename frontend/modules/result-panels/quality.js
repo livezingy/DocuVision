@@ -27,20 +27,33 @@ export function renderQualityPanelPro(result) {
         return;
     }
 
+    // P-007 (v1.9 S1, plan B): summary lines only when confidence was really measured.
+    // The orchestrator (document_pipeline_orchestrator.py) guarantees kie_confidence_source
+    // is non-empty only on attempted && succeeded, so failure paths (runtime_error /
+    // skipped_doc_type, all attempted=True) no longer show a misleading "0%".
+    // Gating on kieAttempted alone would keep the "0%" row on those failure paths.
+    const hasKieConfidence = String(quality.kie_confidence_source ?? '') !== '';
+
+    // KIE warning blocks stay gated on kieAttempted: failure / skip reasons are useful
+    // to the user, but non-KIE layout tasks show no KIE meta at all.
     const warnings = [];
-    if (quality.kie_error_message) {
-        warnings.push({ code: 'kie_error', message: quality.kie_error_message });
-    }
-    if (quality.kie_production_hit === false && quality.kie_production_reason) {
-        warnings.push({ code: 'kie_production', message: quality.kie_production_reason });
+    if (kieAttempted) {
+        if (quality.kie_error_message) {
+            warnings.push({ code: 'kie_error', message: quality.kie_error_message });
+        }
+        if (quality.kie_production_hit === false && quality.kie_production_reason) {
+            warnings.push({ code: 'kie_production', message: quality.kie_production_reason });
+        }
     }
 
     const summaryParts = [];
-    const kieScore = quality.kie_confidence_avg != null
-        ? `${Math.round(quality.kie_confidence_avg * 100)}%`
-        : '—';
-    summaryParts.push(`KIE confidence: ${kieScore}`);
-    summaryParts.push(`KIE fields: ${quality.kie_fields_count ?? '—'}`);
+    if (hasKieConfidence) {
+        const kieScore = quality.kie_confidence_avg != null
+            ? `${Math.round(quality.kie_confidence_avg * 100)}%`
+            : '—';
+        summaryParts.push(`KIE confidence: ${kieScore}`);
+        summaryParts.push(`KIE fields: ${quality.kie_fields_count ?? '—'}`);
+    }
     const tableCount = (result.view?.tables || []).length;
     if (tableCount > 0) {
         summaryParts.push(`Tables: ${tableCount}`);

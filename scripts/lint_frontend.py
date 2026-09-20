@@ -29,25 +29,22 @@ Rules (design rev2 section 6 / DEVELOPMENT.md frontend rules):
   F5  leaf services   every ``module_import_whitelist.files`` entry must be registered
                       in ``leaf_services`` / ``shared_state_modules`` with a date and
                       evidence, and **either** kind of registered module may reach
-                      ``frontend/modules/utils/`` and ``frontend/shared/`` only (L1).
+                      ``frontend/modules/utils/`` and ``frontend/shared/`` only (L1); so
+                      the whitelist cannot grow silently nor can a registered module hub.
   F6  assembly        every ``export function initXxx`` in ``frontend/modules/**``
                       completeness  must be invoked from ``frontend/app.js`` (a forgotten init
                       call leaves the module's injected deps as stubs - runtime no-op
                       that no other static gate catches).
-                      So the whitelist cannot grow silently, and a registered module can
-                      never become a hub (or close a cycle) - not even by being
-                      re-registered as a shared-state module.
   F7  orphan modules  every ``frontend/modules/**`` file must be imported by ``app.js``,
                       ``index.html`` or another script (P-008: floating-progress.js was
                       unreachable since v1.8.2 and nothing noticed). An acknowledged orphan
                       is *registered* in ``known_orphans`` with a date - never auto-wired.
 
-Line counts use ``str.splitlines()`` - the same metric as ``lint_file_size.py``.
-Never use PowerShell ``(Get-Content x).Count``: it under-reports ``frontend/app.js``
-by 6 lines (2026-09-15 measured). File enumeration uses
-``git ls-files --cached --others --exclude-standard`` so tracked files *and* newly
-created (not yet added) files are linted, while ``node_modules`` and other ignored
-paths never are.
+Line counts use ``str.splitlines()`` - same metric as ``lint_file_size.py`` (never
+PowerShell ``(Get-Content x).Count``: it under-reported ``frontend/app.js`` by 6 lines,
+measured 2026-09-15). Enumeration is ``git ls-files --cached --others --exclude-standard``
+minus index-only entries: git still lists a path whose deletion is staged but not
+committed, and no gate can read it (F6 used to crash, F7 called it an orphan).
 
 Exit codes: 0 = pass, 1 = violations, 2 = cannot evaluate.
 """
@@ -168,7 +165,8 @@ def _tracked_files() -> tuple[list[str], str]:
     ``--cached --others --exclude-standard`` = tracked files plus untracked files that
     are not ignored. A brand new module must be linted *before* it is `git add`-ed,
     otherwise F1/F3 silently skip it (that blind spot was hit while landing B0b);
-    node_modules and other ignored paths stay out either way.
+    node_modules and other ignored paths stay out either way. Index-only entries (a
+    staged-but-uncommitted deletion) are dropped too, with a printed count - see below.
     """
     try:
         proc = subprocess.run(
@@ -178,7 +176,12 @@ def _tracked_files() -> tuple[list[str], str]:
             text=True,
             check=True,
         )
-        return [p for p in proc.stdout.split("\0") if p], "git"
+        paths = [p for p in proc.stdout.split("\0") if p]
+        present = [p for p in paths if (REPO_ROOT / p).is_file()]
+        if len(present) != len(paths):
+            print(f"[lint_frontend] skipping {len(paths) - len(present)} staged-deletion path(s) "
+                  "- not committed yet, re-run after the commit")
+        return present, "git"
     except Exception:
         base = REPO_ROOT / "frontend"
         files = [
@@ -203,6 +206,11 @@ def _count_lines(path: Path) -> int:
     return len(path.read_text(encoding="utf-8").splitlines())
 
 
+def _module_js(paths: list[str]) -> list[str]:
+    """Sorted ``frontend/modules/**`` JS paths of an already-filtered file list."""
+    return sorted(p for p in paths if p.startswith(MODULES_PREFIX) and p.endswith(".js"))
+
+
 def check_f1(allowlist: dict, tracked: list[str]) -> list[str]:
     """Line budget + per-file ratchet for frontend sources."""
     budget = int(allowlist["budget"])
@@ -213,8 +221,6 @@ def check_f1(allowlist: dict, tracked: list[str]) -> list[str]:
         if not _in_scope(rel):
             continue
         path = REPO_ROOT / rel
-        if not path.is_file():
-            continue
         checked += 1
         n = _count_lines(path)
         cap = recorded.get(rel)
@@ -253,12 +259,7 @@ def check_f3(tracked: list[str]) -> list[str]:
     dirs, files, prefixes = _import_whitelist()
     violations: list[str] = []
     checked = 0
-    for rel in sorted(tracked):
-        if not (rel.startswith(MODULES_PREFIX) and rel.endswith(".js")):
-            continue
-        path = REPO_ROOT / rel
-        if not path.is_file():
-            continue
+    for rel in _module_js(tracked):
         checked += 1
         for lineno, spec, target in _iter_imports(rel):
             if target is None:
@@ -426,9 +427,7 @@ def check_f6(tracked: list[str]) -> list[str]:
     violations: list[str] = []
     entry_text = (REPO_ROOT / ENTRY).read_text(encoding="utf-8")
     checked = 0
-    for rel in sorted(tracked):
-        if not (rel.startswith(MODULES_PREFIX) and rel.endswith(".js")):
-            continue
+    for rel in _module_js(tracked):
         text = (REPO_ROOT / rel).read_text(encoding="utf-8")
         for m in re.finditer(
             r"^export\s+(?:async\s+)?function\s+(init[A-Za-z_$][\w$]*)", text, re.MULTILINE
@@ -461,9 +460,8 @@ def check_f7(tracked: list[str]) -> list[str]:
     known = set(_domain_map().get("known_orphans") or {})
     violations = [
         f"F7 {rel}: orphan module (imported nowhere, not in known_orphans)"
-        for rel in sorted(tracked)
-        if rel.startswith(MODULES_PREFIX) and rel.endswith(".js")
-        and rel not in referenced and rel not in known
+        for rel in _module_js(tracked)
+        if rel not in referenced and rel not in known
     ]
     print(f"[lint_frontend] F7 {len(referenced)} target(s), {len(known)} known orphan(s)")
     return violations

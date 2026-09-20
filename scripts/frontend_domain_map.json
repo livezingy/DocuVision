@@ -74,11 +74,9 @@
       "updateContentFormulas", "updateContentSeals", "updateResultJson"
     ],
     "D10 overlay": [
-      "normalizeAnnotationBbox", "bboxFromPolygon", "normalizeCoordSpace",
-      "normalizeBboxToImageMatrix", "remapBboxToImageSpace", "getPageImageMeta",
-      "computeImageSha256Hex", "validateImageCoordinateBinding", "getSvgAnnotationColors",
-      "getOverlayLayerType", "shouldRenderOverlayType", "renderDocumentWithAnnotations",
-      "renderTextPreview", "highlightResultItem"
+      "getPageImageMeta", "computeImageSha256Hex", "validateImageCoordinateBinding",
+      "getSvgAnnotationColors", "getOverlayLayerType", "shouldRenderOverlayType",
+      "renderDocumentWithAnnotations", "renderTextPreview", "highlightResultItem"
     ],
     "D12 export-csv": [
       "exportResults", "downloadCurrentTableCsv", "bindTableCardCsvExport", "downloadFile"

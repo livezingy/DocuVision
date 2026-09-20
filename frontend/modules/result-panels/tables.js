@@ -20,18 +20,8 @@ export function initResultPanelsTables(deps = {}) {
     }
 }
 
-/**
- * Render a single table card with proper merge cell support
- * Only renders table content, not other page content
- */
-export function renderTableCard(table, index, total) {
-    const tableData = table.data || [];
-    const page = table.page || '?';
-    const confidencePct = tableConfidencePct(table);
-    const tableCaption = String(table.caption || '').trim();
-    const tableHtml = table.html || null;
-    const htmlStructure = table.html_structure || null;
-
+/** Card header: name (index / total / page) + confidence badge + caption + CSV action. */
+function renderTableCardHeader(index, total, page, confidencePct, tableCaption) {
     let html = '<div class="table-card">';
     html += '<div class="table-card-header">';
     html += `<span class="table-name">Table ${index + 1}${total > 1 ? ` of ${total}` : ''}${page !== '?' ? ` (Page ${page})` : ''}`;
@@ -50,157 +40,177 @@ export function renderTableCard(table, index, total) {
     html += '<line x1="12" y1="15" x2="12" y2="3"></line>';
     html += '</svg></button></div></div>';
     html += '<div class="table-preview" style="overflow-x: auto;">';
+    return html;
+}
 
-    let tableRendered = false;
-
-    // Strategy 1: Use HTML structure if available (most reliable)
-    if (!tableRendered && htmlStructure && htmlStructure.rows && htmlStructure.rows.length > 0) {
-        html += '<table class="extracted-table">';
-        let inThead = false;
-        let inTbody = false;
-
-        htmlStructure.rows.forEach((row, rowIdx) => {
-            const isHeaderRow = row.cells.some(c => c.is_header);
-
-            if (rowIdx === 0 && isHeaderRow && !inThead) {
-                html += '<thead>';
-                inThead = true;
-            } else if (rowIdx === 0 && !isHeaderRow && !inTbody) {
-                html += '<tbody>';
-                inTbody = true;
-            } else if (rowIdx > 0 && inThead && !isHeaderRow) {
-                html += '</thead><tbody>';
-                inThead = false;
-                inTbody = true;
-            } else if (rowIdx > 0 && !inTbody) {
-                html += '<tbody>';
-                inTbody = true;
-            }
-
+/** <tr><td> rows of an already-validated data grid. */
+function renderDataRows(rows) {
+    let html = '';
+    rows.forEach(row => {
+        if (Array.isArray(row)) {
             html += '<tr>';
-            row.cells.forEach(cell => {
-                const tag = cell.is_header ? 'th' : 'td';
-                const attrs = [];
-                if (cell.rowspan > 1) attrs.push(`rowspan="${cell.rowspan}"`);
-                if (cell.colspan > 1) attrs.push(`colspan="${cell.colspan}"`);
-                const attrStr = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
-                const cellText = normalizeTextForDisplay(cell.text || '');
-                html += `<${tag}${attrStr}>${escapeHtml(cellText)}</${tag}>`;
+            row.forEach(cell => {
+                const cellText = normalizeTextForDisplay(String(cell || ''));
+                html += `<td>${escapeHtml(cellText)}</td>`;
             });
             html += '</tr>';
-        });
-
-        if (inThead) html += '</thead>';
-        if (inTbody) html += '</tbody>';
-        html += '</table>';
-        tableRendered = true;
-    }
-
-    // Strategy 2: Parse and clean HTML (only extract table element, ignore all other content)
-    if (!tableRendered && tableHtml) {
-        try {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(tableHtml, 'text/html');
-            const tableElement = doc.querySelector('table');
-            if (tableElement) {
-                // Clone table and add class
-                const cleanTable = tableElement.cloneNode(true);
-                cleanTable.className = 'extracted-table';
-                // Remove any text nodes or elements outside of table cells
-                // Only keep tr, th, td elements
-                const rows = cleanTable.querySelectorAll('tr');
-                rows.forEach(row => {
-                    const cells = row.querySelectorAll('td, th');
-                    cells.forEach(cell => {
-                        // Remove nested tables if any
-                        const nestedTables = cell.querySelectorAll('table');
-                        nestedTables.forEach(nt => nt.remove());
-                        // Normalize text in cells
-                        const cellText = cell.textContent || '';
-                        const normalizedText = normalizeTextForDisplay(cellText.trim());
-                        cell.textContent = normalizedText;
-                    });
-                });
-                html += cleanTable.outerHTML;
-                tableRendered = true;
-            } else {
-                // No table tag found in HTML, this is invalid - skip to data array
-                console.warn('Table HTML does not contain <table> tag, using data array instead');
-            }
-        } catch (e) {
-            console.warn('Failed to parse table HTML:', e);
         }
-    }
+    });
+    return html;
+}
 
-    // Strategy 3: Render from data array (validate it looks like a table)
-    if (!tableRendered && tableData.length > 0 && Array.isArray(tableData[0])) {
-        // Filter out empty rows and validate table structure
-        const validRows = tableData.filter(row => {
-            if (!Array.isArray(row)) return false;
-            // Check if row has reasonable number of cells (2-20 columns typical for tables)
-            const cellCount = row.filter(cell => cell && String(cell).trim()).length;
-            return cellCount >= 2 && cellCount <= 20;
+/** Strategy 1: HTML structure with merge cells - the most reliable form. */
+function renderTableFromHtmlStructure(htmlStructure) {
+    if (!htmlStructure || !htmlStructure.rows || htmlStructure.rows.length === 0) return '';
+
+    let html = '<table class="extracted-table">';
+    let inThead = false;
+    let inTbody = false;
+
+    htmlStructure.rows.forEach((row, rowIdx) => {
+        const isHeaderRow = row.cells.some(c => c.is_header);
+
+        if (rowIdx === 0 && isHeaderRow && !inThead) {
+            html += '<thead>';
+            inThead = true;
+        } else if (rowIdx === 0 && !isHeaderRow && !inTbody) {
+            html += '<tbody>';
+            inTbody = true;
+        } else if (rowIdx > 0 && inThead && !isHeaderRow) {
+            html += '</thead><tbody>';
+            inThead = false;
+            inTbody = true;
+        } else if (rowIdx > 0 && !inTbody) {
+            html += '<tbody>';
+            inTbody = true;
+        }
+
+        html += '<tr>';
+        row.cells.forEach(cell => {
+            const tag = cell.is_header ? 'th' : 'td';
+            const attrs = [];
+            if (cell.rowspan > 1) attrs.push(`rowspan="${cell.rowspan}"`);
+            if (cell.colspan > 1) attrs.push(`colspan="${cell.colspan}"`);
+            const attrStr = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+            const cellText = normalizeTextForDisplay(cell.text || '');
+            html += `<${tag}${attrStr}>${escapeHtml(cellText)}</${tag}>`;
         });
+        html += '</tr>';
+    });
 
-        // Additional validation: check if data looks like a table
-        // Tables typically have consistent column counts across rows
-        if (validRows.length > 0) {
-            const firstRowCols = validRows[0].length;
-            const consistentRows = validRows.filter(row => {
-                const rowCols = row.length;
-                // Allow some variation (within 2 columns) for merged cells
-                return Math.abs(rowCols - firstRowCols) <= 2;
+    if (inThead) html += '</thead>';
+    if (inTbody) html += '</tbody>';
+    html += '</table>';
+    return html;
+}
+
+/** Strategy 2: parse and clean a raw HTML blob (keep the table element only). */
+function renderTableFromHtml(tableHtml) {
+    if (!tableHtml) return '';
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(tableHtml, 'text/html');
+        const tableElement = doc.querySelector('table');
+        if (!tableElement) {
+            // No table tag found in HTML, this is invalid - skip to data array
+            console.warn('Table HTML does not contain <table> tag, using data array instead');
+            return '';
+        }
+        // Clone table and add class
+        const cleanTable = tableElement.cloneNode(true);
+        cleanTable.className = 'extracted-table';
+        // Remove any text nodes or elements outside of table cells
+        // Only keep tr, th, td elements
+        const rows = cleanTable.querySelectorAll('tr');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td, th');
+            cells.forEach(cell => {
+                // Remove nested tables if any
+                const nestedTables = cell.querySelectorAll('table');
+                nestedTables.forEach(nt => nt.remove());
+                // Normalize text in cells
+                const cellText = cell.textContent || '';
+                const normalizedText = normalizeTextForDisplay(cellText.trim());
+                cell.textContent = normalizedText;
             });
-
-            // Only render if we have at least 2 rows with consistent structure
-            if (consistentRows.length >= 2) {
-                html += '<table class="extracted-table">';
-                const hasHeaders = consistentRows.length > 1 &&
-                    consistentRows[0].every(cell => cell && String(cell).trim()) &&
-                    consistentRows[0].length <= 15; // Reasonable header count
-
-                if (hasHeaders && consistentRows.length > 1) {
-                    html += '<thead><tr>';
-                    consistentRows[0].forEach(cell => {
-                        const cellText = normalizeTextForDisplay(String(cell || ''));
-                        html += `<th>${escapeHtml(cellText)}</th>`;
-                    });
-                    html += '</tr></thead><tbody>';
-                    consistentRows.slice(1).forEach(row => {
-                        if (Array.isArray(row)) {
-                            html += '<tr>';
-                            row.forEach(cell => {
-                                const cellText = normalizeTextForDisplay(String(cell || ''));
-                                html += `<td>${escapeHtml(cellText)}</td>`;
-                            });
-                            html += '</tr>';
-                        }
-                    });
-                    html += '</tbody>';
-                } else {
-                    html += '<tbody>';
-                    consistentRows.forEach(row => {
-                        if (Array.isArray(row)) {
-                            html += '<tr>';
-                            row.forEach(cell => {
-                                const cellText = normalizeTextForDisplay(String(cell || ''));
-                                html += `<td>${escapeHtml(cellText)}</td>`;
-                            });
-                            html += '</tr>';
-                        }
-                    });
-                    html += '</tbody>';
-                }
-                html += '</table>';
-                tableRendered = true;
-            }
-        }
+        });
+        return cleanTable.outerHTML;
+    } catch (e) {
+        console.warn('Failed to parse table HTML:', e);
+        return '';
     }
+}
+
+/** Strategy 3: render the data grid, after validating that it looks like a table. */
+function renderTableFromData(tableData) {
+    if (!tableData || !tableData.length || !Array.isArray(tableData[0])) return '';
+
+    // Filter out empty rows and validate table structure
+    const validRows = tableData.filter(row => {
+        if (!Array.isArray(row)) return false;
+        // Check if row has reasonable number of cells (2-20 columns typical for tables)
+        const cellCount = row.filter(cell => cell && String(cell).trim()).length;
+        return cellCount >= 2 && cellCount <= 20;
+    });
+
+    // Additional validation: check if data looks like a table
+    // Tables typically have consistent column counts across rows
+    if (!validRows.length) return '';
+    const firstRowCols = validRows[0].length;
+    const consistentRows = validRows.filter(row => {
+        const rowCols = row.length;
+        // Allow some variation (within 2 columns) for merged cells
+        return Math.abs(rowCols - firstRowCols) <= 2;
+    });
+
+    // Only render if we have at least 2 rows with consistent structure
+    if (consistentRows.length < 2) return '';
+
+    let html = '<table class="extracted-table">';
+    const hasHeaders = consistentRows.length > 1 &&
+        consistentRows[0].every(cell => cell && String(cell).trim()) &&
+        consistentRows[0].length <= 15; // Reasonable header count
+
+    if (hasHeaders && consistentRows.length > 1) {
+        html += '<thead><tr>';
+        consistentRows[0].forEach(cell => {
+            const cellText = normalizeTextForDisplay(String(cell || ''));
+            html += `<th>${escapeHtml(cellText)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        html += renderDataRows(consistentRows.slice(1));
+        html += '</tbody>';
+    } else {
+        html += '<tbody>';
+        html += renderDataRows(consistentRows);
+        html += '</tbody>';
+    }
+    html += '</table>';
+    return html;
+}
+
+/**
+ * Render a single table card with proper merge cell support
+ * Only renders table content, not other page content
+ */
+export function renderTableCard(table, index, total) {
+    const tableData = table.data || [];
+    const page = table.page || '?';
+    const confidencePct = tableConfidencePct(table);
+    const tableCaption = String(table.caption || '').trim();
+    const tableHtml = table.html || null;
+    const htmlStructure = table.html_structure || null;
+
+    let html = renderTableCardHeader(index, total, page, confidencePct, tableCaption);
+
+    // Strategy order is unchanged: HTML structure -> parsed table.html -> data array
+    // (each fallback is only evaluated when the previous one rendered nothing).
+    const tableBodyHtml = renderTableFromHtmlStructure(htmlStructure)
+        || renderTableFromHtml(tableHtml)
+        || renderTableFromData(tableData);
 
     // If nothing rendered, show empty state
-    if (!tableRendered) {
-        html += '<div class="empty-state" style="padding: 20px; text-align: center; color: var(--text-tertiary);">No table data available</div>';
-    }
+    html += tableBodyHtml || '<div class="empty-state" style="padding: 20px; text-align: center; color: var(--text-tertiary);">No table data available</div>';
 
     html += '</div></div>';
     return html;

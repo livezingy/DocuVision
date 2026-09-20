@@ -57,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     **33/33**, E1 clean on the repo; probe: a deliberately malformed allowlist fails the module load
     with the file path and line, i.e. it fails closed in both directions rather than silently tolerating
     everything or silently tolerating nothing.
+  - **First CI run** (push `67d3083`, Lint run `35485821396`): both jobs green — `lint` **18s**, `e2e`
+    **44s** (`Install Chromium` 19s on a cold browser cache, suite 7.6s / 14 passed at 2 workers,
+    0 runtime errors; the lockfile-keyed browser cache was written for later runs). The 1.5-3 min
+    estimate was an order of magnitude too high and is corrected in `operations.md`.
 - **P-001 retired — the 2026-08-31 Upwork slice & retrofit advice group is removed by user decision**
   (2026-09-20): `docs/R&D/PENDING.md` drops the group (pending: 7 → 6) and nothing is kept as an archive —
   a direction that returns gets a fresh proposal. Verified with a tree-wide search that no other file

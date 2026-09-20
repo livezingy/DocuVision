@@ -143,9 +143,10 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   `e2e` job，白名单规则仍被评估。证据：e2e **14/14**（本地 11.7s / `CI=true` 19.3s），**0 runtime error**；
   探针（白名单损坏）→ 加载期显式抛错而非静默放行。
   **残留（本组不因此关闭）**：① **仍非阻塞** —— `main` 无 branch protection，CI 红只是提示；
-  ② **触发范围仍 main-only**（P-011 现状），feature 分支要本机跑；③ CI 侧实测时长待首次上云回填
-  （`operations.md` §CI 成本与配额）；④ e2e / vitest **仍未进 required checks**，protected 分支策略是
-  独立决策。
+  ② **触发范围仍 main-only**（P-011 现状），feature 分支要本机跑；③ ~~CI 侧实测时长待首次上云回填~~
+  **已回填**：push `67d3083` 的 Lint run **35485821396** —— `lint` **18s** / `e2e` **44s**
+  （冷缓存下 `install --with-deps chromium` 仅 19s、套件 7.6s/14 passed、2 workers、0 runtime error，
+  浏览器缓存已写入）；④ e2e / vitest **仍未进 required checks**，protected 分支策略是独立决策。
 
 ### P-010 · 前端风格 linter 缺位（2026-09-17，P-004 收尾时登记）
 - 现状：`DEVELOPMENT.md` 第 4-6 条与 kernel `frontend.md` 只覆盖**结构与边界**（F1-F6 / C1-C8），

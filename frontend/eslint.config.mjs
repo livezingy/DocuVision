@@ -4,8 +4,9 @@
 // so adding `"type": "module"` to package.json would break it, while a plain `.js`
 // config makes Node warn on every run (package.json has no module type).
 //
-// Scope is deliberately the FIRST batch only: app.js + modules/** + shared/**.
-// frontend/tests/** is the second batch and is ignored below, as are tooling configs.
+// Scope (P-010 complete): app.js + modules/** + shared/** (batch 1) and tests/** (batch 2,
+// 2026-09-20). Tooling configs stay out: they are CommonJS one-offs with their own globals
+// and carry no dead-code signal.
 // Only two high-value rules are on:
 //   * no-unused-vars with args:"none" - `initXxx({ deps })` injects a dependency bag a
 //     module may legitimately not consume, so unused *parameters* are the norm here;
@@ -21,12 +22,12 @@ import globals from 'globals';
 
 export default [
     {
-        // Second batch (tests) + tooling: intentionally not linted in this pass.
+        // Tooling configs only - deliberately not linted (CommonJS one-offs with their own
+        // globals, no dead-code signal).
         ignores: [
             'node_modules/**',
             'test-results/**',
             'playwright-report/**',
-            'tests/**',
             'vitest.config.js',
             'playwright.config.js',
             'eslint.config.mjs',
@@ -43,6 +44,37 @@ export default [
                 DocuVisionDemo: 'readonly',
                 DocuVisionUiFeatures: 'readonly',
                 katex: 'readonly',
+            },
+        },
+        rules: {
+            'no-unused-vars': ['error', { args: 'none' }],
+            'no-undef': 'error',
+        },
+    },
+    {
+        // Batch 2: unit tests are ESM running under jsdom - browser globals, same rules.
+        files: ['tests/unit/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2023,
+            sourceType: 'module',
+            globals: {
+                ...globals.browser,
+            },
+        },
+        rules: {
+            'no-unused-vars': ['error', { args: 'none' }],
+            'no-undef': 'error',
+        },
+    },
+    {
+        // Batch 2: e2e specs + helpers are CommonJS running in Node (Playwright test
+        // runner) - node globals, same rules.
+        files: ['tests/e2e/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2023,
+            sourceType: 'commonjs',
+            globals: {
+                ...globals.node,
             },
         },
         rules: {

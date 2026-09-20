@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-001 retired — the 2026-08-31 Upwork slice & retrofit advice group is removed by user decision**
+  (2026-09-20): `docs/R&D/PENDING.md` drops the group (pending: 7 → 6) and nothing is kept as an archive —
+  a direction that returns gets a fresh proposal. Verified with a tree-wide search that no other file
+  referenced it: every remaining `P-001` hit is a *different* id (`PACK-ZIP-001`, `MP-001`), and the
+  `docs/R&D/upwork/` references that exist are the local-only Upwork R&D directory, unrelated to this group.
+  The two items it had partially delivered stay recorded where they were delivered — v1.8.1 Proof Pack
+  (uncertainty markers into the deliverable file, and the "real P0" part) — not in this group.
 - **P-008 — docs-and-tests governance gates** (2026-09-17, governance batch):
   - `scripts/lint_frontend.py`: new **F7** orphan-reachability rule — every
     `frontend/modules/**` file must be imported by `app.js`, `index.html` or another script;

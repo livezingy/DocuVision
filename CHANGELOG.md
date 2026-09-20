@@ -5,7 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.8.4] — 2026-09-20
+
+Tag: **v1.8.4.0**（本地已切，远端推送为单独一步）。**维护版本**：本版只有治理 / CI / 文档改动，
+**无产品行为变更**（`APP_VERSION` 1.8.3 → 1.8.4）。切它的理由是把两批已绿但未发版的治理改动止血
+（2026-09-17 治理批次 + 2026-09-20 e2e 进 CI），避免 `[Unreleased]` 长期悬空——v1.7 曾出现
+"tag pending / tag not cut" 的文档漂移（P-009 清账）。v1.9 列车与范围见
+[v1.9-roadmap.md](docs/architecture/v1.9-roadmap.md)。
 
 ### Added
 - **v1.9 opened — the train is a frontend batch, decided before any code is written** (2026-09-20):

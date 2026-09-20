@@ -32,7 +32,7 @@ frontend/
 │   ├── utils/          # 纯函数工具：csv / text / dom（geometry 已于 v1.9 S4 退役）
 │   ├── shell/          # D4 页面骨架：ui.js（页签/标注/面板/JSON 视图）+ tools.js（引擎/导出/PDF 工具）
 │   ├── preview-paging/ # D5 预览分页：core（共享基座）+ nav + render
-│   ├── pipeline/       # D8 处理链：run（发起/轮询）+ result（结果落地）
+│   ├── pipeline/       # D8 处理链：run（发起/轮询）+ result（结果落地）+ task-socket（WS/回退轮询）
 │   ├── result-panels/  # D9 结果面板：quality / text / tables / figures / enhance / json / demo-transaction
 │   ├── overlay-render.js      # D10 SVG 叠加渲染 + 标注命中
 │   ├── options-dialog.js      # D6 分析选项对话框（含处理模式钩子）
@@ -137,7 +137,7 @@ export const API_BASE_URL = resolveApiBaseUrl();  // 走 window.DOCUVISION_CONFI
 | D5 预览分页 | `modules/preview-paging/{core,nav,render}.js` | 页图加载与分页控件（core 为共享基座）、页导航、预览渲染与叠加触发 |
 | D6 选项对话框 | `modules/options-dialog.js` | Analysis Options 模态、处理模式读取、`syncProcessingModeUI` 钩子 |
 | D7 KIE 映射 | `modules/kie-mapping.js` | 文档画像预扫、表格映射资格、KIE 字段解析与 Fields 渲染 |
-| D8 处理链 | `modules/pipeline/{run,result}.js` | 发起分析/轮询进度（run）、结果落地（result，经 mediator） |
+| D8 处理链 | `modules/pipeline/{run,result,task-socket}.js` | 发起分析/轮询进度（run）、结果落地（result，经 mediator）、WebSocket/回退轮询传输（task-socket，v1.9 S2-5） |
 | D9 结果面板 | `modules/result-panels/*.js` | 七子面板：quality / text / tables / figures / enhance / json / demo-transaction |
 | D10 叠加渲染 | `modules/overlay-render.js` | 页图坐标绑定、SVG 叠加、标注命中高亮 |
 | D4 页面骨架 | `modules/shell/{ui,tools}.js` | 导航页签、结果页签、标注 tooltip、面板拖拽、JSON 视图；引擎选择、导出按钮、PDF 工具 |

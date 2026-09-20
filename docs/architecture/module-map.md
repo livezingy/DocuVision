@@ -69,7 +69,7 @@ core/runtime.py（共享状态枢纽）
 | D5 preview-paging | frontend/modules/preview-paging/{core,nav,render}.js（3 文件） | 目录域 | init 装配；预览上传 /upload + 页图调 tasks 端点 |
 | D6 options-dialog | frontend/modules/options-dialog.js | 普通域 | init 装配；引擎/模式选择经表单提交 |
 | D7 kie-mapping | frontend/modules/kie-mapping.js | 普通域 | init 装配；文档画像调 /document/profile |
-| D8 pipeline | frontend/modules/pipeline/{run,result}.js（2 文件） | 目录域 | init 装配；提交 /analyze、轮询/取结果；known_edge_pairs → D5/D7/D9 经注入 |
+| D8 pipeline | frontend/modules/pipeline/{run,result,task-socket}.js（3 文件） | 目录域 | init 装配；提交 /analyze、轮询/取结果；known_edge_pairs → D5/D7/D9 经注入 |
 | D9 result-panels | frontend/modules/result-panels/{demo-transaction,enhance,figures,json,quality,tables,text}.js（7 文件） | 目录域 | init 装配（黄金样例 json.js）；渲染注入数据 |
 | D10 overlay | frontend/modules/overlay-render.js | 普通域 | init 装配；overlay 图层渲染（直接 fetch 图片 src） |
 | D12 export-csv | frontend/modules/export-csv.js | 普通域 | init 装配；导出经注入 URL 下载 |

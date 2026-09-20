@@ -17,7 +17,14 @@ module.exports = defineConfig({
   testMatch: '**/*.e2e.js',
   testIgnore: '**/lite/**',
   timeout: 120 * 1000,
+  // 0 everywhere, including CI (P-008 gap 2, step 2): a retry would hide exactly the flake this
+  // job exists to surface, and a flake that only disappears on retry is a real finding. A red CI
+  // run ships its trace/report as an artifact, so the diagnosis is not lost - see lint.yml.
   retries: 0,
+  // CI runners have fewer cores than the dev host, and over-subscribing is the failure mode the
+  // 256-deep accept backlog in scripts/e2e_static_server.py was added for. Only CI is pinned;
+  // locally the default (cores / 2) is faster and has been stable at 14/14.
+  workers: process.env.CI ? 2 : undefined,
   // P-008 gap 2 (MVP): clear stale fragments before the run and merge this run's into
   // test_data/TestResult/PhaseUI/coverage-<date>.md. A report, not a gate - see the header.
   globalSetup: path.join(__dirname, 'tests', 'e2e', 'helpers', 'coverage-setup.js'),

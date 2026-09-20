@@ -1,7 +1,8 @@
-# File-size + route-architecture gate (v1.8.2) + frontend structure + baseline gates (v1.8.3).
+# File-size + route-architecture gate (v1.8.2) + frontend structure + baseline gates (v1.8.3)
+# + the Pro e2e suite (P-008 gap 2, step 2, 2026-09-20).
 # Rules: DEVELOPMENT.md (owning doc); kernel: docs/agent-ops/core/routing.md + frontend.md.
-# The Python scripts are stdlib-only; the final block is the one Node dependency
-# (frontend ESLint, P-010 stage 3) - it needs `npm ci`, hence the lockfile is authoritative.
+# The Python scripts are stdlib-only; two blocks need Node (frontend ESLint, P-010 stage 3, and
+# the e2e job) - both install from the lockfile, so `frontend/package-lock.json` is authoritative.
 # Cost / trigger notes (job minutes, public-vs-private, noise policy): docs/agent-ops/operations.md.
 
 name: Lint
@@ -45,6 +46,13 @@ jobs:
       - name: Frontend baseline gate (C1-C8 + C9 injection fidelity)
         run: python scripts/check_frontend_baseline.py
 
+      # The e2e gate's own hygiene (allowlist shape / staleness / ratchet cap, suite pin) needs no
+      # node, so it sits with the stdlib gates: if a path filter ever skips the `e2e` job below,
+      # the rules that stop the allowlist from rotting are still evaluated. It only checks the
+      # tolerance list and that the suite did not shrink - it never runs the browser.
+      - name: E2E allowlist + suite pin
+        run: python scripts/check_e2e_allowlist.py
+
       # P-010: the only gate that sees dead code / unused bindings - F1-F7 and C1-C8 are
       # structural and cannot. Kept last so the stdlib gates fail before npm ci runs.
       - name: Set up Node
@@ -61,3 +69,63 @@ jobs:
       - name: Frontend ESLint (no-unused-vars + no-undef)
         run: npm run lint
         working-directory: frontend
+
+  # P-008 gap 2, step 2 (2026-09-20): the runtime-error assertion now guards the merged code, not
+  # just a local run - it is the only gate that sees a page which throws while the DOM assertions
+  # still pass (P-016 was 8 pageerrors behind a 14/14 green suite). Advisory: branch protection is
+  # not enabled on main, so a red here does not block a merge; that half of gap 2 stays open.
+  # It also runs for backend-only changes (workflow-level `paths`), an accepted ~2 min cost - see
+  # operations.md. A separate workflow with frontend-only paths was the alternative.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # playwright.config.js starts the static server with python3 (scripts/e2e_static_server.py).
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend toolchain (from lockfile)
+        run: npm ci
+        working-directory: frontend
+
+      # The cache key follows the lockfile, which pins the @playwright/test version, so a stale
+      # cache can never outlive a version bump (a mismatch would install nothing and fail loudly).
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      # --with-deps is not cached (apt system libraries) and is what lets the browser launch.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Run e2e suite (14 cases; a pageerror or console.error fails the test)
+        run: npm run test:e2e
+        working-directory: frontend
+
+      # The coverage report plus the JSON/JUnit/trace output is the diagnosis for a red run.
+      # `always()` matters: the interesting failure may happen before the suite starts, and
+      # `if-no-files-found: ignore` keeps a missing directory from becoming a second error.
+      - name: Upload e2e report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-report
+          path: test_data/TestResult/PhaseUI
+          if-no-files-found: ignore
+          retention-days: 7

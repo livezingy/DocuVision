@@ -1,7 +1,7 @@
 # DocuVision Module Map（当前态模块地图）
 
 > Status: living — 结构变化时同步（owning 行见 `docs/agent-ops/core/doc-sync.md`）
-> 最近对照：v1.8.4.0 / commit ff26efc（2026-09-20，v1.9 S4：D11 floating-progress + utils/geometry 退役，§3 15→14 域）
+> 最近对照：v1.9.0 / commit 0b01eb6（2026-09-20，v1.9 收口：S1 P-007 修复 + S2 六函数切分（含 §3 D8 新增 task-socket.js）+ S4 两孤儿退役，§3 15→14 域）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
 > 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F7 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-6 条——

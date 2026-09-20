@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] — 2026-09-20
+
+Tag: **v1.9.0**（未切；本地切 tag 与远端推送为单独步骤，同 v1.8.4 口径）。`APP_VERSION` 1.8.4 → 1.9.0。
+本版是**前端批次**：范围、逐项实测与验收记录在 [v1.9-roadmap.md](docs/architecture/v1.9-roadmap.md)。
+
+### Fixed
+- **非 KIE 任务不再显示 KIE 元信息（P-007）**：结果面板的 `KIE confidence` / `KIE fields` 汇总行改为按
+  `kie_confidence_source` 判定——后端保证该字段只在 `attempted && succeeded` 时非空，因此 layout 任务
+  与 `runtime_error` / `skipped_doc_type` 等失败路径不再出现 `0%` 误显；KIE 警告块（失败 / 跳过原因）
+  仍按 `kieAttempted` 显示，对用户有信息量。同批覆盖：vitest 4 态 + e2e 1 例（含 e2e mock 的
+  quality preset 扩展，此前 quality 面板的可见渲染路径在 e2e 里零覆盖）。
+
+### Removed
+- **浮动进度卡（D11）退役**：`index.html` 的 `#floatingProgressCard` 标记与其 `styles.css` 样式一并清除。
+  该卡片自 v1.8.2 起无 JS 驱动（模块不被任何文件 import、浏览器从不加载），属死 UI，用户可见面只是
+  少了一段从不显示的标记。
+- **`modules/utils/geometry.js` 退役**：唯一生产 importer 在 v1.8.3 清账时已作为死 import 删除，5 个几何
+  助手再无调用方；同时移除仅覆盖它的单测（死代码的纸面覆盖）。
+
+### Internal（无产品行为变更）
+- 6 个巨函数按功能切分（`result-panels/{text,tables,figures}`、`overlay-render`、`pipeline/run`），
+  逐字搬移、零行为变更；`pipeline` 域新增同域兄弟 `task-socket.js` 承载 WebSocket / 回退轮询实现
+  （文件行数预算所迫，见 roadmap §S2 的裁决记录）。
+- 治理 / CI 条目**不并入本段**（2026-09-20 归并策略：治理批次已由 `v1.8.4` 止血）。本列车期间的 CI 与门禁
+  改动（vitest 进 CI、lint F6/F7 守卫、tsc 评估结论）见 roadmap §S0 / §S3 与提交记录。
+
 ## [1.8.4] — 2026-09-20
 
 Tag: **v1.8.4.0**（本地已切，远端推送为单独一步）。**维护版本**：本版只有治理 / CI / 文档改动，

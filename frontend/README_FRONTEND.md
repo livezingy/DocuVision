@@ -46,7 +46,7 @@ frontend/
 ├── shared/             # 经典脚本 + CSS（过渡期保留；新模块一律不进 index.html）
 ├── styles.css          # 样式表和主题
 └── tests/
-    ├── e2e/            # Playwright（4 套 *.e2e.js，走 mock API；需 npx playwright install chromium）
+    ├── e2e/            # Playwright（5 套 *.e2e.js，走 mock API；需 npx playwright install chromium）
     └── unit/           # vitest + jsdom
 ```
 

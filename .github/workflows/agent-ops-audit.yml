@@ -10,31 +10,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-    paths:
-      - "docs/agent-ops/**"
-      - ".cursor/rules/**"
-      - ".codebuddy/rules/**"
-      # P-011 route B: every script is an audit input - its own implementation modules, the
-      # gate scripts A0 looks symbols up in, `frontend_domain_map.json`. Pinned coarsely on
-      # purpose: the precise list drifted once already (adding frontend_coupling.py as an
-      # implementation dependency did not update it), and one missed input is silent.
-      - "scripts/**"
-      - "AGENTS.md"
-      - ".gitignore"
-      # The six hard rules' owning doc: a rule edit must re-run the audit.
-      - "DEVELOPMENT.md"
-      # A5 freshness compares module-map's version against the CHANGELOG's first [x.y.z] header.
-      - "CHANGELOG.md"
-      # P-004: a domain/route/whitelist change must re-run the module-map audit
-      - "backend/app/routers/**"
-      - "frontend/modules/**"
-      - "docs/architecture/**"
-      - "docs/README.md"
-      # check 4 parses this workflow read-only for the Phase A test list, so editing it changes
-      # the verdict. (This filter only affects `pull_request`; `push` to main has none.)
-      - ".github/workflows/kie-phase-a.yml"
-      # check 4's other truth sources: the registration table and the test files themselves.
-      - "backend/tests/**"
+    # 2026-09-20 (branch protection): `paths` dropped so the required check `agent-ops-audit`
+    # reports on every PR - a path-filtered workflow that does not run leaves its required
+    # check in "Expected" and the PR can never merge (see lint.yml). The P-011 route-B
+    # coarse list (what can flip the audit verdict) stays the reference for re-narrowing
+    # if CI ever becomes billable; the audit job itself is ~9s.
 
 concurrency:
   group: agent-ops-audit-${{ github.ref }}

@@ -31,13 +31,12 @@
 
 ## CI 挂载（已落地）
 `.github/workflows/agent-ops-audit.yml`（2026-09-16 起）：pull_request + push(main) 触发；
-步骤 = `--selftest` → 全量 audit；`pull_request.paths`（2026-09-17 按"改动能否翻转判决"补全）覆盖
-`docs/agent-ops/**`、`.cursor/rules/**`、`.codebuddy/rules/**`、`AGENTS.md`、`.gitignore`、
-`DEVELOPMENT.md`、`CHANGELOG.md`（A5 新鲜度输入）、**`scripts/**`**（粗粒度：audit 自身实现模块、
-A0 查符号的全部门禁脚本、`frontend_domain_map.json`）、module-map 输入 `backend/app/routers/**`、
-`frontend/modules/**`、`docs/architecture/**`、`docs/README.md`，以及 check 4 的两个输入
-`backend/tests/**`、`.github/workflows/kie-phase-a.yml`。
-注：`paths` 只作用于 `pull_request`——`push` 到 main 无过滤，audit 每次必跑。
+步骤 = `--selftest` → 全量 audit。
+**2026-09-20（branch protection 引导）**：`pull_request.paths` **整体移除**（lint.yml 同日同款）——
+`lint` / `e2e` / `agent-ops-audit` 已设为 main 的 **required status checks**（ruleset
+`main-branch-protection`），而 path 过滤的 workflow 在不匹配的 PR 上**不会运行**，其必需检查会停在
+"Expected"、PR 永远无法合并。2026-09-17 的"改动能否翻转判决"paths 清单保留在 P-011/本文历史里，
+作为**将来 CI 转计费时重新收窄**的参照（届时需改用"必需检查上报"的替代机制，如汇总 job）。
 
 `lint.yml`（2026-09-20 起为**两个 job**）：`lint` job = 4 个 stdlib 门禁 + **E1 e2e 白名单/钉死**
 （`check_e2e_allowlist.py`，stdlib、零安装）+ ESLint；`e2e` job = Playwright 14 用例
@@ -97,7 +96,9 @@ agent-ops-audit.yml、kie-phase-a.yml），把"被动漂移"改成"显式升级"
 `uses:` 版本均符合预期。
 
 **噪声控制（比配额更真实）**：三条 workflow 均已开 `concurrency.cancel-in-progress: true`；
-`pull_request` 均按 `paths` 过滤；`kie-phase-a.yml` 另有 push 的 job 级 `[run ci]` 闸门；
-**`main` 无 branch protection**（`gh api .../protection` → 404），即检查是**提示而非阻塞**——
-所以噪声的主要形态是"红了没人被迫修 → 信号贬值"。唯一有效的原则是：
-**让每条 workflow 只在"改动能翻转其判决"时触发**，而不是"全开 + 习惯性忽略"。
+`kie-phase-a.yml` 另有 push 的 job 级 `[run ci]` 闸门。
+**2026-09-20 起（用户裁决，选项 b"完整保护"）**：`main` 由 ruleset `main-branch-protection` 保护
+（required PR + required checks `lint` / `e2e` / `agent-ops-audit`，禁删除 / 禁 force-push，无 bypass）——
+检查从**提示**变成**阻塞**，直推 main 被 ruleset 拒绝，一切改动走 feature 分支 + PR。
+因此"让每条 workflow 只在改动能翻转其判决时触发"的旧原则对 **PR** 不再适用（与 required checks 不兼容，
+见上文），对 **push** 仍然成立；每个 PR 的等待成本 = 最慢一条检查（实测 `e2e` 45s 热）。

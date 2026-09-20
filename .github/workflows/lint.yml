@@ -14,7 +14,12 @@ on:
     paths: ["backend/**", "frontend/**", "scripts/**", ".github/workflows/lint.yml"]
   pull_request:
     branches: [main]
-    paths: ["backend/**", "frontend/**", "scripts/**", ".github/workflows/lint.yml"]
+    # 2026-09-20 (branch protection): `paths` dropped on purpose. `lint` and `e2e` are
+    # required status checks on main (ruleset `main-branch-protection`), and a path-filtered
+    # workflow that does not run leaves its required check in "Expected" - the PR could
+    # never merge. Push keeps its paths: direct pushes to main are rejected by the ruleset
+    # anyway, so the filter only matters for a bypass. Cost per PR: lint 15s + e2e ~45s hot
+    # + audit 9s (public repo, free minutes) - see docs/agent-ops/operations.md.
 
 concurrency:
   group: lint-${{ github.ref }}

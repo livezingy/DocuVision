@@ -79,6 +79,14 @@ wall time 48s，故"计费分钟"完全由**向上取整到 1 分钟/job**决定
 （过渡期 `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION` 届时失效）。升级前已用 `gh api` 读各 tag 的 `action.yml`
 逐个核实 `runs.using`（v4/v5 旧 major = `node20`，上述新 major = `node24`）。
 变更面仅 3 个 workflow、均为裸调用或常规参数（无 `fetch-depth` / submodules / token 覆盖）。
+**待观察（2026-09-20 新出现的日期项）**：push `67d3083` 的三个 job 各带 **1 条注解**，内容是 runner 预告而
+**不是** Node 弃用 ——「The ubuntu-latest label will migrate to Ubuntu 26 beginning **October 19, 2026**」
+（actions/runner-images#14748）。即：node24 升级已确认无弃用告警，但**下一个镜像期限只有一个月**。
+影响面：`setup-python` 与 Playwright 的 `install --with-deps`（apt 依赖）都跑在 runner 镜像上，Ubuntu 26
+切换当天可能因 Playwright 尚未声明该发行版而失败。**建议动作（未执行，属 workflow 改动需单独授权）**：
+把三个 workflow 的 `runs-on` 由 `ubuntu-latest` 固定为 `ubuntu-24.04`，把"镜像被动漂移"变成"显式升级"；
+或等 2026-10-19 后按首跑结果决定。可与 P-010/P-011 的配额重算合并做一次 CI 巡检。
+
 **已验证（2026-09-17，push `ebbf825` 的 run）**：`Lint` run 35198052898 绿、job 14s、12 个步骤全 success，
 **run 上不再出现 Node 20 弃用注解**；`Agent-ops Audit` 同一 push 绿（15s）；`KIE Phase A` 被触发但 job
 按 `[run ci]` 闸门 **skipped**（符合设计）。三个 workflow 的 YAML 已用 `yaml.safe_load` 复核：步骤数与

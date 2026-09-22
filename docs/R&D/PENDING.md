@@ -409,7 +409,7 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
 - **触发条件**：立即可启动（P0 不依赖外部 GT）；P2-P4 按获得外部 GT 或 P-002 立项顺次激活。
 - **相关**：P-002（P1 是其量化入口）· Proof Pack（雏形复用）· 护城河共识（fixture 库 + 行业数字 + JSS，
   不在管线代码）。
-- **状态（2026-09-22）**：立项登记已落地并推送（commit `cd86632`，docs-only）；执行包
+- **状态（2026-09-22）**：立项登记已落地（PR #30 → main `337f4e0`，docs-only）；执行包
   `docs/R&D/P018-GT工厂-立项条目.md` 已在落地后删除（local-only，内容已由本条承载）。
   **P0 评测 harness 与 P1 弱 GT 合成尚未开工**——按本条护栏，实现属独立后续批次（各自立项、各自验收），
   本条目只登记决策与边界，不含任何 `scripts/` / `backend/` 代码。
@@ -430,11 +430,12 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   `[AUDIT] 2026-09-22 10:31 0 error(s), 0 warning(s)`；`[SELFTEST] all 16 checks passed`（与判据相符，
   停止条件未触发）。CI 侧 `agent-ops-audit` 会因 `docs/architecture/**` 路径自动复跑。
 - 相关：P-014（漂移源头，其同步清单即"漏了什么"的对照）、P-008 gap 2（同类盲区）、kernel `doc-sync.md` 机制 4。
-- **状态（2026-09-22）**：已落地并推送（commit `74270f0`）；执行包
+- **状态（2026-09-22）**：已落地（PR #30 → main `06b77d1`）；执行包
   `docs/R&D/P019-modulemap-A3漂移-执行包.md` 已在落地后删除（local-only，内容已由本条承载）。
   **据实记录两处与原执行包的偏差**：
   ① **提交形态**：原护栏要求「修复本体 / 登记记录」两个 commit 分离；本轮用户裁决改为压平——本议题
-  **1 个 commit**，连同 P-018 登记共 **2 个 commit**（`cd86632` + `74270f0`）推送。
+  **1 个 commit**，连同 P-018 登记共 **2 个 commit** 推送（压平后 SHA：`337f4e0` + `06b77d1`；
+  PR 内开发期 SHA `cd86632` + `74270f0` 因 rebase 合并已不在 main 历史）。
   ② **CI 机制描述已过时**：本条证据行的「`agent-ops-audit` 会因 `docs/architecture/**` 路径自动复跑」
   已不再准确——`agent-ops-audit.yml` 的 `pull_request.paths` 已于 2026-09-20（P-011 / branch protection）
   **移除**，audit 现对**每个 PR 必跑**、与是否触及 `docs/architecture/**` 无关（见该 workflow 头部注释）；

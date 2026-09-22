@@ -140,7 +140,7 @@ OpenAPI 全量快照：云端 pytest（上云前本机自查用 INV-2 契约冻�
 | A0 解析守卫 | 3 个锚各**恰好出现一次**（缺失/重复 = ERROR）；锚块数据行非空；数据行列数 == 表头列数；列按表头名定位（缺列 = ERROR）；§5 状态列 ∈ {active, retired, 时点工具}；「机检实现」单元格符合语法 `<path>` 或 `<path>（\`symbol\`）`：全大写 symbol → 该文件须有 `<symbol> =` 赋值；**其余一律按 `def <symbol>` 查找，查不到 = ERROR（fail-closed；未知 symbol 形态同样落到此错）**；无 symbol → 只断言 path 存在；状态列必须是裸枚举值，备注一律写进断言列 | ERROR |
 | A1 路径存在 | 全文抽 `backend/ frontend/ scripts/ docs/ packages/` 前缀路径（含行号剥离、glob 字符拒绝）+ §2/§3 单元格 `{a,b}.js` 花括号展开，逐个须存在于 worktree；无豁免前缀（出现运行时产物路径 = ERROR，届时带证据再加豁免） | ERROR |
 | A2 计数守恒 | §2 行数 == routers/*.py（除 __init__）数；**逐行**：端点数列 == 该文件 AST 实测（复用 `test_route_inventory._route_from_decorator`，import 失败 = ERROR）；**三条腿**：§2 端点数合计 == AST 合计 == `EXPECTED_COUNT`（55）；§3 第一列**集合** == `domains.keys()`；§3 `（N 文件）`单元格 == 展开后实际存在的文件数 | ERROR |
-| A3 基建对账 | §3 基建 5 个登记数字与名单：utils 文件数（4）/ shared 条目数（9）/ `leaf_services`（4，且名单与 json 键 basename 一致）/ `shared_state_modules`（2，同前）/ `boot_sequence`（17） | ERROR |
+| A3 基建对账 | §3 基建 5 个登记数字与名单（utils · shared · `leaf_services`（名单与 json 键 basename 一致）· `shared_state_modules`（同前）· `boot_sequence`（数量））；**登记文本以 §3 为单一源，本格不留数字副本** | ERROR |
 | A4 登记完备 | 本文件出现在 docs/README.md Architecture 节；doc-sync owning 表（`docs/agent-ops/doc-sync-ownership.md`）含 module-map.md 行；该附表本身被 docs/README.md 索引 | ERROR |
 | A5 新鲜度 | 头部「最近对照」版本 vs CHANGELOG 第一个 `## [x.y.z]` 头：两侧各取前 3 段数字成元组比较，**doc < latest → WARN（含双方版本号）**；CHANGELOG 无匹配 → WARN skip；禁止字符串 rstrip 归一化 | WARN |
 | A6 孤儿登记时效 | `known_orphans` 每条须带 ISO `added`（缺失/格式错 = ERROR，fail-closed）；超过 `ORPHAN_STALE_DAYS`（90 天）仍在册 = **WARN**，要求重新裁决「接线或退役」并记入 PENDING（把"定期巡表"降为"看告警"；P-008 gap 2）——见 `frontend_coupling.py::check_orphan_staleness` | ERROR / WARN |

@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **P-019 — module-map §6 A3 row single-sourced** (2026-09-21): the assertion-table row
+  carried its own copies of the five §3 infra numbers, and one had already drifted
+  (`boot_sequence` said 17; the json fact source and the §3 registration line both say 16 —
+  the audit's count regex requires the "N 项" suffix, so the bare "（17）" copy was structurally
+  unauditable). The copies are gone; §3 is the single numeric source and the A3 cell now points
+  at it. Found while building a project overview doc; fix chosen over a one-character
+  "17→16" patch to kill the whole recurrence class (same instinct as C9: derive, don't snapshot).
+  Originally drafted as P-017 on 09-18; renumbered when the v1.9 train claimed that slot
+  for the F1 budget question (`9f3e546`).
+
 ## [1.9.0] — 2026-09-20
 
 Tag: **v1.9.0**（本地已切 2026-09-20；远端推送为单独一步，同 v1.8.4 口径）。`APP_VERSION` 1.8.4 → 1.9.0。

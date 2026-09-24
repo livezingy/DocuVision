@@ -36,6 +36,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from identity → rotate:3 → rotate:15 on all five fixtures. **Deviation:** 1958 new lines vs the 1205 budget
   (+62.5%, above the §9 ±20% guardrail; accepted by decision on 2026-09-22), of which `metrics.py` (569) is past
   the 500-line file budget — logged in `docs/R&D/PENDING.md` P-020.
+- **P-022 — retired-reference (tombstone) gate** (2026-09-24): `scripts/docs_refs_audit.py` fails an
+  outward-facing doc that references a path / port / command / module deleted by a past retirement
+  (`apps/lite/`, `supabase/`, `:8001`, `core_table_extractor`, `docuvision-core[lite]`, ...) **unless the same
+  line states that it was retired** - a notice is documentation, a stale instruction is a defect. Literal
+  substring tokens only: no regex tokens, no `subprocess`, no writes (a doc is data, never a program).
+  Scope is an allow-list (`README.md`, `docs/README.md`, `docs/demo/**`, `docs/architecture/**`,
+  `packages/**/README.md`); archived material (CHANGELOG, `docs/release/**`, `docs/R&D/**`, `docs/agent-ops/**`,
+  frozen acceptance checklists, archived roadmaps) is exempt **with a printed reason**, and a 2-entry literal
+  allow-list with a downward-only cap covers the frozen v1.2-v1.4 release-gate rows in `CLOUD_VALIDATION.md`.
+  Wired by import into `audit_agent_ops.py`, so the existing required `agent-ops-audit` check runs it - **no CI
+  configuration change**. That file drops **500 -> 462** lines because the pre-existing `check_doc_drift` moved
+  into the new module, keeping the F1 budget green without touching `file_size_allowlist.json` (raising it is a
+  red line). Verified: gate 0 error on the tree; **positive control** (temporary
+  `docs/demo/_tmp_bad_sample.md` containing `cd apps/lite/backend && python run_lite.py`) -> 1 ERROR / exit 1,
+  sample removed; audit 0 error / 0 warning unchanged; `audit_agent_ops.py --selftest` 16 -> 26.
+  Explicitly **not** done this round: the markdown link-target rule (a bare version would red 4 genuinely dead
+  links and 9 false positives - README comment blocks, planned-but-unrecorded GIFs). Those 4 were fixed in this
+  PR's second commit: `docs/architecture/docuvision-system-design.md` used `./release/...` where `../release/...`
+  was meant (KNOWN_LIMITATIONS + RELEASE_1.0_CHECKLIST x2 + RELEASE_1.0.1_NOTES), i.e. pointing into a
+  `docs/architecture/release/` directory that has never existed.
 
 ### Removed
 - **Lite track references stripped from all outward-facing material** (2026-09-24; `apps/lite/**` itself was deleted in

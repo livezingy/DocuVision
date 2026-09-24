@@ -4,7 +4,7 @@
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
 ## 待确认（本区共 **16** 条：P-002 / P-006 / P-007 / P-008 / P-010 / P-011 / P-013 / P-014 / P-015 / P-016 / P-017 / P-018 / P-019 / P-020 / P-021 / P-023。
-按标题自标统计：**已结保留记录 2 条**（P-014 ✅ 已结、P-019 已结保留记录），**已裁决并落地 1 条**（P-023：2026-09-25 登记同日落地 R1–R3），其余 **13 条待裁决**。
+按标题自标统计：**已结保留记录 2 条**（P-014 ✅ 已结、P-019 已结保留记录），**已裁决并落地待复测 1 条**（P-021：2026-09-24 裁决 + 落地入库，待 round3 云端复测回填），**已裁决并落地 1 条**（P-023：2026-09-25 登记同日落地 R1–R3），其余 **12 条待裁决**。
 历史：P-001 已按用户裁决移除 2026-09-20，后续有需要再立项；P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
 **P-022 已结并晋升 `docs/architecture/doc-governance.md`**（2026-09-25，走本抬头「结论确认 → 晋升 → 移除」正规流程；门禁登记为 `module-map.md` §5 的 **DOC-1 / DOC-2**；此前索引漏登 P-022 亦随该次修正））
 
@@ -500,7 +500,7 @@
   - **仍未验证**：M3 共识分诊、TEDS 等本包不做项。base B 坐标问题的**根因与修法已由 P-021 定位并验证**
     （未落地）。
 
-### P-021 · `POST /api/v1/ocr` 返回坐标不在上传图像像素系（unwarping 未关闭）（2026-09-24，P-020 云端坐标核验产出）
+### P-021 · `POST /api/v1/ocr` 返回坐标不在上传图像像素系（unwarping 未关闭）（2026-09-24，P-020 云端坐标核验产出；同日裁决并落地入库，待 round3 云端复测回填）
 - **现象**：该端点是**已冻结的公开契约**（`backend/tests/snapshots/openapi_baseline.json`、
   `route_contract_freeze.json`、`test_route_inventory.py` 三处登记），但契约**未声明**
   `text_blocks[].bbox/polygon` 的坐标空间；实测其**不等于**上传图像像素系，而是相差一个**非刚性**形变
@@ -517,8 +517,13 @@
   **全程逐点透传、零坐标归一化**；`text_det_params` = `limit_side_len=64 / limit_type=min /
   max_side_limit=4000`，对 2550×3300 不触发 resize。
 - **一行修法**：`ocr_service.py:64-70` 的 `init_params` 增加 `"use_doc_unwarping": False,`。
-  （`ocr_service.py` 现 **457 行**，改后 458 < 500，不触 F1 文件规模门禁；该文件**受 git 跟踪**，
-  修改需走 CHANGELOG / `audit_agent_ops.py` 义务。）
+  （该文件**受 git 跟踪**，修改需走 CHANGELOG / `audit_agent_ops.py` 义务。）
+- **⚠️ 行数判断更正（2026-09-24 落地时实测）**：原文曾写"改后 458 < 500，不触 F1 文件规模门禁"——**错**。
+  `ocr_service.py` 在 `scripts/file_size_allowlist.json` 中被**棘轮钉在 457 行**，规则 **R-b** 的硬上限
+  **就是记录值本身**（不是 500；`--update` 只能下调、CI 从不传它）。故 `+1` 行即 FAIL（实测 `+9` 行时
+  `[FAIL] 466 > allowlist 457`）。落地做法：把该处 4 行注释压成 3 行，与新增的 1 行 dict 项**净零**，
+  实测 457 行、`lint_file_size.py OK`。**教训**：F1 的"500"是自由文件预算，allowlist 内的文件另有更紧的棘轮，
+  改这些文件前必须先查 allowlist。
 - **验证证据（2026-09-24，云端 Pro GPU，commit `a73468b`）**：8 张合成标定探针（`cal/`，含 `cal_truth.json`
   的精确 ink 真值）经 `POST /api/v1/ocr` 走**改前/改后**对照：
   - `scale` 1.1084–1.2257 → **0.9992–1.0001**；拟合残差 9.9–51.6px → **0.6–1.1px**；
@@ -543,13 +548,47 @@
   `OCR/*.ocr.json` 相对修复后服务**已过期**，`cer_*` 须在落地后重测并记录新 SHA；
   ② 落地后执行包 §10.11 的 base-B 空间门禁将转为 **PASS**（base B 几何可用），但 **D-A 顺序配对仍是正解**
   （它把帧依赖解耦，是更稳的结构）；③ 若启用 base B 几何，需重跑 G3 复现 + G4 并回填 §8 状态行。
-- **状态（2026-09-24）**：**已定位 + 已验证修法 + 未落地**。云端实验对 `ocr_service.py` 的临时改动
-  **已回滚**，`P-020 修改面 = 0` 保持。是否落地待裁决（属产品识别行为变更，须独立走立项→CHANGELOG→audit）。
-- **现行控制（修复落地前有效；harness 侧本轮无需任何改动）**：执行包 §10.11 的 base-B 空间门禁
-  **保持生效**（对本批 15 份即 FAIL 状态）；base B 一律**只用于文本**（D-A 顺序配对），几何一律取自
-  **view 层（base A）**；**后续在本机复测 G4 时不得因为「根因已定位」而放宽该门禁**——门禁的意义正是
-  拦住「换个 OCR 服务/版本后坐标静默错位」。三者关系：本条目（P-021）负责缺陷与修法，
-  P-020 负责秤；**落地前 §10.11 是这条结论的强制护栏**。
+  → 落地后这三条已落成**可执行清单**：`./P021-云端对照-执行清单与记录模板.md` §7（`commit.txt`/GPU 采集、
+  OCR JSON 的 SHA 清单、`cer_*` 与 G3 复现、§10.11 门禁 FAIL→PASS 回填，以及"精简动作排在门禁 PASS 之后"的顺序红线）。
+- **落地内容（2026-09-24，本 PR）**：
+  ① 修法入 `backend/app/services/ocr_service.py`（`init_params` 增 `"use_doc_unwarping": False`；
+  注释压至 3 行以守 457 行棘轮，见上「行数判断更正」）；
+  ② 新增契约单测 `backend/tests/test_ocr_service_engine_params.py`：stub `paddle` + 按文件路径加载
+  （`test_layout_page_skip.py` 先例），**无需 Paddle/GPU**；断言 `use_doc_unwarping is False`（`is` 严格判据）、
+  GPU 分支同样为 False、`device ∈ {cpu, gpu}`（非 `gpu:0`）、`use_doc_orientation_classify is False`，
+  并断言 `is_ready()` 为真以排除"失败路径上记 kwargs"的假绿；
+  ③ 该测试已登记 `backend/tests/test_registry.json`（`kind: phase-a-ci`）**并**加入 `kie-phase-a.yml`
+  Phase A 清单（登记而不接线会触发 audit check 4 的 WARN，破坏 0/0）；`.cursor/rules/006-cloud-testing.mdc`
+  的 Phase A 最小集同步；
+  ④ **反向对照（防恒过）**：把该 flag 改为 `True`／整行删除 → 单测均 FAIL；原样 → PASS；
+  ⑤ 归属表新增 `backend/app/services/ocr_service.py` 行（owning doc = `docuvision-system-design.md`
+  §3.2–§3.4）。**该设计文档早已声明 `use_doc_unwarping=False` 为"当前固定为 False，引擎 init 硬编码"
+  （§3.4）/ "永久禁用"（§3.3）** ⇒ 本 PR 是**代码追齐文档**，不是引入新语义。
+- **round2 读数与单调性归因（2026-09-24，云端 Pro GPU，commit `a73468b`）**：G-B 15 组合
+  **12 改善 / 0 回退 / 3 持平**；文本量大幅恢复（cosent r3 2712→4963、mamba r15 1361→2849 字符等），
+  置信度多数持平或上升。**单调性 sanity：before 5/5 → after 3/5**。两处破口、坐标与归因
+  （**用户 2026-09-24 裁决：按"口径性质偏离、不影响结论"接受**）：
+  - **① `cosent-form-test-document` identity → rotate_3**：`cer_micro` 0.6509 → **0.5646**（降 0.086）。
+    **归因 = 微观加权/分母效应**：同样两组上 `cer_macro` 方向**相反**（0.2758 vs 0.3022，即 identity 更好）、
+    `line_exact_rate` 几乎相同（0.714 vs 0.700）、`matched_rate` 0.75 vs 0.714 ⇒ **只有 `cer_micro` 说 identity 更差**。
+  - **② `financial_report_01` rotate_3 → rotate_15**：`cer_micro` 0.9581 → **0.9443**（Δ0.014）。
+    **铁证**：`matched_rate` 1.0 → 0.5、`cer_macro` 0.3616 → **0.7857**（r15 差 0.42）、
+    `cer_nontable` 0.3663 → 0.5714 ⇒ **三项都判 r15 更差**，唯 `cer_micro` 反向——该 fixture 仅 2 条文本 GT 行，
+    分母极小，micro 口径抖动即可翻转顺序。
+  - **旁证**：`cer_corpus` 在 **before/after 两侧都 4/5 破**（如 bank `2.2727>2.2500>0.8864`）⇒
+    该指标族本就不单调；round-1 恰好 5/5 单调是偶然，故"以 `cer_micro` 为准"作为**单项** sanity 判据不稳。
+  - **口径含义（不在本 PR 内）**：若要把曲线 sanity 改硬，应改为**多指标判据**（例如 `cer_macro` 与
+    `matched_rate` 同时单调），属口径变更、须登记（对照执行包 §10.9）。
+  - **块级/表级不参与**：`cer_table` 与 `blocks.csv`（text/table/figure 的 gt_n/ocr_n/matched/mean_iou）
+    在 before/after **逐字节相同**（表/块取自 base A，本轮未重跑 analyze），故两处破口只能来自 base B 文本侧。
+- **状态（2026-09-24 晚）**：**已落地（代码 + 契约单测 + CI 接线入库）**，**待云端 round3 复测回填**。
+  云端 round2 对该文件的临时改动已回滚；本 PR 为正式落地。`P-020 修改面 = 0` 仍保持（harness 侧未改）。
+- **现行控制（落地后仍有效，直到 round3 复测回填；harness 侧本轮无需任何改动）**：执行包 §10.11 的
+  base-B 空间门禁**保持生效**（对本批 15 份即 FAIL 状态）；base B 一律**只用于文本**（D-A 顺序配对），
+  几何一律取自 **view 层（base A）**；**复测 G4 时不得因为「修法已落地」而放宽该门禁**——门禁的意义正是
+  拦住「换个 OCR 服务/版本后坐标静默错位」。三者关系：本条目（P-021）负责缺陷与修法，P-020 负责秤；
+  **§10.11 的 FAIL→PASS 只能在 round3 云端复测后回填，回填之前不得精简/删除 §10.11**
+  （精简动作排在门禁 PASS 之后，见 `./P021-云端对照-执行清单与记录模板.md` §7）。
 
 ### P-023 · 测试 stub 作用域无规则：模块级 `sys.modules` 占位会**伪造「本机已装 Paddle」**（2026-09-25，P-021 首次 CI 运行产出；同日裁决并落地 R1–R3）
 

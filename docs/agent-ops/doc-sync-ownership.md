@@ -19,6 +19,7 @@
 | `backend/app/services/kie/**`、`kie_qwen_service.py` | `kie.md`、`kie-custom-fields.md` |
 | `backend/app/services/table_backfill.py`、`page_text_trust.py`、`proof_pack.py`、`proof_render.py`、`proof_report.py` | `provenance-review.md`（该文头部即声明「代码归属」） |
 | `backend/app/services/layout_service.py`、`table_service.py`、`figure_service.py` | `pp-structurev3-official-findings.md`；契约向 `docuvision-system-design.md` §9.1（figure 另见 §11） |
+| `backend/app/services/ocr_service.py` | `docuvision-system-design.md` §3.2–§3.4（`use_doc_unwarping` 固定 False 的引擎 init 不变量：该文 §3.4「当前固定为 False，引擎 init 硬编码」是 `POST /api/v1/ocr` 不声明却必须成立的回传坐标帧契约）；端点侧由 `backend/tests/test_ocr_service_engine_params.py` 承载（P-021） |
 | `backend/app/services/export_service.py` | `docuvision-system-design.md` §9.1 |
 | `backend/app/services/pack_export_service.py` | `docuvision-system-design.md` §9.1；`v1.6-roadmap.md`（发版后以 §9.1 为准） |
 | `backend/app/services/persistence/queue_store.py` | `v1.5-roadmap.md`（Epic Queue persistence）；`v1.7-roadmap.md`（`analyze_jobs`） |

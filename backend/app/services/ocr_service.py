@@ -57,14 +57,14 @@ class PaddleOCREngine(BaseOCREngine):
             except:
                 pass
 
-            # PaddleOCR 3.x initialization parameters
-            # Device format: "cpu" or "gpu" (not "gpu:0")
-            # Note: use_doc_preprocessor is invalid; use_angle_cls is deprecated.
-            # use_doc_orientation_classify=False disables doc-level rotation classify.
+            # PaddleOCR 3.x init params. Device "cpu"/"gpu" (not "gpu:0"); use_doc_preprocessor
+            # invalid; use_angle_cls deprecated. use_doc_unwarping=False (P-021): the flag is a
+            # frame contract - rationale + lock in tests/test_ocr_service_engine_params.py, design §3.3.
             init_params = {
                 "lang": self._lang,
                 "device": "gpu" if self._use_gpu else "cpu",
                 "use_doc_orientation_classify": False,
+                "use_doc_unwarping": False,
             }
 
             self._ocr = PaddleOCR(**init_params)

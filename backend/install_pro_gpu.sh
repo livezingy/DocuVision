@@ -7,7 +7,7 @@
 #   cd backend
 #   ./install_pro_gpu.sh
 #
-# Lite CPU backend uses apps/lite/backend/install_deps.sh in docuvision_lite_env — keep separate.
+# Pro-only since v1.8 (the Lite CPU track and its separate venv were retired).
 
 set -euo pipefail
 

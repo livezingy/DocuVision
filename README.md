@@ -49,37 +49,32 @@ Recording plan and pending filenames: [docs/architecture/media/README.md](docs/a
 
 <!-- ![HITL review edit and approve](docs/architecture/media/M4_pro_hitl_review.gif) -->
 
-### Lite (CPU) — demo GIFs
-
-CPU-friendly table extraction (born-digital PDF via Camelot / pdfplumber) and OCR (scanned PDF via Tesseract / EasyOCR).
-
-![DocuVision Lite](docs/architecture/media/DocVision_Lite.gif)
-
 ## Repository layout
 
 ```
 DocuVision/
-├── backend/           # FastAPI Pro app (:8000), orchestrator, PaddleX, KIE
+├── backend/           # FastAPI Pro app (:8000), orchestrator, PaddleX, Qwen KIE
 ├── frontend/          # Pro static SPA
-├── apps/lite/         # DocuVision Lite CPU app (:8001) + lite.html UI
-├── packages/docuvision-core/  # Shared Lite table/OCR core library
+├── packages/docuvision-core/  # Shared utils + table column mapping
 ├── docs/architecture/ # Design specs and trackers
 └── test_data/         # acceptance, testfiles, Azure refs; TestResult excluded
 ```
 
 ---
 
-## DocuVision Pro vs Lite
+## DocuVision Pro
 
-| | **Pro** | **Lite** |
-|---|---------|----------|
-| Port | `:8000` | `:8001` |
-| Stack | PP-StructureV3 + optional Qwen KIE (+ **v1.1** runtime query fields) | pdfplumber / Camelot + EasyOCR / Tesseract |
-| Best for | Layout, 5-type KIE + optional custom field names, GPU throughput | CPU, born-digital PDF tables, scan OCR |
-| Run | `cd backend && python run.py` | `cd apps/lite/backend && python run_lite.py` |
-| UI | `frontend/index.html` | `http://localhost:8001/lite/lite.html` |
+> **单轨**：DocuVision Lite（CPU 档，`:8001`）已于 **v1.8 退役**，`apps/lite/**` 已删除（见 [CHANGELOG.md](CHANGELOG.md) §1.8）。
 
-Lite API: [docs/architecture/lite-api.md](docs/architecture/lite-api.md). Limitations: [Known limitations](docs/release/KNOWN_LIMITATIONS.md).
+| | **Pro** |
+|---|---------|
+| Port | `:8000` |
+| Stack | PP-StructureV3 + Qwen2.5-VL KIE (+ **v1.1** runtime query fields) |
+| Best for | Layout, 5-type KIE + optional custom field names, GPU throughput |
+| Run | `cd backend && python run.py` |
+| UI | `frontend/index.html` |
+
+Limitations: [Known limitations](docs/release/KNOWN_LIMITATIONS.md).
 
 ---
 
@@ -99,15 +94,6 @@ Lite API: [docs/architecture/lite-api.md](docs/architecture/lite-api.md). Limita
    The frontend defaults to `http://localhost:8000/api/v1`; adjust `frontend/app.js` if needed.
 5. **Open the UI**: open or serve `frontend/index.html` (on **Baidu AI Studio**, use `{project_base}/api_serving/8000/frontend/index.html` — see [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) §1.1).
 6. **Cloud / KIE regression** (optional): see [docs/architecture/CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) and [docs/architecture/kie.md](docs/architecture/kie.md).
-
-### Lite (CPU)
-
-1. Install Lite deps: see [apps/lite/backend/README.md](apps/lite/backend/README.md).
-2. Bootstrap models once: [packages/docuvision-core/models/README.md](packages/docuvision-core/models/README.md).
-3. Run: `cd apps/lite/backend && python run_lite.py`
-4. Open: `http://localhost:8001/lite/lite.html`
-5. Cloud validation: [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md) sections G0–H.
-
 7. **Release notes**: [CHANGELOG.md](CHANGELOG.md) · [v1.4.0](docs/release/RELEASE_1.4_NOTES.md) · [Known limitations](docs/release/KNOWN_LIMITATIONS.md) · KIE regression: [CLOUD_VALIDATION.md](docs/architecture/CLOUD_VALIDATION.md)
 
 ---

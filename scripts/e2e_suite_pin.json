@@ -1,5 +1,5 @@
 {
   "spec_files": 5,
   "tests": 15,
-  "note": "Pin for the Pro Playwright suite, so it cannot shrink silently (a deleted spec, a test.skip, or a mistyped test() all reduce protection without turning CI red anywhere else). Mirrors frontend/playwright.config.js: testMatch '**/*.e2e.js' within ./tests/e2e, testIgnore '**/lite/**' (the retired Lite spec is on disk but never collected). Update this file in the same commit as any intended suite change; test.skip / test.fixme anywhere in the counted specs is an ERROR. Enforced by scripts/check_e2e_allowlist.py."
+  "note": "Pin for the Pro Playwright suite, so it cannot shrink silently (a deleted spec, a test.skip, or a mistyped test() all reduce protection without turning CI red anywhere else). Mirrors frontend/playwright.config.js: testMatch '**/*.e2e.js' within ./tests/e2e. Update this file in the same commit as any intended suite change; test.skip / test.fixme anywhere in the counted specs is an ERROR. Enforced by scripts/check_e2e_allowlist.py."
 }

@@ -15,7 +15,6 @@ const staticServerCmd = process.platform === 'win32'
 module.exports = defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.e2e.js',
-  testIgnore: '**/lite/**',
   timeout: 120 * 1000,
   // 0 everywhere, including CI (P-008 gap 2, step 2): a retry would hide exactly the flake this
   // job exists to surface, and a flake that only disappears on retry is a real finding. A red CI

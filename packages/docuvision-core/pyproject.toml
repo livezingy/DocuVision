@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "docuvision-core"
 version = "0.1.0"
-description = "Shared table extraction and OCR engines for DocuVision Lite and Pro"
+description = "Shared helpers for the DocuVision Pro backend (utils + table column mapping)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

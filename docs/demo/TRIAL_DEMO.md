@@ -1,15 +1,16 @@
 # DocuVision 30-Minute Trial Demo Guide
 
-Dual-track demo: **Lite (CPU tables)** + **Pro (GPU KIE)** for financial PDF pipeline prospects.
+Single-track demo: **Pro (GPU KIE)** for financial PDF pipeline prospects.
+
+> **Lite 已随 v1.8 退役**（`apps/lite/**` 已删除，`CHANGELOG.md` §v1.8）。本文档只描述 Pro 轨。
 
 ## Prerequisites
 
-| Track | Port | Start command | Requirements |
-|-------|------|---------------|--------------|
-| **Lite** | 8001 | `cd apps/lite/backend && python run_lite.py` | pdfplumber, camelot, PyMuPDF; optional EasyOCR/Tesseract for scan PDFs |
-| **Pro** | 8000 | `cd backend && python run.py` | GPU recommended; set `DOCUVISION_KIE_WARMUP=1` in `.env` |
+| Port | Start command | Requirements |
+|------|---------------|--------------|
+| 8000 | `cd backend && python run.py` | GPU recommended; set `DOCUVISION_KIE_WARMUP=1` in `.env` |
 
-### Warmup (Pro — avoid live cold start)
+### Warmup (avoid live cold start)
 
 ```bash
 # In backend/.env
@@ -22,33 +23,27 @@ Wait until `/health` reports KIE ready before the trial call.
 
 | UI | URL |
 |----|-----|
-| Lite | http://127.0.0.1:8001/lite/lite.html |
 | Pro | http://127.0.0.1:8000/ (serve `frontend/index.html` or static mount) |
-| Validation dashboard (Lite PoC) | http://127.0.0.1:8001/lite/validation.html |
-| Lite API docs | http://127.0.0.1:8001/docs |
 
 ## Recommended sample PDFs
 
-| Track | Sample | Location / notes |
-|-------|--------|------------------|
-| Lite (bordered table) | `sample_bordered.pdf` | `apps/lite/backend/tests/fixtures/sample_bordered.pdf` |
-| Lite (second vendor) | Any born-digital statement/ledger PDF | Bring 1–2 client samples |
-| Pro (invoice) | Invoice PDF | `test_data/testfiles/invoices/` (place per acceptance guide) |
-| Pro (receipt) | Receipt PDF | `test_data/testfiles/receipts/` |
+| Sample | Location / notes |
+|--------|------------------|
+| Invoice | `test_data/testfiles/invoices/` (place per acceptance guide) |
+| Receipt | `test_data/testfiles/receipts/` |
 
 Pre-run each sample once and note `processing_ms` before the live session.
 
 ## 30-minute script
 
-1. **Lite (5 min)** — Upload born-digital PDF → 右栏 **Profile** Tab（自动切换）→ Run Analysis → **Tables** + **Quality** panel → Export CSV/JSON。
-2. **Pro (15 min)** — Upload invoice/receipt → Analysis Options → **Invoice** or **Receipt** mode → **Fields** + Result JSON → **Export** (real API).
-3. **Persistence (10 min)** — **Save to validation** → open `validation.html`.
+1. **KIE (20 min)** — Upload invoice/receipt → Analysis Options → **Invoice** or **Receipt** mode → **Fields** + Result JSON → **Export** (real API).
+2. **Table mapping (10 min)** — Upload the bank statement sample → Processing **Table mapping** → **Mapped rows** (details in §Unified schema demo).
 
 ## Unified schema demo (v1.4 trial — T2/T3 / ETL)
 
 **Story**: Multiple vendor PDFs → same four-column schema → Batch Excel **MappedRows** sheet.
 
-### Single-file golden paths (Pro)
+### Single-file golden paths
 
 | Template | Sample | Analysis Options |
 |----------|--------|------------------|
@@ -69,28 +64,14 @@ Manifest set: `mapped_bank_statement_3` (3 PDFs, `table_template=bank_statement`
 
 **Deferred** (post-trial): custom alias API, debit/credit split columns, deep stitch integration.
 
-## Supabase PoC (post-trial / Assessment)
-
-1. Create Supabase project; run [`supabase/migrations/001_trial_schema.sql`](../../supabase/migrations/001_trial_schema.sql).
-2. Set in `apps/lite/backend/.env`:
-
-```env
-SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-```
-
-3. Without credentials, persistence falls back to `data/demo_validation/*.json` (still works for demo).
-
 ## Quick health checks
 
 ```bash
-curl http://127.0.0.1:8001/api/v1/lite/health
 curl http://127.0.0.1:8000/api/v1/health
-curl http://127.0.0.1:8001/api/v1/lite/demo/supabase/status
 ```
 
-## Windows one-liner (Lite)
+## Windows one-liner
 
 ```powershell
-cd d:\3_PROJECTS\DocuVision\apps\lite\backend; python run_lite.py
+cd backend; python run.py
 ```

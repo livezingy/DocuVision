@@ -38,7 +38,7 @@ git 提交记录样例：[type]: [description]。一个具体的例子, docs: �
 ## GitHub Actions 策略
 
 - **默认 push 不跑 CI**：`.github/workflows/*.yml` 中 push 事件仅当 commit message 含 **`[run ci]`** 时才执行 job；日常 push **不要**加该标记。
-- **PR 至 `main`**：路径匹配时 **自动** 运行 `CI Lite` / `KIE Phase A`（无需额外标记）。
+- **PR 至 `main`**：**自动** 运行 `Lint`（无路径过滤，必跑）/ `KIE Phase A`（路径匹配 `backend/**`、`packages/docuvision-core/**`）（无需额外标记）。
 - **手动触发**：GitHub → Actions → 选择 workflow → **Run workflow**（`workflow_dispatch`）。
 - **修改 workflow**：属 CI/CD 变更（见 `004-project.mdc` 红线）。未获用户明确同意前，助手不得改 `.github/workflows/**`。
 - **助手若要建议跑 Actions**：须先说明理由（例如合并前契约回归、改了 workflow 本身需验证），再询问用户；仅当用户明确同意，或用户说「激活 workflow / 跑 CI / commit 加 [run ci]」时，方可：

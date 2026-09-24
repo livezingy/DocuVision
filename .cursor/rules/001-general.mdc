@@ -6,7 +6,7 @@ alwaysApply: true
 # 通用约束
 
 > 生成自 kernel `docs/agent-ops/core/`（constraints）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: constraints.md:0b9f105ce6bbdf64 -->
+<!-- kernel-ref: constraints.md:819f1c9d758c471d -->
 
 ## 响应语言与代码语言
 - 回复默认中文；代码、注释、docstring、日志、UI 文案、命令、变量名一律英文（ASCII 优先）。
@@ -46,7 +46,7 @@ alwaysApply: true
 - 改 `frontend/index.html` 的入口脚本或加载顺序。
 
 ## 通用工程纪律
-- 改完主动跑验证，不要只改不验（Pro/Lite 验证在 Cloud/CI，给命令与期望）。
+- 改完主动跑验证，不要只改不验（Pro 验证在 Cloud/CI，给命令与期望）。
 - 不要为了让代码跑起来注释掉报错或加绕过标记，找根本原因。
 - 密钥、token、密码不进代码、不进 commit、不进日志。
 - 大改动前先在 Plan Mode 出方案，确认后再动手。

@@ -1,6 +1,8 @@
 # Architecture media
 
 > Marketing GIF plan for **v1.5.0**. Root [README.md](../../README.md) **Examples** links committed files only; pending rows stay commented there until recorded.
+>
+> **Lite 已随 v1.8 退役**：原 G4（`DocVision_Lite.gif`，CPU 档 table/OCR 走查）不再登记、录制指南整节已删除，GIF 文件本身亦已从仓库删除。
 
 ## Status overview
 
@@ -9,7 +11,6 @@
 | G1 | `DocVision_table.gif` | Layout → Tables | **In repo** (README) |
 | G2 | `DocVision_receipt.gif` | Receipt KIE → Fields | **In repo** (README) |
 | G3 | `DocVision_Invoice.gif` | Invoice KIE → Fields | **In repo** (README) |
-| G4 | `DocVision_Lite.gif` | Lite CPU table / OCR | **In repo** (README) |
 | G5 | `M1_pro_map_bank_statement.gif` | Table mapping — bank statement | **Pending record** |
 | G6 | `M2_pro_map_invoice_line_items.gif` | Table mapping — invoice lines | **Pending record** |
 | G7 | `M3_pro_batch_mapped_excel.gif` | Batch MappedRows XLSX | **Pending record** |
@@ -68,29 +69,6 @@ Pass = `MAP-TEMPLATE-001 pass` + `M1 acceptance PASSED` + `MAPPED-BATCH-001` (ar
 2. Uncomment the matching image lines in root [README.md](../../README.md) **Examples**.
 3. Flip the Status column above from **Pending record** → **In repo**.
 4. Optional: note in [RELEASE_1.5_NOTES.md](../../release/RELEASE_1.5_NOTES.md) or next patch notes that marketing media landed.
-
----
-
-## Lite (G4 in repo; split variants optional)
-
-| File | Scenario | Status |
-|------|----------|--------|
-| `DocVision_Lite.gif` | Combined Lite table / OCR walkthrough | **In repo** |
-| `DocVision_Lite_table.gif` | Born-digital bordered table only | Optional re-record |
-| `DocVision_Lite_ocr.gif` | Scan/image OCR only | Optional re-record |
-
-### Recording checklist (Lite split, if needed)
-
-- Environment: `cd apps/lite/backend && python run_lite.py`; open `http://{host}:8001/lite/lite.html`.
-- Samples: `apps/lite/backend/tests/fixtures/sample_bordered.pdf`; OCR from `test_data/testfiles/images/scanned/` (no PII).
-- Do **not** show: raster Transformer tables, Fields tab (Lite has no KIE).
-- End card: status bar with `processing_ms` and engine (`easyocr` / `pdfplumber`).
-
-### ffmpeg example
-
-```bash
-ffmpeg -i lite_table.mp4 -vf "fps=12,scale=960:-1:flags=lanczos" -loop 0 DocVision_Lite_table.gif
-```
 
 ---
 

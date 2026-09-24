@@ -4,17 +4,7 @@
 > Release notes: [v1.7-roadmap.md](../architecture/v1.7-roadmap.md) · [RELEASE_1.6_NOTES.md](./RELEASE_1.6_NOTES.md) · [RELEASE_1.5_NOTES.md](./RELEASE_1.5_NOTES.md)  
 > Acceptance rules: [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md).
 
-## DocuVision Lite (since 1.0.1)
-
-| Limit | Detail |
-|-------|--------|
-| No KIE | Lite does not run Qwen KIE or `view.fields`; use **Pro** for invoice / receipt / ID documents. |
-| Raster tables | Image and scan PDF **Table Transformer** extraction is **frozen** by default (`RASTER_TABLES_FROZEN`); text OCR only on raster docs. |
-| Born-digital PDF | Table extraction via pdfplumber / Camelot; see [lite-api.md](../architecture/lite-api.md). |
-| PDF preview | **v1.3.1+**: server-side PyMuPDF rasterization (`POST /preview`, `GET .../page-image/{n}`); preview sessions are in-memory and expire. |
-| Models | EasyOCR / optional Transformer weights under `packages/docuvision-core/models/` — bootstrap required on new hosts ([models/README.md](../../packages/docuvision-core/models/README.md)). |
-| Batch | **Pro** batch at `/api/v1/batch` with CSV/JSON/**Excel** export. **v1.5+**: job list survives restart (SQLite). **Lite batch API removed in v1.3.1** — use Pro batch or single-file Lite analyze. No Batch ZIP (v1.6 out of scope). |
-| GPU | Lite targets CPU; Pro remains GPU-recommended for layout + KIE latency. |
+> **Lite 已于 v1.8 退役**（`apps/lite/**` 删除）：其单轨限制条目（无 KIE / Table Transformer 光栅表冻结 / EasyOCR+Transformer 权重引导 / CPU 定位）随轨下线，本文不再收录。
 
 ## KIE / 证件票据 (Pro)
 
@@ -50,10 +40,10 @@
 | Pro document type | **v1.3.1**: no Auto-detect UI; users pick type via Analysis Options / document profile. Classifier module remains for `/document/profile` hints only. |
 | KIE query fields（v1.1） | `kie_query_fields` **仅追加**内置 schema（最多 20 字段）。**v1.3** 起支持 `document_type=custom` 与 YAML 模板库（MVP）；无字段 bbox 联动。见 [kie-custom-fields.md](../architecture/kie-custom-fields.md)。 |
 | KIE validation（v1.3） | 启发式 date/currency 规则 + `kie_validation`；非 ground-truth 逐字校验。 |
-| Batch Processing UI | v1.2+ Pro Batch tab with aggregated CSV/JSON/**Excel**. **v1.5**: queue persisted (`batch_jobs`). Lite has no batch UI/API since v1.3.1. |
+| Batch Processing UI | v1.2+ Pro Batch tab with aggregated CSV/JSON/**Excel**. **v1.5**: queue persisted (`batch_jobs`). |
 | Single-task results (v1.7) | Completed Pro tasks persist via `analyze_jobs` + `OUTPUT_DIR/{task_id}/result.json`. Restart hydrates the in-memory `tasks` dict. In-flight jobs become `interrupted` (no auto GPU resume). Missing `result.json` → `missing_artifacts` (not 500). FIFO `TASK_KEEP_LAST_N` (default 50) deletes DB row and output dir together. SPA still only holds `currentTaskId` in the current session (no Recent-tasks UI). |
-| Figure crops (v1.6) | `figure_step` writes `OUTPUT_DIR/{task_id}/figures/*.png`. Split-figure merge is best-effort; `is_merged` crops are not in the default Figures carousel. Lite has no figure export. |
-| Artifact pack (v1.6) | Pro `GET /tasks/{id}/export/zip` packs tables + figure PNGs. Oversize → 413 (`MAX_PACK_BYTES` 256MB). No Lite ZIP, no Batch multi-task ZIP, no table-region screenshots. |
+| Figure crops (v1.6) | `figure_step` writes `OUTPUT_DIR/{task_id}/figures/*.png`. Split-figure merge is best-effort; `is_merged` crops are not in the default Figures carousel. |
+| Artifact pack (v1.6) | Pro `GET /tasks/{id}/export/zip` packs tables + figure PNGs. Oversize → 413 (`MAX_PACK_BYTES` 256MB). No Batch multi-task ZIP, no table-region screenshots. |
 | Table column mapping (v1.4) | `table_template` maps born-digital PDF tables to unified schema (`mapped_table_rows`). **Scanned PDFs/images blocked** in UI (use Layout Analysis). **Debit/Credit split columns, Chinese headers, and complex merged cells** extensible; aliases target **English headers** primarily. Positional fallback when headers unmatched. Custom alias API deferred. **No HITL** on table-mapping analyze path (`document_type=general`, `enable_kie=false`). |
 | HITL Reviews UI (v1.4+) | Editable KIE fields + Save/Approve; **`hitl_policy`** (`full`/`lite`/`off`). **v1.5**: review items persisted (`hitl_reviews`, `edited_fields`). **KIE validation failures only** — not table-mapping row review. |
 | PDF Tools UI (v1.4) | Nav tab: merge / split / metadata. **`searchable` / `form-fill` API stubs** — not in UI; still post-v1.6 ([v1.5-roadmap.md](../architecture/v1.5-roadmap.md)). |
@@ -77,7 +67,7 @@
 ## 后续版本方向（post-v1.7.0）
 
 - **v1.5 leftovers**：可搜索 PDF、AcroForm、Webhook 持久化、邮件 IMAP 独立服务 — [v1.5-roadmap.md](../architecture/v1.5-roadmap.md)。
-- **Batch ZIP / Lite ZIP / 表格截图**：v1.6 明确不做；Batch ZIP 需单独体积/异步设计。
+- **Batch ZIP / 表格截图**：v1.6 明确不做；Batch ZIP 需单独体积/异步设计。
 - **Recent-tasks UI**：后端可恢复，刷新页仍会丢 `currentTaskId`。
 - **维护**：Playwright E2E P1/P2；文档漂移审计脚本**已落地**——`scripts/audit_agent_ops.py`（kernel-ref 哈希 + living doc 引用路径存在性 + module-map 对账，P-004），已挂 PR→main CI；`009-doc-sync` 机制 5 里"grep 端点/字段对照代码符号表"的那一半仍未实现。
 

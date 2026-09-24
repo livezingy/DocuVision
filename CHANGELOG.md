@@ -37,6 +37,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (+62.5%, above the §9 ±20% guardrail; accepted by decision on 2026-09-22), of which `metrics.py` (569) is past
   the 500-line file budget — logged in `docs/R&D/PENDING.md` P-020.
 
+### Removed
+- **Lite track references stripped from all outward-facing material** (2026-09-24; `apps/lite/**` itself was deleted in
+  v1.8, so this is documentation catching up with the code, not a capability change). `docs/demo/TRIAL_DEMO.md` and
+  `docs/demo/SAMPLES.md` are now single-track (Pro) — including the Supabase PoC section, whose
+  `supabase/migrations/001_trial_schema.sql` was deleted in the same v1.8 train; `docs/architecture/shared-ui-shell.md`
+  is rewritten as a Pro-only shared-shell spec; `docs/architecture/media/README.md` drops the G4 Lite row and the whole
+  Lite recording guide; `docs/architecture/docuvision-system-design.md` drops the `lite-api.md` index row (that file no
+  longer exists) and the two Lite clauses in its current-spec export entries.
+- **Dead Lite instructions removed from living docs**: root `README.md` (Lite demo-GIF section, `apps/lite/` in the layout
+  tree, the Pro-vs-Lite table, the four Lite setup steps, and the dead `lite-api.md` link);
+  `packages/docuvision-core/README.md` + `models/README.md` (the `[lite]`/`[ocr-heavy]` extras were dropped in v1.8, so
+  `pip install -e ".[lite]"` only warned, and the bootstrap scripts those docs documented imported
+  `utils/easyocr_config` / `utils/model_paths`, which core retirement deleted);
+  `docs/release/KNOWN_LIMITATIONS.md` (the whole `DocuVision Lite (since 1.0.1)` section, plus the Lite clauses inside the
+  Pro rows — its born-digital claim at `pdfplumber / Camelot` was also stale since F6 moved Pro to layout-first).
+- Kernel: `docs/agent-ops/core/constraints.md` 通用工程纪律 no longer reads "Pro/Lite 验证在 Cloud/CI";
+  `scripts/sync_agent_rules.py` drops `apps/lite/backend/**/*.py` from the `009-doc-sync` globs (copies regenerated,
+  audit 0/0).
+- Code comments that pointed at deleted paths: `backend/install_pro_gpu.sh`, `backend/requirements.txt`,
+  `frontend/shared/components.css`.
+- **Lite-era files deleted** (explicitly authorized, second pass):
+  `docs/architecture/media/DocVision_Lite.gif` (2.9 MB marketing asset, inbound links already cleared);
+  `frontend/tests/e2e/lite/lite-preview.e2e.js` (dead spec — already excluded by `playwright.config.js`, and its
+  `test:e2e:lite` script was removed in v1.8); `packages/docuvision-core/scripts/bootstrap_lite_models.{py,sh}` (broken:
+  they imported `docuvision_core.utils.easyocr_config` / `model_paths`, deleted in v1.8 — now-orphan `scripts/` dir gone);
+  the whole `packages/docuvision-core/models/` tree (README + `.gitkeep` placeholders, no consumer for
+  `DOCUVISION_MODELS_DIR`/`DOCUVISION_OFFLINE` anywhere in the repo); `packages/docuvision-core/tests/README.md`
+  (described `tests/extractors/`, `tests/engines/`, `core.*` imports and a `requirements-test.txt` that no longer exist) and
+  `packages/docuvision-core/tests/conftest.py` (every fixture mocked a retired module and it imported numpy/PIL, which the
+  slimmed core no longer depends on — i.e. a latent breakage for a core-only venv, not just dead weight).
+  Verified after deletion: `pytest -q` in `packages/docuvision-core` still reports **13 passed**, matching the v1.8 baseline.
+
+### Changed
+- **Acceptance material is now explicitly archived**: `MERGE_MAIN_v1.3.0/1.3.1/1.4/1.5/1.6_CLOUD_CHECKLIST.md` each got an
+  `Archived / frozen (2026-09-24)` header (precedent: the v1.7 checklist archive) naming the inert Lite parts
+  (`:8001`, `apps/lite/**`, `LITE-*` gates, `docuvision-core[lite]`), and `docs/architecture/CLOUD_VALIDATION.md` §2
+  carries the same note over its v1.2–v1.4 门禁表. Bodies are deliberately untouched — frozen is not the same as rewritten.
+- `test_data/acceptance/UI_VERIFICATION_MATRIX.md` is **living**, so it was cleaned rather than frozen: §3 «Lite UI»
+  (LITE-UI-* mapping, Lite automation commands, the removed CI job) is deleted, the later sections are renumbered, and
+  the Lite rows in §按代码改动/发版最小集 are dropped.
+- `packages/docuvision-core/pyproject.toml` description and `docuvision_core/__init__.py` docstring now describe what the
+  package actually is (utils + `table_column_mapping`).
+- **CI install line de-Lite'd**: `.github/workflows/kie-phase-a.yml` now runs
+  `pip install -e ../packages/docuvision-core` (the `[lite]` extra only produced a pip warning). The line is kept, but its
+  necessity is now documented in place: `backend/tests/conftest.py` already puts the core dir on `sys.path` and the kept
+  modules are stdlib-only, so the install is belt-and-braces rather than the sole mechanism.
+- Cursor-local rules (not part of the generated copies): `003-git.mdc` no longer claims PRs auto-run the deleted
+  `CI Lite` workflow (now `Lint` / `KIE Phase A`, with `Lint` noted as unfiltered); `006-cloud-testing.mdc` drops the
+  `[lite]`/`[lite,dev]` installs and the `test_table_stitch.py` / `test_table_result_mapper.py` invocations (both retired
+  with the idle core modules in `1c9807c`).
+- `frontend/playwright.config.js` drops the now-vacuous `testIgnore: '**/lite/**'` (the Lite spec is deleted), and
+  `scripts/e2e_suite_pin.json`'s note no longer describes that exclusion. Pin counts (5 specs / 15 tests) are unchanged.
+- `scripts/check_e2e_allowlist.py` loses the matching `IGNORED_DIR_PARTS = {"lite"}` guard for the same reason, and its
+  selftest case now asserts only the `*.e2e.js` suffix filter (`--selftest` green).
+- `.gitignore`: the two now-dead ignore blocks for `packages/docuvision-core/models/**` and
+  `packages/docuvision-core/scripts/**` are removed with the directories they guarded.
+
 ### Fixed
 - **P-019 — module-map §6 A3 row single-sourced** (2026-09-21): the assertion-table row
   carried its own copies of the five §3 infra numbers, and one had already drifted

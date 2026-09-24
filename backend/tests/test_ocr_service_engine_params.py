@@ -13,8 +13,17 @@ its ``dt_polys`` back verbatim is a silent frame mismatch (measured on the cloud
 path was the only one that did not. This test locks the reason so a refactor or a
 PaddleOCR/paddlex upgrade cannot drop it unnoticed.
 
-No Paddle/GPU required: ``paddle`` is stubbed in ``sys.modules`` and the module is
+No Paddle/GPU required: ``paddle`` and ``paddleocr`` are stubbed and the module is
 loaded from its file path - the same trick as ``test_layout_page_skip.py``.
+
+**The stubs must stay inside the fixture (``monkeypatch``), never at module level.**
+pytest imports every test module at *collection* time, so a module-level
+``sys.modules["paddle"]`` would still be installed while other files run - and it
+silently defeats their "skip when Paddle is missing" guards. Here it made
+``test_table_template_analyze.py::test_analyze_form_accepts_table_template`` stop
+skipping (``pytest.importorskip("paddle")`` found the stub) and fail on the
+``fastapi`` import that guard was indirectly protecting, reddening Phase A CI in a
+file this change never touched. Caught by this test's own first CI run.
 """
 
 from __future__ import annotations
@@ -26,10 +35,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict
 
 import pytest
-
-# Imported at module level by ocr_service (it only needs the name to exist here).
-if "paddle" not in sys.modules:
-    sys.modules["paddle"] = types.ModuleType("paddle")
 
 _OCR_SERVICE_PATH = Path(__file__).resolve().parents[1] / "app" / "services" / "ocr_service.py"
 
@@ -54,10 +59,17 @@ def _load_ocr_service():
 
 @pytest.fixture()
 def engine_init_kwargs(monkeypatch) -> Callable[..., Dict[str, Any]]:
-    """Run ``_init_engine()`` against a fake PaddleOCR and return the kwargs it saw."""
+    """Run ``_init_engine()`` against a fake PaddleOCR and return the kwargs it saw.
+
+    ``monkeypatch.setitem`` scopes the stubs to the test that asks for them, so the
+    engine can still be imported here (``ocr_service`` does ``import paddle``) without
+    leaking a fake Paddle into the rest of the session.
+    """
+    fake_paddle = types.ModuleType("paddle")
     fake_paddleocr = types.ModuleType("paddleocr")
     fake_paddleocr.__version__ = "3.3.2-fake"  # the real module logs this attribute
     fake_paddleocr.PaddleOCR = _RecordingPaddleOCR
+    monkeypatch.setitem(sys.modules, "paddle", fake_paddle)
     monkeypatch.setitem(sys.modules, "paddleocr", fake_paddleocr)
     _RecordingPaddleOCR.calls.clear()
 
@@ -97,3 +109,17 @@ def test_engine_init_other_params_unchanged(engine_init_kwargs):
     assert kwargs.get("device") == "cpu"  # PaddleOCR 3.x wants "cpu"/"gpu", not "gpu:0"
     assert kwargs.get("lang") == "en"
     assert kwargs.get("use_doc_orientation_classify") is False  # page rotation stays detectable
+
+
+def test_paddleocr_stub_is_not_installed_at_module_scope():
+    """Regression for the CI failure this test caused: no stub may outlive a test.
+
+    ``test_table_template_analyze.py`` skips itself via ``pytest.importorskip("paddle")``
+    (guarding a ``fastapi`` import the light Phase A venv lacks), so a leaked ``paddle``
+    stub makes that guard pass and the file fail. No fixture is active here, so this
+    catches a future move back to module-level stubbing.
+
+    Only the ``paddleocr`` marker is asserted: ``paddle`` alone is indistinguishable
+    from the stub ``test_layout_page_skip.py`` intentionally leaves in ``sys.modules``.
+    """
+    assert getattr(sys.modules.get("paddleocr"), "__version__", None) != "3.3.2-fake"

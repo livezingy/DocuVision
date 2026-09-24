@@ -190,6 +190,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   multi-metric sanity rule flagged as a separate (to-be-registered) decision. This repository claims **no** cloud
   verification of the landing itself: the cloud numbers were produced by the round-2 session and read back locally; the
   landing is validated locally by the contract test, the reverse control and `audit_agent_ops.py` 0/0.
+  **The first CI run then caught a trap in the test itself**: it stubbed `paddle` at module scope, and pytest imports
+  every test module at *collection* time, so the fake kept another file's `pytest.importorskip("paddle")` guard from
+  skipping - `test_table_template_analyze.py::test_analyze_form_accepts_table_template` then died on the `fastapi`
+  import that guard was *indirectly* protecting, reddening Phase A in a file this change never touched. Fixed by
+  scoping both stubs with `monkeypatch.setitem` inside the fixture, plus
+  `test_paddleocr_stub_is_not_installed_at_module_scope` so a future move back to module level fails loudly. The
+  affected guard is worth knowing about: it skips on the *wrong* dependency (paddle) relative to what it imports
+  (fastapi), so any future test that stubs `paddle` globally can break it again.
 - **P-019 — module-map §6 A3 row single-sourced** (2026-09-21): the assertion-table row
   carried its own copies of the five §3 infra numbers, and one had already drifted
   (`boot_sequence` said 17; the json fact source and the §3 registration line both say 16 —

@@ -50,11 +50,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-ci-phase-a.txt
-          # Explicit core install (v1.8: the `[lite]`/`[ocr-heavy]` extras no longer exist, so the
-          # extra only produced a pip warning). Note backend/tests/conftest.py also puts the core dir
-          # on sys.path and the kept modules are stdlib-only, so this step is belt-and-braces rather
-          # than the sole mechanism — see the comment there.
-          pip install -e ../packages/docuvision-core
+          # No `pip install -e ../packages/docuvision-core` on purpose: backend/tests/conftest.py
+          # already puts the core dir on sys.path (its kept modules are stdlib-only), and the core
+          # pytest step below gets `pythonpath = ["."]` from its own pyproject. Installing it was
+          # redundant - do not re-add it without a failing test that proves otherwise.
 
       # test_route_contract_freeze.py / test_route_inventory.py are pure AST scans
       # (no ``import app.main``, no paddle) so they run here; they catch route

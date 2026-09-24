@@ -549,3 +549,39 @@
   **view 层（base A）**；**后续在本机复测 G4 时不得因为「根因已定位」而放宽该门禁**——门禁的意义正是
   拦住「换个 OCR 服务/版本后坐标静默错位」。三者关系：本条目（P-021）负责缺陷与修法，
   P-020 负责秤；**落地前 §10.11 是这条结论的强制护栏**。
+
+### P-022 · 文档「墓碑前缀」门禁：退役路径不得再出现在对外物料（2026-09-24，Lite 清理产出）
+- **来源**：Lite 从对外物料清退时，6 处死引用全靠人工逐文件核对发现；用户 2026-09-24 裁决**只做墓碑前缀**
+  （链接存在性规则本轮不做，理由见下）。目标：把"删干净"从靠人记变成靠门禁。
+- **交付**：`scripts/docs_refs_audit.py`（新模块）+ `audit_agent_ops.py` 接线（1 条 import + 2 处调用）。
+  接线受两条例线约束：① `audit_agent_ops.py` 原先**恰好 500 行**（预算 500、零余量），② 抬高
+  `file_size_allowlist.json` 棘轮是红线 → 故**不加 allowlist 条目**，而是把既有的 `check_doc_drift()` /
+  `norm_ref()` 及其常量**迁入新模块**（500 → **462 行**），沿用本仓既有"audit 作编排、检查拆模块"先例
+  （`frontend_coupling.py` / `test_registry_audit.py`）。**零 CI 配置改动**：`agent-ops-audit` 每 PR 必跑，import 即生效。
+- **规则**（全部字面匹配、大小写不敏感；无 regex token、无 subprocess/exec、不写盘——文档是数据不是程序）：
+  - **墓碑 token（17 条 → ERROR）**：`apps/lite/`、`supabase/`、`:8001`、`run_lite`、`lite.html`、`lite.js`、
+    `lite-api.md`、`lite-overrides`、`test:e2e:lite`、`[lite]`、`core_table_extractor`、
+    `docuvision_core.extractors|engines|models`、`lite-batch`、`lite-preview`、`lite_ui_test_checklist`。
+  - **退役标记豁免**：同行含"退役／已删除／移除／不存在／已过期／retired／removed／…"时视为**公告**而非指令
+    （"`apps/lite/**` 已删除"是文档，不是过期命令）。
+  - **扫描白名单（19 个文件）**：`README.md`、`docs/README.md`、`docs/demo/**`、`docs/architecture/**`、
+    `packages/**/README.md`。
+  - **归档豁免（理由随报告打印，不静默）**：`CHANGELOG.md`、`docs/release/**`、`docs/R&D/**`、
+    `docs/agent-ops/**`、`test_data/acceptance/**`、`docs/architecture/v1.*-roadmap.md`、
+    `docs/architecture/pp-structurev3-fix-plan.md`——引用已删之物是历史的本分。
+  - **ALLOWLIST（2 条，棘轮只减不增）**：`CLOUD_VALIDATION.md` 的 `LITE-PREVIEW` / `LITE-BATCH`
+    （§2 冻结抬头下 v1.2–v1.4 发版门禁行）；`MAX_ALLOWLIST = 2` 由 selftest 守着。
+- **明确不做（本轮，含理由）**：**链接存在性**（markdown 链接目标）规则。实测裸上会红 **4 处真死链**
+  （`docs/architecture/docuvision-system-design.md` 的 `:1039`×2、`:1040`、`:1041`，`./release/…` 应为 `../release/…`）
+  \+ **9 处误报**（README 注释块内 4 条待录制 GIF、`media/README.md` 计划表 5 条）→ 收益/维护比明显低于墓碑规则，
+  留作独立议题；4 条真死链坐标在此留痕，可随时单开小修。**也不做** `cd <路径>` 的 cwd 语义与机器绝对路径
+  （实测 `cd ../packages/docuvision-core` 从 `backend/` 出发是对的，从文件目录解析即误报）。
+- **实证（2026-09-24）**：门禁 **0 error / 0 warning**（受检 19 文件）；**正向对照**——临时注入
+  `cd apps/lite/backend && python run_lite.py` 到 `docs/demo/_tmp_bad_sample.md` → **1 ERROR / exit 1**，样本已删；
+  `audit_agent_ops.py --selftest` 由 **16 → 26**（+10 为新模块的纯谓词断言）；audit 判定不变（0 error / 0 warning）；
+  `lint_file_size` 对两文件均 OK。
+- **口径边界（诚实登记）**：① 标记豁免是"同行情景词"，挡不住把死引用写进一句未提退役的话（那正是要抓的）；
+  ② ALLOWLIST 以「文件 + 字面子串」豁免，同文件其它位置再出现同 token 会一并放过（靠 reason 字段留痕）；
+  ③ 只覆盖上列白名单，`docs/**` 之外的非生成物料（如 `.cursor/rules/002/003/006`）不在内。
+- **触发条件**：任何一次 v 级退役/删除（在 `RETIRED` 加一行即可）。清单与豁免的 owner 是
+  `scripts/docs_refs_audit.py`（其 docstring 指向本条目）。

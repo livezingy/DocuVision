@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Unified agent-ops audit: agent-rules + living-doc + module-map + test-registry.
+"""Unified agent-ops audit: agent-rules + living-doc + retired-refs + module-map + test-registry.
 
 1. agent-rules drift: a generated copy must match the kernel (`sync_agent_rules.py --check`) -> ERROR.
-2. living-doc drift: every path referenced by docs/architecture/*.md or docs/README.md must exist -> WARN.
+2. doc references (`scripts/docs_refs_audit.py`, own module = this file keeps its budget):
+   living-doc path drift -> WARN; a retired path/port/command in outward-facing docs -> ERROR.
 3. module-map recon (P-004): module-map.md vs its fact sources - routers/*.py counts (AST, frozen 55),
    frontend_domain_map.json (domains / leaf services / shared state / boot sequence + A6 orphan staleness
    -> WARN), gate-table symbols, README/doc-sync registration, CHANGELOG freshness; fail-closed (A0).
@@ -22,26 +23,12 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import docs_refs_audit as docs_refs  # noqa: E402
 import frontend_coupling as frontend_map  # noqa: E402
 import sync_agent_rules as sync_mod  # noqa: E402
 import test_registry_audit as test_registry  # noqa: E402
 
 REPO_ROOT = sync_mod.REPO_ROOT
-
-LIVING_DOC_GLOBS = ["docs/architecture/*.md", "docs/README.md"]
-
-# File path references inside docs, e.g. backend/app/services/export_service.py
-PATH_REF_RE = re.compile(
-    r"\b(?:backend|apps|packages|frontend|supabase)/[A-Za-z0-9_/.\-]+"
-    r"\.(?:py|js|ts|tsx|jsx|md|json|yaml|yml|sql|ps1|sh)\b"
-)
-
-# Strip a trailing ":<lineno>" and drop glob patterns (contain *).
-GLOB_CHARS = ("*", "?")
-LINE_REF_RE = re.compile(r":\d+$")
-
-# Runtime-generated artifact prefixes (mirrors .gitignore, e.g. backend/debug/).
-DOC_DRIFT_ALLOW_PREFIXES = ("backend/debug/",)
 
 # --- module-map reconciliation (P-004, check 3) -----------------------------
 
@@ -50,7 +37,7 @@ ANCHOR_BACKEND = "<!-- audit:backend-domains -->"
 ANCHOR_FRONTEND = "<!-- audit:frontend-domains -->"
 ANCHOR_GATES = "<!-- audit:gates -->"
 
-# Same shape as PATH_REF_RE but with the map's prefix set (packages/ in; apps/supabase out).
+# Same shape as docs_refs_audit.PATH_REF_RE but with the map's prefix set (packages/ in; apps/supabase out).
 MODULE_MAP_PATH_RE = re.compile(
     r"\b(?:backend|frontend|scripts|docs|packages)/[A-Za-z0-9_/.\-]+"
     r"\.(?:py|js|ts|tsx|jsx|md|json|yaml|yml|sql|ps1|sh)\b"
@@ -65,13 +52,6 @@ BRACE_FILECOUNT_RE = re.compile(r"\{([A-Za-z0-9_,\-]+)\}\.(?:py|js)（(\d+) 文�
 GATE_STATUSES = ("active", "retired", "时点工具")
 # Gate-table 机检实现 cell grammar: `path（`symbol`）` (full-width parens) or a bare path.
 GATE_IMPL_RE = re.compile(r"^(?P<path>[^（]+)（`(?P<symbol>[A-Za-z_][A-Za-z0-9_]*)`）$")
-
-
-def _norm_ref(ref: str) -> str | None:
-    ref = LINE_REF_RE.sub("", ref)
-    if any(ch in ref for ch in GLOB_CHARS) or "..." in ref:
-        return None
-    return ref
 
 
 def _module_map_issue(level: str, msg: str) -> dict:
@@ -248,7 +228,7 @@ def check_module_map() -> list[dict]:
     text = map_path.read_text(encoding="utf-8")
 
     # A1: every referenced path (incl. {a,b}.js expansions) must exist.
-    refs = {ref for ref in (_norm_ref(m.group(0))
+    refs = {ref for ref in (docs_refs.norm_ref(m.group(0))
                             for m in MODULE_MAP_PATH_RE.finditer(text)) if ref}
     refs |= _expand_brace_paths(text)
     for ref in sorted(refs):
@@ -386,6 +366,7 @@ def run_selftest() -> int:
     good = ("| 域 | 文件 | 端点数 |\n|---|---|---|\n"
             "| system | backend/app/routers/system.py | 4 |\n")
     cases: list[tuple[str, bool]] = list(test_registry.selftest_cases())
+    cases += list(docs_refs.selftest_cases())
 
     def ok(name: str, cond: bool) -> None:
         cases.append((name, bool(cond)))
@@ -453,31 +434,12 @@ def check_agent_rules() -> list[dict]:
     return issues
 
 
-def check_doc_drift() -> list[dict]:
-    """Report file paths referenced by living docs that do not exist."""
-    issues: list[dict] = []
-    seen: set[tuple[str, str]] = set()
-    for glob in LIVING_DOC_GLOBS:
-        for doc in sorted(REPO_ROOT.glob(glob)):
-            text = doc.read_text(encoding="utf-8")
-            for m in PATH_REF_RE.finditer(text):
-                ref = _norm_ref(m.group(0))
-                if ref is None or ref.startswith(DOC_DRIFT_ALLOW_PREFIXES):
-                    continue
-                key = (str(doc.relative_to(REPO_ROOT)), ref)
-                if key not in seen and not (REPO_ROOT / ref).exists():
-                    seen.add(key)
-                    issues.append({"check": "doc-drift", "level": "WARN",
-                                   "path": key[0],
-                                   "msg": f"referenced path missing: {ref}"})
-    return issues
-
-
 def main() -> int:
     argv = sys.argv[1:]
     if "--selftest" in argv:
         return run_selftest()
-    issues = (check_agent_rules() + check_doc_drift() + check_module_map() + test_registry.check_test_registry())
+    issues = (check_agent_rules() + docs_refs.check_doc_drift() + docs_refs.check_retired_refs()
+              + check_module_map() + test_registry.check_test_registry())
     errors = [i for i in issues if i["level"] == "ERROR"]
     warnings = [i for i in issues if i["level"] == "WARN"]
     if "--json" in argv:

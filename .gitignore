@@ -268,6 +268,7 @@ scripts/*
 !scripts/sync_agent_rules.py
 !scripts/audit_agent_ops.py
 !scripts/test_registry_audit.py
+!scripts/docs_refs_audit.py
 !scripts/lint_routes.py
 !scripts/lint_file_size.py
 !scripts/file_size_allowlist.json

@@ -52,8 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/demo/_tmp_bad_sample.md` containing `cd apps/lite/backend && python run_lite.py`) -> 1 ERROR / exit 1,
   sample removed; audit 0 error / 0 warning unchanged; `audit_agent_ops.py --selftest` 16 -> 26.
   Explicitly **not** done this round: the markdown link-target rule (a bare version would red 4 genuinely dead
-  links and 9 false positives - README comment blocks, planned-but-unrecorded GIFs); those 4 links are recorded
-  in P-022 for a separate fix.
+  links and 9 false positives - README comment blocks, planned-but-unrecorded GIFs). Those 4 were fixed in this
+  PR's second commit: `docs/architecture/docuvision-system-design.md` used `./release/...` where `../release/...`
+  was meant (KNOWN_LIMITATIONS + RELEASE_1.0_CHECKLIST x2 + RELEASE_1.0.1_NOTES), i.e. pointing into a
+  `docs/architecture/release/` directory that has never existed.
 
 ### Removed
 - **Lite track references stripped from all outward-facing material** (2026-09-24; `apps/lite/**` itself was deleted in

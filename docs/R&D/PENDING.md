@@ -574,7 +574,7 @@
 - **明确不做（本轮，含理由）**：**链接存在性**（markdown 链接目标）规则。实测裸上会红 **4 处真死链**
   （`docs/architecture/docuvision-system-design.md` 的 `:1039`×2、`:1040`、`:1041`，`./release/…` 应为 `../release/…`）
   \+ **9 处误报**（README 注释块内 4 条待录制 GIF、`media/README.md` 计划表 5 条）→ 收益/维护比明显低于墓碑规则，
-  留作独立议题；4 条真死链坐标在此留痕，可随时单开小修。**也不做** `cd <路径>` 的 cwd 语义与机器绝对路径
+  留作独立议题；**该 4 条已在同 PR 的第二个提交修复**（`./release/` → `../release/`，共 4 处，见 CHANGELOG）。**也不做** `cd <路径>` 的 cwd 语义与机器绝对路径
   （实测 `cd ../packages/docuvision-core` 从 `backend/` 出发是对的，从文件目录解析即误报）。
 - **实证（2026-09-24）**：门禁 **0 error / 0 warning**（受检 19 文件）；**正向对照**——临时注入
   `cd apps/lite/backend && python run_lite.py` 到 `docs/demo/_tmp_bad_sample.md` → **1 ERROR / exit 1**，样本已删；

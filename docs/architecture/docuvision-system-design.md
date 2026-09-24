@@ -1036,9 +1036,9 @@ GET /api/v1/jobs/{job_id}/debug
 - [x] Cloud 固定矩阵 001/002 全过（Tracker [Release 1.0 baseline](./KIE_TEST_RUN_TRACKER.md)）
 - [x] id_card 02~04 满足 KIE-ACCEPT-003（2026-05-21）
 - [x] GitHub Actions Phase A 在 `main` 稳定 green
-- [x] `LICENSE` + `CHANGELOG.md` + [Known limitations](./release/KNOWN_LIMITATIONS.md) + [发版清单](./release/RELEASE_1.0_CHECKLIST.md)
-- [x] **DocuVision Lite** merged to `main` — Release **1.0.1** ([RELEASE_1.0.1_NOTES.md](./release/RELEASE_1.0.1_NOTES.md))
-- [ ] 打 tag `v1.0.0` + GitHub Release（见 [RELEASE_1.0_CHECKLIST.md](./release/RELEASE_1.0_CHECKLIST.md)）
+- [x] `LICENSE` + `CHANGELOG.md` + [Known limitations](../release/KNOWN_LIMITATIONS.md) + [发版清单](../release/RELEASE_1.0_CHECKLIST.md)
+- [x] **DocuVision Lite** merged to `main` — Release **1.0.1** ([RELEASE_1.0.1_NOTES.md](../release/RELEASE_1.0.1_NOTES.md))
+- [ ] 打 tag `v1.0.0` + GitHub Release（见 [RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md)）
 - [ ] README / Cloud Studio 安装路径复验 + **阶段 C/E 同 commit 复跑**（发 tag 前建议）
 - [ ] 团队对 1.0 范围签字（不含自定义 fields、Batch 产品化）
 

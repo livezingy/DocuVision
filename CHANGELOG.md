@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **P-020 — OCR quality measurement harness M1+M2** (2026-09-22): a **machine-local** bypass instrument under
+  `scripts/measure/` (deliberately **not versioned** — `scripts/*` is a user-requested untracked folder, so only
+  this note and the PENDING entry land in git). It never imports the app — it consumes the pipeline's result
+  JSON (P-018 contract: read the API output, do not import the pipeline's internals), so historical results
+  stay re-measurable on the same scale. M1 synthesises degraded specimens (`identity` / `rotate:{deg}+jpeg:{q}`) from one forward
+  affine matrix; M2 extracts weak GT from a born-digital PDF's text layer (PyMuPDF, `find_tables` for zoning
+  only); `metrics.py` scores line-level CER (micro/corpus/macro), LCS reading order, table/non-table/digit
+  slices and cell accuracy, and `harness_cli.py` writes a pinned 15-column CSV plus an HTML report.
+  Three pinned points: **D2** the edit-distance DP is character-only with a fixed equal-cost tie-break
+  (sub > del > ins, so `12`→`21` is stably 2 substitutions and the failure fingerprint stays reproducible);
+  **D7** every GT box is quad-ised through the same forward affine and IoU is exact Sutherland-Hodgman
+  clipping; **D8** character-level provenance inside a line is structurally unmeasurable (the OCR side emits
+  line-level boxes only) and is declared in the report header. Verified locally: G1 identical-render hash,
+  G2 11 known-answer assertions, G3 byte-identical repeat runs, audit 0/0. The cloud anchors and the G4 smoke
+  run live in `docs/R&D/P020-ocr-harness-M1M2-执行包.md` §10 — no GPU locally, so nothing is claimed as
+  cloud-verified by this repository. Read out on 2026-09-24 from 15 returned result JSONs: the per-layer
+  coordinate anchor **passed** (the view layer, tables and figures alike, is inverse-rotated back into the input
+  frame when the preprocessor rotates), and the result JSON was confirmed to carry **no** cell-level geometry at
+  all — so cell accuracy stays a table-level IoU join plus an in-table sequence comparison. **base B
+  (`POST /api/v1/ocr`) is not in the specimen frame**: measured, it differs by a similarity (scale 1.00–1.14,
+  residual rotation tracking the spec from −0.3° to −19.7°), because the OCR path passes PaddleOCR's polygons
+  through verbatim and renders PDFs at 2×/144 DPI; a base-B space gate now blocks publication on that (§10.11).
+  Per decision **D-A**, line text is therefore paired by **reading order** (each side ordered by a scale-invariant
+  rule, then aligned monotonically) with geometry reserved for base-A block/table/figure IoU, so no coordinate
+  ever crosses the frame boundary. G4 smoke: 15 rows × 15 columns, and `cer_micro` is monotone non-decreasing
+  from identity → rotate:3 → rotate:15 on all five fixtures. **Deviation:** 1958 new lines vs the 1205 budget
+  (+62.5%, above the §9 ±20% guardrail; accepted by decision on 2026-09-22), of which `metrics.py` (569) is past
+  the 500-line file budget — logged in `docs/R&D/PENDING.md` P-020.
+
 ### Fixed
 - **P-019 — module-map §6 A3 row single-sourced** (2026-09-21): the assertion-table row
   carried its own copies of the five §3 infra numbers, and one had already drifted

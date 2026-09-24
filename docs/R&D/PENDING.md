@@ -3,8 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（4 组；P-007 / P-008 / P-010 / P-011 / P-013 / P-014 / P-015 / P-016 / P-019 已结保留记录，P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
-P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
+## 待确认（本区共 **15** 条：P-002 / P-006 / P-007 / P-008 / P-010 / P-011 / P-013 / P-014 / P-015 / P-016 / P-017 / P-018 / P-019 / P-020 / P-021。
+按标题自标统计：**已结保留记录 2 条**（P-014 ✅ 已结、P-019 已结保留记录），其余 **13 条待裁决**。
+历史：P-001 已按用户裁决移除 2026-09-20，后续有需要再立项；P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
 
 ### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
 - 来源：v1.8.1 PROOF-001 云端实测（mamba p12/p29 红率 58%/97%，均匀网格对应在非等宽表上大面积失准）
@@ -440,3 +441,111 @@ P-001 已按用户裁决移除 2026-09-20，后续有需要再立项）
   已不再准确——`agent-ops-audit.yml` 的 `pull_request.paths` 已于 2026-09-20（P-011 / branch protection）
   **移除**，audit 现对**每个 PR 必跑**、与是否触及 `docs/architecture/**` 无关（见该 workflow 头部注释）；
   结论（CI 会复跑）不变，机制口径以 workflow 为准。
+
+### P-020 · OCR 质量测量 harness M1+M2 落地（P-018 P0/P1 实施，2026-09-22 四轮讨论定稿）
+- 交付（**local-only，不入 git**）：`scripts/measure/{__init__,metrics,degrade,gt_factory,harness_cli,test_metrics}.py`
+  ——机器本地测量仪器，源码与产物均留本机不入库。`.gitignore:273 scripts/*` 是用户既定策略（271-272 行注释原文
+  「User-requested: never track these folders」），本次裁决**保持 local-only、未改 `.gitignore`**。
+  `backend/app/**` 修改面 = 0；`backend/tests/test_registry.json` **未改**——工具与其测试同处 `scripts/measure/`，
+  不属 `backend/tests/**` 对账范围，故无 T1 登记义务（原计划「登记 test_metrics.py」因 local-only 裁决而作废）。
+  **本次入库的只有本 PENDING 条目与 CHANGELOG 一段。**
+- 指标族：matched_rate → micro/corpus/macro CER → LCS → line_exact → table/non-table/digit 子分 + cell accuracy；
+  DP 单位唯一=字符（D2），行=配对单位；归一化 L1/L2 分层（归一化为空的元素剔除出 CER 串、仅进 SKIPPED 列）；
+  回溯平局写死 sub > del > ins（`12`→`21` 稳定记 2 sub，保 D9 归因可复现）。
+- deviate-1：TEDS 随 P2（结构真值依赖）；deviate-2：被测执行收紧为「读 result JSON」（遵 P-018 契约，harness 与被测解耦）。
+- **C1 静态核对关键发现（影响 P0 指标 1a）**：result JSON **不含 cell 级 bbox**——`cell_bbox` 仅是重建输入、
+  不落盘（`backend/app/services/table_service.py:262-283`）；`proof_render.py:15-21` 亦明言 per-cell bboxes
+  需由 `table["bbox"]` 均匀网格再推导。故 cell accuracy 收敛为「表级 IoU 配对 + 表内 cell 序列比对」，
+  `cell_word_bbox`（backfill 落盘）为可选几何来源。已回写执行包 §C1 / §2.1。
+- **规模偏差（据实登记，2026-09-24 复算）**：实际 **1958 行** vs 执行包 §3.1 预算 1205 = **+62.5%**，超出 §9
+  护栏 #5 的 ±20% 上限；**用户 2026-09-22 裁决接受**（保留 docstring/类型/单测可读性）。分文件：`metrics.py`(569) /
+  `harness_cli.py`(494) / `test_metrics.py`(380) / `gt_factory.py`(318) / `degrade.py`(183) / `__init__.py`(14)。
+  **`metrics.py` 已越过 500 行**——该结论为**人工计数**：`lint_file_size.py` 以 `git ls-files` 枚举（git 模式），
+  untracked 文件不在扫描集，故 F1 门禁对 local-only 源码**不生效**，入库无涉；若日后要入库，须先拆 `metrics.py`。
+  增幅主要来自 D-A 顺序配对与保序 DP 对齐、C1 导入约定、DP 平局裁决、SKIPPED 语义、31 项断言与 15 列 CSV/HTML
+  报告，**非功能扩张**。
+- 验收：G1 恒等 hash / G2 已知答案 11 断言 / G3 复现逐位一致 / G4 smoke 5-10 文件（P-018 验收口径）。
+- **状态（2026-09-22）**：**本机可判定项全绿**——G1（identity 与直接渲染逐位 hash 相等）、G2（11/11，
+  `pytest scripts/measure/test_metrics.py` → 23 passed）、G3（同输入跑两次逐位一致，含 CSV 字节相等）、
+  `audit_agent_ops.py` 0 error / 0 warning、`--selftest` 16/16。
+  **云端未验证**：C1 动态锚点-1/2/3（逐层坐标系生死判 / result JSON 字段 / mamba born-digital）与 G4 smoke
+  须在 Pro GPU 机器真跑管线产 result JSON，步骤与判据见执行包 §10；按 AGENTS.md「本机无 GPU」红线，
+  **不宣称云端已验证**。执行包 `docs/R&D/P020-ocr-harness-M1M2-执行包.md` 保留（含 §10 runbook 与回填模板）。
+- **状态（2026-09-24，云端 15 份 result JSON + 15 份 OCR JSON 回传后判读）**：
+  - **锚点-1 通过（实证）**：`view` 层（**含 table/figure**，`envelope_builder.py:273-331` 逆旋转对全部 kind 统一生效）
+    15/15 落试件画布；唯一纠偏页 `…__rotate_15`（`angle=270`）实证 view = 该层 `polygon_preprocessed`
+    逆旋转 270° 的精确像。执行包 §3.3 原「table 恒 preprocessed」推论**据此收紧**：`tables[].bbox` 属
+    preprocessed 系、**禁入指标路径**，但 view 层的 table/figure 与 GT 同系，D7 照旧。
+  - **锚点-2 通过（结论为「无」）**：11 份含表 result JSON 中 `cell_bbox`/`cell_word_bbox`/`cell_provenance`
+    **零出现** → cell accuracy 确立走「表级 IoU 配对 + 表内 `data` 序列比对」。
+  - **base B 空间门禁 15/15 FAIL（新发现，已落执行包 §10.11/§10.12）**：`POST /api/v1/ocr` 返回的
+    `text_blocks` 坐标**不在试件像素系**，而是与之相差一个 similarity（实测 scale 1.00–1.14、残余旋转
+    随 spec 从 −0.3° 单调走到 −19.7°，即近似「被去旋转后的页面」+ 另一次缩放）。根因在本仓可证：
+    `_convert_predict_dict`/`_parse_result`/`_call_ocr` 全程逐点透传、引擎初始化未设检测侧尺寸参数、
+    PDF 分支另在 2×（144 DPI）下渲染。
+  - **D-A 裁决（用户）**：line 级文本**改按阅读顺序配对**（两侧各用尺度无关的 `metrics.reading_order` 排序，
+    再用保序 DP `metrics.align_by_order` 对齐；AS 多出的行免费跳过、GT 漏配的行按删除计费），**几何只留给
+    base A** 做 block/table/figure IoU。收益：坐标永不跨越 base-B 帧边界，**复用本批 base B 即可出数**，
+    零产品改动、零污染（未用 GT 反解修正 AS 侧）。修 `/api/v1/ocr` 属产品改动，本包不做、另行立项。
+  - **顺带修掉两个通用 bug**：① GT 记录保留**源 PDF 页号**（arxiv 试件切自 p12）而 base A/B 看到的是 `page=1`
+    → 按页 join 会静默产出 0 对，改为按 JSONL 序号 join；② 空配对/空 GT 切片的指标曾读 `0.0`（会被读作
+    「完美」），改为 `None`（未测量）或 `1.0`（GT 有行却全未配上 = 全删除，属已测量的失败）。
+  - **G4 smoke（15 行 × 15 列齐）**：`cer_micro` 在 5 个 fixture 上单调不降（`identity ≤ rotate:3 ≤ rotate:15`）
+    **5/5 ✓**；`cer_macro` 4/5、`cer_corpus` 2/5（后者把 AS 多出的表格体计为插入，对表格型文件 >1 且可能
+    非单调——**口径性质，非脚本缺陷**，故 §10.9 已注明曲线 sanity 以 `cer_micro` 为准）。
+    `cell_accuracy` 随旋转单调下滑、`cer_table` 单调抬升，符合预期；GT 无 cell 的页（arxiv）两列读 `-`。
+  - 复验：G1/G2/G3 全绿（`pytest scripts/measure/test_metrics.py` → **31 passed**；G3 同输入两次
+    `metrics.csv` **逐位相等**），`audit_agent_ops.py` **0 error / 0 warning**。
+  - **仍未验证**：M3 共识分诊、TEDS 等本包不做项。base B 坐标问题的**根因与修法已由 P-021 定位并验证**
+    （未落地）。
+
+### P-021 · `POST /api/v1/ocr` 返回坐标不在上传图像像素系（unwarping 未关闭）（2026-09-24，P-020 云端坐标核验产出）
+- **现象**：该端点是**已冻结的公开契约**（`backend/tests/snapshots/openapi_baseline.json`、
+  `route_contract_freeze.json`、`test_route_inventory.py` 三处登记），但契约**未声明**
+  `text_blocks[].bbox/polygon` 的坐标空间；实测其**不等于**上传图像像素系，而是相差一个**非刚性**形变
+  （8 张合成探针实测 scale 1.1084–1.2257 且随探针变、拟合残差 9.9–51.6px、`frame_w` 2227–4067 无规律），
+  旋转亦被**抹平**（探针 3° → 残留 −0.82°、15° → 残留 −2.80°）。凡消费该端点的场景（前端叠加框、
+  裁剪、导出标注、与其它坐标源对齐）都会错位。
+- **根因**：`backend/app/services/ocr_service.py:64-70` 的 `init_params` 只设了
+  `use_doc_orientation_classify=False`，**未设 `use_doc_unwarping`**；PaddleOCR 3.3.2 中
+  `use_doc_preprocessor` 默认为 **true**，其中 unwarping（UVDoc）**实际取值为 true**，det 因而跑在
+  **形变后的画布**上，返回的 `dt_polys` 即该画布坐标。同仓 `layout_service.py:113-120` 早已显式设
+  `use_doc_unwarping=False`（注释原文：Unwarping applies non-linear image deformation … the probe confirms
+  correct spacing），`formula_service.py:188-189` 亦在另一路显式置 False——**只有 OCR 这一路漏了**。
+  链路其余部分已排除：`_convert_predict_dict`(L130-191) / `_parse_result`(L326-368) / `_call_ocr`(L227-262)
+  **全程逐点透传、零坐标归一化**；`text_det_params` = `limit_side_len=64 / limit_type=min /
+  max_side_limit=4000`，对 2550×3300 不触发 resize。
+- **一行修法**：`ocr_service.py:64-70` 的 `init_params` 增加 `"use_doc_unwarping": False,`。
+  （`ocr_service.py` 现 **457 行**，改后 458 < 500，不触 F1 文件规模门禁；该文件**受 git 跟踪**，
+  修改需走 CHANGELOG / `audit_agent_ops.py` 义务。）
+- **验证证据（2026-09-24，云端 Pro GPU，commit `a73468b`）**：8 张合成标定探针（`cal/`，含 `cal_truth.json`
+  的精确 ink 真值）经 `POST /api/v1/ocr` 走**改前/改后**对照：
+  - `scale` 1.1084–1.2257 → **0.9992–1.0001**；拟合残差 9.9–51.6px → **0.6–1.1px**；
+  - `frame_w` 2227–4067（无规律）→ **等于各探针自身宽度**（2000 / 2549 / 2718 / 3316 / 3598，
+    含横向 3600×2400 ⇒ 也不按短边归一化）；
+  - 旋转 3° → **−2.99°**、15° → **−14.99°**（幅值等于探针角 ⇒ 未 deskew，语义正确；负号为
+    图像 y 轴向下的坐标约定）；
+  - `cal_shift300`（内容整体 +300px、画布不变）的 `extent_x0` 由 250（内容被重取景）→ **443**
+    （base 为 145，差 +298 对应内容 +300 ⇒ 不再重取景）；
+  - **8/8 原始响应逐字节改变** ⇒ 配置确已生效（首轮 after 曾与 before 完全一致，因未重启进程）；
+    脚本输出判据 `VERDICT: endpoint == INPUT PIXEL FRAME`。
+  - 证据落点（均 local-only、不入 git）：`test_data/TestResult/harness/cloud_run/cal/cal_out/` 下
+    `layer0_engine_params.txt`（直读 `doc_preprocessor_res.model_settings.use_doc_unwarping: true`）、
+    `layer1_result_structure.txt`、`layer2_calibration_{before,after}.txt`、
+    `cal_ocr_{before,after}/`；完整说明与判据见 `_cloud_coord_check.md`（§0 结论 / §0.1 修复验证）。
+- **副作用未知项**（**落地前必须补**）：unwarping 本为拍照/弯曲页准备，关闭可能降低那类文档的识别质量。
+  现有读数只覆盖 8 张**合成**探针（检出 12/12 不变、池化置信度 0.9921 → 0.9921、非旋转探针最低置信度
+  0.912 → 0.999 反而上升 ⇒ 平坦页上 unwarping 是在帮倒忙），**不能替代真实文档评估**：需用
+  `test_data/testfiles` 的 15 份试件 PNG 在改前/改后各跑一次 `/api/v1/ocr`，比对 `text` 字段与置信度，
+  重点覆盖表格、密集文本、以及存在真实弯曲/透视的样本。
+- **连带重测义务**：① 该修复会**改变 OCR 文本**（8/8 响应不同），故 P-020 现有 15 份
+  `OCR/*.ocr.json` 相对修复后服务**已过期**，`cer_*` 须在落地后重测并记录新 SHA；
+  ② 落地后执行包 §10.11 的 base-B 空间门禁将转为 **PASS**（base B 几何可用），但 **D-A 顺序配对仍是正解**
+  （它把帧依赖解耦，是更稳的结构）；③ 若启用 base B 几何，需重跑 G3 复现 + G4 并回填 §8 状态行。
+- **状态（2026-09-24）**：**已定位 + 已验证修法 + 未落地**。云端实验对 `ocr_service.py` 的临时改动
+  **已回滚**，`P-020 修改面 = 0` 保持。是否落地待裁决（属产品识别行为变更，须独立走立项→CHANGELOG→audit）。
+- **现行控制（修复落地前有效；harness 侧本轮无需任何改动）**：执行包 §10.11 的 base-B 空间门禁
+  **保持生效**（对本批 15 份即 FAIL 状态）；base B 一律**只用于文本**（D-A 顺序配对），几何一律取自
+  **view 层（base A）**；**后续在本机复测 G4 时不得因为「根因已定位」而放宽该门禁**——门禁的意义正是
+  拦住「换个 OCR 服务/版本后坐标静默错位」。三者关系：本条目（P-021）负责缺陷与修法，
+  P-020 负责秤；**落地前 §10.11 是这条结论的强制护栏**。

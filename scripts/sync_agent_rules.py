@@ -71,7 +71,7 @@ AGENTS = {
                 "title": "文档同步（强制，防漂移）",
                 "frontmatter": {
                     "description": "文档同步机制、归属表、生命周期（改契约代码或文档时触发）",
-                    "globs": "docs/**/*.md,backend/app/**/*.py,apps/lite/backend/**/*.py,packages/docuvision-core/**/*.py,frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js",
+                    "globs": "docs/**/*.md,backend/app/**/*.py,packages/docuvision-core/**/*.py,frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js",
                 },
             },
             {

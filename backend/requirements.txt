@@ -4,7 +4,7 @@
 #
 # =============================================================================
 # Pro GPU (Cloud Studio) — do NOT pip install torch from this file on GPU.
-# Use the split stack below; keep Lite in a separate venv (requirements-lite).
+# Use the split stack below.
 #
 #   python3 -m venv ~/docuvision_env && source ~/docuvision_env/bin/activate
 #   cd backend

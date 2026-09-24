@@ -1,5 +1,8 @@
 # feature/v1.6-artifact-pack — Cloud Studio acceptance checklist
 
+> **Archived / frozen（2026-09-24）** — 本清单在其目标 tag 发版完成后冻结，不再随代码演进（先例：v1.7 checklist 归档，见 `CHANGELOG.md` §v1.8.3）。
+> **Lite 残留说明**：文中 `pip install -e ../packages/docuvision-core[lite]`（§环境准备）已随 **v1.8 core 退役**失效（extras 现仅 `dev`），**勿再执行**；现行云端手册见 [v1.8-cloud-validation.md](../../docs/release/v1.8-cloud-validation.md)。
+
 Last updated: 2026-09-06
 Target tag: **`v1.6.0`** (cut 2026-09-06 — Cloud **PACK-ZIP-001** passed)
 Shell: **zsh/bash** (Tencent) / bash (Baidu)

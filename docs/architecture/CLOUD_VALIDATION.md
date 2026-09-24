@@ -149,6 +149,10 @@ curl -s -X POST "http://127.0.0.1:8000/api/v1/analyze" \
 
 ## 2. 验证顺序（按阶段执行）
 
+> **历史存档（frozen, 2026-09-24）**：本节下方「发版最小集」与门禁表是 v1.2–v1.4 的**发版时点记录**，不再随代码演进。
+> 其中 `LITE-*` gate（`LITE-BATCH-001` / `LITE-PREVIEW-001`）与 Pro/Lite 双轨 E2E 已随 **v1.8 Lite 退役**失效，**勿再执行**；
+> 现行云端手册见 [v1.8-cloud-validation.md](../release/v1.8-cloud-validation.md)。
+
 **v1.4.0 发版最小集**（2026-06-30）：先跑 [MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md) 回归子集（CORE-PDF、LITE-PREVIEW、KIE-VAL），再跑 [MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md)（Phase A v1.4、**MAP-TEMPLATE-001**、**MAPPED-BATCH-001**）。
 
 **v1.3.1 发版最小集**（2026-06-23）：先跑 [MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.2.1_CLOUD_CHECKLIST.md)（回归 + BATCH-XLSX-001），再跑 [MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md](../../test_data/acceptance/MERGE_MAIN_v1.3.1_CLOUD_CHECKLIST.md)（CORE-PDF-001、**LITE-PREVIEW-001**、KIE-VAL-001；**不含** LITE-BATCH-001）。
@@ -490,4 +494,3 @@ SPLIT-C1 复核全绿；SPLIT-U4 = **0 failed / 0 error**。
 - [kie.md](./kie.md) — KIE 契约、PDF 输入策略
 - [KIE_TEST_RUN_TRACKER.md](./KIE_TEST_RUN_TRACKER.md) — 云测批次记录
 - [test_data/acceptance/doc_types.md](../../test_data/acceptance/doc_types.md) — 样例矩阵
-- [packages/docuvision-core/models/README.md](../../packages/docuvision-core/models/README.md) — 模型目录与换主机流程

@@ -1,6 +1,7 @@
 # UI 自动化 vs 手工验收矩阵
 
-> **Status**: living — update when adding Playwright specs, Vitest cases, or LITE-UI rules.  
+> **Status**: living — update when adding Playwright specs, Vitest cases, or UI-* rules.  
+> **Lite 已于 v1.8 退役**：原 §3「Lite UI」（LITE-UI-* / LITE-PREVIEW-01 映射与 Lite 自动化命令）已随轨删除，本文只覆盖 Pro。  
 > **Purpose**: When UI E2E / unit / API tests are **green**, manual scope **shrinks** to rows marked **manual always** or **manual if touched**.  
 > Assistant delivery: see [`.cursor/rules/004-project.mdc`](../../.cursor/rules/004-project.mdc) §手工测试提醒.
 
@@ -11,7 +12,7 @@
 | **绿 ≠ 全免** | 自动化通过只代表**已映射用例**可回归；未映射项、真实 GPU、视觉/layout 仍可能需人工 |
 | **E2E 用 mock** | Pro Playwright 默认 `mock-pro-api.js`，**不**替代 Cloud 真 API / KIE 质量验收 |
 | **按改动缩小** | 未改动的区域：若对应用例已在本次/近期 Cloud 跑绿，发版前可跳过重复点击 |
-| **发版前最小集** | 见 §5；大版本或合 `main` 前仍建议跑完整 `LITE_UI_TEST_CHECKLIST` 或 Pro spot-check |
+| **发版前最小集** | 见 §4；大版本或合 `main` 前仍建议跑完整 Pro spot-check |
 
 ## 2. Pro UI
 
@@ -68,63 +69,22 @@ cd frontend && npm run test:e2e
 
 Planning detail: [PRO_UI_E2E_PLAN.md](../AutoTest/PRO_UI_E2E_PLAN.md).
 
-## 3. Lite UI
-
-### 3.1 自动化命令
-
-```bash
-# API contract (CI Lite on PR)
-cd apps/lite/backend && python -m pytest tests/ -q
-
-# Preview API subset
-python -m pytest tests/test_lite_preview.py -q
-
-# OCR / table messaging subset (documented in checklist)
-python -m pytest tests/test_lite_ocr_messaging.py tests/test_lite_bordered_tables.py -q
-
-# Lite browser E2E (requires Lite server; CI Lite runs this on PR)
-cd frontend && npm install && npm run test:e2e:lite
-# Or from apps/lite/frontend: npm install && npm run test:e2e
-```
-
-**CI Lite**（PR → `main`）跑 `pytest tests/` + **`npm run test:e2e:lite`**（`LITE-PREVIEW-01`）。
-
-### 3.2 LITE-UI 映射
-
-| Rule | 主题 | API pytest 覆盖 | E2E 绿减手工？ | 手工验收标准（要点） |
-|------|------|-----------------|----------------|----------------------|
-| LITE-PREVIEW-01 | PDF 中栏预览 | `test_lite_preview.py` | **是** — `lite-preview.e2e.js` 断言 `#previewImage` 可见 | 上传 PDF 非空白、多页 Next |
-| LITE-UI-001 | Upload + Profile | 部分 `test_lite_analyze_profile.py` | **部分** — E2E 覆盖预览可见；Profile 文案/联动仍建议 spot-check | Profile tab、`table_type`、页码联动 |
-| LITE-UI-002 | Content tabs | 部分 extract/profile | **否** | Tables 网格、Figures 空态 |
-| LITE-UI-003 | OCR 低置信/失败 | `test_lite_ocr_messaging.py` | **部分** — API 消息对；Quality 面板/UI 仍手工 | `low_confidence` / `ocr_extraction_failed` / `no_text_detected` 可见 |
-| LITE-UI-004 | Queue | 无 | **否** | 多文件、Remove、选中项单独分析 |
-| LITE-UI-005/008 | Export | `test_lite_export.py` | **部分** — 下载 API；toast/四按钮布局手工 | 四按钮等宽、toast + status bar |
-| LITE-UI-006 | Bordered tables | `test_lite_bordered_tables.py` | **部分** — API 有表；Tables tab 展示手工 | Profile `bordered`、Tables 非空 |
-| LITE-UI-007 | Analysis Options 动态 | 无完整 E2E | **否** | PDF/扫描/PNG 下 Options 显隐 |
-
-Checklist steps: [`apps/lite/backend/tests/LITE_UI_TEST_CHECKLIST.md`](../../apps/lite/backend/tests/LITE_UI_TEST_CHECKLIST.md).
-
-## 4. 按代码改动推断手工范围（助手交付用）
+## 3. 按代码改动推断手工范围（助手交付用）
 
 | 改动路径 | 建议自动化（先跑绿） | 仍需提醒用户手工测 | 验收标准引用 |
 |----------|----------------------|-------------------|--------------|
 | `frontend/app.js`, `index.html` | `npm run test:unit`；`npm run test:e2e` | Analysis Options、真实 KIE 展示、Export、Batch | §2.3；`doc_types.md` |
-| `frontend/shared/*` | Vitest + Pro E2E smoke | **Lite + Pro** 各 spot-check Export/resize/notify | §2.3；LITE-UI-005/008；`shared-ui-shell.md` |
-| `apps/lite/frontend/*` | `pytest tests/` | **完整** `LITE_UI_TEST_CHECKLIST` 受影响章节 | §3.2 |
+| `frontend/shared/*` | Vitest + Pro E2E smoke | Pro spot-check Export/resize/notify | §2.3；`shared-ui-shell.md` |
 | `backend/app/**`（Analyze/KIE） | Phase A pytest（Cloud） | Pro Result/Fields；Cloud Phase C–E 样例 | `CLOUD_VALIDATION.md`；`KIE_ACCEPTANCE_CRITERIA.md` |
-| `apps/lite/backend/**` | `pytest tests/` | LITE-UI 表中「否/部分」行 | §3.2 |
 | 仅文档 / rules | — | 无（除非文档描述的行为与代码不一致需 spot-check） | — |
 
-## 5. 发版 / 合 main 前最小手工集
+## 4. 发版 / 合 main 前最小手工集
 
 | 产品 | 条件 | 最小手工 |
 |------|------|----------|
 | **Pro** | `test:e2e` + `test:unit` 绿 | ① 单票样例真实 Analyze+KIE（Cloud）② Options 改过后点一轮 ③ Export 任一下载 |
-| **Lite** | `pytest tests/` + `npm run test:e2e:lite` 绿 | `LITE_UI_TEST_CHECKLIST` 中 **LITE-UI-004**（队列）+ **LITE-UI-007**（Options）+ 本次改动涉及章节 |
-| **共享 CSS/JS** | 上两项相关子集绿 | Lite + Pro 各打开一页，看 Export 四按钮与 toast |
+| **共享 CSS/JS** | 上两项相关子集绿 | Pro 打开一页，看 Export 四按钮与 toast |
 
-## 6. 维护
+## 5. 维护
 
 - 新增 Playwright `test('UI-…')` 时：更新 §2.2 表与 [PRO_UI_E2E_PLAN.md](../AutoTest/PRO_UI_E2E_PLAN.md).
-- 新增 `LITE-UI-*` 时：更新 §3.2 与 `LITE_UI_TEST_CHECKLIST.md`.
-- 新增 Lite Playwright（若未来有）时：更新 §3 自动化命令与「E2E 绿减手工」列。

@@ -1,27 +1,31 @@
 # DocuVision Core
 
-Shared table extraction and OCR engines for DocuVision Lite and Pro.
+Shared helpers consumed by the DocuVision **Pro** backend.
 
-## Install extras
+## What is in here
+
+| Module | Consumer |
+|--------|----------|
+| `docuvision_core.processing.table_column_mapping` | `backend/app/orchestration/document_pipeline_orchestrator.py` — `table_template` 列映射 |
+| `docuvision_core.utils.pdf_text_utils` | `backend/app/services/table_backfill.py` — `normalize_for_compare` |
+| `docuvision_core.utils.logger` / `docuvision_core.utils.path_utils` | Pro 通用工具 |
+
+> **Lite 已随 v1.8 退役**：本包原先的表格/OCR 引擎家族（`extractors/`、`engines/`、`models/`、`export/`、`demo/` 及自适应处理家族）已移除，
+> extras 现仅剩 `dev`（`pyproject.toml`）。`CHANGELOG.md` §1.8 记录了移除范围。
+
+## Install
 
 ```bash
-pip install -e ".[lite]"        # PDF tables, EasyOCR, pytesseract wrapper
-pip install -e ".[ocr-heavy]"   # Table Transformer (torch, transformers, matplotlib)
-pip install -e ".[dev]"         # pytest
+pip install -e ".[dev]"   # pytest
 ```
 
-**Tesseract OCR binary** is not a pip dependency. On Linux install `tesseract-ocr` via apt; Lite README documents paths.
+The Pro backend consumes it as an editable path dependency — see `backend/requirements.txt` (`-e ../packages/docuvision-core`).
 
-## Model directories (under package root)
+## Tests
 
-Weights live in **`models/`** next to source (not in Git). Full host-migration guide: **[models/README.md](models/README.md)**.
+```bash
+cd packages/docuvision-core
+pytest -q
+```
 
-| Directory | Used by |
-|-----------|---------|
-| `models/table-transformer/detection/` | Table Transformer detection |
-| `models/table-transformer/structure/` | Table Transformer structure |
-| `models/EasyOCR/model/` | EasyOCR weights |
-
-Bootstrap once: `bash scripts/bootstrap_lite_models.sh` from this package root.
-
-See [apps/lite/backend/README.md](../../apps/lite/backend/README.md) for Lite run instructions and Tesseract apt packages.
+Local (no GPU / no Paddle) — the four surviving test modules cover `normalize_for_compare`, `table_column_mapping`, `pdf_text_utils` and `path_utils`.

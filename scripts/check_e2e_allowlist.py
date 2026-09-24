@@ -49,9 +49,6 @@ RATCHET = REPO_ROOT / "scripts" / "e2e_allowlist_ratchet.json"
 PIN = REPO_ROOT / "scripts" / "e2e_suite_pin.json"
 
 SPEC_SUFFIX = ".e2e.js"
-# Mirrors playwright.config.js `testIgnore: '**/lite/**'`: lite-preview.e2e.js is on disk (the
-# Lite app was retired in v1.8.0) but is never collected, so it must not count toward the pin.
-IGNORED_DIR_PARTS = {"lite"}
 
 # One quarter, same as ORPHAN_STALE_DAYS (frontend_coupling.py): short enough that a deferral
 # cannot outlive the release line that made it, long enough not to nag every batch.
@@ -206,16 +203,14 @@ def lowered_cap(count: int, cap: object) -> int | None:
 def measure_suite(sources: dict[str, str]) -> dict[str, int]:
     """Count collected spec files, top-level ``test(`` cases and skips from spec sources.
 
-    ``sources`` maps a repo-relative posix path to its text; paths whose directory parts
-    intersect ``IGNORED_DIR_PARTS`` are excluded first, mirroring the Playwright config.
+    ``sources`` maps a repo-relative posix path to its text; only ``*.e2e.js`` counts
+    (mirrors the Playwright config's ``testMatch``).
     """
     files = 0
     tests = 0
     skips = 0
     for rel, text in sorted(sources.items()):
         if not rel.endswith(SPEC_SUFFIX):
-            continue
-        if IGNORED_DIR_PARTS & set(Path(rel).parts):
             continue
         files += 1
         for line in text.splitlines():
@@ -408,10 +403,9 @@ def selftest_cases() -> list[tuple[str, bool]]:
     ])
     measured = measure_suite({
         "frontend/tests/e2e/a.e2e.js": spec,
-        "frontend/tests/e2e/lite/retired.e2e.js": spec,
         "frontend/tests/e2e/helpers/coverage.js": "test('not a spec')",
     })
-    ok("measure ignores lite/** and non-spec files",
+    ok("measure counts only *.e2e.js",
        measured == {"spec_files": 1, "tests": 2, "skips": 0})
     ok("measure counts skips",
        measure_suite({"frontend/tests/e2e/a.e2e.js": "  test.skip('x', () => {});"})["skips"] == 1)

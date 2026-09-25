@@ -539,6 +539,23 @@
     `layer0_engine_params.txt`（直读 `doc_preprocessor_res.model_settings.use_doc_unwarping: true`）、
     `layer1_result_structure.txt`、`layer2_calibration_{before,after}.txt`、
     `cal_ocr_{before,after}/`；完整说明与判据见 `_cloud_coord_check.md`（§0 结论 / §0.1 修复验证）。
+- **补录收口（2026-09-25：原缺的 `commit` / GPU / 版本已补齐）**：
+  - `commit` = **`a73468b`**（`a73468ba504645353561c3fd54fb0da1f9cff11a`，2026-09-17）——`commit_before.txt` /
+    `commit_after.txt` **两侧 head 相同** ✓（2026-09-25 事后采集）。**before 侧树是干净的**：`commit_before.diff`
+    = **0 字节**、porcelain 仅两条 `??` ⇒ "临时改动已回滚"由独立证据确认。同批入库：`gpu.txt`、`versions.txt`、
+    `pip_freeze.txt`、`judge_report.txt`。
+  - **环境**：GPU **NVIDIA A10 / driver 580.65.06 / 23028 MiB**｜Python 3.11.1｜paddleocr **3.3.2**｜
+    paddlex **3.3.12**｜PyMuPDF **1.25.5**（在 pin `>=1.24,<1.26` 内）｜paddle 3.3.0 / torch 2.6.0+cu124（取自 `/health`）。
+  - **读数可迁移性的关键旁证**：云端树比本地 main 旧 7 天（`a73468b` 09-17 vs `2c2589f` 09-24），但**被测文件同一 blob**——
+    云端 `commit_after.diff` 的前像为 **`80c1fc5`**，入库提交前像**同为 `80c1fc5`** ⇒ `ocr_service.py` **逐字节相同**
+    （09-17→09-24 之间的改动不涉及本议题），故 round2 读数可迁移到入库提交。
+  - ⚠️ **云端补丁形态**：**仅加一行**（树 458 行，结果 blob `9cefadb`）；入库版为注释压缩后的**净零**（457 行，
+    blob `5ef2596`）⇒ **行为等价、文本不同**，**复现时勿按字节比对**云端 diff 与入库提交。
+  - ⚠️ **两条证据瑕疵（均不影响结论）**：① `after_restart.txt` 的 PID **94** 启动 **06:08:36**（UTC）早于
+    `before_health` 的 06:21:26 ⇒ 该快照记的是 **before 阶段那个进程**，**不能证明"重启过"**（间接证据＝引擎
+    惰性初始化 + 首轮"未重启 → after 与 before **逐字节相同**"的实测）；② `commit_before.txt` 采集时刻
+    （`09-25T00:38:11Z`）**晚于** `commit_after.txt`（`00:37:17Z`）⇒ 这对快照是**事后重建**、只锚定两侧**代码状态**
+    （拍 before 快照时把 `ocr_service.py` 还原过），**非"测量当时的进程状态"**。详见执行清单 §6.1。
 - **副作用未知项**（**落地前必须补**）：unwarping 本为拍照/弯曲页准备，关闭可能降低那类文档的识别质量。
   现有读数只覆盖 8 张**合成**探针（检出 12/12 不变、池化置信度 0.9921 → 0.9921、非旋转探针最低置信度
   0.912 → 0.999 反而上升 ⇒ 平坦页上 unwarping 是在帮倒忙），**不能替代真实文档评估**：需用
@@ -553,10 +570,14 @@
 - **落地内容（2026-09-24，本 PR）**：
   ① 修法入 `backend/app/services/ocr_service.py`（`init_params` 增 `"use_doc_unwarping": False`；
   注释压至 3 行以守 457 行棘轮，见上「行数判断更正」）；
-  ② 新增契约单测 `backend/tests/test_ocr_service_engine_params.py`：stub `paddle` + 按文件路径加载
-  （`test_layout_page_skip.py` 先例），**无需 Paddle/GPU**；断言 `use_doc_unwarping is False`（`is` 严格判据）、
+  ② 新增契约单测 `backend/tests/test_ocr_service_engine_params.py`：stub `paddle` + 按文件路径加载，
+  **无需 Paddle/GPU**；断言 `use_doc_unwarping is False`（`is` 严格判据）、
   GPU 分支同样为 False、`device ∈ {cpu, gpu}`（非 `gpu:0`）、`use_doc_orientation_classify is False`，
-  并断言 `is_ready()` 为真以排除"失败路径上记 kwargs"的假绿；
+  并断言 `is_ready()` 为真以排除"失败路径上记 kwargs"的假绿。
+  **⚠️ 作用域更正（2026-09-25）**：首版照抄 `test_layout_page_skip.py` 的**模块级** stub，在 CI 首跑就把邻居
+  `test_table_template_analyze.py` 的环境闸门（`pytest.importorskip("paddle")`）伪造放行而误红——已改为
+  `monkeypatch` + fixture 作用域并加哨兵断言（`186047e`）。**那个先例本身不完整**；成因、规则与门禁见
+  **P-023**（随独立分支 `chore/agent-ops-stub-scope` 落地）；
   ③ 该测试已登记 `backend/tests/test_registry.json`（`kind: phase-a-ci`）**并**加入 `kie-phase-a.yml`
   Phase A 清单（登记而不接线会触发 audit check 4 的 WARN，破坏 0/0）；`.cursor/rules/006-cloud-testing.mdc`
   的 Phase A 最小集同步；
@@ -581,8 +602,10 @@
     `matched_rate` 同时单调），属口径变更、须登记（对照执行包 §10.9）。
   - **块级/表级不参与**：`cer_table` 与 `blocks.csv`（text/table/figure 的 gt_n/ocr_n/matched/mean_iou）
     在 before/after **逐字节相同**（表/块取自 base A，本轮未重跑 analyze），故两处破口只能来自 base B 文本侧。
-- **状态（2026-09-24 晚）**：**已落地（代码 + 契约单测 + CI 接线入库）**，**待云端 round3 复测回填**。
-  云端 round2 对该文件的临时改动已回滚；本 PR 为正式落地。`P-020 修改面 = 0` 仍保持（harness 侧未改）。
+- **状态（2026-09-25）**：**已落地（代码 + 契约单测 + CI 接线入库）**，**round2 证据链已收口**（commit / GPU /
+  版本补录见上，两处残留瑕疵已登记），**待云端 round3 复测回填**。云端 round2 对该文件的临时改动**已回滚**——
+  2026-09-25 由 `commit_before.diff`（**0 字节**）+ `commit_before.porcelain.txt`（仅两条 `??`）**独立证实**，
+  不再只是自述。`P-020 修改面 = 0` 仍保持（harness 侧未改）。
 - **现行控制（落地后仍有效，直到 round3 复测回填；harness 侧本轮无需任何改动）**：执行包 §10.11 的
   base-B 空间门禁**保持生效**（对本批 15 份即 FAIL 状态）；base B 一律**只用于文本**（D-A 顺序配对），
   几何一律取自 **view 层（base A）**；**复测 G4 时不得因为「修法已落地」而放宽该门禁**——门禁的意义正是

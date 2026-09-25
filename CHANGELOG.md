@@ -162,7 +162,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   guard behaving as designed - no coverage lost) and the Phase A list here is `42 passed, 1 skipped`. The 5 local
   collection errors are pre-existing and unrelated (no `fastapi` locally), tolerated by `backend/pytest.ini`.
 - **P-021 — `POST /api/v1/ocr` returned polygons outside the uploaded pixel frame** (fix landed 2026-09-24; the cloud
-  before/after evidence is from session `a73468b`): `ocr_service._init_engine` built the engine **without**
+  before/after evidence is from session `a73468b`, taken on NVIDIA A10 / driver 580.65.06 with Python 3.11.1,
+  paddleocr 3.3.2, paddlex 3.3.12 and PyMuPDF 1.25.5. Two reproducibility notes: `ocr_service.py` was blob-identical
+  (`80c1fc5`) in that tree and in this one, so the readings transfer even though the cloud checkout was 7 days behind;
+  and that session's patch was the bare `+1` line where this one is net-zero on lines, so the two diffs must not be
+  compared byte-wise. The session's code-state snapshots were captured the day after and its restart log does not
+  prove a restart - both caveats are recorded in PENDING P-021): `ocr_service._init_engine` built the engine **without**
   `use_doc_unwarping`, so PaddleOCR's doc preprocessor ran UVDoc unwarping (default on) and the returned `dt_polys`
   described a **warped canvas** rather than the input image - measured as a non-rigid frame (scale 1.11-1.23 varying per
   probe, rotations flattened, `frame_w` 2227-4067 with no rule). `layout_service` and `formula_service` already pinned the

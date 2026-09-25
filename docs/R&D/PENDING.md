@@ -3,10 +3,11 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **17** 条：P-002 / P-006 / P-007 / P-008 / P-010 / P-011 / P-013 / P-014 / P-015 / P-016 / P-017 / P-018 / P-019 / P-020 / P-021 / P-023 / P-024。
-按标题自标统计：**已结保留记录 2 条**（P-014 ✅ 已结、P-019 已结保留记录），**已裁决并落地且已验证 1 条**（P-021：2026-09-24 裁决 + 落地入库 → 2026-09-25 round3 云端复测通过，§10.11 门禁 FAIL→PASS），**已裁决并落地 2 条**（P-023：2026-09-25 登记同日落地 R1–R3；P-024：2026-09-25 裁决采纳 (a)+(b) 带三修正并落地，(a) 的可辨识性实测待下次压缩回填），其余 **12 条待裁决**。
+## 待确认（本区共 **13** 条：P-002 / P-006 / P-008 / P-011 / P-014 / P-015 / P-017 / P-018 / P-019 / P-020 / P-021 / P-023 / P-024。
+按标题自标统计：**已结保留记录 3 条**（P-011 ✅ 已结、P-014 ✅ 已结、P-019 已结保留记录），**已裁决并落地且已验证 1 条**（P-021：2026-09-24 裁决 + 落地入库 → 2026-09-25 round3 云端复测通过，§10.11 门禁 FAIL→PASS），**已裁决并落地 2 条**（P-023：2026-09-25 登记同日落地 R1–R3；P-024：2026-09-25 裁决采纳 (a)+(b) 带三修正并落地，(a) 的可辨识性实测待下次压缩回填），其余 **7 条待裁决**。
 历史：P-001 已按用户裁决移除 2026-09-20，后续有需要再立项；P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
-**P-022 已结并晋升 `docs/architecture/doc-governance.md`**（2026-09-25，走本抬头「结论确认 → 晋升 → 移除」正规流程；门禁登记为 `module-map.md` §5 的 **DOC-1 / DOC-2**；此前索引漏登 P-022 亦随该次修正））
+**P-022 已结并晋升 `docs/architecture/doc-governance.md`**（2026-09-25，走本抬头「结论确认 → 晋升 → 移除」正规流程；门禁登记为 `module-map.md` §5 的 **DOC-1 / DOC-2**；此前索引漏登 P-022 亦随该次修正）；
+**P-007 / P-010 / P-013 / P-016 已结并移除**（2026-09-25 清账批次，同走「结论确认 → 晋升 → 移除」流程；结论分别由 `docs/architecture/v1.9-roadmap.md` §Scope S1 ｜ `docs/agent-ops/operations.md` §CI 成本与配额 + CHANGELOG ｜ `docs/agent-ops/doc-sync-ownership.md` 主表+脚注 2 ｜ kernel `frontend.md` 已知 gap 条目承载，明细证据仍在 CHANGELOG 与 git 历史））
 
 ### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
 - 来源：v1.8.1 PROOF-001 云端实测（mamba p12/p29 红率 58%/97%，均匀网格对应在非等宽表上大面积失准）
@@ -33,39 +34,6 @@
   （当前 `plans/` 是其唯一内容）。
 - 待办（无需额外动作）：`.zcode` 出现首个非 plans 内容时，随该次改动一并 `git add .zcode/`。
 - 先例：`.codebuddy/` 同款——`rules/` 5 个文件已跟踪、`plans/` 被忽略（`.gitignore:165`）。
-
-### P-007 · 非 KIE 任务的 Processing Results 仍显示 KIE 元信息（2026-09-16，FRONT-C1 走查发现）
-- 现象：跑完一次 invoice（KIE）任务后，Processing Results 出现 KIE 行；之后跑 **layout 任务**（无 KIE）
-  该行**仍在**，值为 `KIE confidence: 0% · KIE fields: 0`，同面板还有 `Tables: 16 · Backfill: 89/588 (15%)`
-  与 `⚠ kie_production: empty_fields`。
-- **判定：既有行为，非 v1.8.3 回归**——前端 `renderQualityPanelPro` 与 v1.8.2 的 `app.js` **逐行等价**
-  （59 行，唯一差异是 `export` 前缀；2026-09-16 脚本比对确认）。
-- 根因（两层）：
-  1. 后端 `app/models/api_models.py:136-144` 把 `kie_fields_count` / `kie_confidence_avg` /
-     `kie_production_hit` / `kie_production_reason` 的默认值定义为 `0` / `0.0` / `False` / `""` ——
-     **未跑 KIE 的任务照样带这些零值**（不是 `null`/缺省）；`kie_production_reason` 由
-     `document_pipeline_orchestrator.py:1052/1062` 的 `evaluate_kie_production_hit` 写入。
-  2. 前端 `modules/result-panels/quality.js` 的显示条件是「面板显示 = `kieAttempted || hasBackfill`，
-     KIE 行显示 = `kie_confidence_avg != null`」——layout 任务有 backfill（Tables 16）→ 面板正常显示
-     → KIE 行因默认值 `0.0` 而非 null 被一并显示。
-- 修复方向（二选一，未做）：
-  - **A 后端**：这些字段改 `Optional[...] = None`，前端 `!= null` 判断天然生效（零前端改动）；
-    代价 = 动契约（OpenAPI 快照 / `batch_export_service` CSV 列 / KIE 契约测试需同步）。
-  - **B 前端**：KIE 行显示条件从 `!= null` 收紧为 `kieAttempted`（或 `kie_stage` 非空）；
-    纯前端、风险小，但属行为变更，需补 vitest/e2e 覆盖。
-- 触发：并入 v1.9；若客户对结果面板"零值误导"有感知则提前。
-- **状态（2026-09-20，用户裁决：方案 B，已立项 v1.9）**：判据**分两段**（2026-09-20 读码审核修正）——
-  summary 行（`KIE confidence` / `KIE fields`）用 `quality.kie_confidence_source != ""` gate
-  （`document_pipeline_orchestrator.py:1077-1080` 保证只在 `attempted && succeeded` 时非空；
-  **不能只按 `kieAttempted`**：`skipped_doc_type` / `service_unavailable` / `runtime_error` 等失败路径
-  同为 `attempted=True`（`:537/571/597/724`），只按它 gate 会留下失败态 "0%" 误显，P-007 修一半）；
-  KIE 警告块按 `kieAttempted` gate。纯前端、不动 OpenAPI 契约；vitest **4 态** + e2e 1 例
-  （需先扩 `mock-pro-api.js` 的 quality preset——现有 mock 使 quality 面板永远走隐藏路径）。
-  范围与验收口径见 `docs/architecture/v1.9-roadmap.md` §Scope S1。
-  **✅ 已结（2026-09-20）**：v1.9 S1 落地（commit `b571d21`）——`renderQualityPanelPro` 的 summary 行改按
-  `kie_confidence_source` gate、警告块按 `kieAttempted` gate；覆盖同批补齐（vitest 4 态、e2e 1 例，
-  并把 e2e mock 的 quality 换成真实后端形态 + `qualityPreset`）。证据：vitest 67/67、e2e 15/15 且
-  `0 runtime error`、F1-F7 / C1-C9 / E1 / audit 全绿；scope 与验收口径保留在 roadmap §S1（本组按规则移除）。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 - 背景：v1.8.3 FRONT-C1 走查 + SPLIT-U4 期间，同一类缺口**两次暴露**——**"声明的东西是否真的被接上"没有巡检**。
@@ -169,45 +137,7 @@
   （冷缓存下 `install --with-deps chromium` 仅 19s、套件 7.6s/14 passed、2 workers、0 runtime error，
   浏览器缓存已写入）；④ e2e / vitest **仍未进 required checks**，protected 分支策略是独立决策。
 
-### P-010 · 前端风格 linter 缺位（2026-09-17，P-004 收尾时登记）
-- 现状：`DEVELOPMENT.md` 第 4-6 条与 kernel `frontend.md` 只覆盖**结构与边界**（F1-F6 / C1-C8），
-  无代码风格检查；后端至少有 `ruff check backend/ packages/docuvision-core/ --select F401,F841`（kernel `testing.md` §死代码检查）。
-- 缺口：`frontend/modules/**` + `shared/**` 的**死代码 / 未用变量 / 未用导出**无任何机检，只能靠人读——
-  P-008 的孤儿模块 `floating-progress.js`（D11）正是这类缺口的表现。
-- 不做的理由（决定维持）：引入 ESLint/Prettier 会一次性报出大量既有问题（33 个模块 + shared + tests），
-  必须单独立项：① 只开 high-value 规则（`no-unused-vars` / `no-undef` / import 相关），
-  ② 分批清账到零，③ 最后才进 CI。
-- 触发：v1.9；或前端出现一次"死代码 / 未用导出"类事故时提前。
-- 相关：P-008（孤儿模块与悬空测试的巡检门禁）。
-- **状态（2026-09-17，阶段 1 已落地）**：`frontend/eslint.config.mjs`（flat config；只开
-  `no-unused-vars`（`args:"none"`）+ `no-undef`；browser globals + 4 个**真实**跨脚本全局
-  `DocuVisionExport` / `DocuVisionDemo` / `DocuVisionUiFeatures` / `katex`；作用域 = `app.js` +
-  `modules/**` + `shared/**`，`frontend/tests/**` 留第二批）+ `package.json` 的 `"lint": "eslint ."`。
-  首轮 **76 项**（其中 49 项在 app.js：v1.8.3 拆分后遗留的**死 import**）已清账到 **1 项**；
-  唯一剩余项是 P-014 的**真实缺陷**，已于同日 follow-up 按选项 ②′ 解决 →
-  **`npm run lint` 现为 0 error（首次清零）**。
-  **阶段 3（接 CI）已落地（2026-09-17，用户授权）**：`.github/workflows/lint.yml` 追加 `actions/setup-node@v4`
-  （node `"22"`；eslint 10.10.0 的 `engines.node` = `^20.19.0 || ^22.13.0 || >=24`）+ `npm ci`（`working-directory: frontend`，
-  lockfile 已跟踪）+ `npm run lint`，且置于四个 stdlib 门禁**之后**（stdlib 先失败就不必装 node）。
-  `frontend/**` 本就在 lint.yml 的 paths 内 → **未改触发路径**。作用域仍为第一批：`frontend/tests/**` 未纳入（第二批）。
-  **成本口径已落档**（2026-09-17）：ESLint 块是本仓唯一的 node 依赖面，其"配额"效应只在**仓库转私有**
-  （或迁到带配额 CI）时才成立——公开仓分钟数免费。触发即重算的口径、各 workflow 实测时长（Audit 11-12s /
-  Lint **19s**，其中 ESLint 块 +6s：`setup-node` 1s + `npm ci` 4s【冷缓存】+ `eslint .` 1s / Phase A 21-27s）
-  与"转私有后的取舍顺序"写在
-  `docs/agent-ops/operations.md` §CI 成本与配额；`lint.yml` 头部注释指向该节。
-  **✅ 已结（2026-09-20，第二批落地）**：`frontend/tests/**` 纳入 ESLint（flat config 两个 scoped override：
-  `tests/unit/**` = ESM + browser globals（jsdom）；`tests/e2e/**` = CommonJS + node globals（Playwright）；
-  规则同第一批）。首扫仅 **5 项**：1 项真死绑定（`coverage-report.js` 解构 `loaded` 未用）+ 4 项
-  `coverage.js` 混合环境（Node 文件内含 `page.addInitScript` 注入的浏览器代码）→ 以文件级
-  `/* global window, document */` 精确声明而非全局放宽。`npm run lint` 0 error，vitest 67/67、
-  e2e 15/15 回归绿。第一批 + 第二批全部落地，**本组关闭**；"格式化器（Prettier 类）"不在本组范围，
-  若有诉求属新立项（全量重排与 F1/C1 行数棘轮冲突，需先裁决）。
-  **触发**：仓库转私有、或 `main` 开 branch protection 时，按该节的 ①→③ 顺序重算并收窄 `paths`。
-  回归证据：vitest **80/80**、e2e **14/14** 全绿；`frontend/app.js` 211 → **172** 行（棘轮已两次下调）。
-  3 个结构性测试的断言从"app.js import X"改为"X 被某消费者 import"——旧断言钉的正是这批**死 import**，
-  详见 `frontend/tests/unit/_sources.js` 头注。
-
-### P-011 · CI 触发分支仍只覆盖 main（2026-09-17，P-004 收尾时登记）
+### P-011 · CI 触发分支仍只覆盖 main（2026-09-17 登记；2026-09-25 清账批次改列已结保留记录）
 - 现状：`lint.yml`、`agent-ops-audit.yml`、`kie-phase-a.yml` 的 `pull_request` 均为 `branches: [main]`
   （`agent-ops-audit.yml` 另有 push→main）→ **feature 分支阶段完全依赖 agent 自觉跑本机门禁**。
 - 本次实证代价：P-004 的 stacked PR #22 因 base 非 main，`statusCheckRollup: []`——**一次 CI 都没跑**，
@@ -244,25 +174,6 @@
   （必需检查必须在每个 PR 上报，否则停在 "Expected" 卡死 PR），`push.paths` 保留（仅供 bypass 场景）。
   2026-09-17 的"翻转判决"paths 清单保留为**转计费后重新收窄**的参照；公开仓每 PR 成本 ~1 min（免费）。
   **本组关闭**；重开条件：仓库转私有（计费）或 audit 明显变慢。
-
-### P-013 · 服务层模块的 owning doc 未核实（2026-09-17，doc-sync 归属表补全时登记）
-- 背景：补全 kernel `doc-sync.md` 机制 2 归属表时逐模块核实 owning doc。有把握的行已写入
-  `docs/agent-ops/doc-sync-ownership.md`；以下模块**只出现在 frozen release 文档或测试清单里**，
-  没有稳定的 living owning doc，故**只留 TODO、不猜**（P-012 教训）：
-  `backend/app/services/` 的 `batch_service`、`batch_export_service`、`hitl_policy`、`hitl_queue`、
-  `webhook_service`、`document_info_utils`、`document_profile`、`document_type_classifier`、
-  `file_type_detector`、`kie_fields_update`、`formula_service`、`seal_service`、`page_type_probe`、
-  `pdf_raster`、`pdf_tools_service`、`pymupdf_table_engine`、`single_file_pipeline`、
-  `unified_layout_service`、`_layout_order`；`backend/app/core/` 的 `aistudio_compat`、`debug_utils`、
-  `gpu_lib_path`、`trial_auth`；`backend/app/models/` 的 `analyze_options`、`layout_result`。
-- **状态（2026-09-17 用户裁决选项 C 并执行完毕，本组可结）**：对上述 25 个模块做**双重**扫描（模块/文件名 +
-  派生类名）比对 living 文档集 → **2 个有载体**（`batch_service.py` / `hitl_queue.py` → `v1.5-roadmap.md`，
-  已补入主表）、**23 个无常驻 living 契约**（在附表脚注 2 **显式列出**，不再"留空让人猜"）。
-  判定规则与 5 条"仅被提及不计载体"的线索一并写入脚注；触发条件改为常驻条款：
-  **任一模块发生契约变更时先定归属再改**。
-- 结论固化位置：`docs/agent-ops/doc-sync-ownership.md`（主表 + 脚注 2）——该表本身即机制 2 的结论载体，
-  故不另晋升 `docs/architecture/`。
-- 相关：`docs/agent-ops/doc-sync-ownership.md` 脚注 2；kernel `core/doc-sync.md` 机制 2。
 
 ### P-014 · `shell/tools.js` 的 `startProcessing` 未绑定 + P-010 清账未清零（2026-09-17）✅ 已结（按 ②′ 整体退役）
 - 现象（ESLint 首次全量扫描发现，也是唯一剩余报错）：`frontend/modules/shell/tools.js` 的
@@ -316,41 +227,6 @@
   否决"连历史一起迁"：改写已推送历史，红线级，收益（省几十 MB）远小于代价。
 - 触发（保留）：clone 体积或 CI 时长成为实际问题时重议 ②。
 - 相关：`.gitignore` 的 `!test_data/testfiles/**` 负向块；kernel 的"大二进制入库须声明"条款。
-
-### P-016 · `onload="adjustDocumentSize()"` 内联处理器 ReferenceError（2026-09-17，覆盖度报告首跑发现）
-- 现象：每次预览图加载都抛 `ReferenceError: adjustDocumentSize is not defined`——8 个 e2e 用例各命中一次。
-  证据：`test_data/TestResult/PhaseUI/coverage-2026-09-17.md` §4（由 P-008 gap 2 的运行时覆盖度报告产出，
-  非人工观察）。
-- 根因：`frontend/modules/preview-paging/nav.js:108`、`render.js:87` 与 `render.js:103` 在**模板字符串**里拼出
-  `<img id="documentImage" ... onload="adjustDocumentSize()">`。**内联事件处理器在全局作用域求值**，而
-  `adjustDocumentSize` 是模块内绑定（`preview-paging/core.js` 导出；`overlay-render.js` 经 `deps` 注入）→
-  全局查不到 → 必抛。全仓该模式共 **3 处**，均在 D5 预览域。
-- 为什么此前所有门禁都看不见（这条比缺陷本身更值钱）：ESLint `no-undef` **只分析代码、不分析字符串**
-  （引用在模板字面量里）；C9 只比对 `deps.*` 键集合；F6/F7/C1-C9 全是结构性；e2e 只断言 UI 行为、
-  **不断言"无 pageerror"** → 于是 14/14 全绿同时带着这个错误。
-- 影响面（需实测确认，不过度断言）：同一路径另有模块作用域的 `setTimeout(() => adjustDocumentSize(), 100)`
-  兜底（`nav.js:112` / `render.js:93,109`），故**当前未观察到用户可见故障**；但每次预览都污染控制台/错误上报，
-  且"依赖兜底恰好存在"很脆。与 P-014 同类：错误真实，影响面由实测决定。
-- 候选修法（三选一，均属前端行为/结构变更，**需单独 commit**）：
-  ① 模板改为 `data-*` + `addEventListener('load', …)`（根治，顺带清掉内联 handler）；
-  ② 在模块内 `el.onload = adjustDocumentSize`（需先拿到元素，改动最小）；
-  ③ 保留内联写法但显式 `window.adjustDocumentSize = …`——**不推荐**，新增全局桥，违反 L3 / DEVELOPMENT.md 第 6 条。
-- 可复用结论：**内联事件处理器是 `no-undef` 的结构性盲区**。修 ① 时可考虑同时补一条 lint
-  （模板里出现 `on\w+="` 即报）或写进 kernel `frontend.md` 的已知 gap。
-- 触发：v1.9 前端批次；或任何一次要动 D5 预览渲染的改动（届时一并处理）。
-- 相关：P-008 gap 2（发现它的报告）、P-014（同类"错误真实但影响面待实测"）、P-010。
-- **状态（2026-09-17 用户裁决"根治方案"= 选项 ①，已修完，本组可结）**：三处模板的内联 handler 全部换成
-  模块内的真实监听器——新增 `core.js::bindDocumentImageLoad(onError?)`（`addEventListener('load', …)`；
-  `onerror` 仅在 render.js 传回调；`image.complete` 时立即补一次调用以覆盖**缓存命中不触发 load** 的情形），
-  `nav.js:108` / `render.js:87,103` 的 `onload=` `onerror=` 属性删除，改为插入 HTML 后调用；
-  render.js 的失败 UI 提为模块内函数 `showPreviewImageFailed()`（不再依赖 `this.parentElement` 字符串转义）。
-  `frontend_domain_map.json` 的 D5 函数清单同 commit 登记新函数。
-  **证据**：① 全仓 `on(load|error|click|…)=` 内联 handler 计数 **3 → 0**（唯一残留是 core.js 里说明本修复的注释）；
-  ② 覆盖度报告 `0 runtime error(s)`（修复前 8 条），"注册了但从未触发"由 5 → 4（`preview-paging/core.js` 的
-  load 监听器现在真的触发了 —— 修复顺带改善了覆盖信号）；③ e2e **14/14**（11.4s）、vitest **80/80**、
-  `npm run lint` 0、F1-F7 / C1-C9 / audit 全绿。
-  **未做（可选）**：给"模板里出现内联 handler"加一条机检（本轮是 3 处、已清零，属预防性）；
-  可复用结论"内联 handler 在全局作用域求值、是 `no-undef` 的结构性盲区"已写进 kernel `frontend.md` 的已知 gap。
 
 ### P-017 · F1 500 行预算是否调整（按域差异化预算 vs 上调预算）（2026-09-20，v1.9 S2-5 暴露）
 - **触发事实（实测，S2 全批 6 次切分）**：巨函数切分会**增加**文件行数（新增函数边界、闭包参数与 docstring），
@@ -411,10 +287,11 @@
 - **触发条件**：立即可启动（P0 不依赖外部 GT）；P2-P4 按获得外部 GT 或 P-002 立项顺次激活。
 - **相关**：P-002（P1 是其量化入口）· Proof Pack（雏形复用）· 护城河共识（fixture 库 + 行业数字 + JSS，
   不在管线代码）。
-- **状态（2026-09-22）**：立项登记已落地（PR #30 → main `337f4e0`，docs-only）；执行包
+- **状态（2026-09-22 登记；2026-09-25 清账批次更新）**：立项登记已落地（PR #30 → main `337f4e0`，docs-only）；执行包
   `docs/R&D/P018-GT工厂-立项条目.md` 已在落地后删除（local-only，内容已由本条承载）。
-  **P0 评测 harness 与 P1 弱 GT 合成尚未开工**——按本条护栏，实现属独立后续批次（各自立项、各自验收），
-  本条目只登记决策与边界，不含任何 `scripts/` / `backend/` 代码。
+  **P0 评测 harness 与 P1 弱 GT 合成已由 P-020 落地**（2026-09-24 M1+M2，local-only，指标族与边界按本条护栏执行，
+  TEDS 随 P2）——**下一阶段 P2 表格结构 GT 对账（公开资源 PubTabNet / FinTabNet / WTW 选型）待用户裁决**；
+  P3-P4 仍按获得外部 GT 或 P-002 立项顺次激活。
 
 ### P-019 · module-map §6 A3 行数字副本漂移 → 单源化（2026-09-18 登记，同日裁决，09-21 重编号落地，已结保留记录）
 - 现象：`module-map.md` §6 断言表 A3 行（143 行）的 `boot_sequence` 副本写 **17**，事实源

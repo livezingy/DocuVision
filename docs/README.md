@@ -29,6 +29,7 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 11. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
 12. [architecture/module-map.md](architecture/module-map.md) — module map: backend router domains × frontend module domains, dependency laws, gate inventory (P-004)
 13. [architecture/v1.9-roadmap.md](architecture/v1.9-roadmap.md) — v1.9 **立项**（2026-09-20，前端批次：P-007 方案 B / 巨函数切分 / JSDoc+tsc 评估 / 两个孤儿 wire-or-retire）
+14. [architecture/doc-governance.md](architecture/doc-governance.md) — 文档治理门禁（**DOC-1** 墓碑前缀 / **DOC-2** 路径漂移；规则文本在此，清单真源在 `scripts/docs_refs_audit.py`；晋升自 PENDING P-022，2026-09-25）
 
 ## Validation and QA
 

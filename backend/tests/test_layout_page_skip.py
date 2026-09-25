@@ -8,6 +8,10 @@ Locks two bugs found in Cloud validation of 03_paper_arxiv-mamba:
    https://docs.python.org/3.11/library/asyncio-runner.html#asyncio.run
 2. ``total_pages`` used ``len(page_layouts)`` (successes), so a full skip
    reported ``total_pages=0``.
+
+The ``paddle`` / ``cv2`` stubs are scoped to the module load (``unittest.mock.patch.dict``):
+a module-level stub runs at collection time and would defeat neighbours'
+``pytest.importorskip("paddle")`` gates (P-023; ``check_stub_scope``).
 """
 
 from __future__ import annotations
@@ -15,17 +19,17 @@ from __future__ import annotations
 import importlib.util
 import sys
 import types
+import unittest.mock
 from pathlib import Path
 
-for _mod in ("paddle", "cv2"):
-    if _mod not in sys.modules:
-        sys.modules[_mod] = types.ModuleType(_mod)
+_STUBS = {_mod: types.ModuleType(_mod) for _mod in ("paddle", "cv2")}
 
 _LAYOUT_PATH = Path(__file__).resolve().parents[1] / "app" / "services" / "layout_service.py"
 _spec = importlib.util.spec_from_file_location("layout_service_for_page_skip_tests", _LAYOUT_PATH)
 assert _spec is not None and _spec.loader is not None
 _layout_mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_layout_mod)
+with unittest.mock.patch.dict(sys.modules, _STUBS):
+    _spec.loader.exec_module(_layout_mod)
 
 _invoke_worker_command = _layout_mod._invoke_worker_command
 _build_pdf_layout_result = _layout_mod._build_pdf_layout_result

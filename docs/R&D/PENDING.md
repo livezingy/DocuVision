@@ -3,9 +3,10 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **15** 条：P-002 / P-006 / P-007 / P-008 / P-010 / P-011 / P-013 / P-014 / P-015 / P-016 / P-017 / P-018 / P-019 / P-020 / P-021。
-按标题自标统计：**已结保留记录 2 条**（P-014 ✅ 已结、P-019 已结保留记录），其余 **13 条待裁决**。
-历史：P-001 已按用户裁决移除 2026-09-20，后续有需要再立项；P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`）
+## 待确认（本区共 **16** 条：P-002 / P-006 / P-007 / P-008 / P-010 / P-011 / P-013 / P-014 / P-015 / P-016 / P-017 / P-018 / P-019 / P-020 / P-021 / P-023。
+按标题自标统计：**已结保留记录 2 条**（P-014 ✅ 已结、P-019 已结保留记录），**已裁决并落地 1 条**（P-023：2026-09-25 登记同日落地 R1–R3），其余 **13 条待裁决**。
+历史：P-001 已按用户裁决移除 2026-09-20，后续有需要再立项；P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
+**P-022 已结并晋升 `docs/architecture/doc-governance.md`**（2026-09-25，走本抬头「结论确认 → 晋升 → 移除」正规流程；门禁登记为 `module-map.md` §5 的 **DOC-1 / DOC-2**；此前索引漏登 P-022 亦随该次修正））
 
 ### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
 - 来源：v1.8.1 PROOF-001 云端实测（mamba p12/p29 红率 58%/97%，均匀网格对应在非等宽表上大面积失准）
@@ -550,38 +551,58 @@
   拦住「换个 OCR 服务/版本后坐标静默错位」。三者关系：本条目（P-021）负责缺陷与修法，
   P-020 负责秤；**落地前 §10.11 是这条结论的强制护栏**。
 
-### P-022 · 文档「墓碑前缀」门禁：退役路径不得再出现在对外物料（2026-09-24，Lite 清理产出）
-- **来源**：Lite 从对外物料清退时，6 处死引用全靠人工逐文件核对发现；用户 2026-09-24 裁决**只做墓碑前缀**
-  （链接存在性规则本轮不做，理由见下）。目标：把"删干净"从靠人记变成靠门禁。
-- **交付**：`scripts/docs_refs_audit.py`（新模块）+ `audit_agent_ops.py` 接线（1 条 import + 2 处调用）。
-  接线受两条例线约束：① `audit_agent_ops.py` 原先**恰好 500 行**（预算 500、零余量），② 抬高
-  `file_size_allowlist.json` 棘轮是红线 → 故**不加 allowlist 条目**，而是把既有的 `check_doc_drift()` /
-  `norm_ref()` 及其常量**迁入新模块**（500 → **462 行**），沿用本仓既有"audit 作编排、检查拆模块"先例
-  （`frontend_coupling.py` / `test_registry_audit.py`）。**零 CI 配置改动**：`agent-ops-audit` 每 PR 必跑，import 即生效。
-- **规则**（全部字面匹配、大小写不敏感；无 regex token、无 subprocess/exec、不写盘——文档是数据不是程序）：
-  - **墓碑 token（17 条 → ERROR）**：`apps/lite/`、`supabase/`、`:8001`、`run_lite`、`lite.html`、`lite.js`、
-    `lite-api.md`、`lite-overrides`、`test:e2e:lite`、`[lite]`、`core_table_extractor`、
-    `docuvision_core.extractors|engines|models`、`lite-batch`、`lite-preview`、`lite_ui_test_checklist`。
-  - **退役标记豁免**：同行含"退役／已删除／移除／不存在／已过期／retired／removed／…"时视为**公告**而非指令
-    （"`apps/lite/**` 已删除"是文档，不是过期命令）。
-  - **扫描白名单（19 个文件）**：`README.md`、`docs/README.md`、`docs/demo/**`、`docs/architecture/**`、
-    `packages/**/README.md`。
-  - **归档豁免（理由随报告打印，不静默）**：`CHANGELOG.md`、`docs/release/**`、`docs/R&D/**`、
-    `docs/agent-ops/**`、`test_data/acceptance/**`、`docs/architecture/v1.*-roadmap.md`、
-    `docs/architecture/pp-structurev3-fix-plan.md`——引用已删之物是历史的本分。
-  - **ALLOWLIST（2 条，棘轮只减不增）**：`CLOUD_VALIDATION.md` 的 `LITE-PREVIEW` / `LITE-BATCH`
-    （§2 冻结抬头下 v1.2–v1.4 发版门禁行）；`MAX_ALLOWLIST = 2` 由 selftest 守着。
-- **明确不做（本轮，含理由）**：**链接存在性**（markdown 链接目标）规则。实测裸上会红 **4 处真死链**
-  （`docs/architecture/docuvision-system-design.md` 的 `:1039`×2、`:1040`、`:1041`，`./release/…` 应为 `../release/…`）
-  \+ **9 处误报**（README 注释块内 4 条待录制 GIF、`media/README.md` 计划表 5 条）→ 收益/维护比明显低于墓碑规则，
-  留作独立议题；**该 4 条已在同 PR 的第二个提交修复**（`./release/` → `../release/`，共 4 处，见 CHANGELOG）。**也不做** `cd <路径>` 的 cwd 语义与机器绝对路径
-  （实测 `cd ../packages/docuvision-core` 从 `backend/` 出发是对的，从文件目录解析即误报）。
-- **实证（2026-09-24）**：门禁 **0 error / 0 warning**（受检 19 文件）；**正向对照**——临时注入
-  `cd apps/lite/backend && python run_lite.py` 到 `docs/demo/_tmp_bad_sample.md` → **1 ERROR / exit 1**，样本已删；
-  `audit_agent_ops.py --selftest` 由 **16 → 26**（+10 为新模块的纯谓词断言）；audit 判定不变（0 error / 0 warning）；
-  `lint_file_size` 对两文件均 OK。
-- **口径边界（诚实登记）**：① 标记豁免是"同行情景词"，挡不住把死引用写进一句未提退役的话（那正是要抓的）；
-  ② ALLOWLIST 以「文件 + 字面子串」豁免，同文件其它位置再出现同 token 会一并放过（靠 reason 字段留痕）；
-  ③ 只覆盖上列白名单，`docs/**` 之外的非生成物料（如 `.cursor/rules/002/003/006`）不在内。
-- **触发条件**：任何一次 v 级退役/删除（在 `RETIRED` 加一行即可）。清单与豁免的 owner 是
-  `scripts/docs_refs_audit.py`（其 docstring 指向本条目）。
+### P-023 · 测试 stub 作用域无规则：模块级 `sys.modules` 占位会**伪造「本机已装 Paddle」**（2026-09-25，P-021 首次 CI 运行产出；同日裁决并落地 R1–R3）
+
+- **来源**：P-021 的契约单测首次进 Phase A CI（与 P-021 的修法同批）后 `kie-contract` **17s FAIL**，且失败在
+  **本改动未触碰的文件**：`tests/test_table_template_analyze.py::test_analyze_form_accepts_table_template`
+  → `ModuleNotFoundError: No module named 'fastapi'`（`1 failed, 45 passed`；**新单测自身全程绿**）。
+  用户 2026-09-25 追问"是上下文过长还是规则不明确"，据此立项。
+- **现象（机制）**：新单测在**模块级**写 `sys.modules["paddle"] = types.ModuleType("paddle")`（为让
+  `ocr_service.py:9` 的顶层 `import paddle` 通过；占位模块不含任何 Paddle 代码）。pytest 在**收集阶段**就 import
+  所有测试模块，故该占位在邻居运行时**仍然存在**；邻居用 `pytest.importorskip("paddle")` 作**环境闸门**
+  （其注释原文："Phase A CI … intentionally runs without Paddle, so skip there"），读到"有 Paddle"→ 不再跳过
+  → 撞上它*间接*保护的 `from fastapi.testclient import ...`（Phase A venv 故意不带 fastapi）。
+- **根因定性：规则盲区（主因），非上下文长度**——即使上下文无限也会踩，因为无一处成文、只能靠推断：
+  - `004-project.mdc:50-60`（kernel `core/testing.md`）的判据只问**"你的测试需不需要服务器/GPU"**，
+    从不问第二问：**"你的测试会不会替*别人*假装 Paddle 已就位？"** `sys.modules`、stub 作用域、`monkeypatch`、
+    "Phase A 是单进程共享会话" 全仓无一处成文。
+  - **先例不完整（核心成因）**：`test_layout_types.py:20-23`、`test_layout_page_skip.py:20-22` 都用**模块级** stub
+    且自述"本机无 paddle 所以 stub"，**无一行**提示"此模式只适用于不在 Phase A 清单的文件"。两者登记
+    `kind: full`（不在 CI 清单）→ 该模式**只在 `kind: full` 内自洽**。对 Agent 而言先例权重常高于规则文本，
+    故那个缺注的模板被直接照抄。
+  - 仓库**知道**"是否进 CI 清单"有语义（`test_registry_audit.py` 三向对账 + `kind` 枚举），但从未写出其语义后果。
+  - 另有一份独立责任（**验证设计**，与上下文无关）：把测试加进**共享会话**清单，却在**单文件**模式下验证——
+    跨文件污染**结构上**不可能被单文件运行暴露；正确代理成本为零（见 R3）。
+- **预存性（本坑先于 P-021 存在；已实测 2026-09-25）**：两个 `kind: full` 文件的模块级 stub 是**入库既有**的，
+  按字母序**早于** `test_table_template_analyze.py` 被收集 → 任何收集整个目录的会话都会让该闸门失效。
+  之所以长期未炸：既有全量实测在**云端**做（`CLOUD_VALIDATION.md:458`：`430 passed, 1 skipped, 0 failed`），
+  而云端**装了 fastapi** → 闸门放行后邻居正常跑并**通过**；一旦环境是**无 fastapi + 无 paddle**
+  （= Phase A CI / 本机）即硬失败。
+  - ① 最小复现 `pytest tests/test_layout_page_skip.py tests/test_table_template_analyze.py -q`：
+    修前 **1 failed**（失败＝邻居同一用例，`ModuleNotFoundError: No module named 'fastapi'`）⇒
+    **不含 P-021 的任何文件也照样红**；修后 **8 passed, 1 skipped**。
+  - ② 整目录断言 `pytest tests -q -k analyze_form_accepts_table_template`：修前 **1 failed**；修后
+    **1 skipped, 5 errors**（5 errors 为本机缺 fastapi 的**既有**收集错误，与本文无关，由 `pytest.ini` 的
+    `--continue-on-collection-errors` 容忍）⇒ "任何收集整个目录的会话都会中招"成立。
+- **危险方向（写规则/门禁的核心理由）**：本次只是"误红"，属**幸运**——闸门保护的是 `fastapi` import，所以立刻炸。
+  若邻居的闸门只决定**要不要跑**，同一泄漏会表现为**静默少跑**：无红灯、覆盖悄悄消失。**规则文本防意图，门禁防复发。**
+- **落地（本 PR；用户 2026-09-25 裁决：R2 范围取 (ii) 全部 `backend/tests/**`）**：
+  - **R1 规则**：kernel `docs/agent-ops/core/testing.md` §pytest 边界加判据——**清单内必须作用域化**
+    （fixture 的 `monkeypatch.setitem`，或加载期的 `unittest.mock.patch.dict`），**禁止**模块级 `sys.modules[...]`；
+    清单外（`kind: full`）可用模块级。生成副本由 `scripts/sync_agent_rules.py` 重生成（勿手改副本）。
+  - **R2 门禁**：`scripts/test_registry_audit.py` 新增 `check_stub_scope()` + `_module_level_sys_modules_writes()`
+    ——AST，只认**模块级**写入、**不下潜**函数/类/lambda，覆盖**全部** `backend/tests/**`；接线 `audit_agent_ops.py`
+    （1 行调用 + docstring）；selftest **26 → 31**（+5 条纯谓词断言）；`module-map.md` §5 增 **T2** 行、§6 A6 行补 check 5。
+  - **R3 验证义务**：kernel 同文 §测试登记口径 加一条——**把测试加进 CI 清单时，本机验证必须跑完整文件清单**，
+    不许只跑单文件（补上「验证设计」那一份缺口）。
+  - **R4（归属说明）**：另一项是给 **P-021 条目** 的 ② 行补注"该先例是模块级 stub、本次改为 `monkeypatch` 作用域、
+    成因见 P-023"——**属 P-021 的记录，随 P-021 的分支落地，不并入本 PR**。
+- **正向对照（跑在真实事实上）**：接线后首次 audit **精准命中**两处既有缺陷
+  （`backend/tests/test_layout_page_skip.py:22`、`test_layout_types.py:23`）**加**两处 kernel 副本漂移；修完即
+  **0 error / 0 warning**。本分支 Phase A 清单读数为 **42 passed, 1 skipped**（该清单不含 P-021 新增的契约单测）。
+- **顺带修复既有缺陷**：那两个 `kind: full` 文件改为**加载期作用域**（`unittest.mock.patch.dict(sys.modules, …)`，
+  载完自动回滚）⇒ **本机整目录跑不再红**（见上 ①② 的修前/修后对比）。
+- **现行控制**：本 PR 之后，`backend/tests/**` 的任何模块级 stub 都会在本地与 CI 同时被 check 5 拦下。
+- **触发条件**：任何新增/修改 `backend/tests/**` 且需要 stub 重依赖（`paddle`/`cv2`/`torch` 等）时；改
+  `test_registry.json` 的 `kind` 或 Phase A 清单时应同查本条目。
+- **状态（2026-09-25）**：**已落地**（登记与落地同日）；R4 见上（归 P-021 的记录）。

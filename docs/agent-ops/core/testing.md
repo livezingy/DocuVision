@@ -14,6 +14,13 @@
 | 前端 Vitest | 否 | 本机或 Cloud | 允许 |
 
 - 本机 pytest 用 `D:\USERS\livez\Python\` 解释器；先确认测试不触发 `import paddle` / `import torch` / 连 :8000。
+- **stub 的作用域（P-023）**：测试需要 stub 重依赖（`paddle` / `cv2` / `torch`）时，**按该文件是否在 Phase A CI
+  清单**决定：**清单内必须作用域化**——fixture 用 `monkeypatch.setitem`，模块加载期用 `unittest.mock.patch.dict`；
+  **禁止**在模块级写 `sys.modules[...]`。清单外（`kind: full`）可用模块级，但仍推荐作用域化。
+  理由：pytest 在**收集期**就 import 全部测试模块，而 Phase A 是**单进程共享会话**，模块级 stub 会让邻居的
+  `pytest.importorskip("paddle")` 环境闸门误判"本机已装 Paddle"——轻则误红（撞上闸门间接保护的 import），
+  重则**静默少跑**（覆盖消失而无人报警）。机检：`scripts/test_registry_audit.py` 的 `check_stub_scope()`
+  （覆盖全部 `backend/tests/**`，模块级 `sys.modules[...]` 赋值 = ERROR）。
 - 改后端/KIE/编排须给**可复制 Cloud 命令 + 期望**（针对需服务器/GPU 的部分）。
 - **硬门槛**（须 Cloud 通过再继续）：KIE/编排/契约字段变更、发版合 main、用户明确要求。
 - **Pro e2e 防遗忘**：新增/修改 Pro e2e 须挂进 CI 或登记到 `UI_VERIFICATION_MATRIX.md` 手工桶并标注"CI 不覆盖"。
@@ -33,6 +40,8 @@
   与 `kie-phase-a.yml` Phase A 列表不一致，见 `scripts/test_registry_audit.py`）。漏登记 = audit 红。
 - 全量 pytest 走 `backend/pytest.ini` 的 `--continue-on-collection-errors`：单个 collection error 不再
   中断其余用例（P-008：曾致 430 用例全灭），但仍以非零码退出——容错不掩盖错误。
+- **把测试加进 Phase A CI 清单时的验证义务（P-023）**：本机验证必须跑**该命令的完整文件清单**，不许只跑单文件
+  ——跨文件污染（stub 作用域、`sys.modules` 污染）**只在整表运行时暴露**（P-023：首版只跑单文件全绿，CI 才炸）。
 
 ## 死代码检查
 - 仅扫 touched 文件：未用 import、不可达分支、注释遗留块、已移除调用方但仍定义的符号。

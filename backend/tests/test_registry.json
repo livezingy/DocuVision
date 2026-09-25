@@ -15,6 +15,10 @@
     "kind": "phase-a-ci",
     "note": "KIE service contract (mock)"
   },
+  "test_ocr_service_engine_params.py": {
+    "kind": "phase-a-ci",
+    "note": "OCR engine init-param contract (use_doc_unwarping=False, P-021; mock, no paddle)"
+  },
   "test_orchestrator_order.py": {
     "kind": "phase-a-ci",
     "note": "Pipeline stage order (mock)"

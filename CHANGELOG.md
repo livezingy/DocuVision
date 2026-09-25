@@ -114,10 +114,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Lite rows in §按代码改动/发版最小集 are dropped.
 - `packages/docuvision-core/pyproject.toml` description and `docuvision_core/__init__.py` docstring now describe what the
   package actually is (utils + `table_column_mapping`).
-- **CI install line de-Lite'd**: `.github/workflows/kie-phase-a.yml` now runs
-  `pip install -e ../packages/docuvision-core` (the `[lite]` extra only produced a pip warning). The line is kept, but its
-  necessity is now documented in place: `backend/tests/conftest.py` already puts the core dir on `sys.path` and the kept
-  modules are stdlib-only, so the install is belt-and-braces rather than the sole mechanism.
+- **CI core install line: de-Lite'd, then dropped** (this paragraph supersedes earlier wording that said the line was
+  kept): `.github/workflows/kie-phase-a.yml` first lost the dead `[lite]` extra, then the whole
+  `pip install -e ../packages/docuvision-core` line went in `33f5df5` — `backend/tests/conftest.py` already puts the core
+  dir on `sys.path` (the kept modules are stdlib-only) and the core pytest step gets `pythonpath = ["."]` from its own
+  pyproject, so the line was installing nothing. A comment in the workflow now records why no install is present, so it is
+  not re-added without a failing test as evidence. Also mirrored in the hand-maintained
+  `.cursor/rules/006-cloud-testing.mdc`, whose Phase A block claims to mirror that workflow and still carried the install.
+- Phase A CI list grew one entry: `tests/test_ocr_service_engine_params.py` (see **Fixed** / P-021). It is a pure mock
+  (stubs `paddle`, no `import app.main`), so it fits the same CPU/no-Paddle step as the AST-scan route tests.
+- `docs/agent-ops/doc-sync-ownership.md` gains a row for `backend/app/services/ocr_service.py`, which had **no** ownership
+  entry: its owning anchor is `docuvision-system-design.md` §3.2–§3.4, whose "当前固定为 False，引擎 init 硬编码" claim
+  about `use_doc_unwarping` is exactly the invariant P-021 broke (so the doc was right and the code was wrong).
 - Cursor-local rules (not part of the generated copies): `003-git.mdc` no longer claims PRs auto-run the deleted
   `CI Lite` workflow (now `Lint` / `KIE Phase A`, with `Lint` noted as unfiltered); `006-cloud-testing.mdc` drops the
   `[lite]`/`[lite,dev]` installs and the `test_table_stitch.py` / `test_table_result_mapper.py` invocations (both retired
@@ -153,6 +161,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   load, so the fakes are gone by the time the next file is collected; the same selection now reports `1 skipped` (the
   guard behaving as designed - no coverage lost) and the Phase A list here is `42 passed, 1 skipped`. The 5 local
   collection errors are pre-existing and unrelated (no `fastapi` locally), tolerated by `backend/pytest.ini`.
+- **P-021 — `POST /api/v1/ocr` returned polygons outside the uploaded pixel frame** (fix landed 2026-09-24; the cloud
+  before/after evidence is from session `a73468b`, taken on NVIDIA A10 / driver 580.65.06 with Python 3.11.1,
+  paddleocr 3.3.2, paddlex 3.3.12 and PyMuPDF 1.25.5. Two reproducibility notes: `ocr_service.py` was blob-identical
+  (`80c1fc5`) in that tree and in this one, so the readings transfer even though the cloud checkout was 7 days behind;
+  and that session's patch was the bare `+1` line where this one is net-zero on lines, so the two diffs must not be
+  compared byte-wise. The session's code-state snapshots were captured the day after and its restart log does not
+  prove a restart - both caveats are recorded in PENDING P-021): `ocr_service._init_engine` built the engine **without**
+  `use_doc_unwarping`, so PaddleOCR's doc preprocessor ran UVDoc unwarping (default on) and the returned `dt_polys`
+  described a **warped canvas** rather than the input image - measured as a non-rigid frame (scale 1.11-1.23 varying per
+  probe, rotations flattened, `frame_w` 2227-4067 with no rule). `layout_service` and `formula_service` already pinned the
+  flag; this path was the only one that did not, so the endpoint's *undeclared* coordinate-frame guarantee was broken.
+  One-line fix, **net-zero on lines**: the file sits on the `file_size_allowlist.json` ratchet at **457**, and rule R-b
+  caps an allowlisted file at its *recorded* count (not at the 500 budget) - the earlier PENDING note that read
+  "458 < 500, no gate touched" was wrong, so the comment was compressed 4 -> 3 lines to pay for the added dict entry.
+  Locked by `backend/tests/test_ocr_service_engine_params.py` (stubs `paddle`, loads the module by path - no GPU/Paddle):
+  it asserts `use_doc_unwarping is False` on **both** device branches, `device in {cpu, gpu}` and
+  `use_doc_orientation_classify is False`, plus `is_ready()` so kwargs recorded on a swallowed failure cannot fake a pass.
+  **Negative control**: flag flipped to `True` or the line deleted -> test fails; unmodified source -> passes. The test is
+  registered in `backend/tests/test_registry.json` (`phase-a-ci`) **and** added to the `kie-phase-a.yml` Phase A list -
+  registering without wiring would trip audit check 4's WARN and break the 0/0 discipline. Post-fix cloud readings on the
+  same build: `scale` 0.9992-1.0001, residual 0.6-1.1px, rotation -2.99°/-14.99° (amplitude preserved, i.e. not deskewed),
+  all 8 raw responses changed byte-wise, and text usability on the 15 specimens was **12 improved / 0 regressions /
+  3 unchanged** (recovering text the warping had eaten: cosent rotate:3 2712 -> 4963 chars).
+  **Accepted side effect**: `book.jpg` (genuinely curved spread) loses 27% of its text and its minimum confidence halves
+  (0.37 -> 0.18) - unwarping does help that class, kept as an edge case; the "dedicated curved-page channel" option was not
+  taken. **Curve monotonicity becomes 3/5 (was 5/5)** and the deviation is a metric artifact, not a regression: on
+  `cosent` (identity 0.6509 vs rotate:3 0.5646) `cer_macro` points the other way (0.2758 vs 0.3022) with
+  `line_exact_rate`/`matched_rate` nearly equal; on `financial_report_01` (rotate:3 0.9581 vs rotate:15 0.9443)
+  `matched_rate` 1.0 -> 0.5, `cer_macro` 0.3616 -> **0.7857** and `cer_nontable` 0.3663 -> 0.5714 all say rotate:15 is
+  worse while `cer_micro` alone disagrees on a 2-line denominator. `cer_corpus` breaks monotonicity on 4/5 fixtures in
+  **both** states, so the family was never uniformly monotone - full attribution in `docs/R&D/PENDING.md` P-021, with a
+  multi-metric sanity rule flagged as a separate (to-be-registered) decision. This repository claims **no** cloud
+  verification of the landing itself: the cloud numbers were produced by the round-2 session and read back locally; the
+  landing is validated locally by the contract test, the reverse control and `audit_agent_ops.py` 0/0.
+  **The first CI run then caught a trap in the test itself**: it stubbed `paddle` at module scope, and pytest imports
+  every test module at *collection* time, so the fake kept another file's `pytest.importorskip("paddle")` guard from
+  skipping - `test_table_template_analyze.py::test_analyze_form_accepts_table_template` then died on the `fastapi`
+  import that guard was *indirectly* protecting, reddening Phase A in a file this change never touched. Fixed by
+  scoping both stubs with `monkeypatch.setitem` inside the fixture, plus
+  `test_paddleocr_stub_is_not_installed_at_module_scope` so a future move back to module level fails loudly. The
+  affected guard is worth knowing about: it skips on the *wrong* dependency (paddle) relative to what it imports
+  (fastapi), so any future test that stubs `paddle` globally can break it again.
 - **P-019 — module-map §6 A3 row single-sourced** (2026-09-21): the assertion-table row
   carried its own copies of the five §3 infra numbers, and one had already drifted
   (`boot_sequence` said 17; the json fact source and the §3 registration line both say 16 —

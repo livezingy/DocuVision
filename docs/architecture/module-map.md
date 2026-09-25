@@ -123,6 +123,9 @@ core/runtime.py（共享状态枢纽）
 | F6 | init 必被装配（名字级；deps 侧由 C9 承接） | scripts/lint_frontend.py（`check_f6`） | 第 6 条 | active |
 | F7 | 孤儿模块可达性：modules/** 每个文件须被 app.js/index.html/其它脚本 import，例外登记 `known_orphans`（P-008；当前在册 0 条——两个孤儿已于 v1.9 S4 退役） | scripts/lint_frontend.py（`check_f7`） | — | active |
 | T1 | 测试登记与 Phase A CI 列表对账（登记表 ↔ 磁盘 ↔ workflow；P-008） | scripts/test_registry_audit.py（`check_test_registry`） | — | active |
+| T2 | 测试 stub 作用域：`backend/tests` 内不得在**模块级**写 `sys.modules[...]`（收集期即生效 → 泄漏给邻居、破坏其 `importorskip` 环境闸门；P-023） | scripts/test_registry_audit.py（`check_stub_scope`） | — | active |
+| DOC-1 | 文档墓碑前缀：对外物料不得出现已退役的路径/端口/命令/模块名（同行带退役标记视为公告；归档物料豁免；ALLOWLIST 只减不增） | scripts/docs_refs_audit.py（`check_retired_refs`） | — | active |
+| DOC-2 | living-doc 路径漂移：`docs/architecture` 与本索引引用的代码路径必须存在（glob / 省略号跳过；WARN 级） | scripts/docs_refs_audit.py（`check_doc_drift`） | — | active |
 | E1 | e2e 运行时错误允许清单的格式/时效/棘轮（数据文件，非许可）+ 套件用例数钉死防缩水（P-008 gap 2，2026-09-20 落 CI） | scripts/check_e2e_allowlist.py（`check_allowlist`） | — | active |
 | C1-C8 | B0 基线校准（设计 rev2 断言；--report-out 存档） | scripts/check_frontend_baseline.py | — | 时点工具 |
 | C9 | 注入保真：app.js 传入每个 initXxx 的 key 集合 == 模块体读取的 deps.* 集合（缺/多均红，不可判定签名 fail-closed；P-008 gap 1，2026-09-17 起常驻） | scripts/frontend_coupling.py（`check_injection_keys`） | 第 6 条 | active |
@@ -144,7 +147,7 @@ OpenAPI 全量快照：云端 pytest（上云前本机自查用 INV-2 契约冻�
 | A4 登记完备 | 本文件出现在 docs/README.md Architecture 节；doc-sync owning 表（`docs/agent-ops/doc-sync-ownership.md`）含 module-map.md 行；该附表本身被 docs/README.md 索引 | ERROR |
 | A5 新鲜度 | 头部「最近对照」版本 vs CHANGELOG 第一个 `## [x.y.z]` 头：两侧各取前 3 段数字成元组比较，**doc < latest → WARN（含双方版本号）**；CHANGELOG 无匹配 → WARN skip；禁止字符串 rstrip 归一化 | WARN |
 | A6 孤儿登记时效 | `known_orphans` 每条须带 ISO `added`（缺失/格式错 = ERROR，fail-closed）；超过 `ORPHAN_STALE_DAYS`（90 天）仍在册 = **WARN**，要求重新裁决「接线或退役」并记入 PENDING（把"定期巡表"降为"看告警"；P-008 gap 2）——见 `frontend_coupling.py::check_orphan_staleness` | ERROR / WARN |
-| A6 测试登记 | check 4（`scripts/test_registry_audit.py`）：`backend/tests/test_registry.json` ↔ 磁盘 `test_*.py` ↔ Phase A 列表三向对账；未登记 / 幽灵条目 / CI 跑未登记测试 = ERROR，CI 侧漂移 = WARN | ERROR/WARN |
+| A6 测试登记 | check 4（`scripts/test_registry_audit.py`）：`backend/tests/test_registry.json` ↔ 磁盘 `test_*.py` ↔ Phase A 列表三向对账；未登记 / 幽灵条目 / CI 跑未登记测试 = ERROR，CI 侧漂移 = WARN。**check 5**（同模块 `check_stub_scope`，P-023）：`backend/tests` 内**模块级** `sys.modules[...]` 写入 = ERROR（不可解析 = fail-closed ERROR） | ERROR/WARN |
 
 刷新触发（owning 行）：新增/删除 routers 域文件或 modules 域 → 同步 §2/§3 行 + 端点数/文件数 +
 §5 门禁行 + 头部对照行。**对照行的 commit 写本 PR 的 base commit**（不是合入后的 merge commit；口径见

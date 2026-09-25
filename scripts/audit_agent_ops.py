@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Unified agent-ops audit: agent-rules + living-doc + retired-refs + module-map + test-registry.
 
+check 4 = registry reconciliation; check 5 = test stub scope (P-023, no module-level
+``sys.modules[...]`` write in ``backend/tests/**``).
+
 1. agent-rules drift: a generated copy must match the kernel (`sync_agent_rules.py --check`) -> ERROR.
 2. doc references (`scripts/docs_refs_audit.py`, own module = this file keeps its budget):
    living-doc path drift -> WARN; a retired path/port/command in outward-facing docs -> ERROR.
@@ -439,7 +442,8 @@ def main() -> int:
     if "--selftest" in argv:
         return run_selftest()
     issues = (check_agent_rules() + docs_refs.check_doc_drift() + docs_refs.check_retired_refs()
-              + check_module_map() + test_registry.check_test_registry())
+              + check_module_map() + test_registry.check_test_registry()
+              + test_registry.check_stub_scope())
     errors = [i for i in issues if i["level"] == "ERROR"]
     warnings = [i for i in issues if i["level"] == "WARN"]
     if "--json" in argv:

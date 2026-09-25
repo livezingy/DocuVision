@@ -27,6 +27,7 @@
 | `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
 | `frontend/**` | `frontend/README_FRONTEND.md`、`module-map.md` §3（域清单 / 文件数 / 白名单 / 对照行） |
 | `scripts/lint_file_size.py`、`lint_routes.py`、`lint_frontend.py`、`check_frontend_baseline.py`、`audit_agent_ops.py`、`test_registry_audit.py` | **`DEVELOPMENT.md`（规范型 owning doc，非派生视图）**：规则文本在第 1-6 条；`module-map.md` §5 只登记「门禁与其实现」；kernel `routing.md` / `frontend.md` 是同源规则（面向 Agent 的可执行措辞） |
+| `scripts/docs_refs_audit.py` | `docs/architecture/doc-governance.md`（该文即规则文本；白名单/豁免/ALLOWLIST 的机器可读真源留脚本内常量；晋升自 PENDING P-022，2026-09-25） |
 
 ## 脚注
 

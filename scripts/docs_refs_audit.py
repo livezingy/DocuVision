@@ -23,7 +23,13 @@ Two checks:
 
    Scope is an allow-list of outward-facing material. Archived material (release notes,
    the decision log, frozen acceptance checklists, archived roadmaps) is exempt **with a
-   printed reason**, because citing deleted things is what history does. Design record: P-022.
+   printed reason**, because citing deleted things is what history does.
+
+   Design record: ``docs/architecture/doc-governance.md`` (promoted out of PENDING P-022 on
+   2026-09-25). The machine-readable lists - ``RETIRED`` / ``SCAN_GLOBS`` / ``EXEMPT`` /
+   ``ALLOWLIST`` - stay in this module as the single source; the living doc states the rule
+   and deliberately does not copy the token list (which would create a second source and,
+   since that doc is itself scanned, trip this gate).
 
 Exit code 0 = clean, 1 = violations. Standalone: ``python scripts/docs_refs_audit.py [--selftest]``.
 """

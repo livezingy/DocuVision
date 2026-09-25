@@ -1,9 +1,10 @@
 """F2 LAYOUT_TYPES coverage test.
 
 ``layout_service.py`` imports ``paddle`` / ``cv2`` at module top, which are not
-available in the local Python env. We stub them in ``sys.modules`` before
-importing so the class-level ``LAYOUT_TYPES`` dict can be inspected without
-loading any model.
+available in the local Python env. We stub them in ``sys.modules`` **for the duration of
+the module load only** (``unittest.mock.patch.dict``) so the class-level ``LAYOUT_TYPES``
+dict can be inspected without loading any model - and without leaking a fake ``paddle``
+into the rest of the pytest session (P-023; ``check_stub_scope``).
 
 Official basis: PP-DocLayout-L defines 23 categories
 https://huggingface.co/PaddlePaddle/PP-DocLayout-L
@@ -15,22 +16,20 @@ from __future__ import annotations
 import importlib.util
 import sys
 import types
+import unittest.mock
 from pathlib import Path
-
-# Stub heavy top-level imports so layout_service loads without paddle/cv2.
-for _mod in ("paddle", "cv2"):
-    if _mod not in sys.modules:
-        sys.modules[_mod] = types.ModuleType(_mod)
 
 # paddle needs a few attributes referenced at import time? layout_service only
 # does `import paddle` (no attribute use at top). cv2 is used inside methods.
 # numpy is available locally.
+_STUBS = {_mod: types.ModuleType(_mod) for _mod in ("paddle", "cv2")}
 
 _LAYOUT_PATH = Path(__file__).resolve().parents[1] / "app" / "services" / "layout_service.py"
 _spec = importlib.util.spec_from_file_location("layout_service_for_tests", _LAYOUT_PATH)
 assert _spec is not None and _spec.loader is not None
 _layout_mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_layout_mod)
+with unittest.mock.patch.dict(sys.modules, _STUBS):
+    _spec.loader.exec_module(_layout_mod)
 PPStructureEngine = _layout_mod.PPStructureEngine
 
 

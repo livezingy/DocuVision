@@ -69,8 +69,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `check_stub_scope()` (stdlib AST: a module-level `sys.modules[...]` write anywhere under `backend/tests/**` is an ERROR,
   an unparsable test file is fail-closed ERROR), wired into `audit_agent_ops.py`; `module-map.md` registers it as gate
   **T2** and extends the A6 row. Selftest 26 -> 31. **Positive control on real facts**: the first run flagged exactly the
-  two legacy offenders with their line numbers, plus the two kernel-copy drifts; after fixing them the audit returned to
+  two legacy offenders with their line numbers, plus   the two kernel-copy drifts; after fixing them the audit returned to
   0 error / 0 warning.
+- **P-026 — public quality case study** (2026-09-26):
+  `docs/demo/QUALITY_CASE_STUDY.md` tells the P-021 story end to end — a silent OCR coordinate
+  defect (scale drift 1.1084–1.2257, non-rigid, rotations flattened) found by the local
+  measurement harness, traced to one engine preprocessing default, fixed by one init parameter,
+  and locked by contract tests; before/after evidence: 12/15 fixture×spec combos improved,
+  0 regressions, text volume recovered up to 2.1×, and 26/26 responses byte-identical across
+  two independent cloud runs. Numbers are date-stamped and cross-checked against this
+  changelog. This PR carries only the case-study doc, two index/guide links, and this registration.
 
 ### Removed
 - **Lite track references stripped from all outward-facing material** (2026-09-24; `apps/lite/**` itself was deleted in

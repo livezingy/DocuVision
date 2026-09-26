@@ -75,3 +75,9 @@ curl http://127.0.0.1:8000/api/v1/health
 ```powershell
 cd backend; python run.py
 ```
+
+## Quality evidence
+
+For a worked example of how pipeline changes are measured before/after — a silent
+coordinate bug found by measurement, fixed, and locked by contract tests — see
+[QUALITY_CASE_STUDY.md](QUALITY_CASE_STUDY.md).

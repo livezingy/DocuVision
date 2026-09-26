@@ -110,6 +110,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CHANGELOG). PENDING **P-006** (the `.zcode` tracking policy) is removed with it, recorded on PENDING's history line as
   a removal rather than a promotion - the subject is gone, so there is nothing to promote; reopening it is just a new item
   if the tool returns.
+- **ZCode retired from the agent roster** (2026-09-26, same decision): the roster line and the rules-layer item are gone from
+  `AGENTS.md`, its verbatim red-line block stays but the section is retitled **会话红线与任务分流（所有 Agent）** so the
+  entry summary no longer belongs to one retired tool; kernel `docs/agent-ops/core/agents.md` drops the row and records the
+  retirement instead - **review duty becomes "whoever takes the round", not a named agent** - with the way back in
+  (add a roster row, then wire it up); `docs/agent-ops/review.md` no longer says "current main user: ZCode";
+  `docs/agent-ops/glm-sandbox-patch.md` stays as the historical archive, now with no active reference. While editing
+  `agents.md`, its stale CI sentence was corrected too: `pull_request.paths` was removed on 2026-09-20 (every PR runs), and
+  the check list now names the gates that exist (doc-drift + tombstone + PENDING DOC-3 + module-map check 3 + test-registry
+  check 4/5 + unit pin E2), not just check 3.
 
 ### Changed
 - **Acceptance material is now explicitly archived**: `MERGE_MAIN_v1.3.0/1.3.1/1.4/1.5/1.6_CLOUD_CHECKLIST.md` each got an
@@ -208,6 +217,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   states a self-test case count (two earlier numbers had already gone stale). Registered as PENDING **P-025**, with its
   capability boundary written down: `docs/R&D/*` other than README/PENDING stays uncheckable, and `Promotion-check` is
   deliberately **not** machine-checked (the audit cannot read PR bodies and a shallow clone cannot see the PR's own commits).
+- **E2 — the unit suite can no longer shrink silently** (2026-09-26, P-008's last residual): the vitest suite has run
+  inside the required `lint` job since 2026-09-20, so a red test blocks a merge - but nothing caught *shrinkage*: deleting
+  a spec file or adding `it.todo` removes protection while CI stays green (the same failure shape E1's `e2e_suite_pin.json`
+  guards on the e2e side). `scripts/unit_suite_pin.py` measures collected files and case declarations straight from
+  `frontend/tests/unit/**/*.test.js` (mirroring vitest's scope) and compares them with `scripts/unit_suite_pin.json`;
+  `it.skip` / `it.todo` / `test.skip` / `describe.skip` / `describe.todo` anywhere is an ERROR rather than a count, an
+  empty suite is fail-closed, and unknown pin keys are rejected. Wired by import into `audit_agent_ops.py`, so the
+  existing required `agent-ops-audit` check evaluates it - **no CI configuration change**. First pin: 7 files / 67 case
+  declarations / 0 skips, which matches `npm run test:unit` (7 passed files, 67 passed tests) on the same tree. Registered
+  as **E2** in `module-map.md` §5 (E1's counterpart) and in the ownership table. Regression: `unit_suite_pin.py --selftest`
+  15 cases; `audit_agent_ops.py --selftest` 44 -> 59.
+- **OCR quality-measurement harness promoted into a living doc** (2026-09-26, from PENDING P-020 + P-018):
+  `docs/architecture/ocr-quality-harness.md` now carries the spec and the measurement口径 - the two axes (accuracy /
+  layout fidelity), the three `review_list` boundaries it answers (domain / truth / sampling), the four-truth-tier frame,
+  the metric family (CER micro-corpus-macro, LCS reading order, `line_exact_rate`, table/non-table/digit slices, cell
+  accuracy), the pinned design points (**D2** char-only DP with a fixed sub>del>ins tie-break, **D7** GT quad-ised through
+  one forward affine with exact clipping, **D8** char-level provenance declared structurally unmeasurable, **D-A**
+  reading-order pairing with geometry reserved for base A), the base-A / base-B coordinate rules and the space gate that
+  became a **regression sentinel** on 2026-09-25, the acceptance evidence (G1-G4 local, cloud anchors, round2/round3
+  read-outs) and the explicit 不做 list. Registered in the docs index (item 15) and as the owning doc of `scripts/measure/**`.
+  Two constraints are written down rather than glossed over: the implementation is **local-only** (`scripts/*` is gitignored
+  by the standing user policy, so CI never sees it, the F1 line ratchet does not apply to it, and this doc is its only
+  committed spec), and **M3 consensus triage / M4 golden fields / TEDS are not implemented** (TEDS waits for P2). The two
+  transitional local-only drafts (`ocr-quality-measurement-harness.md` proposal, `ocr-quality-measurement-design.md` design)
+  were deleted here; their substance lives on in the promoted doc, the execution packages and git history. `docs/R&D/README.md`
+  was fixed in the same pass - its index listed two files that no longer exist (`data-flow-diagram-legacy.md`, `upwork/`) and
+  omitted three live ones, and it now records the promotion path.
+- **Two stale figures in the CI workflow comments corrected** (2026-09-26, user-authorized edit to a red-line file): the unit
+  step claimed "the existing 80 unit tests ... geometry's only coverage" - geometry's tests retired in v1.9 S4, and the count
+  is now 67, so the comment no longer carries a number at all: it points at `scripts/unit_suite_pin.json` (gate E2), which is
+  the single source and the thing a reviewer can check. The e2e step name said "14 cases" while the pin records 15, so it too
+  now points at its pin instead of restating a count. The header's "two blocks need Node" became three (ESLint, vitest, e2e).
 
 ### Fixed
 - **Two `kind: full` test files no longer leak their stubs** (P-023; found by the new check 5 on its first real run):

@@ -128,6 +128,7 @@ core/runtime.py（共享状态枢纽）
 | DOC-2 | living-doc 路径漂移：`docs/architecture` 与本索引引用的代码路径必须存在（glob / 省略号跳过；WARN 级） | scripts/docs_refs_audit.py（`check_doc_drift`） | — | active |
 | DOC-3 | PENDING 条目元数据与滞留：每条须带 `> status: <open/decided/landed/retained> · since: YYYY-MM-DD`，抬头 ID 索引须与 `### P-xxx` 标题集合一致（缺元数据/状态未知/日期非 ISO/未来日期/索引不符 = ERROR，fail-closed）；`landed` 超 90 天未晋升 = WARN（P-025） | scripts/docs_refs_audit.py（`check_pending_staleness`） | — | active |
 | E1 | e2e 运行时错误允许清单的格式/时效/棘轮（数据文件，非许可）+ 套件用例数钉死防缩水（P-008 gap 2，2026-09-20 落 CI） | scripts/check_e2e_allowlist.py（`check_allowlist`） | — | active |
+| E2 | 单测防缩水：`frontend/tests/unit/**/*.test.js` 的文件数与用例声明数必须等于 pin，`it.skip`/`it.todo`/`describe.skip` 出现即 ERROR、空套件 fail-closed（vitest 已在必需 job `lint` 内运行，但删文件/跳过不会让 CI 变红——P-008 最后一项残留，2026-09-26） | scripts/unit_suite_pin.py（`check_unit_pin`） | — | active |
 | C1-C8 | B0 基线校准（设计 rev2 断言；--report-out 存档） | scripts/check_frontend_baseline.py | — | 时点工具 |
 | C9 | 注入保真：app.js 传入每个 initXxx 的 key 集合 == 模块体读取的 deps.* 集合（缺/多均红，不可判定签名 fail-closed；P-008 gap 1，2026-09-17 起常驻） | scripts/frontend_coupling.py（`check_injection_keys`） | 第 6 条 | active |
 | C4 | shared 反向依赖（B5 后由 F3 取代） | scripts/check_frontend_baseline.py | — | retired |

@@ -2,7 +2,8 @@
 """Unified agent-ops audit: agent-rules + living-doc + retired-refs + module-map + test-registry.
 
 check 4 = registry reconciliation; check 5 = test stub scope (P-023, no module-level
-``sys.modules[...]`` write in ``backend/tests/**``).
+``sys.modules[...]`` write in ``backend/tests/**``); E2 = unit-suite pin (``scripts/unit_suite_pin.py``,
+so deleting a vitest spec or adding ``it.todo`` cannot shrink protection silently).
 
 1. agent-rules drift: a generated copy must match the kernel (`sync_agent_rules.py --check`) -> ERROR.
 2. doc references (`scripts/docs_refs_audit.py`, own module = this file keeps its budget):
@@ -31,6 +32,7 @@ import docs_refs_audit as docs_refs  # noqa: E402
 import frontend_coupling as frontend_map  # noqa: E402
 import sync_agent_rules as sync_mod  # noqa: E402
 import test_registry_audit as test_registry  # noqa: E402
+import unit_suite_pin as unit_pin  # noqa: E402
 
 REPO_ROOT = sync_mod.REPO_ROOT
 
@@ -371,6 +373,7 @@ def run_selftest() -> int:
             "| system | backend/app/routers/system.py | 4 |\n")
     cases: list[tuple[str, bool]] = list(test_registry.selftest_cases())
     cases += list(docs_refs.selftest_cases())
+    cases += list(unit_pin.selftest_cases())
 
     def ok(name: str, cond: bool) -> None:
         cases.append((name, bool(cond)))
@@ -445,7 +448,7 @@ def main() -> int:
     issues = (check_agent_rules() + docs_refs.check_doc_drift() + docs_refs.check_retired_refs()
               + docs_refs.check_pending_staleness()
               + check_module_map() + test_registry.check_test_registry()
-              + test_registry.check_stub_scope())
+              + test_registry.check_stub_scope() + unit_pin.check_unit_pin())
     errors = [i for i in issues if i["level"] == "ERROR"]
     warnings = [i for i in issues if i["level"] == "WARN"]
     if "--json" in argv:

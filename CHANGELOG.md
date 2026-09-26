@@ -110,6 +110,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CHANGELOG). PENDING **P-006** (the `.zcode` tracking policy) is removed with it, recorded on PENDING's history line as
   a removal rather than a promotion - the subject is gone, so there is nothing to promote; reopening it is just a new item
   if the tool returns.
+- **ZCode retired from the agent roster** (2026-09-26, same decision): the roster line and the rules-layer item are gone from
+  `AGENTS.md`, its verbatim red-line block stays but the section is retitled **会话红线与任务分流（所有 Agent）** so the
+  entry summary no longer belongs to one retired tool; kernel `docs/agent-ops/core/agents.md` drops the row and records the
+  retirement instead - **review duty becomes "whoever takes the round", not a named agent** - with the way back in
+  (add a roster row, then wire it up); `docs/agent-ops/review.md` no longer says "current main user: ZCode";
+  `docs/agent-ops/glm-sandbox-patch.md` stays as the historical archive, now with no active reference. While editing
+  `agents.md`, its stale CI sentence was corrected too: `pull_request.paths` was removed on 2026-09-20 (every PR runs), and
+  the check list now names the gates that exist (doc-drift + tombstone + PENDING DOC-3 + module-map check 3 + test-registry
+  check 4/5 + unit pin E2), not just check 3.
 
 ### Changed
 - **Acceptance material is now explicitly archived**: `MERGE_MAIN_v1.3.0/1.3.1/1.4/1.5/1.6_CLOUD_CHECKLIST.md` each got an

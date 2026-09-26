@@ -1,6 +1,6 @@
 # 代码审查规范（review）
 
-> 审查产出规范（原 `.GLM/rules/005-review.md` 迁移，适用于承担审查任务的 Agent，当前主用 ZCode）。
+> 审查产出规范（原 `.GLM/rules/005-review.md` 迁移，适用于承担审查任务的 Agent）。原主用 ZCode 已于 2026-09-26 退役（见 `core/agents.md`），**审查职责改为"当轮承接者"**，不再绑定某个 Agent。
 > 官方依据条款引用 `docs/agent-ops/core/constraints.md`（§官方依据优先）。
 
 ## 审查产出三要素（强制）

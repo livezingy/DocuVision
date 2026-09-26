@@ -163,9 +163,6 @@ site/
 .qoder/
 .vscode/
 .codebuddy/plans/
-# zcode: the dir itself stays trackable (future content may be worth committing),
-# but the generated session plans under .zcode/plans/ never go to the remote
-.zcode/plans/
 # GLM rules dir retired (6634d86); ignore locally rebuilt copies
 .GLM/
 docker/

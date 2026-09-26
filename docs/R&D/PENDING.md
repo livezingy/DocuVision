@@ -3,13 +3,23 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **13** 条：P-002 / P-006 / P-008 / P-011 / P-014 / P-015 / P-017 / P-018 / P-019 / P-020 / P-021 / P-023 / P-024。
-按标题自标统计：**已结保留记录 3 条**（P-011 ✅ 已结、P-014 ✅ 已结、P-019 已结保留记录），**已裁决并落地且已验证 1 条**（P-021：2026-09-24 裁决 + 落地入库 → 2026-09-25 round3 云端复测通过，§10.11 门禁 FAIL→PASS），**已裁决并落地 2 条**（P-023：2026-09-25 登记同日落地 R1–R3；P-024：2026-09-25 裁决采纳 (a)+(b) 带三修正并落地，(a) 的可辨识性实测待下次压缩回填），其余 **7 条待裁决**。
-历史：P-001 已按用户裁决移除 2026-09-20，后续有需要再立项；P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
+## 待确认（本区共 **14** 条）
+
+- **机检索引（勿手改）**：`P-002` `P-006` `P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-021` `P-023` `P-024` `P-025`
+- **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
+  状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
+  （P-019 单源化教训：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
+- **状态语义**：`open` = 未裁决 ｜ `decided` = 已裁决、尚有未完成动作或待验证 ｜ `landed` = 已落地、结论待晋升审视
+  （`since` 起超 90 天 = WARN，提示晋升 `docs/architecture/` 或改列 `retained`）｜ `retained` = 已结且**有意**保留在清单
+  （保留理由必须写在条目内）。
+- **晋升检查点**：写本文件或 CHANGELOG 时必须回答一轮「本轮有无条目达到可晋升/可移除标准」，并在 commit message /
+  PR 正文留下 `Promotion-check: <n> eligible … -> promoted|deferred`（零条也写）——规则见 kernel `doc-sync.md`。
+- 历史：P-001 已按用户裁决移除 2026-09-20，后续有需要再立项；P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
 **P-022 已结并晋升 `docs/architecture/doc-governance.md`**（2026-09-25，走本抬头「结论确认 → 晋升 → 移除」正规流程；门禁登记为 `module-map.md` §5 的 **DOC-1 / DOC-2**；此前索引漏登 P-022 亦随该次修正）；
 **P-007 / P-010 / P-013 / P-016 已结并移除**（2026-09-25 清账批次，同走「结论确认 → 晋升 → 移除」流程；结论分别由 `docs/architecture/v1.9-roadmap.md` §Scope S1 ｜ `docs/agent-ops/operations.md` §CI 成本与配额 + CHANGELOG ｜ `docs/agent-ops/doc-sync-ownership.md` 主表+脚注 2 ｜ kernel `frontend.md` 已知 gap 条目承载，明细证据仍在 CHANGELOG 与 git 历史））
 
 ### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
+> status: open · since: 2026-09-13
 - 来源：v1.8.1 PROOF-001 云端实测（mamba p12/p29 红率 58%/97%，均匀网格对应在非等宽表上大面积失准）
   + 用户裁决（红框停画、绿/琥珀锚定印刷字符已落地 c37e35c）；用户提出"比对应直接基于文本坐标"。
 - 现状边界：born-digital 表格的逐格红/绿标注精度受均匀网格限制；琥珀（真实修正）已由
@@ -26,6 +36,7 @@
 - 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
 
 ### P-006 · `.zcode` 目录跟踪策略（2026-09-15）
+> status: decided · since: 2026-09-15
 - 结论（已定）：`.zcode/` **纳入版本控制**（后续会有内容、可能值得提交），但 `.zcode/plans/` **不推远端**。
 - 已落地：`.gitignore` 新增 `.zcode/plans/`（与 `.codebuddy/plans/` 同款规则形制）。
   实测验证：`.zcode/plans/` 下的 plan 文件命中忽略（`.gitignore:168`）；`.zcode/` 下新建普通文件显示为未跟踪且
@@ -36,6 +47,7 @@
 - 先例：`.codebuddy/` 同款——`rules/` 5 个文件已跟踪、`plans/` 被忽略（`.gitignore:165`）。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
+> status: open · since: 2026-09-16
 - 背景：v1.8.3 FRONT-C1 走查 + SPLIT-U4 期间，同一类缺口**两次暴露**——**"声明的东西是否真的被接上"没有巡检**。
   1. **孤儿模块**：`frontend/modules/floating-progress.js`（D11，92 行）**不被任何文件 import**（v1.8.2 起其三个
      函数就无外部调用者，`index.html` 有 DOM 无 JS 驱动）→ 浏览器从不加载。接线属行为变更，需单独决策。
@@ -138,6 +150,7 @@
   浏览器缓存已写入）；④ e2e / vitest **仍未进 required checks**，protected 分支策略是独立决策。
 
 ### P-011 · CI 触发分支仍只覆盖 main（2026-09-17 登记；2026-09-25 清账批次改列已结保留记录）
+> status: retained · since: 2026-09-20
 - 现状：`lint.yml`、`agent-ops-audit.yml`、`kie-phase-a.yml` 的 `pull_request` 均为 `branches: [main]`
   （`agent-ops-audit.yml` 另有 push→main）→ **feature 分支阶段完全依赖 agent 自觉跑本机门禁**。
 - 本次实证代价：P-004 的 stacked PR #22 因 base 非 main，`statusCheckRollup: []`——**一次 CI 都没跑**，
@@ -176,6 +189,7 @@
   **本组关闭**；重开条件：仓库转私有（计费）或 audit 明显变慢。
 
 ### P-014 · `shell/tools.js` 的 `startProcessing` 未绑定 + P-010 清账未清零（2026-09-17）✅ 已结（按 ②′ 整体退役）
+> status: retained · since: 2026-09-17
 - 现象（ESLint 首次全量扫描发现，也是唯一剩余报错）：`frontend/modules/shell/tools.js` 的
   `initAnalysisView()` 内调用 `startProcessing()`，但该模块**没有**这个标识符的绑定——D4 的姊妹文件
   `shell/ui.js` 通过 `initShellUi({ startProcessing })` 拿到了注入绑定，tools.js 漏了 → **L3 违规 +
@@ -205,6 +219,7 @@
   （接 CI 仍需授权）。历史保留在本条与 CHANGELOG + git，不再计入待确认。
 
 ### P-015 · 大文件与 Git LFS 取舍（2026-09-17，治理批次评估）
+> status: landed · since: 2026-09-17
 - 背景：本批次按要求扫描 `test_data/testfiles/**` 与 `docs/architecture/media/**` 中 **>5MB** 的文件，
   产出 LFS 候选清单（**只评估报告，不执行迁移**）。
 - 实测（2026-09-17；四个文件均经 `git ls-files` 确认**已被跟踪**，即已进 git 历史）：
@@ -229,6 +244,7 @@
 - 相关：`.gitignore` 的 `!test_data/testfiles/**` 负向块；kernel 的"大二进制入库须声明"条款。
 
 ### P-017 · F1 500 行预算是否调整（按域差异化预算 vs 上调预算）（2026-09-20，v1.9 S2-5 暴露）
+> status: open · since: 2026-09-20
 - **触发事实（实测，S2 全批 6 次切分）**：巨函数切分会**增加**文件行数（新增函数边界、闭包参数与 docstring），
   与"切分让文件变小"的假设相反。四个模块切后 274 / 357 / 418 / 365 行仍在预算内；**`pipeline/run.js`
   474 → 524 行越线**——即 500 在"376+ 行且需同文件切分"的文件上开始失真。
@@ -252,6 +268,7 @@
 - **触发条件**：下一次 F1 越线（切分 / 功能增长 / 新模块任一原因），或用户主动要求评估上限策略。
 
 ### P-018 · GT 工厂立项：评测 harness（P0）与 born-digital 弱 GT 合成（P1）（2026-09-21，投标竞争力分析产出）
+> status: decided · since: 2026-09-25
 - **来源**：Steelflo 类 retainer 单竞争力分析——公开世界稀缺带 GT 标注的工程图纸/复杂版面文档（FloorPlanCAD/CGHD
   只覆盖 CAD 平面图/电路图，钢结构加工图无公开 GT）。用户 2026-09-21 裁决投入排序后落字立项。
 - **总原则：先建秤再建货**——GT 的第一产品是可复现分数（行业数字 = 投标护城河），不是标注数据。
@@ -294,6 +311,7 @@
   P3-P4 仍按获得外部 GT 或 P-002 立项顺次激活。
 
 ### P-019 · module-map §6 A3 行数字副本漂移 → 单源化（2026-09-18 登记，同日裁决，09-21 重编号落地，已结保留记录）
+> status: retained · since: 2026-09-22
 - 现象：`module-map.md` §6 断言表 A3 行（143 行）的 `boot_sequence` 副本写 **17**，事实源
   `frontend_domain_map.json` 实测 **16**，同文件 §3 登记行（85 行）为「16 项」——同一数字一份文件两处、一对一错。
   全景速览文档构建时实测发现（`len(json['boot_sequence'])`）。
@@ -321,6 +339,7 @@
   结论（CI 会复跑）不变，机制口径以 workflow 为准。
 
 ### P-020 · OCR 质量测量 harness M1+M2 落地（P-018 P0/P1 实施，2026-09-22 四轮讨论定稿）
+> status: landed · since: 2026-09-24
 - 交付（**local-only，不入 git**）：`scripts/measure/{__init__,metrics,degrade,gt_factory,harness_cli,test_metrics}.py`
   ——机器本地测量仪器，源码与产物均留本机不入库。`.gitignore:273 scripts/*` 是用户既定策略（271-272 行注释原文
   「User-requested: never track these folders」），本次裁决**保持 local-only、未改 `.gitignore`**。
@@ -378,6 +397,7 @@
     （未落地）。
 
 ### P-021 · `POST /api/v1/ocr` 返回坐标不在上传图像像素系（unwarping 未关闭）（2026-09-24，P-020 云端坐标核验产出；同日裁决并落地入库，待 round3 云端复测回填）
+> status: landed · since: 2026-09-25
 - **现象**：该端点是**已冻结的公开契约**（`backend/tests/snapshots/openapi_baseline.json`、
   `route_contract_freeze.json`、`test_route_inventory.py` 三处登记），但契约**未声明**
   `text_blocks[].bbox/polygon` 的坐标空间；实测其**不等于**上传图像像素系，而是相差一个**非刚性**形变
@@ -505,6 +525,7 @@
   base B 只用于文本、几何取自 view 层（base A），理由是它把帧依赖解耦（与坐标当前是否可用无关）。
 
 ### P-023 · 测试 stub 作用域无规则：模块级 `sys.modules` 占位会**伪造「本机已装 Paddle」**（2026-09-25，P-021 首次 CI 运行产出；同日裁决并落地 R1–R3）
+> status: landed · since: 2026-09-25
 
 - **来源**：P-021 的契约单测首次进 Phase A CI（与 P-021 的修法同批）后 `kie-contract` **17s FAIL**，且失败在
   **本改动未触碰的文件**：`tests/test_table_template_analyze.py::test_analyze_form_accepts_table_template`
@@ -561,6 +582,7 @@
 - **状态（2026-09-25）**：**已落地**（登记与落地同日）；R4 见上（归 P-021 的记录）。
 
 ### P-024 · 长对话/压缩后的「开新对话」提议**无触发点**：判据存在却从不被调用（2026-09-25，用户追问产出；登记待裁决）
+> status: decided · since: 2026-09-25
 
 - **来源**：P-021 / P-023 收尾时，用户问"继续在本对话执行是否越来越混乱"，继而追问"**为什么四条全中，会漏提议**"。
   据此立项（属 **agent-ops 规则**，与 P-023 的 `testing.md` 不同域；**零产品代码改动**）。
@@ -620,3 +642,42 @@
 - **状态（2026-09-25）**：**已裁决并落地**——采纳 (a)+(b) 带三修正；kernel `constraints.md` 沟通方式节已增两个强制检查点，
   两副本已由 sync 再生成，CHANGELOG（Unreleased/Changed）已记一段；(c) 挂起、(d) 降级（理由见上）。
   本条目自身即第 ② 检查点的首个执行实例。
+
+### P-025 · R&D 晋升与滞留**只靠人记**：义务存在、触发点与机检都不存在（2026-09-26，用户追问产出；同日裁决并落地 (a)+(b)）
+> status: landed · since: 2026-09-26
+- **来源**：用户问「R&D 晋升是否都要手动触发、规则里有无说明、任务完成后是否会自动检查可否晋升/删除」。逐项核对后确认三处缺口，
+  据此立项（属 **agent-ops 治理**，与 P-024 同域；**零产品代码改动**）。
+- **现象（机制）**：`doc-sync.md` §文档生命周期「R&D 结论稳定后晋升 `docs/architecture/`，不在 R&D 堆长期真源」是**纯义务文本**——
+  无触发点、无机检、无超期告警。`audit_agent_ops.py` 的六个 check 无一读取 R&D 目录或 PENDING 条数；反向证据更明确：
+  `docs_refs_audit.py` 的 `EXEMPT` 把 `docs/R&D/**` 显式豁免（理由合理——决策日志本就要引用已删事物），
+  于是"该晋升/该删除"这件事在 CI 里**连输入都不存在**。
+- **根因（三条，按可修性排序）**：
+  1. **结构与 CI 错位（不可全部修）**：`.gitignore` 只放行 `docs/R&D/README.md` 与 `PENDING.md` ⇒ CI 的 checkout 里
+     根本没有其余 R&D 文件。目录侧**结构性不可机检**，只能本机脚本 + 习惯兜底。
+  2. **入库侧本可机检，却存了手写副本**：PENDING 抬头把状态统计写成自然语言（"已结保留记录 N 条 / 其余 N 条待裁决"），
+     该副本**已漂过一次**——清账前它把 P-007/P-010/P-013/P-016/P-015 五条已结条目计在"待裁决"里（P-019 同类病灶）。
+  3. **KPI 无测量、且引用幽灵文件**：`operations.md` 的"待决决策滞留"无任何测量方式；"记忆回流及时率"引用 `MEMORY.md`
+     ——该文件**全仓不存在**，且 `N 天` 未定义 ⇒ 两条指标实质失效。
+- **落地（本 PR，用户裁决 (a)+(b) 同款思路）**：
+  - **(a) 机检**：`scripts/docs_refs_audit.py` 新增 `check_pending_staleness()`，`module-map.md` §5 登记 **DOC-3**，
+    由 `audit_agent_ops.py` import 接线 ⇒ **复用既有 required check `agent-ops-audit`，零 CI 配置改动**。
+    判据：条目缺 `> status:` 元数据 / 状态未知 / 日期非 ISO / 未来日期 = **ERROR**（fail-closed，同 A6 口径）；
+    `landed` 超 `PENDING_STALE_DAYS = 90` 天 = **WARN**（提示晋升或改列 `retained` 并写明理由）；抬头 ID 索引与
+    `### P-xxx` 标题集合不一致、或"共 N 条"不符 / 标题重复 = **ERROR**；`open`/`decided`/`retained` 不受时钟约束。
+  - **数据面**：PENDING 每条标题下首行加 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`（状态单一事实源），
+    抬头改为"机检索引 + 状态语义 + 晋升检查点"，**删除手写统计副本**（数字口径改由门禁输出，P-019 单源化教训）。
+  - **(b) 检查点**：kernel `doc-sync.md` 加强制义务——每次写 PENDING / CHANGELOG 必须回答一轮「本轮有无条目达到
+    可晋升/可移除标准」，并在 commit message / PR 正文留一行 `Promotion-check: <n> eligible … -> promoted|deferred`
+    （零条也写；与 `Session-check` 同形，靠"跳过会留空白"约束，**不设 CI 机检**）。
+  - **KPI 漂移**：`operations.md` 两条 KPI 改为可测量口径（`landed` 90 天晋升窗口 = DOC-3 的 WARN；删掉 `MEMORY.md` 幽灵引用），
+    并如实登记"`local only` 不得提交由 `.gitignore` 兜底、结构性无机检"。
+- **能力边界（必须写明，否则方案变幻觉）**：本条目只把「**入库侧 + 义务文本**」这一半机检化。`docs/R&D/*`（除 README/PENDING）
+  **依然不可机检**——CI 看不到它们，local-only 面的省视只能靠本机脚本或人；`Promotion-check` 与 `Session-check` 一样
+  **不进 audit**（读不到 PR 正文、浅克隆看不到 PR 自身提交）。另：DOC-3 只判"元数据是否合法 + 是否超期"，
+  **不判**某条目"该不该晋升/删除"——那是人的裁决，门禁只负责把逾期项摆到台面上。
+- **沉淀的取值口径（未来改状态时照此）**：`open` = 未裁决 ｜ `decided` = 已裁决、尚有未完成动作或待验证 ｜
+  `landed` = 已落地、结论待晋升审视（`since` = 落地日）｜ `retained` = 已结且有意保留（保留理由写在条目内，无时钟）。
+  本轮赋值一览：open = P-002 / P-008 / P-017；decided = P-006 / P-018 / P-024；landed = P-015 / P-020 / P-021 / P-023 / P-025；
+  retained = P-011 / P-014 / P-019。
+- **相关**：P-019（数字副本单源化，本轮直接继承其教训）、P-008 A6（`check_orphan_staleness` 是 DOC-3 的形态先例）、
+  P-024（检查点范式与 `Session-check`）、`docs/agent-ops/doc-sync-ownership.md`（R&D 不作 owning doc 的既有口径）。

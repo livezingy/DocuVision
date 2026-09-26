@@ -126,6 +126,7 @@ core/runtime.py（共享状态枢纽）
 | T2 | 测试 stub 作用域：`backend/tests` 内不得在**模块级**写 `sys.modules[...]`（收集期即生效 → 泄漏给邻居、破坏其 `importorskip` 环境闸门；P-023） | scripts/test_registry_audit.py（`check_stub_scope`） | — | active |
 | DOC-1 | 文档墓碑前缀：对外物料不得出现已退役的路径/端口/命令/模块名（同行带退役标记视为公告；归档物料豁免；ALLOWLIST 只减不增） | scripts/docs_refs_audit.py（`check_retired_refs`） | — | active |
 | DOC-2 | living-doc 路径漂移：`docs/architecture` 与本索引引用的代码路径必须存在（glob / 省略号跳过；WARN 级） | scripts/docs_refs_audit.py（`check_doc_drift`） | — | active |
+| DOC-3 | PENDING 条目元数据与滞留：每条须带 `> status: <open/decided/landed/retained> · since: YYYY-MM-DD`，抬头 ID 索引须与 `### P-xxx` 标题集合一致（缺元数据/状态未知/日期非 ISO/未来日期/索引不符 = ERROR，fail-closed）；`landed` 超 90 天未晋升 = WARN（P-025） | scripts/docs_refs_audit.py（`check_pending_staleness`） | — | active |
 | E1 | e2e 运行时错误允许清单的格式/时效/棘轮（数据文件，非许可）+ 套件用例数钉死防缩水（P-008 gap 2，2026-09-20 落 CI） | scripts/check_e2e_allowlist.py（`check_allowlist`） | — | active |
 | C1-C8 | B0 基线校准（设计 rev2 断言；--report-out 存档） | scripts/check_frontend_baseline.py | — | 时点工具 |
 | C9 | 注入保真：app.js 传入每个 initXxx 的 key 集合 == 模块体读取的 deps.* 集合（缺/多均红，不可判定签名 fail-closed；P-008 gap 1，2026-09-17 起常驻） | scripts/frontend_coupling.py（`check_injection_keys`） | 第 6 条 | active |

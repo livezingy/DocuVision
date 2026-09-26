@@ -228,6 +228,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declarations / 0 skips, which matches `npm run test:unit` (7 passed files, 67 passed tests) on the same tree. Registered
   as **E2** in `module-map.md` §5 (E1's counterpart) and in the ownership table. Regression: `unit_suite_pin.py --selftest`
   15 cases; `audit_agent_ops.py --selftest` 44 -> 59.
+- **OCR quality-measurement harness promoted into a living doc** (2026-09-26, from PENDING P-020 + P-018):
+  `docs/architecture/ocr-quality-harness.md` now carries the spec and the measurement口径 - the two axes (accuracy /
+  layout fidelity), the three `review_list` boundaries it answers (domain / truth / sampling), the four-truth-tier frame,
+  the metric family (CER micro-corpus-macro, LCS reading order, `line_exact_rate`, table/non-table/digit slices, cell
+  accuracy), the pinned design points (**D2** char-only DP with a fixed sub>del>ins tie-break, **D7** GT quad-ised through
+  one forward affine with exact clipping, **D8** char-level provenance declared structurally unmeasurable, **D-A**
+  reading-order pairing with geometry reserved for base A), the base-A / base-B coordinate rules and the space gate that
+  became a **regression sentinel** on 2026-09-25, the acceptance evidence (G1-G4 local, cloud anchors, round2/round3
+  read-outs) and the explicit 不做 list. Registered in the docs index (item 15) and as the owning doc of `scripts/measure/**`.
+  Two constraints are written down rather than glossed over: the implementation is **local-only** (`scripts/*` is gitignored
+  by the standing user policy, so CI never sees it, the F1 line ratchet does not apply to it, and this doc is its only
+  committed spec), and **M3 consensus triage / M4 golden fields / TEDS are not implemented** (TEDS waits for P2). The two
+  transitional local-only drafts (`ocr-quality-measurement-harness.md` proposal, `ocr-quality-measurement-design.md` design)
+  were deleted here; their substance lives on in the promoted doc, the execution packages and git history. `docs/R&D/README.md`
+  was fixed in the same pass - its index listed two files that no longer exist (`data-flow-diagram-legacy.md`, `upwork/`) and
+  omitted three live ones, and it now records the promotion path.
+- **Two stale figures in the CI workflow comments corrected** (2026-09-26, user-authorized edit to a red-line file): the unit
+  step claimed "the existing 80 unit tests ... geometry's only coverage" - geometry's tests retired in v1.9 S4, and the count
+  is now 67, so the comment no longer carries a number at all: it points at `scripts/unit_suite_pin.json` (gate E2), which is
+  the single source and the thing a reviewer can check. The e2e step name said "14 cases" while the pin records 15, so it too
+  now points at its pin instead of restating a count. The header's "two blocks need Node" became three (ESLint, vitest, e2e).
 
 ### Fixed
 - **Two `kind: full` test files no longer leak their stubs** (P-023; found by the new check 5 on its first real run):

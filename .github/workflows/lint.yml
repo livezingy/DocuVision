@@ -1,8 +1,9 @@
 # File-size + route-architecture gate (v1.8.2) + frontend structure + baseline gates (v1.8.3)
 # + the Pro e2e suite (P-008 gap 2, step 2, 2026-09-20).
 # Rules: DEVELOPMENT.md (owning doc); kernel: docs/agent-ops/core/routing.md + frontend.md.
-# The Python scripts are stdlib-only; two blocks need Node (frontend ESLint, P-010 stage 3, and
-# the e2e job) - both install from the lockfile, so `frontend/package-lock.json` is authoritative.
+# The Python scripts are stdlib-only; three steps need Node (frontend ESLint - P-010 stage 3,
+# the vitest unit suite, and the e2e job) - all install from the lockfile, so
+# `frontend/package-lock.json` is authoritative.
 # Cost / trigger notes (job minutes, public-vs-private, noise policy): docs/agent-ops/operations.md.
 
 name: Lint
@@ -80,8 +81,11 @@ jobs:
 
       # v1.9 S0: vitest joins CI. S1's acceptance depends on unit tests actually running
       # (otherwise they are paper-verified, the P-008 "declared but never run" shape), and the
-      # existing 80 unit tests (geometry's only coverage, preview-state semantics, envelope
-      # display) get CI protection. ~27s locally with jsdom; ~40-60s expected on CI runners.
+      # unit suite (preview-state semantics, envelope display, CSV/queue/bootstrap structure) gets
+      # CI protection. 2026-09-26: it is pinned by scripts/unit_suite_pin.json (gate E2) so it
+      # cannot shrink silently - and the count deliberately lives in that pin, not here: the old
+      # "80 unit tests" figure was stale (geometry's tests retired in v1.9 S4) and this file is a
+      # red line to edit. ~23s locally with jsdom.
       - name: Frontend unit tests (vitest)
         run: npm run test:unit
         working-directory: frontend
@@ -130,7 +134,7 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: frontend
 
-      - name: Run e2e suite (14 cases; a pageerror or console.error fails the test)
+      - name: Run e2e suite (case count pinned in scripts/e2e_suite_pin.json; a pageerror or console.error fails the test)
         run: npm run test:e2e
         working-directory: frontend
 

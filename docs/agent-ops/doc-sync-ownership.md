@@ -29,6 +29,7 @@
 | `frontend/**` | `frontend/README_FRONTEND.md`、`module-map.md` §3（域清单 / 文件数 / 白名单 / 对照行） |
 | `scripts/lint_file_size.py`、`lint_routes.py`、`lint_frontend.py`、`check_frontend_baseline.py`、`audit_agent_ops.py`、`test_registry_audit.py`、`check_e2e_allowlist.py`、`unit_suite_pin.py` | **`DEVELOPMENT.md`（规范型 owning doc，非派生视图）**：规则文本在第 1-6 条；`module-map.md` §5 只登记「门禁与其实现」（E1 = e2e 白名单+套件 pin / **E2** = 单测 pin）；kernel `routing.md` / `frontend.md` 是同源规则（面向 Agent 的可执行措辞） |
 | `scripts/docs_refs_audit.py` | `docs/architecture/doc-governance.md`（该文即规则文本；白名单/豁免/ALLOWLIST 的机器可读真源留脚本内常量；晋升自 PENDING P-022，2026-09-25） |
+| `scripts/measure/**`（**local-only，源码与产物均不入 git**） | `docs/architecture/ocr-quality-harness.md`（该文即测量规格与指标口径的 living 载体，2026-09-26 自 PENDING P-020 / P-018 晋升）：**改规格同步此文，改实现无须**——实现不进库，故本行不承载"改代码必同步"的义务 |
 
 ## 脚注
 

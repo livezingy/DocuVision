@@ -30,6 +30,7 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 12. [architecture/module-map.md](architecture/module-map.md) — module map: backend router domains × frontend module domains, dependency laws, gate inventory (P-004)
 13. [architecture/v1.9-roadmap.md](architecture/v1.9-roadmap.md) — v1.9 **立项**（2026-09-20，前端批次：P-007 方案 B / 巨函数切分 / JSDoc+tsc 评估 / 两个孤儿 wire-or-retire）
 14. [architecture/doc-governance.md](architecture/doc-governance.md) — 文档治理门禁（**DOC-1** 墓碑前缀 / **DOC-2** 路径漂移；规则文本在此，清单真源在 `scripts/docs_refs_audit.py`；晋升自 PENDING P-022，2026-09-25）
+15. [architecture/ocr-quality-harness.md](architecture/ocr-quality-harness.md) — OCR 质量测量 harness 规格与口径（指标族 / 钉死设计点 D2·D7·D8·D-A / base A-B 坐标系与回归哨兵；**实现 local-only、不入库**；晋升自 PENDING P-020 + P-018，2026-09-26）
 
 ## Validation and QA
 

@@ -406,6 +406,10 @@
     `metrics.csv` **逐位相等**），`audit_agent_ops.py` **0 error / 0 warning**。
   - **仍未验证**：M3 共识分诊、TEDS 等本包不做项。base B 坐标问题的**根因与修法已由 P-021 定位并验证**
     （未落地）。
+- **规格晋升（2026-09-26）**：本条的**规格与口径**已晋升 `docs/architecture/ocr-quality-harness.md`（living；登记于
+  `docs/README.md` 索引第 15 条与归属表），两份 local-only 过渡稿（提案 `ocr-quality-measurement-harness.md` 与
+  设计稿 `ocr-quality-measurement-design.md`）已随之删除；自此本条只承载**证据与规模偏差**（云读数、1958 行偏差、
+  C1 静态核对），改规格去 living doc、勿改本条。
 
 ### P-021 · `POST /api/v1/ocr` 返回坐标不在上传图像像素系（unwarping 未关闭）（2026-09-24，P-020 云端坐标核验产出；同日裁决并落地入库，待 round3 云端复测回填）
 > status: landed · since: 2026-09-25

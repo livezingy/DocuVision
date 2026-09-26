@@ -3,7 +3,7 @@
 > 本表是 kernel `docs/agent-ops/core/doc-sync.md` 机制 2 的附表：拆出 kernel 是为了让归属表能随
 > 模块增删自由扩展，不挤占 kernel 的 ~60 行软上限（机制 1/3/4/5 与文档生命周期仍在 kernel）。
 > 改代码模块时按表同步 owning doc（`updated <doc> §<节>`）；**表未覆盖的新模块，新增契约时一并补表**。
-> 最近对照：v1.8.3.0 / commit 17142b0（2026-09-17，P-008 文档与测试治理批次）
+> 最近对照：v1.9.0 / commit 3fd4d11（2026-09-26，E2 单测 pin + OCR harness 晋升批次）
 
 | 代码模块 | owning living doc |
 |---------|-------------------|
@@ -27,7 +27,7 @@
 | `backend/app/services/batch_service.py`、`hitl_queue.py` | `v1.5-roadmap.md`（Epic Queue persistence：`batches` / `_items` 结构、`load_from_db()` 语义、模块级单例签名不变）；批处理消费方另见 `batch-ui-roadmap.md` |
 | `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
 | `frontend/**` | `frontend/README_FRONTEND.md`、`module-map.md` §3（域清单 / 文件数 / 白名单 / 对照行） |
-| `scripts/lint_file_size.py`、`lint_routes.py`、`lint_frontend.py`、`check_frontend_baseline.py`、`audit_agent_ops.py`、`test_registry_audit.py` | **`DEVELOPMENT.md`（规范型 owning doc，非派生视图）**：规则文本在第 1-6 条；`module-map.md` §5 只登记「门禁与其实现」；kernel `routing.md` / `frontend.md` 是同源规则（面向 Agent 的可执行措辞） |
+| `scripts/lint_file_size.py`、`lint_routes.py`、`lint_frontend.py`、`check_frontend_baseline.py`、`audit_agent_ops.py`、`test_registry_audit.py`、`check_e2e_allowlist.py`、`unit_suite_pin.py` | **`DEVELOPMENT.md`（规范型 owning doc，非派生视图）**：规则文本在第 1-6 条；`module-map.md` §5 只登记「门禁与其实现」（E1 = e2e 白名单+套件 pin / **E2** = 单测 pin）；kernel `routing.md` / `frontend.md` 是同源规则（面向 Agent 的可执行措辞） |
 | `scripts/docs_refs_audit.py` | `docs/architecture/doc-governance.md`（该文即规则文本；白名单/豁免/ALLOWLIST 的机器可读真源留脚本内常量；晋升自 PENDING P-022，2026-09-25） |
 
 ## 脚注

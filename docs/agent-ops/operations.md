@@ -33,6 +33,9 @@
 7. e2e 门禁回归（改 e2e / 白名单 / 前端渲染时）：`python scripts/check_e2e_allowlist.py --selftest` +
    `python scripts/check_e2e_allowlist.py`（module-map §5 的 **E1**）；白名单条目超 90 天会 WARN，
    棘轮上限可用 `--update` 只降不升地收紧。
+8. 单测门禁回归（增删 `frontend/tests/unit/**` 时）：`python scripts/unit_suite_pin.py --selftest` +
+   `python scripts/unit_suite_pin.py`（module-map §5 的 **E2**）；有意的用例增减须**同 commit** 更新
+   `scripts/unit_suite_pin.json`，删除文件或用例跳过会被拦下（vitest 本身在 `lint` job 内跑，这两类都不会让它变红）。
 
 ## CI 挂载（已落地）
 `.github/workflows/agent-ops-audit.yml`（2026-09-16 起）：pull_request + push(main) 触发；

@@ -37,7 +37,7 @@
 - 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
-> status: open · since: 2026-09-16
+> status: retained · since: 2026-09-26
 - 背景：v1.8.3 FRONT-C1 走查 + SPLIT-U4 期间，同一类缺口**两次暴露**——**"声明的东西是否真的被接上"没有巡检**。
   1. **孤儿模块**：`frontend/modules/floating-progress.js`（D11，92 行）**不被任何文件 import**（v1.8.2 起其三个
      函数就无外部调用者，`index.html` 有 DOM 无 JS 驱动）→ 浏览器从不加载。接线属行为变更，需单独决策。
@@ -150,6 +150,15 @@
     删掉一个单测文件或加 `.skip` 只会让 CI 报告更少的用例数、**不会红**（`vitest run` 仅在"一个测试文件都没有"时失败）；
     e2e 侧有 `scripts/e2e_suite_pin.json`（spec 5 / tests 15）+ **E1** 兜底，单测侧无对应物。**本机实测现为 7 files / 67 tests**
     （历史记的"80 例"已因 v1.9 S4 退役 `geometry` 单测而过时；`lint.yml` 注释里的"80 unit tests"同源过时——**CI 配置属红线，未改**）。
+- **✅ 已结（2026-09-26，唯一残留当日补齐）**：上条列的"单测防缩水"落地为门禁 **E2**——
+  `scripts/unit_suite_pin.py` + `scripts/unit_suite_pin.json`（`frontend/tests/unit/**/*.test.js` 的文件数/用例声明数
+  必须等于 pin；`it.skip`/`it.todo`/`test.skip`/`describe.skip`/`describe.todo` 出现即 ERROR，空套件 fail-closed），
+  经 `audit_agent_ops.py` import 接线（复用必需 check，**零 CI 配置改动**）；module-map §5 登记 E2、归属表补行。
+  首版 pin = **7 files / 67 cases / 0 skips**（与 `npm run test:unit` 的 7 passed files / 67 passed tests 一致）。
+  正向对照：真实源码上删一个用例 / 插一个 `it.skip` / 空套件 → 三种形态均 ERROR；`unit_suite_pin.py --selftest` 15/15。
+  **本组自此关闭**（①②④ 已由 ruleset/paths 移除/vitest 在必需 job 内处置；F6 弱断言由用户裁决接受为已知 gap；
+  F7 只判可达性不判接线为规则本意，其运行时覆盖度报告（候选 B MVP）已落地）。保留本条目是为了存两份判例：
+  "声明但从未运行"与"跳过即静默降覆盖"——两者的机检分别是 T1/T2 与 E2。
 
 ### P-011 · CI 触发分支仍只覆盖 main（2026-09-17 登记；2026-09-25 清账批次改列已结保留记录）
 > status: retained · since: 2026-09-20

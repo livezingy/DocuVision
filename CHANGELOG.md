@@ -208,6 +208,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   states a self-test case count (two earlier numbers had already gone stale). Registered as PENDING **P-025**, with its
   capability boundary written down: `docs/R&D/*` other than README/PENDING stays uncheckable, and `Promotion-check` is
   deliberately **not** machine-checked (the audit cannot read PR bodies and a shallow clone cannot see the PR's own commits).
+- **E2 — the unit suite can no longer shrink silently** (2026-09-26, P-008's last residual): the vitest suite has run
+  inside the required `lint` job since 2026-09-20, so a red test blocks a merge - but nothing caught *shrinkage*: deleting
+  a spec file or adding `it.todo` removes protection while CI stays green (the same failure shape E1's `e2e_suite_pin.json`
+  guards on the e2e side). `scripts/unit_suite_pin.py` measures collected files and case declarations straight from
+  `frontend/tests/unit/**/*.test.js` (mirroring vitest's scope) and compares them with `scripts/unit_suite_pin.json`;
+  `it.skip` / `it.todo` / `test.skip` / `describe.skip` / `describe.todo` anywhere is an ERROR rather than a count, an
+  empty suite is fail-closed, and unknown pin keys are rejected. Wired by import into `audit_agent_ops.py`, so the
+  existing required `agent-ops-audit` check evaluates it - **no CI configuration change**. First pin: 7 files / 67 case
+  declarations / 0 skips, which matches `npm run test:unit` (7 passed files, 67 passed tests) on the same tree. Registered
+  as **E2** in `module-map.md` §5 (E1's counterpart) and in the ownership table. Regression: `unit_suite_pin.py --selftest`
+  15 cases; `audit_agent_ops.py --selftest` 44 -> 59.
 
 ### Fixed
 - **Two `kind: full` test files no longer leak their stubs** (P-023; found by the new check 5 on its first real run):

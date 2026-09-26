@@ -278,6 +278,8 @@ scripts/*
 !scripts/check_e2e_allowlist.py
 !scripts/e2e_allowlist_ratchet.json
 !scripts/e2e_suite_pin.json
+!scripts/unit_suite_pin.py
+!scripts/unit_suite_pin.json
 !scripts/trial/
 !scripts/trial/**
 !scripts/aistudio_setup.sh

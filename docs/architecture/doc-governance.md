@@ -1,7 +1,8 @@
 # 文档治理门禁（Doc governance）
 
 > **Status**: living。**晋升自 `docs/R&D/PENDING.md` P-022**（2026-09-25 用户裁决：走「结论确认 → 晋升
-> `docs/architecture/` → 从 PENDING 移除」的正规流程）。**规则文本在本文件；机器可读清单在脚本**（单一真源）。
+> `docs/architecture/` → 从 PENDING 移除」的正规流程；2026-09-26 再晋升 **DOC-3** 自 P-025，同流程）。
+> **规则文本在本文件；机器可读清单在脚本**（单一真源）。
 > 机检：`python scripts/docs_refs_audit.py`（可独立跑）· `python scripts/audit_agent_ops.py`（随 `agent-ops-audit`，每 PR 必跑）。
 
 ## 1. 墓碑前缀门禁（DOC-1，ERROR）
@@ -32,7 +33,26 @@
 
 级别为 **WARN**：漂移多半是重命名未同步，与 DOC-1 不同——它不会让读者执行一条注定失败的命令。
 
-## 3. 明确不做（含理由；**不挂在任何条目的完成条件上**）
+## 3. 决策日志滞留与元数据（DOC-3，ERROR + WARN）
+
+**规则**：`docs/R&D/PENDING.md` 的条目元数据与抬头索引由 `check_pending_staleness()` 机检看守：
+
+| 维度 | 判据 | 级别 |
+|---|---|---|
+| status 元数据 | 条目缺 `> status:` 行 / 状态不在 `open\|decided\|landed\|retained` 枚举 / 日期非 ISO / 未来日期 | **ERROR**（fail-closed，同 A6 口径） |
+| landed 滞留 | `landed` 超 `PENDING_STALE_DAYS = 90` 天 → 提示晋升 `docs/architecture/` 或改列 `retained` 并写明理由 | **WARN** |
+| 抬头一致性 | 机检索引 ID 集合 ≠ `### P-xxx` 标题集合 / 「共 N 条」与实际不符 / 标题重复 | **ERROR** |
+| 时钟豁免 | `open` / `decided` / `retained` 不受时钟约束（`retained` 的保留理由必须写在条目内） | — |
+
+**能力边界（诚实登记）**：本门禁只把「**入库侧 + 义务文本**」这一半机检化——`.gitignore` 只放行
+`docs/R&D/README.md` 与 `PENDING.md`，其余 R&D 文件在 CI 的 checkout 里根本不存在，**结构性不可机检**
+（只能本机脚本 + 习惯兜底）。DOC-3 只判「元数据是否合法 + 是否超期」，**不判**某条目「该不该晋升/删除」
+——那是人的裁决，门禁只把逾期项摆上台面。
+
+**实证（2026-09-26，晋升时原样保留）**：正控 = 同日 P-026 登记实操——抬头三处同步（索引 + 计数 +
+status 元数据）走通，audit **0 error / 0 warning**；`--selftest` 59/59（含本检查的纯谓词断言）。
+
+## 4. 明确不做（含理由；**不挂在任何条目的完成条件上**）
 
 - **markdown 链接目标存在性**：实测裸上会红 4 处真死链 + 9 处误报（README 注释块内待录制 GIF、
   `media/README.md` 计划表）→ 收益/维护比明显低于墓碑规则；那 4 处真死链**已在同批修复**。
@@ -40,12 +60,13 @@
 - **`cd <路径>` 的 cwd 语义与机器绝对路径**：实测 `cd ../packages/docuvision-core` 从 `backend/` 出发是对的，
   从文件目录解析即误报 → 不做。
 
-## 4. 归属与触发
+## 5. 归属与触发
 
-- **owner**：`scripts/docs_refs_audit.py`（两条检查的实现 + 白名单/豁免/ALLOWLIST 的机器可读真源）与**本文件**
+- **owner**：`scripts/docs_refs_audit.py`（三条检查的实现 + 白名单/豁免/ALLOWLIST 的机器可读真源）与**本文件**
   （规则文本）。门禁经 `audit_agent_ops.py` 接线，随 `agent-ops-audit` **每 PR 必跑**（**零 CI 配置改动**）。
-- **机检登记**：`docs/architecture/module-map.md` §5 的 **DOC-1** / **DOC-2** 行。
-- **触发条件**：任何一次 v 级退役 / 删除 → 在 `RETIRED` 加一行；改白名单 · 豁免 · ALLOWLIST 时**同改本文件对应行**。
+- **机检登记**：`docs/architecture/module-map.md` §5 的 **DOC-1** / **DOC-2** / **DOC-3** 行。
+- **触发条件**：任何一次 v 级退役 / 删除 → 在 `RETIRED` 加一行；改白名单 · 豁免 · ALLOWLIST 时**同改本文件对应行**；
+  改 PENDING 状态语义或滞留窗口时同查 §3。
 - **实证（2026-09-24，晋升时原样保留）**：门禁 **0 error / 0 warning**（受检 19 文件）；**正向对照**——临时注入一条
   已退役命令到 `docs/demo/_tmp_bad_sample.md` → **1 ERROR / exit 1**，样本已删；`audit_agent_ops.py --selftest`
   由 16 → 26（含本门禁的纯谓词断言）；晋升后 audit 仍 **0 error / 0 warning**。

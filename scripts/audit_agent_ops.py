@@ -6,7 +6,8 @@ check 4 = registry reconciliation; check 5 = test stub scope (P-023, no module-l
 
 1. agent-rules drift: a generated copy must match the kernel (`sync_agent_rules.py --check`) -> ERROR.
 2. doc references (`scripts/docs_refs_audit.py`, own module = this file keeps its budget):
-   living-doc path drift -> WARN; a retired path/port/command in outward-facing docs -> ERROR.
+   living-doc path drift -> WARN; a retired path/port/command in outward-facing docs -> ERROR;
+   decision-log entry metadata + 90-day `landed` staleness (DOC-3, P-025) -> ERROR/WARN.
 3. module-map recon (P-004): module-map.md vs its fact sources - routers/*.py counts (AST, frozen 55),
    frontend_domain_map.json (domains / leaf services / shared state / boot sequence + A6 orphan staleness
    -> WARN), gate-table symbols, README/doc-sync registration, CHANGELOG freshness; fail-closed (A0).
@@ -442,6 +443,7 @@ def main() -> int:
     if "--selftest" in argv:
         return run_selftest()
     issues = (check_agent_rules() + docs_refs.check_doc_drift() + docs_refs.check_retired_refs()
+              + docs_refs.check_pending_staleness()
               + check_module_map() + test_registry.check_test_registry()
               + test_registry.check_stub_scope())
     errors = [i for i in issues if i["level"] == "ERROR"]

@@ -49,6 +49,13 @@
 - 验收路径以 `test_data/testfiles/` 为准；acceptance 文档勿引用不存在的 fixture。
 - 与 `main-tracked-issues.md` 冲突时以代码与 living architecture 为准。
 - R&D 结论稳定后晋升 `docs/architecture/`，不在 R&D 堆长期真源。
+- **晋升检查点（P-025）**：每次写 `PENDING.md` 或 CHANGELOG 时**必须**回答一轮「本轮有无条目达到可晋升/可移除标准」，
+  并在 commit message / PR 正文留一行 `Promotion-check: <n> eligible (P-xxx…) -> promoted|deferred`（零条写
+  `Promotion-check: 0 eligible`；跳过会留空白，reviewer 可抽查——与 `Session-check` 同形，不设 CI 机检）。
+- **PENDING 条目元数据**：每条标题下首行必须是 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`
+  （状态单一事实源）；抬头只留 ID 索引 + 语义说明、**不写统计副本**。机检 **DOC-3**：缺元数据/状态未知/日期非 ISO/
+  未来日期/索引与 `### P-xxx` 标题不一致 = ERROR（fail-closed），`landed` 超 90 天 = WARN（晋升或改列 `retained` 写明理由）。
+- `local only` 行的「不得提交」由 `.gitignore` 兜底：CI checkout 不含这些文件，**结构性无机检**（勿假设有门禁）。
 
 ## README / CHANGELOG 格式
 - README 须含：项目简介、安装说明、使用方法、许可证（贡献指南按需，不强制）。

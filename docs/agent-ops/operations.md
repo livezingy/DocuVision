@@ -1,6 +1,6 @@
 # Agent-ops 稳态运维（Operations）
 
-> 稳态运维 = 周期巡检 + KPI。审计框架见 `scripts/audit_agent_ops.py`（kernel-ref + doc drift + module-map 对账 check 3 + 测试登记对账 check 4；解析器回归 `--selftest`）。
+> 稳态运维 = 周期巡检 + KPI。审计框架见 `scripts/audit_agent_ops.py`（kernel-ref + doc drift + 墓碑门禁 + **PENDING 滞留 DOC-3** + module-map 对账 check 3 + 测试登记对账 check 4/5（stub 作用域）；解析器回归 `--selftest`）。
 
 ## 周期巡检
 | 触发 | 频率 | 命令 |
@@ -14,17 +14,22 @@
 |------|------|------|
 | audit 通过率 | PR→main 中 audit 全绿占比 | 100% |
 | 漂移检出率 | kernel-ref 漂移被 CI 检出的占比 | 100% |
-| 待决决策滞留 | `docs/R&D/PENDING.md` 待确认结论数 | 趋向 0 |
-| 记忆回流及时率 | 结论 N 天内固化到 `MEMORY.md` / `architecture/` | 100% |
+| 待决决策滞留 | `docs/R&D/PENDING.md` 中 `status: open` / `status: decided` 的条目数（由 DOC-3 校验的元数据推导，**非手写统计**） | 趋向 0 |
+| 结论到晋升时长 | `status: landed` 的条目自 `since` 起 **90 天**内晋升 `docs/architecture/`，或改列 `retained` 并写明保留理由（阈值与 DOC-3 的 WARN 同源，超期即未达标） | 100% |
+
+> 口径更正（2026-09-26，P-025）：原「记忆回流及时率」引用 `MEMORY.md`——**该文件全仓不存在**，指标无从测量；原「待决决策滞留」亦无测量方式。
+> 两条现已改为上表口径，事实源 = PENDING 各条的 `> status:` 元数据（门禁 DOC-3），本表不再出现无法测量的指标。
 
 ## 巡检动作
-1. 跑 `python scripts/audit_agent_ops.py --selftest`（2026-09-20 实测输出 `all 16 checks passed`）+ `python scripts/audit_agent_ops.py`。
-   （此前记的"15 例"与实际输出不一致——以命令输出为准；`--selftest` 含 check 4 的登记回归。）
+1. 跑 `python scripts/audit_agent_ops.py --selftest` + `python scripts/audit_agent_ops.py`。
+   （**本行刻意不记用例数**——历史上"15 例"/"16 例"两次都随用例增删变旧；以命令输出为准。`--selftest` 覆盖 check 4 登记回归、
+   check 5 stub 作用域与 **DOC-3 元数据/滞留回归**。）
 2. ERROR `agent-rules`（kernel-ref 漂移）→ 跑 `python scripts/sync_agent_rules.py` 重新派生，commit kernel + 副本。
 3. ERROR `module-map`（check 3）→ 按 module-map §6 断言定位：路径缺失改文档 / 计数漂移同步 §2-§3 的端点数与文件数 / 门禁符号缺失修 §5 行 / 登记缺失补 `docs/README.md` 或 owning 附表 `docs/agent-ops/doc-sync-ownership.md`。
 4. ERROR `test-registry`（check 4）→ 按输出补登记 `backend/tests/test_registry.json`（或删幽灵条目）；WARN 表示 Phase A CI 列表与登记不一致，需人工裁决（实现 `scripts/test_registry_audit.py`）。
 5. WARN `doc-drift` → 修文档引用或登记 `docs/R&D/PENDING.md`；WARN `module-map`（A5 新鲜度）→ 发版后刷新 module-map 头部「最近对照」。
-6. 检查 `PENDING.md` 待决项，确认后晋升 / 移除。
+6. 检查 `PENDING.md` 待决项（状态见各条 `> status:` 元数据；`landed` 超 90 天会以 **DOC-3 WARN** 列出）→ 确认后晋升
+   `architecture/`、改列 `retained`（写明理由）或移除；并按规定在 commit / PR 留一行 `Promotion-check: …`（P-025）。
 7. e2e 门禁回归（改 e2e / 白名单 / 前端渲染时）：`python scripts/check_e2e_allowlist.py --selftest` +
    `python scripts/check_e2e_allowlist.py`（module-map §5 的 **E1**）；白名单条目超 90 天会 WARN，
    棘轮上限可用 `--update` 只降不升地收紧。

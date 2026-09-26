@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Doc-reference audit: retired-reference (tombstone) gate + living-doc path drift.
+"""Doc-reference audit: retired-reference (tombstone) gate + living-doc path drift + PENDING log.
 
-Split out of ``audit_agent_ops.py`` and imported by it (which sits exactly on the 500-line
-budget and may not be raised), following the existing ``frontend_coupling.py`` /
-``test_registry_audit.py`` pattern: the audit stays the orchestrator, the checks live here.
+Split out of ``audit_agent_ops.py`` and imported by it (which must stay inside its own line
+budget), following the existing ``frontend_coupling.py`` / ``test_registry_audit.py`` pattern:
+the audit stays the orchestrator, the checks live here.
 
-Two checks:
+Three checks:
 
 1. ``check_doc_drift()`` - *relocated unchanged* from ``audit_agent_ops.py``: every path a
    living doc references must exist (WARN). Scope, pattern and severity are untouched, so the
@@ -31,6 +31,16 @@ Two checks:
    and deliberately does not copy the token list (which would create a second source and,
    since that doc is itself scanned, trip this gate).
 
+3. ``check_pending_staleness()`` - **new** doc-lifecycle gate (DOC-3, P-025): the decision log
+   ``docs/R&D/PENDING.md`` is the only part of the R&D folder CI can see (everything else is
+   gitignored), so it is also the only half that can be machine-checked. Each entry must carry
+   one ``> status: <open|decided|landed|retained> · since: YYYY-MM-DD`` line (single source of
+   truth - the header keeps an id index and no hand-written counts, the P-019 lesson), and a
+   ``landed`` entry older than ``PENDING_STALE_DAYS`` raises a WARN asking to promote it into
+   ``docs/architecture/`` or to reclassify it as ``retained`` with a stated reason. Missing /
+   malformed / future-dated metadata and a header index that disagrees with the ``### P-xxx``
+   headings are ERRORs (fail-closed, same shape as A6 orphan staleness).
+
 Exit code 0 = clean, 1 = violations. Standalone: ``python scripts/docs_refs_audit.py [--selftest]``.
 """
 
@@ -39,6 +49,7 @@ from __future__ import annotations
 import fnmatch
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -210,6 +221,109 @@ def check_retired_refs() -> list[dict]:
     return issues
 
 
+# --- 3. decision-log metadata + staleness (DOC-3, P-025) ------------------------------------
+
+PENDING_REL = "docs/R&D/PENDING.md"
+# Same shape as frontend_coupling.ORPHAN_STALE_DAYS: past a quarter it is no longer "next batch".
+PENDING_STALE_DAYS = 90
+PENDING_STATES = ("open", "decided", "landed", "retained")
+PENDING_META_SHAPE = "> status: <open|decided|landed|retained> · since: YYYY-MM-DD"
+
+# The header is an index of ids plus a count - never a second copy of the state breakdown.
+PENDING_COUNT_RE = re.compile(r"^## 待确认（本区共 \*\*(\d+)\*\* 条）", re.M)
+PENDING_INDEX_RE = re.compile(r"^- \*\*机检索引（勿手改）\*\*：(.+)$", re.M)
+PENDING_HEADING_RE = re.compile(r"^### (P-\d+) · ", re.M)
+PENDING_META_RE = re.compile(r"^> status: ([a-z]+) · since: (\d{4}-\d{2}-\d{2})$", re.M)
+
+
+def _pending_issue(level: str, msg: str) -> dict:
+    return {"check": "pending", "level": level, "path": PENDING_REL, "msg": msg}
+
+
+def parse_pending_entries(text: str) -> list[dict]:
+    """Split the decision log into entries and read each entry's metadata line (pure)."""
+    heads = [(m.start(), m.group(1)) for m in PENDING_HEADING_RE.finditer(text)]
+    entries: list[dict] = []
+    for idx, (pos, pid) in enumerate(heads):
+        end = heads[idx + 1][0] if idx + 1 < len(heads) else len(text)
+        meta = PENDING_META_RE.search(text[pos:end])
+        entries.append({
+            "id": pid,
+            "status": meta.group(1) if meta else None,
+            "since": meta.group(2) if meta else None,
+            "line": text.count("\n", 0, pos) + 1,
+        })
+    return entries
+
+
+def check_pending_staleness(text: str | None = None, today: date | None = None) -> list[dict]:
+    """DOC-3: entry metadata is present/valid, and no `landed` entry is left unpromoted.
+
+    ``docs/R&D/**`` is gitignored apart from ``README.md`` and this log, so CI can never see the
+    other R&D files - the committed decision log is the checkable half. Note that PENDING is
+    exempt from the DOC-1 tombstone scan *on purpose* (a decision log cites removals); that
+    exemption does not apply here.
+    """
+    if text is None:
+        try:
+            text = (REPO_ROOT / PENDING_REL).read_text(encoding="utf-8")
+        except OSError as exc:
+            return [_pending_issue("ERROR", f"decision log unreadable ({exc}); fail-closed")]
+    today = today or date.today()
+    issues: list[dict] = []
+    entries = parse_pending_entries(text)
+    if not entries:
+        return [_pending_issue("ERROR", "no `### P-xxx` entry heading found; fail-closed")]
+
+    for entry in entries:
+        where = f"{entry['id']} (L{entry['line']})"
+        status, since = entry["status"], entry["since"]
+        if status is None:
+            issues.append(_pending_issue(
+                "ERROR", f"{where} has no metadata line `{PENDING_META_SHAPE}`; fail-closed"))
+            continue
+        if status not in PENDING_STATES:
+            issues.append(_pending_issue(
+                "ERROR", f"{where} status {status!r} is not one of {list(PENDING_STATES)}"))
+            continue
+        try:
+            decided_on = date.fromisoformat(since)
+        except (TypeError, ValueError):
+            issues.append(_pending_issue(
+                "ERROR", f"{where} since must be an ISO date (YYYY-MM-DD), got {since!r}"))
+            continue
+        if decided_on > today:
+            issues.append(_pending_issue("ERROR", f"{where} since {since} is in the future"))
+        elif status == "landed" and (today - decided_on).days > PENDING_STALE_DAYS:
+            issues.append(_pending_issue(
+                "WARN", f"{where} landed {since} ({(today - decided_on).days} days ago) - promote it "
+                        "into docs/architecture or reclassify as `retained` and state why it stays"))
+
+    ids = [entry["id"] for entry in entries]
+    if len(set(ids)) != len(ids):
+        dupes = sorted({pid for pid in ids if ids.count(pid) > 1})
+        issues.append(_pending_issue("ERROR", f"duplicate entry heading(s): {', '.join(dupes)}"))
+
+    count_m, index_m = PENDING_COUNT_RE.search(text), PENDING_INDEX_RE.search(text)
+    if not count_m or not index_m:
+        issues.append(_pending_issue(
+            "ERROR", "header index missing: needs `## 待确认（本区共 **N** 条）` plus a "
+                     "`- **机检索引（勿手改）**：<ids>` line; fail-closed"))
+        return issues
+    listed = re.findall(r"P-\d+", index_m.group(1))
+    if sorted(set(listed)) != sorted(set(ids)):
+        missing = sorted(set(ids) - set(listed))
+        extra = sorted(set(listed) - set(ids))
+        parts = ([f"missing {', '.join(missing)}"] if missing else []) \
+            + ([f"listed but absent {', '.join(extra)}"] if extra else [])
+        issues.append(_pending_issue(
+            "ERROR", f"header index does not match the `### P-xxx` headings ({'; '.join(parts)})"))
+    if int(count_m.group(1)) != len(ids):
+        issues.append(_pending_issue(
+            "ERROR", f"header says {count_m.group(1)} entries, found {len(ids)} heading(s)"))
+    return issues
+
+
 def selftest_cases() -> list[tuple[str, bool]]:
     """In-memory regressions for the pure predicates (no repo reads)."""
     cases: list[tuple[str, bool]] = []
@@ -241,6 +355,56 @@ def selftest_cases() -> list[tuple[str, bool]]:
        norm_ref("backend/app/x.py:12") == "backend/app/x.py"
        and norm_ref("frontend/**/*.js") is None
        and norm_ref("a/...") is None)
+
+    # --- DOC-3: PENDING entry metadata / staleness / header index -----------------------------
+    today = date(2026, 9, 26)
+
+    def pend_entry(pid: str, status: str | None, since: str = "2026-09-01") -> str:
+        meta = "" if status is None else f"> status: {status} · since: {since}\n"
+        return f"### {pid} · title {pid}\n{meta}- body\n\n"
+
+    def pend_log(count: int, ids: list[str], body: str) -> str:
+        listed = " ".join(f"`{pid}`" for pid in ids)
+        return (f"## 待确认（本区共 **{count}** 条）\n\n"
+                f"- **机检索引（勿手改）**：{listed}\n\n{body}")
+
+    def pend_issues(text: str) -> list[dict]:
+        return check_pending_staleness(text=text, today=today)
+
+    def pend_levels(text: str) -> list[str]:
+        return [i["level"] for i in pend_issues(text)]
+
+    healthy = pend_log(2, ["P-001", "P-002"],
+                       pend_entry("P-001", "landed", "2026-09-24")
+                       + pend_entry("P-002", "open", "2026-09-13"))
+    ok("pending: an in-shape log is clean", pend_issues(healthy) == [])
+    ok("pending: missing metadata fails closed",
+       pend_levels(pend_log(1, ["P-001"], pend_entry("P-001", None))) == ["ERROR"])
+    ok("pending: unknown status is an ERROR",
+       pend_levels(pend_log(1, ["P-001"], pend_entry("P-001", "wip"))) == ["ERROR"])
+    ok("pending: non-ISO date is an ERROR",
+       pend_levels(pend_log(1, ["P-001"], pend_entry("P-001", "landed", "2026/09/01"))) == ["ERROR"])
+    ok("pending: future date is an ERROR",
+       pend_levels(pend_log(1, ["P-001"], pend_entry("P-001", "landed", "2026-10-01"))) == ["ERROR"])
+    ok("pending: landed > 90 days is a WARN (no ERROR)",
+       pend_levels(pend_log(1, ["P-001"], pend_entry("P-001", "landed", "2026-06-01"))) == ["WARN"])
+    ok("pending: landed inside the window is clean",
+       pend_issues(pend_log(1, ["P-001"], pend_entry("P-001", "landed", "2026-06-29"))) == [])
+    ok("pending: retained is exempt from the clock",
+       pend_issues(pend_log(1, ["P-001"], pend_entry("P-001", "retained", "2025-01-01"))) == [])
+    ok("pending: open is exempt from the clock",
+       pend_issues(pend_log(1, ["P-001"], pend_entry("P-001", "open", "2025-01-01"))) == [])
+    ok("pending: header index must list every heading",
+       any("header index" in i["msg"] for i in
+           pend_issues(pend_log(1, ["P-001"], pend_entry("P-001", "open") + pend_entry("P-002", "open")))))
+    ok("pending: header count must match the headings",
+       any("header says" in i["msg"] for i in
+           pend_issues(pend_log(9, ["P-001"], pend_entry("P-001", "open")))))
+    ok("pending: duplicate heading is an ERROR",
+       any("duplicate" in i["msg"] for i in
+           pend_issues(pend_log(1, ["P-001"], pend_entry("P-001", "open") + pend_entry("P-001", "open")))))
+    ok("pending: a missing header index fails closed",
+       pend_levels(pend_entry("P-001", "open")) == ["ERROR"])
     return cases
 
 
@@ -252,7 +416,7 @@ def main(argv: list[str]) -> int:
             print(f"{'ok  ' if passed else 'FAIL'} {name}")
         print(f"selftest: {len(cases) - len(failed)}/{len(cases)} passed")
         return 1 if failed else 0
-    issues = check_doc_drift() + check_retired_refs()
+    issues = check_doc_drift() + check_retired_refs() + check_pending_staleness()
     for issue in issues:
         print(f"[{issue['level']}] {issue['path']}: {issue['msg']}")
     errors = sum(1 for issue in issues if issue["level"] == "ERROR")

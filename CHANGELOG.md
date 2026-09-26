@@ -103,6 +103,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `packages/docuvision-core/tests/conftest.py` (every fixture mocked a retired module and it imported numpy/PIL, which the
   slimmed core no longer depends on — i.e. a latent breakage for a core-only venv, not just dead weight).
   Verified after deletion: `pytest -q` in `packages/docuvision-core` still reports **13 passed**, matching the v1.8 baseline.
+- **`.zcode/` retired by user decision** (2026-09-26): the ZCode working folder is expected to stay unused for the next six
+  months, so it was deleted rather than left around, together with its `.gitignore` rule (`.zcode/plans/`, three lines).
+  Nothing was lost from git: the folder was never tracked - its only content was one gitignored session plan
+  (`plan-sess_7a359984-...md`, a superseded v1.8.1 Proof Pack implementation plan whose substance lives in the release docs
+  and CHANGELOG). PENDING **P-006** (the `.zcode` tracking policy) is removed with it, recorded on PENDING's history line as
+  a removal rather than a promotion - the subject is gone, so there is nothing to promote; reopening it is just a new item
+  if the tool returns.
 
 ### Changed
 - **Acceptance material is now explicitly archived**: `MERGE_MAIN_v1.3.0/1.3.1/1.4/1.5/1.6_CLOUD_CHECKLIST.md` each got an

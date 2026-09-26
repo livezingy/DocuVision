@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **14** 条）
+## 待确认（本区共 **13** 条）
 
-- **机检索引（勿手改）**：`P-002` `P-006` `P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-021` `P-023` `P-024` `P-025`
+- **机检索引（勿手改）**：`P-002` `P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-021` `P-023` `P-024` `P-025`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -16,7 +16,8 @@
   PR 正文留下 `Promotion-check: <n> eligible … -> promoted|deferred`（零条也写）——规则见 kernel `doc-sync.md`。
 - 历史：P-001 已按用户裁决移除 2026-09-20，后续有需要再立项；P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
 **P-022 已结并晋升 `docs/architecture/doc-governance.md`**（2026-09-25，走本抬头「结论确认 → 晋升 → 移除」正规流程；门禁登记为 `module-map.md` §5 的 **DOC-1 / DOC-2**；此前索引漏登 P-022 亦随该次修正）；
-**P-007 / P-010 / P-013 / P-016 已结并移除**（2026-09-25 清账批次，同走「结论确认 → 晋升 → 移除」流程；结论分别由 `docs/architecture/v1.9-roadmap.md` §Scope S1 ｜ `docs/agent-ops/operations.md` §CI 成本与配额 + CHANGELOG ｜ `docs/agent-ops/doc-sync-ownership.md` 主表+脚注 2 ｜ kernel `frontend.md` 已知 gap 条目承载，明细证据仍在 CHANGELOG 与 git 历史））
+**P-007 / P-010 / P-013 / P-016 已结并移除**（2026-09-25 清账批次，同走「结论确认 → 晋升 → 移除」流程；结论分别由 `docs/architecture/v1.9-roadmap.md` §Scope S1 ｜ `docs/agent-ops/operations.md` §CI 成本与配额 + CHANGELOG ｜ `docs/agent-ops/doc-sync-ownership.md` 主表+脚注 2 ｜ kernel `frontend.md` 已知 gap 条目承载，明细证据仍在 CHANGELOG 与 git 历史）；
+**P-006 已按用户裁决移除**（2026-09-26，**非**晋升路径：其主体 `.zcode/` 目录连同 `.gitignore` 的 `.zcode/plans/` 规则一并删除，预计半年内不使用该工具，后续要用再立项；该目录从未入库，故无 git 历史可回溯）
 
 ### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
 > status: open · since: 2026-09-13
@@ -34,17 +35,6 @@
 - 触发条件：真实客户文档（trial 3-5 单）证明需要逐格红/绿标注或出现误报投诉时立项；
   立项即需 BACKFILL-001 云端重验。责任仓：`table_backfill.py` 对应层 + 契约 `reason` 字段。
 - 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
-
-### P-006 · `.zcode` 目录跟踪策略（2026-09-15）
-> status: decided · since: 2026-09-15
-- 结论（已定）：`.zcode/` **纳入版本控制**（后续会有内容、可能值得提交），但 `.zcode/plans/` **不推远端**。
-- 已落地：`.gitignore` 新增 `.zcode/plans/`（与 `.codebuddy/plans/` 同款规则形制）。
-  实测验证：`.zcode/plans/` 下的 plan 文件命中忽略（`.gitignore:168`）；`.zcode/` 下新建普通文件显示为未跟踪且
-  `git add --dry-run` 成功 → **`.zcode` 其余内容将来可直接提交**。
-- 本次未提交 `.zcode` 本身（故留 PENDING）：忽略 `plans/` 后**目录为空**，git 不跟踪空目录
-  （当前 `plans/` 是其唯一内容）。
-- 待办（无需额外动作）：`.zcode` 出现首个非 plans 内容时，随该次改动一并 `git add .zcode/`。
-- 先例：`.codebuddy/` 同款——`rules/` 5 个文件已跟踪、`plans/` 被忽略（`.gitignore:165`）。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 > status: open · since: 2026-09-16
@@ -147,7 +137,19 @@
   ② **触发范围仍 main-only**（P-011 现状），feature 分支要本机跑；③ ~~CI 侧实测时长待首次上云回填~~
   **已回填**：push `67d3083` 的 Lint run **35485821396** —— `lint` **18s** / `e2e` **44s**
   （冷缓存下 `install --with-deps chromium` 仅 19s、套件 7.6s/14 passed、2 workers、0 runtime error，
-  浏览器缓存已写入）；④ e2e / vitest **仍未进 required checks**，protected 分支策略是独立决策。
+  浏览器缓存已写入）；④ ~~e2e / vitest 仍未进 required checks~~ **已处置（2026-09-26 复核，见下）**。
+- **状态更新（2026-09-26：用户裁决 F6 + 复核全部残留）**：
+  - **F6 弱断言：accepted**（用户 2026-09-26 裁决）——不引入 JSDoc/tsc，F6 保持**名字级**；fails-closed 的部分由 C9 承接
+    （deps 键集合已经机检）。该缺口转为"已知 gap"形态保留，不再是本条的待决项。
+  - **残留 ①②④ 复核 = 均已处置（原文过时，勿再引用旧表述）**：① `main` 已有 ruleset `main-branch-protection`
+    （必需 PR + 必需检查且无 bypass，见 P-011）；② `lint.yml` / `agent-ops-audit.yml` 的 `pull_request.paths` 已移除
+    （P-011，2026-09-20）⇒ **每个 PR 都跑**，feature 分支不再只靠本机；④ **vitest 早已在 CI**——
+    `.github/workflows/lint.yml:86` 的 `npm run test:unit` 位于 `lint` job 内（提交 `3b5cc46`，2026-09-20「v1.9 S0」），
+    因 `lint` 是必需检查 ⇒ **红灯阻塞合并**；e2e 则是独立必需 job（`2f15b2f`）。
+  - **唯一新残留（待裁决，非阻塞）**：vitest **没有防缩水门禁**——`scripts/**` 零处引用 `test:unit` / `vitest`，
+    删掉一个单测文件或加 `.skip` 只会让 CI 报告更少的用例数、**不会红**（`vitest run` 仅在"一个测试文件都没有"时失败）；
+    e2e 侧有 `scripts/e2e_suite_pin.json`（spec 5 / tests 15）+ **E1** 兜底，单测侧无对应物。**本机实测现为 7 files / 67 tests**
+    （历史记的"80 例"已因 v1.9 S4 退役 `geometry` 单测而过时；`lint.yml` 注释里的"80 unit tests"同源过时——**CI 配置属红线，未改**）。
 
 ### P-011 · CI 触发分支仍只覆盖 main（2026-09-17 登记；2026-09-25 清账批次改列已结保留记录）
 > status: retained · since: 2026-09-20
@@ -677,7 +679,7 @@
   **不判**某条目"该不该晋升/删除"——那是人的裁决，门禁只负责把逾期项摆到台面上。
 - **沉淀的取值口径（未来改状态时照此）**：`open` = 未裁决 ｜ `decided` = 已裁决、尚有未完成动作或待验证 ｜
   `landed` = 已落地、结论待晋升审视（`since` = 落地日）｜ `retained` = 已结且有意保留（保留理由写在条目内，无时钟）。
-  本轮赋值一览：open = P-002 / P-008 / P-017；decided = P-006 / P-018 / P-024；landed = P-015 / P-020 / P-021 / P-023 / P-025；
+  状态分布**不在本条存快照**——以各条 `> status:` 元数据为唯一事实源（副本必漂，P-019 教训）。
   retained = P-011 / P-014 / P-019。
 - **相关**：P-019（数字副本单源化，本轮直接继承其教训）、P-008 A6（`check_orphan_staleness` 是 DOC-3 的形态先例）、
   P-024（检查点范式与 `Session-check`）、`docs/agent-ops/doc-sync-ownership.md`（R&D 不作 owning doc 的既有口径）。

@@ -79,6 +79,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   0 regressions, text volume recovered up to 2.1×, and 26/26 responses byte-identical across
   two independent cloud runs. Numbers are date-stamped and cross-checked against this
   changelog. This PR carries only the case-study doc, two index/guide links, and this registration.
+- **P-027 — table-structure GT reconciliation on WTW (P-018 P2)** (2026-09-28):
+  the local measurement harness gains a structure-side scale for tables, built on the public
+  WTW dataset (ICCV 2021; 14,581 photographed/scanned/web table images). The instrument stays
+  machine-local and unversioned (P-020): a dataset adapter (XML -> GT records), a self-implemented
+  structure-only TEDS (APTED-style ordered-tree distance with pinned insert/delete/update costs),
+  and an `evaluate-table` CLI subcommand scoring table detection recall/IoU on the view layer
+  (greedy 1:1 pairing), row/column/merge occupancy agreement (exact and F1-style partial credit),
+  and S-TEDS. Pipeline predictions are captured once into a content-addressed cache and scoring
+  only ever reads that cache, so metric revisions cost no GPU time. WTW's ground truth carries
+  no cell text, so the content dimension of TEDS is out of scope here and remains covered by the
+  born-digital weak GT and P-028; scores are reported as our own protocol, not an official
+  leaderboard. Doubles as the structural acceptance baseline for the table-mapping rework (P-002)
+  and a regression sentinel for table capability across engine upgrades.
+  Baseline read out on 2026-09-28 from a 300-image stratified subset (seed=42, `language=ch`,
+  cloud tree `f3517c74`, paddle 3.3.0 / paddleocr 3.3.2): `grid_exact` 145/300, `grid_f1` mean
+  0.8989, `mean_s_teds` 0.8399, `table_recall` 0.8300 (272/341 GT tables paired). All 300 images
+  returned a result JSON, the manifest's per-image sha256 set re-verified clean, and scoring the
+  same cache twice is byte-identical. One scorer defect surfaced by this first real batch and is
+  fixed under assertion (`grid_compare` padded columns but not rows, so any row-count mismatch
+  aborted the run; the earlier equal-shaped fixtures could not reach it, and the previously
+  registered C4 reading stays byte-identical after the fix).
 
 ### Removed
 - **Lite track references stripped from all outward-facing material** (2026-09-24; `apps/lite/**` itself was deleted in

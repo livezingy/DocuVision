@@ -318,8 +318,27 @@
 - **状态（2026-09-22 登记；2026-09-25 清账批次更新）**：立项登记已落地（PR #30 → main `337f4e0`，docs-only）；执行包
   `docs/R&D/P018-GT工厂-立项条目.md` 已在落地后删除（local-only，内容已由本条承载）。
   **P0 评测 harness 与 P1 弱 GT 合成已由 P-020 落地**（2026-09-24 M1+M2，local-only，指标族与边界按本条护栏执行，
-  TEDS 随 P2）——**下一阶段 P2 表格结构 GT 对账（公开资源 PubTabNet / FinTabNet / WTW 选型）待用户裁决**；
+  TEDS 随 P2）——**P2 表格结构 GT 对账已由 P-027 落地（2026-09-28，选型 = WTW，基线读数见下）**；
   P3-P4 仍按获得外部 GT 或 P-002 立项顺次激活。
+
+**P2 激活与落地（2026-09-28，P-027 执行包）**：表格结构 GT 对账以 WTW（ICCV 2021，14,581 张，拍照/扫描/网页
+三来源）为主选落地——数据验收（许可/抽检/sha256 清单）+ C-1/C1 锚点（单表图像 tables[] 行为与 view 层坐标帧）+
+`scripts/measure/{wtw_loader,teds}.py`（local-only）+ `evaluate-table` 子命令（预测只读缓存 D10、配对写死 D11）。
+口径 = 表检测召回/IoU（view 层）+ 行列/合并占用矩阵（grid_exact + grid_f1）+ S-TEDS（结构面；GT 无 cell 文本，
+full TEDS 不可做，内容面归 P-028）；对外只报自建口径、不作官方 leaderboard。基线读数（test 分层子集 n=300，
+seed=42）：grid_exact 145/300、grid_f1 均值 0.8989、mean_s_teds 0.8399、table_recall 0.8300。
+该秤兼作 P-002 结构面验收基线与引擎升级的表格回归哨兵；本包不产生销售口径数字。
+- 读数出处与证据链（**抄录自 `test_data/TestResult/harness/wtw/eval_c5/wtw_metrics.csv` 汇总行**，local-only）：
+  预测一次落盘 300/300（云端 `f3517c74` = PR #35 的 P-021 unwarping 修复 merge，**在 main 历史上且
+  `backend/**` 与该提交**逐字节零差异** ⇒ 读数可迁移到当前 main；paddle 3.3.0 / paddleocr 3.3.2，
+  `language=ch` 单变量），
+  `failed.txt` / `id_mismatch.txt` 双空、`pred_manifest.txt` 300 行且逐行 sha256 复算 **0 不符**；
+  判分只读缓存（D10），**同一缓存两次判分 CSV 与 report 均逐字节相同**（GB2，`sha256 e44d5e6d…`）；
+  `audit_agent_ops.py` 0/0、`--selftest` 59/59、`git diff --stat` = 本文件 + CHANGELOG 共 2 个 tracked 文件（GB3）。
+  登记期由真实批数据打出的一个**秤侧真 bug 已修并留在断言覆盖内**：`grid_compare` 只补列不补行，行数不等即
+  `IndexError` 中止全批判分（C4 等形试件掩盖了它，故 C4 读数不受影响——修后 C4 单图输出与钉死件逐字节一致）。
+  另记一项**已被证伪的告警**：34 张的 `document_info.page_image_meta` 与 XML `<size>` 呈 w/h 互换（EXIF 方向），
+  但预测框与 GT 框**越出 XML 帧者均为 0** ⇒ 属元数据上报口径，**坐标帧一致**，判分不受污染。
 
 ### P-019 · module-map §6 A3 行数字副本漂移 → 单源化（2026-09-18 登记，同日裁决，09-21 重编号落地，已结保留记录）
 > status: retained · since: 2026-09-22

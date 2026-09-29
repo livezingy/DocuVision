@@ -438,3 +438,62 @@ def resolve_t1_collision(
     return False, None
 
 
+# --- P-002 C3: T3 text-cluster mapping (§3.5.1/§3.5.2) --------------------
+# Provenance literals match table_backfill.PROVENANCE_TEXT_* (no circular import; tested).
+PROVENANCE_CONFIRMED_LITERAL = "text_confirmed"
+PROVENANCE_BACKFILLED_LITERAL = "text_backfilled"
+PROVENANCE_MISMATCH_LITERAL = "text_mismatch"
+
+
+def collect_t3_words(
+    model: LayoutModel,
+    cell_row: int,
+    cell_col: int,
+) -> List[Any]:
+    """Words of the row-``cell_row`` clusters' column-``cell_col`` groups,
+    restricted to the unexpanded in-bbox word set (§3.5.1); sorted by
+    (cluster y1, word x0). Unassigned groups are skipped."""
+    in_bbox_ids = {id(w) for w in model.in_bbox_words}
+    words: List[Any] = []
+    for ridx, cluster in enumerate(model.row_clusters):
+        if cluster.vision_row != cell_row:
+            continue
+        for group in model.col_groups[ridx]:
+            if group.assigned_col != cell_col:
+                continue
+            words.extend(w for w in group.words if id(w) in in_bbox_ids)
+    words.sort(
+        key=lambda w: (
+            model.row_clusters[model.word_index[id(w)][0]].y1,
+            float(w[W_X0]),
+        )
+    )
+    return words
+
+
+def solve_t3(
+    model: LayoutModel,
+    ocr_text: str,
+    cell_row: int,
+    cell_col: int,
+    t2_fail_reason: str,
+) -> Tuple[str, str, Optional[List[Any]]]:
+    """T3 text-cluster solve (P-002 §3.5.1): join the row-i / column-j word
+    set. Equal -> confirmed/cluster; confusion shape -> backfilled/cluster
+    (sanity-gated); otherwise mismatch/sanity_reject, data untouched. An
+    empty/whitespace word set -> (mismatch, ``t2_fail_reason``, None) — the
+    honest red keeps the T2 failure reason."""
+    words = collect_t3_words(model, cell_row, cell_col)
+    if not words:
+        return (PROVENANCE_MISMATCH_LITERAL, t2_fail_reason, None)
+    tl_norm = normalize_for_compare(" ".join(str(w[W_TEXT]) for w in words))
+    if not tl_norm:
+        return (PROVENANCE_MISMATCH_LITERAL, t2_fail_reason, None)
+    vis_norm = normalize_for_compare(ocr_text)
+    if vis_norm == tl_norm:
+        return (PROVENANCE_CONFIRMED_LITERAL, REASON_CLUSTER, words)
+    if is_ocr_confusion(vis_norm, tl_norm):
+        return (PROVENANCE_BACKFILLED_LITERAL, REASON_CLUSTER, words)
+    return (PROVENANCE_MISMATCH_LITERAL, REASON_SANITY, words)
+
+

@@ -1,11 +1,14 @@
-"""Unit tests for table_alignment (P-002 C1): reason contract + sanity gate.
+"""Unit tests for table_alignment (P-002): sanity gate, reason contract, T1/T3.
 
-Pure logic — no fitz, no paddle, no server (testing.md local layer).
+Pure logic — no paddle, no server (testing.md local layer).
 """
 
 from __future__ import annotations
 
 from app.services.table_alignment import (
+    PROVENANCE_BACKFILLED_LITERAL,
+    PROVENANCE_CONFIRMED_LITERAL,
+    PROVENANCE_MISMATCH_LITERAL,
     REASON_CLUSTER,
     REASON_CROSSING,
     REASON_GEO,
@@ -17,9 +20,16 @@ from app.services.table_alignment import (
     REASON_VALUE_MATCH,
     T1Status,
     build_layout_model,
+    collect_t3_words,
     is_ocr_confusion,
     resolve_t1_collision,
     solve_t1,
+    solve_t3,
+)
+from app.services.table_backfill import (
+    PROVENANCE_TEXT_BACKFILLED,
+    PROVENANCE_TEXT_CONFIRMED,
+    PROVENANCE_TEXT_MISMATCH,
 )
 
 
@@ -147,3 +157,100 @@ def test_resolve_t1_collision_tie_is_ambiguous() -> None:
         [_w(10, 10, 20, 20, "777", word=0), _w(30, 10, 40, 20, "777", word=1)]
     )
     assert resolve_t1_collision(model, "777", 0, 0) == (False, None)
+
+
+# --- P-002 C3: T3 text-cluster mapping ------------------------------------
+
+def test_solve_t3_provenance_literals_match_backfill_constants() -> None:
+    # Drift guard: T3 returns wire-contract strings (no circular import).
+    assert PROVENANCE_CONFIRMED_LITERAL == PROVENANCE_TEXT_CONFIRMED
+    assert PROVENANCE_BACKFILLED_LITERAL == PROVENANCE_TEXT_BACKFILLED
+    assert PROVENANCE_MISMATCH_LITERAL == PROVENANCE_TEXT_MISMATCH
+
+
+def test_solve_t3_confirmed_cluster() -> None:
+    words = [_w(10, 10, 40, 15, "12", line=0), _w(10, 15, 40, 20, "34", line=1)]
+    model = _model(words, n_rows=1, n_cols=1)
+    prov, reason, got = solve_t3(model, "1234", 0, 0, "multi_line")
+    assert (prov, reason) == (PROVENANCE_TEXT_CONFIRMED, REASON_CLUSTER)
+    assert [w[4] for w in got] == ["12", "34"]  # (cluster y1, x0) order
+
+
+def test_solve_t3_backfilled_cluster() -> None:
+    words = [_w(10, 10, 40, 15, "12", line=0), _w(10, 15, 40, 20, "34", line=1)]
+    model = _model(words, n_rows=1, n_cols=1)
+    prov, reason, got = solve_t3(model, "l234", 0, 0, "multi_line")
+    assert (prov, reason) == (PROVENANCE_TEXT_BACKFILLED, REASON_CLUSTER)
+    assert got
+
+
+def test_solve_t3_sanity_reject_cluster() -> None:
+    # "9234" vs "1234": 9 <-> 1 is not a pinned pair -> honest red, words kept.
+    words = [_w(10, 10, 40, 15, "12", line=0), _w(10, 15, 40, 20, "34", line=1)]
+    model = _model(words, n_rows=1, n_cols=1)
+    prov, reason, got = solve_t3(model, "9234", 0, 0, "multi_line")
+    assert (prov, reason) == (PROVENANCE_TEXT_MISMATCH, REASON_SANITY)
+    assert got
+
+
+def test_solve_t3_empty_set_keeps_t2_fail_reason() -> None:
+    model = _model([], n_rows=1, n_cols=1)
+    assert solve_t3(model, "1234", 0, 0, "crossing") == (
+        PROVENANCE_TEXT_MISMATCH,
+        "crossing",
+        None,
+    )
+    assert solve_t3(model, "1234", 0, 0, "no_aligned_line") == (
+        PROVENANCE_TEXT_MISMATCH,
+        "no_aligned_line",
+        None,
+    )
+
+
+def test_solve_t3_whitespace_only_words_keep_t2_fail_reason() -> None:
+    model = _model([_w(10, 10, 40, 20, "   ")], n_rows=1, n_cols=1)
+    assert solve_t3(model, "1234", 0, 0, "multi_line") == (
+        PROVENANCE_TEXT_MISMATCH,
+        "multi_line",
+        None,
+    )
+
+
+# --- P-002 C3: layout model behaviors feeding T3 --------------------------
+
+def test_row_cluster_tolerance_splits_beyond_row_tol() -> None:
+    # heights 5 -> h_med 5 -> ROW_TOL 2.5: y1 diff 3 merges, diff 5 splits.
+    merged = _model([_w(10, 10, 40, 20, "a"), _w(10, 13, 40, 23, "b", word=1)])
+    split = _model([_w(10, 10, 40, 15, "a"), _w(10, 15, 40, 20, "b", word=1)])
+    assert len(merged.row_clusters) == 1
+    assert len(split.row_clusters) == 2
+
+
+def test_in_row_group_split_on_gap() -> None:
+    # x gap 10pt >= COL_GAP_PT=6 -> two word groups within one cluster.
+    model = _model(
+        [_w(10, 10, 40, 20, "12", word=0), _w(50, 10, 80, 20, "34", word=1)],
+        n_rows=1,
+        n_cols=1,
+    )
+    assert len(model.col_groups[0]) == 2
+
+
+def test_cluster_row_tie_maps_to_lower_row() -> None:
+    # Cluster band [20,30] overlaps both row bands by 5pt -> lower row wins.
+    model = _model([_w(10, 20, 40, 30, "1234")], n_rows=2, n_cols=1)
+    assert model.row_clusters[0].vision_row == 0
+
+
+def test_unassigned_group_is_skipped_by_t3() -> None:
+    # Narrow 5-col table (2pt cols): EXP_X = max(0.5, 1.2) = 1.2pt -> a word
+    # centered in the left pad ring hits no column window -> unassigned, and
+    # T3's collect skips it.
+    model = _model(
+        [_w(-5, 10, -2, 20, "A")],
+        n_rows=1,
+        n_cols=5,
+        bbox={"x": 0, "y": 0, "width": 20, "height": 100},
+    )
+    assert model.col_groups[0][0].assigned_col is None
+    assert collect_t3_words(model, 0, 0) == []

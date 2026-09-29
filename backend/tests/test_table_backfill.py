@@ -115,15 +115,21 @@ def test_confirmed_when_crossing_word_value_matched() -> None:
     assert table["cell_word_bbox"][0][0] == [80.0, 10.0, 105.0, 20.0]  # T1 anchor
 
 
-def test_mismatch_when_multiple_text_lines() -> None:
+def test_confirmed_when_multi_line_joined_by_cluster() -> None:
+    # P-002 flip #2 (design §3.6): two stacked lines join via T3 -> green
+    # cluster; data untouched.
     table = _table([["1234"]])
     words = [
         _word(10, 10, 40, 15, "12", line=0),
         _word(10, 15, 40, 20, "34", line=1),
     ]
     stats = backfill_table_cells(table, words, trusted=True)
-    assert stats["mismatch"] == 1
-    assert table["data"][0][0] == "1234"
+    assert stats["confirmed"] == 1
+    assert stats["mismatch"] == 0
+    assert table["data"][0][0] == "1234"  # unchanged
+    assert table["cell_provenance"][0][0] == PROVENANCE_TEXT_CONFIRMED
+    assert table["cell_align_reason"][0][0] == "cluster"
+    assert table["cell_word_bbox"][0][0] == [10.0, 10.0, 40.0, 20.0]
 
 
 def test_untrusted_page_zero_backfill() -> None:

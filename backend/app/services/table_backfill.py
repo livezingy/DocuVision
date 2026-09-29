@@ -18,6 +18,7 @@ from app.services.table_alignment import (
     REASON_CROSSING, REASON_GEO, REASON_KEYS, REASON_MULTI, REASON_NO_LINE,
     REASON_SANITY, REASON_SHAPE, REASON_VALUE_MATCH, LayoutModel, T1Status,
     build_layout_model, is_ocr_confusion, resolve_t1_collision, solve_t1,
+    solve_t3,
 )
 
 # Pinned symbol set (v1.8 §4.1 / B2) — matches scripts/trial/symbol_benchmark.py:33.
@@ -150,9 +151,10 @@ def _solve_candidate(
     """Resolve one candidate cell through the layer pipeline (P-002 §3.6).
 
     T1 anchored value match first; on failure the unchanged T2 geometric
-    gates decide. Returns ``(provenance, reason, words, text_layer_text,
-    derived bbox)``; bbox is None when T1 solved or the grid was degenerate.
-    C3 inserts T3 between the T2 gate failures and the mismatch returns.
+    gates decide, and T3 (text-cluster mapping) rescues those gate failures
+    or keeps the honest red. Returns ``(provenance, reason, words,
+    text_layer_text, derived bbox)``; bbox is None when T1 solved or the grid
+    was degenerate.
     """
     t1_status, t1_words = solve_t1(model, cell_text, i, j)
     if t1_status == T1Status.UNIQUE:
@@ -174,12 +176,20 @@ def _solve_candidate(
     if bbox is None:
         return (PROVENANCE_TEXT_MISMATCH, REASON_SHAPE, None, "", None)  # terminal
     in_cell, lines = _extract_cell_text_layer(page_words, bbox)
+    t2_fail_reason = None
     if in_cell is None:
-        return (PROVENANCE_TEXT_MISMATCH, REASON_CROSSING, None, "", bbox)  # C3: T3
-    if not in_cell:
-        return (PROVENANCE_TEXT_MISMATCH, REASON_NO_LINE, None, "", bbox)
-    if len(lines or []) != 1:
-        return (PROVENANCE_TEXT_MISMATCH, REASON_MULTI, None, "", bbox)
+        t2_fail_reason = REASON_CROSSING  # crossing word
+    elif not in_cell:
+        t2_fail_reason = REASON_NO_LINE
+    elif len(lines or []) != 1:
+        # a single grid cell should map to a single text layer line
+        t2_fail_reason = REASON_MULTI
+    if t2_fail_reason is not None:
+        # T3 text-cluster mapping rescues the T2 gate failure or keeps the
+        # honest red carrying the T2 failure reason
+        prov, reason, words = solve_t3(model, cell_text, i, j, t2_fail_reason)
+        tl = " ".join(str(w[4]) for w in words) if words else ""
+        return (prov, reason, words, tl, bbox)
     text_layer_text = " ".join(str(w[4]) for w in in_cell).strip()
     vis_norm = normalize_for_compare(cell_text)
     tl_norm = normalize_for_compare(text_layer_text)

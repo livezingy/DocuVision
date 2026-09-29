@@ -3,7 +3,7 @@
 > 本表是 kernel `docs/agent-ops/core/doc-sync.md` 机制 2 的附表：拆出 kernel 是为了让归属表能随
 > 模块增删自由扩展，不挤占 kernel 的 ~60 行软上限（机制 1/3/4/5 与文档生命周期仍在 kernel）。
 > 改代码模块时按表同步 owning doc（`updated <doc> §<节>`）；**表未覆盖的新模块，新增契约时一并补表**。
-> 最近对照：v1.9.0 / commit 3fd4d11（2026-09-26，E2 单测 pin + OCR harness 晋升批次）
+> 最近对照：main 36edd15（2026-09-29，P-002 批次：新增 `table_alignment.py` 归属行）
 
 | 代码模块 | owning living doc |
 |---------|-------------------|

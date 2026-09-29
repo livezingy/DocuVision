@@ -1,7 +1,7 @@
 # 表格回填与 Provenance Review 机制（技术参考）
 
-> 状态：§1-§3 为 v1.8/v1.8.1 **已实现行为**（分支 `feature/v1.8.1`，c37e35c）；§4-§5 为 **v1.9 提案**（PENDING P-002，未实现）。
-> 代码归属：`backend/app/services/table_backfill.py`（漏斗）、`page_text_trust.py`（页信任）、
+> 状态：§1-§3 为 v1.8/v1.8.1 **已实现行为**（分支 `feature/v1.8.1`，c37e35c）；§4-§5 为 **v1.9 已实现**（P-002 三层对应 + sanity 闸，`feat/p002-table-alignment`）。
+> 代码归属：`backend/app/services/table_backfill.py`（漏斗）、`table_alignment.py`（对齐层新代码宿主：布局模型 / T1 / T3 / sanity，P-002 D1）、`page_text_trust.py`（页信任）、
 > `proof_render.py` / `proof_report.py` / `proof_pack.py`（证明包）。
 
 ## 1. Review 覆盖范围（现有行为）
@@ -16,13 +16,16 @@ Review（即报告的 review list 与逐格 provenance 标注）是三重窄域�
 | 坐标域 | 仅**原始坐标空间**：`angle_deg == 0` 且非 doc-unwarping（deskew/unwarp 页的表 bbox 与 PDF 文本层不可靠对齐） | v1.8.1 门禁（D10） |
 
 **明确不覆盖**：表格外内容（段落/标题/公式/印章）、表格内散文格（非候选）、KIE 结构化字段、
-扫描件（无原生文本层，"overlay 文本层"是 OCR 产物，采信即循环验证）、多行单元格（几何包含的
-单行要求，v1.9 处理）。
+扫描件（无原生文本层，"overlay 文本层"是 OCR 产物，采信即循环验证）、多行单元格
+（v1.9 起由文本聚类层 T3 处理，见 §5）。
 
 **页面级 vs 内容级**：`quality.table_backfill.page_verdicts`（text_layer/overlay/mixed/no_text）
 是页面级判定分布；review list 是格级条目。两者不互相替代。
 
 ## 2. 判定流水线（现有规则）
+
+> v1.9（P-002）：在第 2 步候选筛选之后插入三层对应（T1 值匹配 → T2 几何包含 → T3 文本聚类，
+> 见 §5）；本节保留 v1.8 基线行为描述。
 
 ```
 table_step（orchestrator）
@@ -63,7 +66,7 @@ table_step（orchestrator）
   （view 尺寸可校验且偏差 >2% 时）。
 - 页脚图例：`Proof: green=verified, amber=corrected; review items in report.html`。
 
-## 4. Sanity 规则（v1.9 提案——防错值注入）
+## 4. Sanity 规则（v1.9 已实现——防错值注入）
 
 ### 4.1 动机：几何包含存在一条错值注入路径
 
@@ -79,8 +82,11 @@ table_step（orchestrator）
 
 1. **长度约束**：归一化后长度相等，或差 1（允许 OCR 字符粘连/断裂，如 `l1` ↔ `11`）；
 2. **逐位混淆集**：位置对齐后，相同字符通过；不同字符必须命中双向混淆集——
-   `0↔O/o`、`1↔l/I/i`、`5↔S/s`、`8↔B`、`6↔b/G`、`9↔g/q`、`2↔Z/z`、`✓↔√`、`●↔•`、`×↔x`；
-3. **替换位数上限**：`len ≤ 6` 允许 1 位；`len > 6` 允许 2 位。
+   `0↔O/o`、`1↔l/I/i`、`5↔S/s`、`8↔B`、`6↔b/G`、`9↔g/q`、`2↔Z/z`、`✓↔√`、`●↔•`、`×↔x`
+   （执行裁决 X1，2026-09-29：数字间相似如 `5↔9`、`3↔8` **不构成**混淆位——规则 2 直接否，
+   设计稿早期示例已按本规范更正）；
+3. **替换位数上限**：`len ≤ 6` 允许 1 位；`len > 6` 允许 2 位（阈值取较长串；长度差 1 时
+   先试去尾再去首，被删字符不计替换位）。
 
 **裁决**：满足 → 正常回填（琥珀）；不满足 → `text_mismatch`（红，入 review list，data 不动）。
 
@@ -93,26 +99,34 @@ table_step（orchestrator）
   sanity 是强过滤器，不是等值证明；残余风险由 review list 兜底（该格出现在报告里可复核）。
 - **绿格的对称限制**：错误对应若恰好内容一致（邻居值 == OCR 值），会标绿但标注位置错——
   数据无损、证据有偏；该情形只能靠 v1.9 tier-3 的位置语义消除，sanity 管不了。
-- **实现位置**：`backfill_table_cells` 的 backfilled 分支前置判断；~20 行 + 单测；
-  属漏斗行为变更 → BACKFILL-001 云端重验。
+- **实现位置**：已实现于 `table_alignment.is_ocr_confusion`，在 `table_backfill` 的琥珀分支
+  （T2/T3 回填替换前）调用，绿格天然过闸不调用；属漏斗行为变更 → BACKFILL-001 云端重验。
 
-## 5. v1.9 三层对应机制（提案，PENDING P-002）
+## 5. v1.9 三层对应机制（已实现，P-002 / `table_alignment.py`）
 
-对应机制决定"哪个文本层词属于哪个格子"，当前仅有 tier-2。提案按精度降级：
+对应机制决定"哪个文本层词属于哪个格子"。v1.9（P-002）起按精度降级三层，逐候选格依序求解：
+T1 唯一命中（或碰撞消解唯一落位）→ T2 → T3，全部无果诚实红：
 
-1. **值匹配**：表 bbox 邻域的文本层词中找与 OCR 值归一化相等的词（治"准确的数字被标红"；
-   天然过 sanity）；
-2. **几何包含**：现状三关，值匹配不唯一（同值碰撞）时降级使用；
-3. **文本聚类映射**：表 bbox 内按基线 y 聚行、x 投影分列，把 vision 网格索引映射到真实
-   印刷行列（处理非等宽列、多行单元格、同值碰撞的位置消歧）。
+1. **值匹配 T1（`value_match`）**：表 bbox 邻域（外扩 8pt、剔除兄弟表）的文本层词中找与 OCR 值
+   归一化相等的连续词 run，**行带 + 列窗双锚定**——run 的行簇须映射到该行、行内词组须指派到
+   该列，缺一不采信（值印在他行/他列永不为解）；同值碰撞交列窗消解（最近未扩张列中心，
+   平局降级 T2）。值相等由构造保证，天然过 sanity、data 不动。
+2. **几何包含 T2（`geometric`）**：现状三关，逻辑零改动；琥珀分支（值替换）前置 sanity 闸（§4）。
+3. **文本聚类映射 T3（`cluster`）**：复用布局模型（y1 聚行 + 行内词组分列 + 列窗指派），取
+   「行 i 簇 × 列 j 词组」的 in-bbox 词集 join 比对；空集回落 T2 失败原因（诚实红，不静默错配）。
 
-配套：对齐记录与 `mismatch_details` 增加 `reason` 字段
-（`value_match` / `geometric` / `no_aligned_line` / `crossing` / `multi_line` / `shape_mismatch`）。
+配套（已实现）：`cell_align_reason` 逐格 reason 网格（候选格 8 值之一、非候选格 null）+
+`quality.table_backfill.align_reason_counts`（8 键恒在场、sum == candidates）+
+`mismatch_details[].reason` 与 debug 记录 `reason` + review 表第 6 列（`col_reason` 双语）。
+**reason 8 值** = 规格草案 6 值 + `cluster`（T3 解决）+ `sanity_reject`（对齐成功但 sanity 拒绝）——
+6 值枚举无法表示这两类结局（纯加法，向后兼容）。
 **边界原则**：文本层管真值与对应，vision 结构管语义（行列含义、合并格）；扫描件无文本层，
 本机制整体不适用，其信任叙事走引擎级指标（symbol_benchmark 等），两条叙事不混。
 
-**触发与验收**：真实客户文档（trial 3-5 单）证明需要逐格标注或出现误报时立项（P-002）；
-立项即需 BACKFILL-001 云端重验（行为变更）。
+**验收**：本地门禁全绿（G1 单测 442 passed；G2 golden 三件套 pin：bank 12×value_match /
+symbol 4×value_match / 非等宽金样 5 绿 + 2 诚实红；G3 audit/lint/docs_refs 0 违规）；
+**G4 BACKFILL-001 云端重验（判据 1-7 + 新增 8/9/10）、G5 mamba 红率 + INV-A1/A2/A3 机检、
+G6 WTW 哨兵待执行**（行为变更，见 v1.8-cloud-validation §5）。
 
 ## 6. 证据产物速查
 
@@ -121,4 +135,4 @@ table_step（orchestrator）
 | 表格 | `cell_provenance` / `cell_ocr_text` / `cell_word_bbox` | 证明包渲染、机读客户 |
 | 质量 | `quality.table_backfill.*`（含 `mismatch_details[]`、`page_verdicts[]`） | 报告指标卡、review list |
 | 报告 | `report.json`（review_list 全量、backfill_demo、annotation_summary）+ `annotated.pdf`（绿/琥珀锚定框 + 蓝表框） | 客户 / 程序核验 |
-| 调试 | `debug/backfill_alignment.json`（DEBUG_MODE 时逐候选对齐证据）；`debug/backfill_layout_preview.json`（P-002 C0：DEBUG_MODE 时逐表布局统计，供常数标定） | 排障 / 常数标定 |
+| 调试 | `debug/backfill_alignment.json`（DEBUG_MODE 时逐候选对齐证据，P-002 起含 reason） | 排障 |

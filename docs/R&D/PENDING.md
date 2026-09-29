@@ -20,7 +20,7 @@
 **P-006 已按用户裁决移除**（2026-09-26，**非**晋升路径：其主体 `.zcode/` 目录连同 `.gitignore` 的 `.zcode/plans/` 规则一并删除，预计半年内不使用该工具，后续要用再立项；该目录从未入库，故无 git 历史可回溯）
 
 ### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
-> status: open · since: 2026-09-13
+> status: decided · since: 2026-09-29
 - 来源：v1.8.1 PROOF-001 云端实测（mamba p12/p29 红率 58%/97%，均匀网格对应在非等宽表上大面积失准）
   + 用户裁决（红框停画、绿/琥珀锚定印刷字符已落地 c37e35c）；用户提出"比对应直接基于文本坐标"。
 - 现状边界：born-digital 表格的逐格红/绿标注精度受均匀网格限制；琥珀（真实修正）已由
@@ -35,6 +35,12 @@
 - 触发条件：真实客户文档（trial 3-5 单）证明需要逐格红/绿标注或出现误报投诉时立项；
   立项即需 BACKFILL-001 云端重验。责任仓：`table_backfill.py` 对应层 + 契约 `reason` 字段。
 - 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
+- 落地（2026-09-29，`feat/p002-table-alignment`，执行者 AgentE）：三层对应 + sanity 闸 + reason
+  契约已实现并通过本机门禁（pytest 442 / audit / lint / docs_refs 全 0 违规）；golden 三件套
+  pin 与 4 处期望翻转见 CHANGELOG P-002 条目；设计稿执行期裁决 X1-X4 见设计稿 §0.3（local-only）。
+  **待验证**：G4 BACKFILL-001 云端重验（判据 1-7 + 新增 8/9/10）+ G5 mamba 红率（对齐失败红率
+  ≤ 1/3 × C0 基线：p12 58.2% / p29 97% / p34 100%，基线 JSON 在云端 `baselines/`）+ INV-A3
+  机检 + G6 WTW 哨兵——全过转 landed。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 > status: retained · since: 2026-09-26

@@ -100,6 +100,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed under assertion (`grid_compare` padded columns but not rows, so any row-count mismatch
   aborted the run; the earlier equal-shaped fixtures could not reach it, and the previously
   registered C4 reading stays byte-identical after the fix).
+- **P-002 — 表格逐格对齐三层对应重构（value match → geometric → cluster）** (2026-09-29):
+  `table_backfill` 的单一「均匀网格几何包含」路径升级为三层：**T1 值匹配**（行带+列窗双锚定，
+  同值碰撞交列窗消解；治"准确数字被标红"）、**T2 几何包含**（现状三关零改动）、**T3 文本聚类**
+  （行簇×列窗词集，治非等宽列与多行格）。琥珀分支（值替换）前置 sanity 闸 `is_ocr_confusion`
+  （双向混淆集 + 长度差 1 先去尾再去首 + 替换数上限），封死"推导框装下邻居值 → 回填错值"的
+  注入路径。新代码宿主 `backend/app/services/table_alignment.py`（D1 零迁移：既有三函数原地
+  不动，单向 import backfill→alignment）。契约增量（纯加法）：`cell_align_reason` 逐格 8 值
+  reason 网格（value_match/geometric/cluster/sanity_reject/no_aligned_line/crossing/multi_line/
+  shape_mismatch；非候选格 null）、`quality.table_backfill.align_reason_counts`（8 键恒在场、
+  sum==candidates）、`mismatch_details[]` 与 debug 记录增 `reason`、review 表第 6 列（col_reason
+  双语）、`sibling_bboxes` 兄弟表邻域剔除（D9）。几何常数经 C0 实样标定（mamba p12/p29/p34 +
+  金样布局 dump）：EXP_X_MIN_RATIO 0.15→0.05（0.15×表宽在多列窄表致 2~5 列零锚定），其余维持。
+  期望翻转 4 处（设计稿 §3.6 列 3 处 + 执行期新发现 1 处）：跨界词→绿/value_match；两行堆叠→
+  绿/cluster；mismatch 记录增 reason 键；"1234"/"1284"（3↔8 非混淆对）由琥珀改红 sanity_reject
+  （sanity 闸本义，裁决 X1）。golden 三件套 pin（白名单经 Ying 审阅）：bank 12×value_match
+  （原 6 绿 6 红）、symbol 4×value_match（原 4 红，根因=均匀列越界吸入邻列词）、新增非等宽
+  金样 7 候选 = 5 绿（value_match×4 + cluster×1）+ 2 诚实红 no_aligned_line（Ying-2A 别列拒绝 +
+  故意无解格）。本机门禁全绿（pytest 442 passed、audit/lint/docs_refs 0/0）。云端验证（2026-09-29）：
+  G4 判据 1-6/9 PASS（bank 12×value_match、symbol 全绿）；G5 INV-A1/A2/A3 零违规、候选格恒等，
+  p12 红率 58.2%→0.8%、p29 97%→25.4%（硬线按设计口径 p12/p29 双 PASS；sanity 上界改观察口径，
+  裁决 X5）；**正确性实证：旧漏斗对 mamba p12 四格静默错填（数字格 '89.48' 被回填成列头标签
+  'ppl ↓' 等），P-002 sanity 闸全部拦截为可复核红**。G6 WTW 哨兵 PASS（5 单 no-op 强断言逐键
+  复现旧缓存；本机重判分 `wtw_metrics.csv` sha256 与 P-027 GB2 基线逐位一致）。
 
 ### Removed
 - **Lite track references stripped from all outward-facing material** (2026-09-24; `apps/lite/**` itself was deleted in

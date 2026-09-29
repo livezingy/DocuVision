@@ -301,6 +301,44 @@ def build_symbol_grid(fontfile):
     return doc
 
 
+def build_nonuniform_table(fontfile):
+    """P-002 G2c golden: non-uniform columns (140/110/100 vs the uniform
+    116.67pt split) exercising the three alignment layers.
+
+    Drawn content vs the golden test's OCR data (the test reconstructs the
+    table dict) differs on purpose:
+      * row 3 col 0 draws "1234" plus two extra words: "9012345" printed
+        across the uniform column boundary (scenario 3: T2 crossing reject ->
+        T1 anchored green) and "8888" printed inside column 0's x-range while
+        the OCR cell sits in column 1 (scenario 4 / Ying-2A: T1 refuses).
+      * "7777" (OCR cell (3,2)) is never drawn (intentionally unsolvable).
+    """
+    doc = fitz.open()
+    page = doc.new_page(width=A4[0], height=A4[1])
+    fname = _register_font(page, fontfile)
+
+    _textbox(page, fname, fitz.Rect(40, 30, 555, 46), "Non-uniform Table — P-002 Golden", size=12, color=ACCENT)
+
+    rows = [
+        ["Ref", "Note", "Amt"],
+        ["777", "777", ""],
+        ["", "", "55.25"],
+        ["1234", "", ""],
+    ]
+    _grid_table(page, fname, top=80, left=40, col_widths=[140, 110, 100], row_h=24, rows=rows)
+    # scenario 1: "12345" stacked as two lines (row 2 y-band [128, 152] pt) —
+    # a 2-line textbox does not fit the 20pt inset rect, so draw via insert_text
+    page.insert_text(fitz.Point(44, 140), "12", fontname=fname, fontsize=9, color=INK)
+    page.insert_text(fitz.Point(44, 150), "345", fontname=fname, fontsize=9, color=INK)
+    # scenario 3: value printed across the uniform column boundary (true col0
+    # is 140pt wide; the uniform split cuts at 156.67-40=116.67 from left)
+    page.insert_text(fitz.Point(130, 170), "9012345", fontname=fname, fontsize=9, color=INK)
+    # scenario 4 (Ying-2A): "8888" printed inside column 0's x-range while the
+    # OCR cell sits in column 1
+    page.insert_text(fitz.Point(90, 170), "8888", fontname=fname, fontsize=9, color=INK)
+    return doc
+
+
 README = """# Trial sample pack (GLM trial P0-3)
 
 Deterministic, vector-drawn PDFs for the 1-hour remote diagnostic demo.
@@ -340,6 +378,7 @@ def main():
         "architecture_diagram.pdf": build_architecture_diagram,
         "bank_statement.pdf": build_bank_statement,
         "symbol_grid.pdf": build_symbol_grid,
+        "nonuniform_table.pdf": build_nonuniform_table,
     }
     for name, builder in builders.items():
         doc = builder(fontfile)

@@ -105,6 +105,10 @@ core/runtime.py（共享状态枢纽）
 /ocr 无 JS 消费（index.html 仅遗留标签文案）。D11 floating-progress 已于 v1.9 S4 退役（2026-09-20，
 用户裁决：接线属新增行为且无需求方），不再列为任何域的消费者。
 
+服务内部依赖（P-002，2026-09-29）：`backend/app/services/table_backfill.py` → `table_alignment.py`
+单向 import（布局模型 / T1 值匹配 / T3 文本聚类 / sanity 闸的新代码宿主，D1 零迁移）；服务内部
+依赖无前端消费，故不入上表。
+
 ## §5 不变量门禁表（单元格语法见 §6 A0；状态列管退役）
 
 <!-- audit:gates -->

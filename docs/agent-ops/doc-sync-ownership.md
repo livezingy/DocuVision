@@ -3,7 +3,7 @@
 > 本表是 kernel `docs/agent-ops/core/doc-sync.md` 机制 2 的附表：拆出 kernel 是为了让归属表能随
 > 模块增删自由扩展，不挤占 kernel 的 ~60 行软上限（机制 1/3/4/5 与文档生命周期仍在 kernel）。
 > 改代码模块时按表同步 owning doc（`updated <doc> §<节>`）；**表未覆盖的新模块，新增契约时一并补表**。
-> 最近对照：v1.9.0 / commit 3fd4d11（2026-09-26，E2 单测 pin + OCR harness 晋升批次）
+> 最近对照：main 36edd15（2026-09-29，P-002 批次：新增 `table_alignment.py` 归属行）
 
 | 代码模块 | owning living doc |
 |---------|-------------------|
@@ -17,7 +17,7 @@
 | `backend/app/core/config.py` | `docuvision-system-design.md`（配置方式段） |
 | `backend/app/models/api_models.py` | `docuvision-system-design.md` §6（三层数据结构模型） |
 | `backend/app/services/kie/**`、`kie_qwen_service.py` | `kie.md`、`kie-custom-fields.md` |
-| `backend/app/services/table_backfill.py`、`page_text_trust.py`、`proof_pack.py`、`proof_render.py`、`proof_report.py` | `provenance-review.md`（该文头部即声明「代码归属」） |
+| `backend/app/services/table_backfill.py`、`table_alignment.py`、`page_text_trust.py`、`proof_pack.py`、`proof_render.py`、`proof_report.py` | `provenance-review.md`（该文头部即声明「代码归属」） |
 | `backend/app/services/layout_service.py`、`table_service.py`、`figure_service.py` | `pp-structurev3-official-findings.md`；契约向 `docuvision-system-design.md` §9.1（figure 另见 §11） |
 | `backend/app/services/ocr_service.py` | `docuvision-system-design.md` §3.2–§3.4（`use_doc_unwarping` 固定 False 的引擎 init 不变量：该文 §3.4「当前固定为 False，引擎 init 硬编码」是 `POST /api/v1/ocr` 不声明却必须成立的回传坐标帧契约）；端点侧由 `backend/tests/test_ocr_service_engine_params.py` 承载（P-021） |
 | `backend/app/services/export_service.py` | `docuvision-system-design.md` §9.1 |

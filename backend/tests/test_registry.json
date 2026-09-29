@@ -172,6 +172,10 @@
   "test_seal_service_grading.py": {
     "kind": "full"
   },
+  "test_table_alignment.py": {
+    "kind": "full",
+    "note": "table_alignment reason contract + sanity gate + T1/T3 solvers (P-002; pure logic, no paddle/server)"
+  },
   "test_table_backfill.py": {
     "kind": "full"
   },

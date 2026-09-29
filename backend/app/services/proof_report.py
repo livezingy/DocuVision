@@ -53,6 +53,7 @@ _LITERALS: Dict[str, Dict[str, str]] = {
         "demo_title": "Sample of corrected values (OCR → text layer)",
         "col_ocr": "OCR value",
         "col_new": "Corrected value",
+        "col_reason": "Reason",
         "figures_title": "Figure exports",
         "verdicts_title": "Page text-layer verdicts",
         "annotation_title": "Annotation coverage",
@@ -89,6 +90,7 @@ _LITERALS: Dict[str, Dict[str, str]] = {
         "demo_title": "修正值抽样（OCR → 文本层）",
         "col_ocr": "OCR 原值",
         "col_new": "修正后值",
+        "col_reason": "对齐原因",
         "figures_title": "图片导出",
         "verdicts_title": "页级文本层判定",
         "annotation_title": "标注覆盖",
@@ -303,13 +305,14 @@ def _review_table(review_list: List[Dict[str, Any]], t: Dict[str, str]) -> str:
     for rec in shown:
         text_layer = rec.get("text_layer_text") or t["no_aligned"]
         rows.append(
-            "<tr><td>{page}</td><td>#{idx}</td><td>r{row}c{col}</td><td>{ocr}</td><td>{tl}</td></tr>".format(
+            "<tr><td>{page}</td><td>#{idx}</td><td>r{row}c{col}</td><td>{ocr}</td><td>{tl}</td><td>{reason}</td></tr>".format(
                 page=_esc(rec.get("page")),
                 idx=_esc(rec.get("table_index")),
                 row=_esc(rec.get("row")),
                 col=_esc(rec.get("col")),
                 ocr=_esc(rec.get("ocr_text")),
                 tl=_esc(text_layer),
+                reason=_esc(rec.get("reason") or "-"),
             )
         )
     note = ""
@@ -318,7 +321,7 @@ def _review_table(review_list: List[Dict[str, Any]], t: Dict[str, str]) -> str:
             _esc(t["truncated_note"].format(n=len(review_list) - _REVIEW_DISPLAY_CAP))
         )
     return (
-        "<p class='muted'>{note}</p><table><tr><th>{h0}</th><th>{h1}</th><th>{h2}</th><th>{h3}</th><th>{h4}</th></tr>{rows}</table>{note2}"
+        "<p class='muted'>{note}</p><table><tr><th>{h0}</th><th>{h1}</th><th>{h2}</th><th>{h3}</th><th>{h4}</th><th>{h5}</th></tr>{rows}</table>{note2}"
     ).format(
         note=_esc(t["review_note"]),
         h0=t["col_page"],
@@ -326,6 +329,7 @@ def _review_table(review_list: List[Dict[str, Any]], t: Dict[str, str]) -> str:
         h2=t["col_size"],
         h3=t["col_ocr"],
         h4=t["col_new"],
+        h5=t["col_reason"],
         rows="".join(rows),
         note2=note,
     )

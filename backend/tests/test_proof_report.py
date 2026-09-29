@@ -20,8 +20,8 @@ _ANNOTATION = {
 }
 
 _DETAILS = [
-    {"page": 1, "table_index": 0, "row": 1, "col": 1, "ocr_text": "✗", "text_layer_text": ""},
-    {"page": 2, "table_index": 1, "row": 0, "col": 1, "ocr_text": "99", "text_layer_text": "98"},
+    {"page": 1, "table_index": 0, "row": 1, "col": 1, "ocr_text": "✗", "text_layer_text": "", "reason": "no_aligned_line"},
+    {"page": 2, "table_index": 1, "row": 0, "col": 1, "ocr_text": "99", "text_layer_text": "98", "reason": "sanity_reject"},
 ]
 
 

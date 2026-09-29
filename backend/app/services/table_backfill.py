@@ -185,8 +185,7 @@ def _solve_candidate(
         # a single grid cell should map to a single text layer line
         t2_fail_reason = REASON_MULTI
     if t2_fail_reason is not None:
-        # T3 text-cluster mapping rescues the T2 gate failure or keeps the
-        # honest red carrying the T2 failure reason
+        # T3 rescues the T2 gate failure or keeps the honest red
         prov, reason, words = solve_t3(model, cell_text, i, j, t2_fail_reason)
         tl = " ".join(str(w[4]) for w in words) if words else ""
         return (prov, reason, words, tl, bbox)
@@ -400,6 +399,7 @@ def backfill_tables(
         "mismatch_details_truncated": 0,
         "page_verdicts": [],
     }
+    summary["align_reason_counts"] = {key: 0 for key in REASON_KEYS}
     if not enabled or not tables:
         return summary
 
@@ -442,9 +442,8 @@ def backfill_tables(
             page_words = page.get_text("words")
             page_tables = tables_by_page[page_num]
             for t_idx, t in page_tables:
-                # P-002 D9: the other tables' pt rects on this page; words
-                # centered inside a sibling never enter this table's T1
-                # neighborhood
+                # P-002 D9: sibling pt rects — words centered inside a sibling
+                # never enter this table's T1 neighborhood
                 siblings = [
                     _pt_rect(other) for _, other in page_tables if other is not t
                 ]
@@ -463,6 +462,8 @@ def backfill_tables(
                 summary["cells_confirmed"] += s["confirmed"]
                 summary["cells_backfilled"] += s["backfilled"]
                 summary["cells_mismatch"] += s["mismatch"]
+                for key, val in s["align_reason_counts"].items():
+                    summary["align_reason_counts"][key] += val
     finally:
         doc.close()
 

@@ -20,7 +20,10 @@ if _SCRIPTS_TRIAL not in sys.path:
     sys.path.insert(0, _SCRIPTS_TRIAL)
 
 from generate_trial_samples import (  # noqa: E402
+    SYMBOL_NAMES,
+    SYMBOLS,
     build_bank_statement,
+    build_nonuniform_table,
     build_symbol_grid,
     find_font,
 )
@@ -114,3 +117,105 @@ def test_bank_statement_backfill_confirms_amounts(tmp_path) -> None:
     # The previously-red date cells now confirm via T1 (value_match).
     assert table["cell_provenance"][1][0] == "text_confirmed"
     assert table["cell_align_reason"][1][0] == "value_match"
+    # G2a full pin: 12 x value_match, all other reasons zero.
+    assert summary["align_reason_counts"] == {
+        "value_match": 12,
+        "geometric": 0,
+        "cluster": 0,
+        "sanity_reject": 0,
+        "no_aligned_line": 0,
+        "crossing": 0,
+        "multi_line": 0,
+        "shape_mismatch": 0,
+    }
+
+
+def test_symbol_grid_backfill_symbols_value_match(tmp_path) -> None:
+    # P-002 G2b (ruling X2, 2026-09-29): the symbol glyphs survive in the
+    # text layer, are row-unique and column-anchored -> T1 flips the former
+    # 4 reds (uniform-grid overhang pulled neighbour words into the cells)
+    # to green value_match.
+    path = str(tmp_path / "symbol_grid.pdf")
+    _write(build_symbol_grid(_font()), path)
+    rows = [
+        ["Symbol", "Name", "Unicode", "Risk"],
+        [SYMBOLS[0], SYMBOL_NAMES[SYMBOLS[0]], "U+2713", "low risk"],
+        [SYMBOLS[1], SYMBOL_NAMES[SYMBOLS[1]], "U+2297", "at risk"],
+        [SYMBOLS[2], SYMBOL_NAMES[SYMBOLS[2]], "U+25CF", "low risk"],
+        [SYMBOLS[3], SYMBOL_NAMES[SYMBOLS[3]], "U+25CB", "at risk"],
+    ]
+    table = {
+        "id": "t1",
+        "page": 1,
+        "bbox": {
+            "x": 40 * 2,
+            "y": 80 * 2,
+            "width": (80 + 180 + 100 + 140) * 2,
+            "height": (len(rows) * 28) * 2,
+        },
+        "data": rows,
+    }
+    summary = backfill_tables([table], path, enabled=True)
+    assert summary["pages_text_layer_trusted"] == 1
+    assert summary["cells_candidates"] == 4, summary
+    assert summary["cells_confirmed"] == 4, summary
+    assert summary["cells_backfilled"] == 0, summary
+    assert summary["cells_mismatch"] == 0, summary
+    assert summary["align_reason_counts"] == {
+        "value_match": 4,
+        "geometric": 0,
+        "cluster": 0,
+        "sanity_reject": 0,
+        "no_aligned_line": 0,
+        "crossing": 0,
+        "multi_line": 0,
+        "shape_mismatch": 0,
+    }
+    assert table["cell_align_reason"][1][0] == "value_match"
+    assert table["cell_provenance"][4][0] == "text_confirmed"
+
+
+def test_nonuniform_table_golden(tmp_path) -> None:
+    # P-002 G2c: per-cell pins on the non-uniform golden — T1 collision
+    # resolved by the column window, crossing word rescued by T1, stacked
+    # lines joined by T3, the Ying-2A other-column refusal, and one
+    # intentionally unsolvable cell (honest red).
+    path = str(tmp_path / "nonuniform_table.pdf")
+    _write(build_nonuniform_table(_font()), path)
+    rows = [
+        ["Ref", "Note", "Amt"],
+        ["777", "777", ""],
+        ["12345", "", "55.25"],
+        ["1234", "8888", "7777"],
+    ]
+    table = {
+        "id": "t1",
+        "page": 1,
+        "bbox": {
+            "x": 40 * 2,
+            "y": 80 * 2,
+            "width": (140 + 110 + 100) * 2,
+            "height": (len(rows) * 24) * 2,
+        },
+        "data": rows,
+    }
+    summary = backfill_tables([table], path, enabled=True)
+    assert summary["pages_text_layer_trusted"] == 1
+    assert summary["cells_candidates"] == 7, summary
+    assert summary["cells_confirmed"] == 5, summary
+    assert summary["cells_backfilled"] == 0, summary
+    assert summary["cells_mismatch"] == 2, summary
+    reasons = table["cell_align_reason"]
+    assert reasons[1][0] == "value_match"  # collision -> column window
+    assert reasons[1][1] == "value_match"
+    assert reasons[2][0] == "cluster"  # stacked "12"/"345" joined by T3
+    assert reasons[2][2] == "value_match"
+    assert reasons[3][0] == "value_match"  # crossing word rescued by T1
+    assert reasons[3][1] == "no_aligned_line"  # Ying-2A: NOT value_match
+    assert reasons[3][2] == "no_aligned_line"  # unsolvable: honest red
+    assert table["data"][2][0] == "12345"  # cluster green leaves data untouched
+    counts = summary["align_reason_counts"]
+    assert counts["value_match"] == 4
+    assert counts["cluster"] == 1
+    assert counts["no_aligned_line"] == 2
+    assert sum(counts.values()) == summary["cells_candidates"]

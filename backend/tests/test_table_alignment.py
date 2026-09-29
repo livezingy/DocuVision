@@ -15,7 +15,11 @@ from app.services.table_alignment import (
     REASON_SANITY,
     REASON_SHAPE,
     REASON_VALUE_MATCH,
+    T1Status,
+    build_layout_model,
     is_ocr_confusion,
+    resolve_t1_collision,
+    solve_t1,
 )
 
 
@@ -80,3 +84,66 @@ def test_dropped_char_not_counted_as_replacement() -> None:
     # Long len 8 -> cap 2; drop-tail leaves 2 confusable mismatches. Counting
     # the dropped "9" would make 3 and fail.
     assert is_ocr_confusion("1l0,00O9", "110,000")
+
+
+# --- P-002 C2: T1 anchored value match (pure solver tests) ---------------
+
+def _w(x0, y0, x1, y1, text, block=0, line=0, word=0):
+    return [x0, y0, x1, y1, text, block, line, word]
+
+
+def _model(words, n_rows=1, n_cols=2, bbox=None):
+    # default grid: raster 200x100 -> pt 100x50; cols [0,50]/[50,100]
+    return build_layout_model(
+        bbox or {"x": 0, "y": 0, "width": 200, "height": 100},
+        words,
+        n_rows,
+        n_cols,
+    )
+
+
+def test_solve_t1_unique_when_row_and_column_anchor() -> None:
+    model = _model([_w(10, 10, 40, 20, "1234")])
+    status, words = solve_t1(model, "1234", 0, 0)  # center x=25 -> column 0
+    assert status == T1Status.UNIQUE
+    assert words is not None and words[0][4] == "1234"
+
+
+def test_solve_t1_none_when_no_equal_run() -> None:
+    model = _model([_w(10, 10, 40, 20, "1234")])
+    assert solve_t1(model, "9999", 0, 0) == (T1Status.NONE, None)
+    assert solve_t1(_model([]), "1234", 0, 0) == (T1Status.NONE, None)
+
+
+def test_solve_t1_none_when_value_anchored_to_other_column() -> None:
+    # Ying-2A regression anchor: unique value, but its word group anchors to
+    # column 1 (center x=95 is outside column 0's expanded window [−30, 80]).
+    model = _model([_w(90, 10, 100, 20, "1234")])
+    assert solve_t1(model, "1234", 0, 0) == (T1Status.NONE, None)
+    status, words = solve_t1(model, "1234", 0, 1)
+    assert status == T1Status.UNIQUE
+
+
+def test_solve_t1_collision_on_two_same_value_runs() -> None:
+    model = _model(
+        [_w(10, 10, 25, 20, "777", word=0), _w(60, 10, 75, 20, "777", word=1)]
+    )
+    assert solve_t1(model, "777", 0, 0) == (T1Status.COLLISION, None)
+
+
+def test_resolve_t1_collision_unique_winner() -> None:
+    model = _model(
+        [_w(10, 10, 25, 20, "777", word=0), _w(60, 10, 75, 20, "777", word=1)]
+    )
+    ok, words = resolve_t1_collision(model, "777", 0, 0)
+    assert ok and words[0][4] == "777" and words[0][0] == 10
+    ok, words = resolve_t1_collision(model, "777", 0, 1)
+    assert ok and words[0][0] == 60
+
+
+def test_resolve_t1_collision_tie_is_ambiguous() -> None:
+    # Both runs anchor to column 0 at the same distance -> no strict winner.
+    model = _model(
+        [_w(10, 10, 20, 20, "777", word=0), _w(30, 10, 40, 20, "777", word=1)]
+    )
+    assert resolve_t1_collision(model, "777", 0, 0) == (False, None)

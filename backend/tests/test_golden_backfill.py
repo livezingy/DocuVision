@@ -96,12 +96,11 @@ def test_bank_statement_backfill_confirms_amounts(tmp_path) -> None:
     assert summary["pages_text_layer_trusted"] == 1
     # 6 date cells + 6 amount cells are candidates; header/description are not.
     assert summary["cells_candidates"] == 12, summary
-    # Every amount cell (col 2) is confirmed against the text layer.
-    # Date cells (col 0) may fall out as conservative mismatch because the
-    # uniform grid over-approximates a non-uniform column width (R3 fallback).
+    # P-002 G2a: T1 row-band + column-window value matching resolves the
+    # dates too — the uniform-grid mismatch (non-uniform columns) is gone.
     assert summary["cells_backfilled"] == 0, summary
-    assert summary["cells_confirmed"] == 6, summary
-    assert summary["cells_mismatch"] == 6, summary
+    assert summary["cells_confirmed"] == 12, summary
+    assert summary["cells_mismatch"] == 0, summary
     assert summary["cells_candidates"] == (
         summary["cells_confirmed"]
         + summary["cells_backfilled"]
@@ -112,3 +111,6 @@ def test_bank_statement_backfill_confirms_amounts(tmp_path) -> None:
     assert table["cell_ocr_text"][1][2] is None
     # Amount text untouched (vision already correct).
     assert table["data"][1][2] == "1,250.00"
+    # The previously-red date cells now confirm via T1 (value_match).
+    assert table["cell_provenance"][1][0] == "text_confirmed"
+    assert table["cell_align_reason"][1][0] == "value_match"

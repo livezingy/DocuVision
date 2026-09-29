@@ -1,20 +1,25 @@
-"""Three-layer cell alignment helpers (P-002): value match -> geometric -> cluster.
+"""Three-layer cell alignment (P-002): value match -> geometric -> cluster.
 
 New-code home per P-002 D1: the layout model, the T1/T3 solvers and the
 backfill sanity gate live here, while ``table_backfill.py`` keeps its existing
 funnel in place and imports from this module (one-way, backfill -> alignment).
 
-C0 scope: the debug-only :func:`layout_preview` used to calibrate the geometry
-constants (neighborhood pad / row tolerance / column gap / column expansion)
-against real samples. C1 scope: the ``REASON_*`` contract constants and the
-:func:`is_ocr_confusion` sanity gate. The solvers land in C2-C3; the constants
-stay function parameters with proposed defaults until Ying approves the
-calibrated values (P-002 R1) and are then pinned as module constants.
+C1 scope: the ``REASON_*`` contract constants and :func:`is_ocr_confusion`.
+C2 scope: the pinned geometry constants (C0③ approved 2026-09-29),
+:func:`build_layout_model` and the T1 anchored value match
+(:func:`solve_t1` / :func:`resolve_t1_collision`). T3 lands in C3.
+
+The C0 debug ``layout_preview`` was removed once calibration concluded: the
+same statistics are recomputable offline from :func:`build_layout_model`.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
+
+from docuvision_core.utils.pdf_text_utils import normalize_for_compare
 
 # fitz get_text("words") tuple indices (R5: list-or-tuple, index access)
 W_X0, W_Y0, W_X1, W_Y1 = 0, 1, 2, 3
@@ -136,169 +141,300 @@ def _median(values: List[float]) -> float:
     return s[(len(s) - 1) // 2]
 
 
-def layout_preview(
-    table: Dict[str, Any],
-    page_words: List[Any],
-    sibling_bboxes: Optional[List[Tuple[float, float, float, float]]] = None,
-    *,
-    neighborhood_pad_pt: float = 8.0,
-    row_tol_floor_pt: float = 2.0,
-    row_tol_ratio: float = 0.5,
-    col_gap_pt: float = 6.0,
-    exp_x_min_ratio: float = 0.15,
-    exp_x_col_ratio: float = 0.6,
-) -> Dict[str, Any]:
-    """Debug-only layout statistics for one table (P-002 C0 calibration).
+# --- P-002 C2: geometry constants (C0③ approved 2026-09-29, R1 red line) ---
+# EXP_X_MIN_RATIO was calibrated 0.15 -> 0.05 against the mamba p29/p34 layout
+# dumps (0.15 x table width zero-anchored 2-5 columns on narrow-column tables).
+NEIGHBORHOOD_PAD_PT = 8.0
+T1_MAX_RUN_WORDS = 4  # max consecutive words in one (block, line) window
+ROW_TOL_FLOOR_PT = 2.0
+ROW_TOL_RATIO = 0.5  # x h_med (median neighborhood word height)
+COL_GAP_PT = 6.0
+EXP_X_MIN_RATIO = 0.05  # x table width pt
+EXP_X_COL_RATIO = 0.6  # x uniform column width pt
 
-    Mirrors the planned ``build_layout_model`` steps (§3.5.0: neighborhood
-    selection, y1 row clustering, in-row word grouping, column-window
-    assignment) with the proposed constant defaults, and dumps the underlying
-    gap distributions so the constants can be calibrated against real samples
-    before they are pinned. Never called outside DEBUG_MODE; produces no
-    product behavior.
+
+@dataclass
+class RowCluster:
+    """Greedy y1 cluster of neighborhood words (P-002 §3.5.0 step 1)."""
+
+    words: List[Any]
+    y0: float
+    y1: float
+    vision_row: Optional[int]
+
+
+@dataclass
+class ColGroup:
+    """In-row word group split on x gaps (§3.5.0 step 3) + column assignment."""
+
+    words: List[Any]
+    x0: float
+    x1: float
+    center: float
+    assigned_col: Optional[int]
+
+
+@dataclass
+class LayoutModel:
+    """Per-table layout model (P-002 §3.3.1-b, built once per table).
+
+    ``neighborhood_words`` (bbox padded by NEIGHBORHOOD_PAD_PT, minus words
+    centered inside any sibling table) drive clustering / T1 / column
+    assignment; ``in_bbox_words`` (unexpanded) is the T3 word source.
+    ``word_index`` maps id(word) -> (row cluster idx, col group idx).
+    """
+
+    neighborhood_words: List[Any]
+    in_bbox_words: List[Any]
+    row_clusters: List[RowCluster]
+    col_groups: List[List[ColGroup]]
+    row_bands: List[Tuple[float, float]]
+    col_bands: List[Tuple[float, float]]
+    col_expanded: List[Tuple[float, float]]
+    col_centers: List[float]
+    h_med: float
+    row_tol: float
+    word_index: Dict[int, Tuple[int, int]]
+
+
+def build_layout_model(
+    table_bbox: Dict[str, Any],
+    page_words: List[Any],
+    n_rows: int,
+    n_cols: int,
+    sibling_bboxes: Optional[List[Tuple[float, float, float, float]]] = None,
+) -> LayoutModel:
+    """Build the per-table layout model (P-002 §3.3.1-b / §3.5.0).
+
+    All geometry is pt (visual raster px / 2; missing bbox keys degrade to
+    zeroes). Deterministic: every multi-candidate pick has an explicit
+    tie-break (lower row/column index, no reliance on set order).
     """
     sibling_bboxes = sibling_bboxes or []
-    data = table.get("data")
-    rows = data if isinstance(data, list) else []
-    n_rows = len(rows)
-    n_cols = max((len(r) for r in rows if isinstance(r, list)), default=0)
-    bbox = table.get("bbox") or {}
+    bbox = table_bbox or {}
     tx = float(bbox.get("x", 0.0)) / 2.0
     ty = float(bbox.get("y", 0.0)) / 2.0
     tw = float(bbox.get("width", 0.0)) / 2.0
     th = float(bbox.get("height", 0.0)) / 2.0
     tb = (tx, ty, tx + tw, ty + th)
     nb = (
-        tx - neighborhood_pad_pt,
-        ty - neighborhood_pad_pt,
-        tx + tw + neighborhood_pad_pt,
-        ty + th + neighborhood_pad_pt,
+        tx - NEIGHBORHOOD_PAD_PT,
+        ty - NEIGHBORHOOD_PAD_PT,
+        tx + tw + NEIGHBORHOOD_PAD_PT,
+        ty + th + NEIGHBORHOOD_PAD_PT,
     )
 
-    def _cx(w: Any) -> float:
-        return (float(w[W_X0]) + float(w[W_X1])) / 2.0
-
-    def _cy(w: Any) -> float:
-        return (float(w[W_Y0]) + float(w[W_Y1])) / 2.0
-
     def _center_in(w: Any, box: Tuple[float, float, float, float]) -> bool:
-        return box[0] <= _cx(w) <= box[2] and box[1] <= _cy(w) <= box[3]
+        cx = (float(w[W_X0]) + float(w[W_X1])) / 2.0
+        cy = (float(w[W_Y0]) + float(w[W_Y1])) / 2.0
+        return box[0] <= cx <= box[2] and box[1] <= cy <= box[3]
 
-    words = [
-        w for w in page_words if isinstance(w, (list, tuple)) and len(w) >= 8
-    ]
+    words = [w for w in page_words if isinstance(w, (list, tuple)) and len(w) >= 8]
     in_bbox_words = [w for w in words if _center_in(w, tb)]
     neighborhood = [
         w
         for w in words
-        if _center_in(w, nb)
-        and not any(_center_in(w, s) for s in sibling_bboxes)
+        if _center_in(w, nb) and not any(_center_in(w, s) for s in sibling_bboxes)
     ]
 
-    heights = [float(w[W_Y1]) - float(w[W_Y0]) for w in neighborhood]
-    h_med = _median(heights)
-    row_tol = max(row_tol_floor_pt, row_tol_ratio * h_med)
-
-    # Row clustering (greedy on ascending y1, tolerance vs current cluster y1)
-    y1_gaps: List[float] = []
-    clusters: List[Dict[str, Any]] = []
+    # (1) row clustering: greedy on ascending y1, split beyond ROW_TOL
+    h_med = _median([float(w[W_Y1]) - float(w[W_Y0]) for w in neighborhood])
+    row_tol = max(ROW_TOL_FLOOR_PT, ROW_TOL_RATIO * h_med)
+    row_clusters: List[RowCluster] = []
     for w in sorted(neighborhood, key=lambda w: (float(w[W_Y1]), float(w[W_X0]))):
         y1 = float(w[W_Y1])
-        if clusters:
-            y1_gaps.append(round(y1 - clusters[-1]["y1"], 2))
-        if clusters and y1 - clusters[-1]["y1"] <= row_tol:
-            c = clusters[-1]
-            c["words"].append(w)
-            c["y0"] = min(c["y0"], float(w[W_Y0]))
-            c["y1"] = max(c["y1"], y1)
+        if row_clusters and y1 - row_clusters[-1].y1 <= row_tol:
+            c = row_clusters[-1]
+            c.words.append(w)
+            c.y0 = min(c.y0, float(w[W_Y0]))
+            c.y1 = max(c.y1, y1)
         else:
-            clusters.append({"y0": float(w[W_Y0]), "y1": y1, "words": [w]})
+            row_clusters.append(
+                RowCluster(words=[w], y0=float(w[W_Y0]), y1=y1, vision_row=None)
+            )
 
-    # Cluster -> vision row (max band overlap, ties to the lower row index)
-    row_bands = [
-        (ty + i * th / n_rows, ty + (i + 1) * th / n_rows)
-        for i in range(n_rows)
-    ] if n_rows > 0 and th > 0 else []
-    mapped_rows = set()
-    for c in clusters:
+    # (2) uniform vision grid bands (same px/2 formula as derive_cell_bbox)
+    row_bands = [(ty + i * th / n_rows, ty + (i + 1) * th / n_rows) for i in range(n_rows)]
+    col_bands = [(tx + j * tw / n_cols, tx + (j + 1) * tw / n_cols) for j in range(n_cols)]
+    exp_x = max(EXP_X_MIN_RATIO * tw, EXP_X_COL_RATIO * (tw / n_cols)) if n_cols else 0.0
+    col_expanded = [(a - exp_x, b + exp_x) for (a, b) in col_bands]
+    col_centers = [(a + b) / 2.0 for (a, b) in col_bands]
+
+    # (3) cluster -> vision row: max band overlap, ties to the lower row index
+    for c in row_clusters:
         best, best_len = None, -1.0
         for i, (a, b) in enumerate(row_bands):
-            ov = min(c["y1"], b) - max(c["y0"], a)
+            ov = min(c.y1, b) - max(c.y0, a)
             if ov > best_len:
                 best, best_len = i, ov
-        if best is not None:
-            mapped_rows.add(best)
+        c.vision_row = best
 
-    # In-row word groups (x0 order, split on gap >= col_gap) + column windows
-    exp_x = (
-        max(exp_x_min_ratio * tw, exp_x_col_ratio * (tw / n_cols))
-        if n_cols > 0 and tw > 0
-        else 0.0
-    )
-    col_width = tw / n_cols if n_cols else 0.0
-    col_centers = [tx + (j + 0.5) * col_width for j in range(n_cols)]
-    x_gaps: List[float] = []
-    groups_total = 0
-    groups_assigned = 0
-    assign_counts = [0] * n_cols
-    for c in clusters:
-        ws = sorted(c["words"], key=lambda w: float(w[W_X0]))
-        groups: List[Dict[str, Any]] = []
-        for w in ws:
-            if groups and float(w[W_X0]) - groups[-1]["x1"] < col_gap_pt:
+    # (4) in-row word groups (x0 order, split on gap >= COL_GAP_PT), then
+    #     group -> vision column: expanded window, nearest unexpanded center,
+    #     ties to the lower column index; no window hit -> no assignment
+    col_groups: List[List[ColGroup]] = []
+    word_index: Dict[int, Tuple[int, int]] = {}
+    for ridx, c in enumerate(row_clusters):
+        groups: List[ColGroup] = []
+        for w in sorted(c.words, key=lambda w: float(w[W_X0])):
+            if groups and float(w[W_X0]) - groups[-1].x1 < COL_GAP_PT:
                 g = groups[-1]
-                g["words"].append(w)
-                g["x1"] = max(g["x1"], float(w[W_X1]))
+                g.words.append(w)
+                g.x1 = max(g.x1, float(w[W_X1]))
             else:
                 groups.append(
-                    {"words": [w], "x0": float(w[W_X0]), "x1": float(w[W_X1])}
+                    ColGroup(
+                        words=[w],
+                        x0=float(w[W_X0]),
+                        x1=float(w[W_X1]),
+                        center=0.0,
+                        assigned_col=None,
+                    )
                 )
-        for prev, cur in zip(ws, ws[1:]):
-            x_gaps.append(round(float(cur[W_X0]) - float(prev[W_X1]), 2))
-        groups_total += len(groups)
-        for g in groups:
-            center = (g["x0"] + g["x1"]) / 2.0
+        for gidx, g in enumerate(groups):
+            g.center = (g.x0 + g.x1) / 2.0
             cand = [
                 j
                 for j in range(n_cols)
-                if tx + j * col_width - exp_x
-                <= center
-                <= tx + (j + 1) * col_width + exp_x
+                if col_expanded[j][0] <= g.center <= col_expanded[j][1]
             ]
             if cand:
-                groups_assigned += 1
-                j = min(cand, key=lambda jj: (abs(col_centers[jj] - center), jj))
-                assign_counts[j] += 1
+                g.assigned_col = min(
+                    cand, key=lambda j: (abs(col_centers[j] - g.center), j)
+                )
+            for w in g.words:
+                word_index[id(w)] = (ridx, gidx)
+        col_groups.append(groups)
 
-    outside = [w for w in neighborhood if not _center_in(w, tb)]
-    outside_max = max(
-        (
-            max(tb[0] - _cx(w), _cx(w) - tb[2], tb[1] - _cy(w), _cy(w) - tb[3])
-            for w in outside
-        ),
-        default=0.0,
+    return LayoutModel(
+        neighborhood_words=neighborhood,
+        in_bbox_words=in_bbox_words,
+        row_clusters=row_clusters,
+        col_groups=col_groups,
+        row_bands=row_bands,
+        col_bands=col_bands,
+        col_expanded=col_expanded,
+        col_centers=col_centers,
+        h_med=h_med,
+        row_tol=row_tol,
+        word_index=word_index,
     )
-    return {
-        "table_id": table.get("id"),
-        "n_rows": n_rows,
-        "n_cols": n_cols,
-        "table_bbox_pt": [round(v, 2) for v in tb],
-        "neighborhood_words": len(neighborhood),
-        "words_in_bbox": len(in_bbox_words),
-        "neighborhood_outside_bbox": len(outside),
-        "outside_max_pt": round(outside_max, 2),
-        "word_h_median_pt": round(h_med, 2),
-        "row_tol_proposed_pt": round(row_tol, 2),
-        "row_y1_gaps_sorted_pt": sorted(y1_gaps),
-        "row_clusters": len(clusters),
-        "vision_rows_covered": len(mapped_rows),
-        "in_row_x_gaps_sorted_pt": sorted(x_gaps),
-        "col_gap_proposed_pt": col_gap_pt,
-        "col_groups": groups_total,
-        "uniform_col_width_pt": round(col_width, 2),
-        "exp_x_proposed_pt": round(exp_x, 2),
-        "col_group_assign_hit_ratio": (
-            round(groups_assigned / groups_total, 3) if groups_total else 0.0
-        ),
-        "col_group_assign_counts": assign_counts,
-    }
+
+
+class T1Status(str, Enum):
+    """T1 outcome (P-002 §3.3.1-c): UNIQUE/COLLISION/NONE."""
+
+    UNIQUE = "unique"
+    COLLISION = "collision"
+    NONE = "none"
+
+
+@dataclass
+class RunMatch:
+    """One value-equal consecutive-word run (same block/line)."""
+
+    words: List[Any]
+    row_idx: int
+    group_idx: int
+    norm: str
+
+
+def _drop_covered_runs(runs: List[RunMatch]) -> List[RunMatch]:
+    """Drop runs fully covered by a longer run over the same words (§3.3)."""
+    if len(runs) < 2:
+        return runs
+    id_sets = [frozenset(id(w) for w in r.words) for r in runs]
+    kept = []
+    for i, run in enumerate(runs):
+        if not any(
+            i != j and len(id_sets[i]) < len(id_sets[j]) and id_sets[i] <= id_sets[j]
+            for j in range(len(runs))
+        ):
+            kept.append(run)
+    return kept
+
+
+def _gen_runs(model: LayoutModel, target: str) -> List[RunMatch]:
+    """Consecutive 1..T1_MAX_RUN_WORDS word windows per (block, line) whose
+    normalized join equals ``target``; covered short runs are dropped."""
+    buckets: Dict[Tuple[Any, Any], List[Any]] = {}
+    for w in model.neighborhood_words:
+        buckets.setdefault((w[W_BLOCK], w[W_LINE]), []).append(w)
+    runs: List[RunMatch] = []
+    for ws in buckets.values():
+        ws = sorted(ws, key=lambda w: w[W_WORDNO])
+        for start in range(len(ws)):
+            for end in range(start + 1, min(start + T1_MAX_RUN_WORDS, len(ws)) + 1):
+                chunk = ws[start:end]
+                if normalize_for_compare(" ".join(str(w[W_TEXT]) for w in chunk)) == target:
+                    ridx, gidx = model.word_index[id(chunk[0])]
+                    runs.append(
+                        RunMatch(words=chunk, row_idx=ridx, group_idx=gidx, norm=target)
+                    )
+    return _drop_covered_runs(runs)
+
+
+def solve_t1(
+    model: LayoutModel,
+    ocr_text: str,
+    cell_row: int,
+    cell_col: int,
+) -> Tuple[T1Status, Optional[List[Any]]]:
+    """Row-band + column-window anchored value match (P-002 §3.3, T1).
+
+    Candidate runs: normalized join equal to the OCR value AND clustered into
+    vision row ``cell_row``. 0 runs -> NONE; 1 run -> UNIQUE only when its
+    word group is assigned to ``cell_col`` (else NONE); >= 2 -> COLLISION
+    (caller then tries :func:`resolve_t1_collision`; failure falls to T2).
+    UNIQUE returns the matched words — equal by construction, so the outcome
+    is green (``text_confirmed`` / ``value_match``) and ``data`` is untouched.
+    """
+    target = normalize_for_compare(ocr_text)
+    if not target:
+        return T1Status.NONE, None
+    runs = [
+        r
+        for r in _gen_runs(model, target)
+        if model.row_clusters[r.row_idx].vision_row == cell_row
+    ]
+    if not runs:
+        return T1Status.NONE, None
+    if len(runs) == 1:
+        group = model.col_groups[runs[0].row_idx][runs[0].group_idx]
+        if group.assigned_col == cell_col:
+            return T1Status.UNIQUE, runs[0].words
+        return T1Status.NONE, None
+    return T1Status.COLLISION, None
+
+
+def resolve_t1_collision(
+    model: LayoutModel,
+    ocr_text: str,
+    cell_row: int,
+    cell_col: int,
+) -> Tuple[bool, Optional[List[Any]]]:
+    """Resolve a same-row same-value T1 collision via the column window
+    (P-002 §3.3 step 5): keep runs whose word group is assigned to
+    ``cell_col``, then win only with the strictly closest unexpanded column
+    center; 0 or tied candidates return ``(False, None)`` (fall to T2)."""
+    target = normalize_for_compare(ocr_text)
+    runs = [
+        r
+        for r in _gen_runs(model, target)
+        if model.row_clusters[r.row_idx].vision_row == cell_row
+    ]
+    anchored = []
+    for r in runs:
+        group = model.col_groups[r.row_idx][r.group_idx]
+        if group.assigned_col == cell_col:
+            anchored.append(
+                (abs(group.center - model.col_centers[cell_col]), r.group_idx, r)
+            )
+    if not anchored:
+        return False, None
+    anchored.sort(key=lambda t: (t[0], t[1]))
+    if len(anchored) == 1 or anchored[0][0] < anchored[1][0]:
+        return True, anchored[0][2].words
+    return False, None
+
+

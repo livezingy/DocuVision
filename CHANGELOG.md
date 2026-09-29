@@ -121,7 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   G4 判据 1-6/9 PASS（bank 12×value_match、symbol 全绿）；G5 INV-A1/A2/A3 零违规、候选格恒等，
   p12 红率 58.2%→0.8%、p29 97%→25.4%（硬线按设计口径 p12/p29 双 PASS；sanity 上界改观察口径，
   裁决 X5）；**正确性实证：旧漏斗对 mamba p12 四格静默错填（数字格 '89.48' 被回填成列头标签
-  'ppl ↓' 等），P-002 sanity 闸全部拦截为可复核红**。G6 WTW 哨兵执行中。
+  'ppl ↓' 等），P-002 sanity 闸全部拦截为可复核红**。G6 WTW 哨兵 PASS（5 单 no-op 强断言逐键
+  复现旧缓存；本机重判分 `wtw_metrics.csv` sha256 与 P-027 GB2 基线逐位一致）。
 
 ### Removed
 - **Lite track references stripped from all outward-facing material** (2026-09-24; `apps/lite/**` itself was deleted in

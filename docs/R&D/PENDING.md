@@ -41,7 +41,10 @@
   **云端验证（2026-09-29）**：G4 判据 1-6/9 PASS（bank 12×value_match、symbol 全绿）；G5 INV
   零违规 + 候选格恒等，p12 红率 58.2%→0.8%、p29 97%→25.4%（双 PASS）；**正确性实证**：旧漏斗
   对 mamba p12 四格静默错填（'89.48'→'ppl ↓' 等列头标签），P-002 sanity 拦截（裁决 X5：sanity
-  上界改观察口径、p34 记已知局限、混淆集不动）。**待验证**：G6 WTW 哨兵——全过转 landed。
+  上界改观察口径、p34 记已知局限、混淆集不动）。**云端三 Gate 全过（2026-09-29）**：G6 WTW
+  哨兵 PASS（5 单 no-op 强断言逐键复现旧缓存；本机重判分 `wtw_metrics.csv` sha256 ==
+  `e44d5e6d1de26fda2da1238699f04b8aa2c4b9d8acc2adeebfba14f3db770968` 与 GB2 逐位一致）；
+  余 PR 合并后转 landed。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 > status: retained · since: 2026-09-26

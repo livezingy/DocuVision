@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from docuvision_core.utils.pdf_text_utils import normalize_for_compare
 
 from app.services.page_text_trust import judge_page_trust
+from app.services.table_alignment import layout_preview
 
 # Pinned symbol set (v1.8 §4.1 / B2) — matches scripts/trial/symbol_benchmark.py:33.
 SYMBOL_CHARS = ["✓", "⊗", "●", "○"]
@@ -123,6 +124,20 @@ def _words_union_bbox(words: List[Any]) -> List[float]:
         round(max(float(w[2]) for w in words), 2),
         round(max(float(w[3]) for w in words), 2),
     ]
+
+
+def _pt_rect(table: Dict[str, Any]) -> Tuple[float, float, float, float]:
+    """Table visual bbox as an unexpanded pt-space rect (P-002 D9 formula).
+
+    Raster px / 2 = pt; missing or degenerate bbox keys degrade to zeroes
+    (same tolerance as ``derive_cell_bbox``) instead of raising.
+    """
+    bbox = table.get("bbox") or {}
+    x = float(bbox.get("x", 0.0)) / 2.0
+    y = float(bbox.get("y", 0.0)) / 2.0
+    w = float(bbox.get("width", 0.0)) / 2.0
+    h = float(bbox.get("height", 0.0)) / 2.0
+    return (x, y, x + w, y + h)
 
 
 def backfill_table_cells(
@@ -295,7 +310,9 @@ def backfill_tables(
     skipped and counted in ``pages_skipped_preprocessed``.
 
     When ``debug_dir`` is provided, per-candidate alignment evidence is
-    written to ``debug_dir/backfill_alignment.json`` (R1 mitigation).
+    written to ``debug_dir/backfill_alignment.json`` (R1 mitigation), and
+    per-table layout statistics to ``debug_dir/backfill_layout_preview.json``
+    (P-002 C0 constant calibration).
 
     The summary carries ``mismatch_details`` (capped at 50 entries of
     ``{page, table_index, row, col, ocr_text, text_layer_text}``) plus
@@ -327,6 +344,7 @@ def backfill_tables(
         return summary
 
     debug_records: Optional[List[Dict[str, Any]]] = [] if debug_dir else None
+    layout_previews: Optional[List[Dict[str, Any]]] = [] if debug_dir else None
     mismatch_records: List[Dict[str, Any]] = []
 
     try:
@@ -356,7 +374,17 @@ def backfill_tables(
                 continue
             summary["pages_text_layer_trusted"] += 1
             page_words = page.get_text("words")
-            for t_idx, t in tables_by_page[page_num]:
+            page_tables = tables_by_page[page_num]
+            if layout_previews is not None:
+                for t_idx, t in page_tables:
+                    siblings = [
+                        _pt_rect(other) for _, other in page_tables if other is not t
+                    ]
+                    preview = layout_preview(t, page_words, siblings)
+                    preview["page"] = page_num
+                    preview["table_index"] = t_idx
+                    layout_previews.append(preview)
+            for t_idx, t in page_tables:
                 s = backfill_table_cells(
                     t,
                     page_words,
@@ -386,6 +414,8 @@ def backfill_tables(
 
     if debug_dir and debug_records:
         _write_debug_alignment(debug_dir, debug_records)
+    if debug_dir and layout_previews:
+        _write_debug_layout_preview(debug_dir, layout_previews)
     return summary
 
 
@@ -399,6 +429,23 @@ def _write_debug_alignment(debug_dir: str, records: List[Dict[str, Any]]) -> Non
         path = os.path.join(debug_dir, "backfill_alignment.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(records, f, ensure_ascii=False, indent=2)
+    except Exception:
+        # debug output must never break the task
+        pass
+
+
+def _write_debug_layout_preview(
+    debug_dir: str, previews: List[Dict[str, Any]]
+) -> None:
+    """Write per-table layout statistics for constant calibration (P-002 C0)."""
+    import json
+    import os
+
+    try:
+        os.makedirs(debug_dir, exist_ok=True)
+        path = os.path.join(debug_dir, "backfill_layout_preview.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(previews, f, ensure_ascii=False, indent=2)
     except Exception:
         # debug output must never break the task
         pass

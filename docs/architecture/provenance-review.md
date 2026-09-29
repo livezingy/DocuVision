@@ -121,4 +121,4 @@ table_step（orchestrator）
 | 表格 | `cell_provenance` / `cell_ocr_text` / `cell_word_bbox` | 证明包渲染、机读客户 |
 | 质量 | `quality.table_backfill.*`（含 `mismatch_details[]`、`page_verdicts[]`） | 报告指标卡、review list |
 | 报告 | `report.json`（review_list 全量、backfill_demo、annotation_summary）+ `annotated.pdf`（绿/琥珀锚定框 + 蓝表框） | 客户 / 程序核验 |
-| 调试 | `debug/backfill_alignment.json`（DEBUG_MODE 时逐候选对齐证据） | 排障 |
+| 调试 | `debug/backfill_alignment.json`（DEBUG_MODE 时逐候选对齐证据）；`debug/backfill_layout_preview.json`（P-002 C0：DEBUG_MODE 时逐表布局统计，供常数标定） | 排障 / 常数标定 |

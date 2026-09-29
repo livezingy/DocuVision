@@ -172,6 +172,10 @@
   "test_seal_service_grading.py": {
     "kind": "full"
   },
+  "test_table_alignment.py": {
+    "kind": "full",
+    "note": "table_alignment reason contract + sanity gate (P-002 C1; pure logic, no fitz/paddle)"
+  },
   "test_table_backfill.py": {
     "kind": "full"
   },

@@ -6,9 +6,10 @@ funnel in place and imports from this module (one-way, backfill -> alignment).
 
 C0 scope: the debug-only :func:`layout_preview` used to calibrate the geometry
 constants (neighborhood pad / row tolerance / column gap / column expansion)
-against real samples. The solvers land in C1-C3; the constants stay function
-parameters with proposed defaults until Ying approves the calibrated values
-(P-002 R1) and are then pinned as module constants.
+against real samples. C1 scope: the ``REASON_*`` contract constants and the
+:func:`is_ocr_confusion` sanity gate. The solvers land in C2-C3; the constants
+stay function parameters with proposed defaults until Ying approves the
+calibrated values (P-002 R1) and are then pinned as module constants.
 """
 
 from __future__ import annotations
@@ -18,6 +19,113 @@ from typing import Any, Dict, List, Optional, Tuple
 # fitz get_text("words") tuple indices (R5: list-or-tuple, index access)
 W_X0, W_Y0, W_X1, W_Y1 = 0, 1, 2, 3
 W_TEXT, W_BLOCK, W_LINE, W_WORDNO = 4, 5, 6, 7
+
+# --- P-002 C1: reason contract (8 values, D2) ---------------------------
+# Spec provenance-review.md §5 pins 6 values; "cluster" and "sanity_reject"
+# extend it because the three-layer pipeline has two outcomes the 6-value
+# enum cannot express (P-002 §4): a T3-resolved cell, and an alignment that
+# succeeded but was rejected by the sanity gate.
+REASON_VALUE_MATCH = "value_match"
+REASON_GEO = "geometric"
+REASON_CLUSTER = "cluster"
+REASON_SANITY = "sanity_reject"
+REASON_NO_LINE = "no_aligned_line"
+REASON_CROSSING = "crossing"
+REASON_MULTI = "multi_line"
+REASON_SHAPE = "shape_mismatch"
+
+REASON_KEYS: Tuple[str, ...] = (
+    REASON_VALUE_MATCH,
+    REASON_GEO,
+    REASON_CLUSTER,
+    REASON_SANITY,
+    REASON_NO_LINE,
+    REASON_CROSSING,
+    REASON_MULTI,
+    REASON_SHAPE,
+)
+
+# --- P-002 C1: backfill sanity gate (spec provenance-review.md §4.2) ----
+# Bidirectional OCR misread pairs; a differing character pair passes only
+# when both directions are listed.
+_OCR_CONFUSION_NEIGHBORS = {
+    "0": frozenset("Oo"),
+    "O": frozenset("0"),
+    "o": frozenset("0"),
+    "1": frozenset("lIi"),
+    "l": frozenset("1"),
+    "I": frozenset("1"),
+    "i": frozenset("1"),
+    "5": frozenset("Ss"),
+    "S": frozenset("5"),
+    "s": frozenset("5"),
+    "8": frozenset("B"),
+    "B": frozenset("8"),
+    "6": frozenset("bG"),
+    "b": frozenset("6"),
+    "G": frozenset("6"),
+    "9": frozenset("gq"),
+    "g": frozenset("9"),
+    "q": frozenset("9"),
+    "2": frozenset("Zz"),
+    "Z": frozenset("2"),
+    "z": frozenset("2"),
+    "✓": frozenset("√"),
+    "√": frozenset("✓"),
+    "●": frozenset("•"),
+    "•": frozenset("●"),
+    "×": frozenset("x"),
+    "x": frozenset("×"),
+}
+
+
+def _replacement_cap(length: int) -> int:
+    return 1 if length <= 6 else 2
+
+
+def _within_confusion_budget(a: str, b: str, limit: int) -> bool:
+    """Positional compare: equal chars pass, differing chars must hit a
+    bidirectional confusion pair, and replacements stay within ``limit``."""
+    mismatches = 0
+    for ca, cb in zip(a, b):
+        if ca == cb:
+            continue
+        if cb not in _OCR_CONFUSION_NEIGHBORS.get(ca, frozenset()):
+            return False
+        mismatches += 1
+        if mismatches > limit:
+            return False
+    return True
+
+
+def is_ocr_confusion(a: str, b: str) -> bool:
+    """Sanity gate for the amber (backfill) branch (P-002 §3.2).
+
+    ``a`` is the OCR value, ``b`` the text-layer value, both already passed
+    through ``normalize_for_compare`` (the caller guarantees it — single
+    import source, R9). True only when they plausibly read the same:
+
+    1. length difference <= 1;
+    2. every differing character pair is a bidirectional OCR confusion pair;
+    3. replacements within the cap — length <= 6 allows 1, length > 6 allows
+       2, the threshold taken on the longer string.
+
+    With a length difference of 1, drop-tail alignment is tried before
+    drop-head (first passing branch wins; the dropped character is not
+    counted as a replacement). Empty inputs never pass — any doubt keeps the
+    vision result.
+    """
+    if not a or not b:
+        return False
+    if abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return _within_confusion_budget(a, b, _replacement_cap(len(a)))
+    long_s, short_s = (a, b) if len(a) > len(b) else (b, a)
+    cap = _replacement_cap(len(long_s))
+    if _within_confusion_budget(long_s[:-1], short_s, cap):
+        return True
+    return _within_confusion_budget(long_s[1:], short_s, cap)
 
 
 def _median(values: List[float]) -> float:

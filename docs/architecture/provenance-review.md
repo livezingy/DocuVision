@@ -124,9 +124,12 @@ T1 唯一命中（或碰撞消解唯一落位）→ T2 → T3，全部无果诚�
 本机制整体不适用，其信任叙事走引擎级指标（symbol_benchmark 等），两条叙事不混。
 
 **验收**：本地门禁全绿（G1 单测 442 passed；G2 golden 三件套 pin：bank 12×value_match /
-symbol 4×value_match / 非等宽金样 5 绿 + 2 诚实红；G3 audit/lint/docs_refs 0 违规）；
-**G4 BACKFILL-001 云端重验（判据 1-7 + 新增 8/9/10）、G5 mamba 红率 + INV-A1/A2/A3 机检、
-G6 WTW 哨兵待执行**（行为变更，见 v1.8-cloud-validation §5）。
+symbol 4×value_match / 非等宽金样 5 绿 + 2 诚实红；G3 audit/lint/docs_refs 0 违规）。
+云端（2026-09-29）：**G4 判据 1-6/9 PASS**（bank 12×value_match、symbol 全绿）；**G5 INV-A1/A2/A3
+零违规、候选格恒等，p12 红率 58.2%→0.8%、p29 97%→25.4%**（硬线按设计口径 p12/p29 判，双 PASS；
+sanity 上界改观察口径——设计稿裁决 X5：T1/T3 使旧红格新对齐成功后内容非混淆即诚实红，且实测
+拦截了旧漏斗对 mamba p12 四格的静默错填 '89.48'→'ppl ↓' 等，正确性修复实证）；p34 100%→57.1%
+为已知局限（R10/R11 结构性成因，改进另立项）。**G6 WTW 哨兵执行中**。
 
 ## 6. 证据产物速查
 

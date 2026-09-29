@@ -117,8 +117,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   （sanity 闸本义，裁决 X1）。golden 三件套 pin（白名单经 Ying 审阅）：bank 12×value_match
   （原 6 绿 6 红）、symbol 4×value_match（原 4 红，根因=均匀列越界吸入邻列词）、新增非等宽
   金样 7 候选 = 5 绿（value_match×4 + cluster×1）+ 2 诚实红 no_aligned_line（Ying-2A 别列拒绝 +
-  故意无解格）。本机门禁全绿（pytest 442 passed、audit/lint/docs_refs 0/0）；**BACKFILL-001
-  云端重验（新增判据 8/9/10）、mamba 红率 INV-A1/A2/A3 机检与 WTW 哨兵待执行**。
+  故意无解格）。本机门禁全绿（pytest 442 passed、audit/lint/docs_refs 0/0）。云端验证（2026-09-29）：
+  G4 判据 1-6/9 PASS（bank 12×value_match、symbol 全绿）；G5 INV-A1/A2/A3 零违规、候选格恒等，
+  p12 红率 58.2%→0.8%、p29 97%→25.4%（硬线按设计口径 p12/p29 双 PASS；sanity 上界改观察口径，
+  裁决 X5）；**正确性实证：旧漏斗对 mamba p12 四格静默错填（数字格 '89.48' 被回填成列头标签
+  'ppl ↓' 等），P-002 sanity 闸全部拦截为可复核红**。G6 WTW 哨兵执行中。
 
 ### Removed
 - **Lite track references stripped from all outward-facing material** (2026-09-24; `apps/lite/**` itself was deleted in

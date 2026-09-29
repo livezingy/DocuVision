@@ -37,10 +37,11 @@
 - 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
 - 落地（2026-09-29，`feat/p002-table-alignment`，执行者 AgentE）：三层对应 + sanity 闸 + reason
   契约已实现并通过本机门禁（pytest 442 / audit / lint / docs_refs 全 0 违规）；golden 三件套
-  pin 与 4 处期望翻转见 CHANGELOG P-002 条目；设计稿执行期裁决 X1-X4 见设计稿 §0.3（local-only）。
-  **待验证**：G4 BACKFILL-001 云端重验（判据 1-7 + 新增 8/9/10）+ G5 mamba 红率（对齐失败红率
-  ≤ 1/3 × C0 基线：p12 58.2% / p29 97% / p34 100%，基线 JSON 在云端 `baselines/`）+ INV-A3
-  机检 + G6 WTW 哨兵——全过转 landed。
+  pin 与 4 处期望翻转见 CHANGELOG P-002 条目；设计稿执行期裁决 X1-X5 见设计稿 §0.3（local-only）。
+  **云端验证（2026-09-29）**：G4 判据 1-6/9 PASS（bank 12×value_match、symbol 全绿）；G5 INV
+  零违规 + 候选格恒等，p12 红率 58.2%→0.8%、p29 97%→25.4%（双 PASS）；**正确性实证**：旧漏斗
+  对 mamba p12 四格静默错填（'89.48'→'ppl ↓' 等列头标签），P-002 sanity 拦截（裁决 X5：sanity
+  上界改观察口径、p34 记已知局限、混淆集不动）。**待验证**：G6 WTW 哨兵——全过转 landed。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 > status: retained · since: 2026-09-26

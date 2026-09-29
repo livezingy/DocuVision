@@ -20,7 +20,7 @@
 **P-006 已按用户裁决移除**（2026-09-26，**非**晋升路径：其主体 `.zcode/` 目录连同 `.gitignore` 的 `.zcode/plans/` 规则一并删除，预计半年内不使用该工具，后续要用再立项；该目录从未入库，故无 git 历史可回溯）
 
 ### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
-> status: decided · since: 2026-09-29
+> status: landed · since: 2026-09-29
 - 来源：v1.8.1 PROOF-001 云端实测（mamba p12/p29 红率 58%/97%，均匀网格对应在非等宽表上大面积失准）
   + 用户裁决（红框停画、绿/琥珀锚定印刷字符已落地 c37e35c）；用户提出"比对应直接基于文本坐标"。
 - 现状边界：born-digital 表格的逐格红/绿标注精度受均匀网格限制；琥珀（真实修正）已由
@@ -43,8 +43,9 @@
   对 mamba p12 四格静默错填（'89.48'→'ppl ↓' 等列头标签），P-002 sanity 拦截（裁决 X5：sanity
   上界改观察口径、p34 记已知局限、混淆集不动）。**云端三 Gate 全过（2026-09-29）**：G6 WTW
   哨兵 PASS（5 单 no-op 强断言逐键复现旧缓存；本机重判分 `wtw_metrics.csv` sha256 ==
-  `e44d5e6d1de26fda2da1238699f04b8aa2c4b9d8acc2adeebfba14f3db770968` 与 GB2 逐位一致）；
-  余 PR 合并后转 landed。
+  `e44d5e6d1de26fda2da1238699f04b8aa2c4b9d8acc2adeebfba14f3db770968` 与 GB2 逐位一致）。
+  PR #46 已合并（b16c19d，2026-09-29），转 **landed**；结论已晋升 `provenance-review.md` §4/§5，
+  90 天晋升审视按 kernel `doc-sync.md` 惯例执行。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 > status: retained · since: 2026-09-26

@@ -13,6 +13,9 @@ Use this folder for exploratory write-ups that are **not** authoritative for the
 | [azure-contract-and-paddle-discovery.md](azure-contract-and-paddle-discovery.md) | Azure sample observations + contract direction notes |
 | [P020-ocr-harness-M1M2-执行包.md](P020-ocr-harness-M1M2-执行包.md) | OCR harness 执行包：设计细化 / 护栏 / **§10 云端 runbook 与回填模板** / §10.11-§10.12 空间门禁 |
 | [P021-云端对照-执行清单与记录模板.md](P021-云端对照-执行清单与记录模板.md) | P-021 云端对照的执行清单、OCR JSON SHA 清单与 round3 记录 |
+| [DocuVision-v1.10-收口审计报告.md](DocuVision-v1.10-收口审计报告.md) | v1.10.0 收口审计（`closure-audit-v2.1`）：门禁/数字核实表 · 切版执行回填（#48/#49/tag） · 遗留 §5 · capability-card 指针 |
+| [capability-card-v1.10-v1.0.md](capability-card-v1.10-v1.0.md) | 面向 Agent U 的投标能力卡（v1.0.2）：11 能力域 + 诚实边界 + 营销词黑名单 + 数字来源索引；tag `v1.10.0` 已回填 |
+| [DocuVision-P002-表格逐格对齐设计稿_v2.md](DocuVision-P002-表格逐格对齐设计稿_v2.md) | P-002 三层对齐设计稿（draft-v3）：T1/T3 伪代码、契约、C0-C5 切分、执行期裁决 X1-X5 |
 
 **Authoritative docs** live in [../architecture/](../architecture/) and [../README.md](../README.md).
 

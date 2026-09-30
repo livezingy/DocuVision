@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Removed
+
+### Changed
+
+### Fixed
+
+## [1.10.0] — 2026-09-30
+
+### Added
 - **P-020 — OCR quality measurement harness M1+M2** (2026-09-22): a **machine-local** bypass instrument under
   `scripts/measure/` (deliberately **not versioned** — `scripts/*` is a user-requested untracked folder, so only
   this note and the PENDING entry land in git). It never imports the app — it consumes the pipeline's result

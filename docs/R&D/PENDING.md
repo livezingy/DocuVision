@@ -46,6 +46,14 @@
   `e44d5e6d1de26fda2da1238699f04b8aa2c4b9d8acc2adeebfba14f3db770968` 与 GB2 逐位一致）。
   PR #46 已合并（b16c19d，2026-09-29），转 **landed**；结论已晋升 `provenance-review.md` §4/§5，
   90 天晋升审视按 kernel `doc-sync.md` 惯例执行。
+- 执行期裁决 X3/X4 补录（2026-09-30，从 local 设计稿 §0.3 摘录 + 按当前树校准）：
+  X3 = §12 A10 rg 模式漏 `"]` 匹配不到 golden 翻转锚点（原实测 :103-104）→ 模式已修正（`.\]`）；
+       另：P-002 落地后该锚点值由 == 6 改 == 12/== 0、行号漂至 :105-106，§12 命令需按当前树同步
+       （设计稿 §12 已于 2026-09-30 更正为 `== 12|== 0` + `:105-106`）。
+  X4 = EXP_X_MIN_RATIO 标定：0.15×表宽在多列窄表上爆炸（mamba p29 19 列/列宽 22.8pt → 窗 64.95pt=2.85 列宽，
+       2 列零锚定；p34-t1 8 列中 5 列零锚定）→ 批准 0.15→0.05（2026-09-29）：p29 窗 21.6pt≈0.95 列宽；
+       bank/symbol 读数不变（0.6×均匀列宽项主导）；其余三常数维持默认。dump 证据
+       `backend/debug/c0_mamba_layout_preview.json`（local-only）。代码落点 `table_alignment.py:144-153`。
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 > status: retained · since: 2026-09-26
@@ -441,7 +449,7 @@ seed=42）：grid_exact 145/300、grid_f1 均值 0.8989、mean_s_teds 0.8399、t
   设计稿 `ocr-quality-measurement-design.md`）已随之删除；自此本条只承载**证据与规模偏差**（云读数、1958 行偏差、
   C1 静态核对），改规格去 living doc、勿改本条。
 
-### P-021 · `POST /api/v1/ocr` 返回坐标不在上传图像像素系（unwarping 未关闭）（2026-09-24，P-020 云端坐标核验产出；同日裁决并落地入库，待 round3 云端复测回填）
+### P-021 · `POST /api/v1/ocr` 返回坐标不在上传图像像素系（unwarping 未关闭）（2026-09-24，P-020 云端坐标核验产出；同日裁决并落地入库，round3 已于 09-25 验证）
 > status: landed · since: 2026-09-25
 - **现象**：该端点是**已冻结的公开契约**（`backend/tests/snapshots/openapi_baseline.json`、
   `route_contract_freeze.json`、`test_route_inventory.py` 三处登记），但契约**未声明**

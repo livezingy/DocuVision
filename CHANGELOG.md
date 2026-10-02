@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-027 — RF frequency-table weak GT + line-level reconciliation (R2)** (2026-10-02): migrated the P-018 P1
+  text-layer weak-GT route onto the RF allocation corpus (MY/BD/IE client PDFs, quarantine zone; internal
+  regression only — no sales-facing numbers). Local-only instruments under `scripts/measure/` (untracked by
+  the `scripts/*` policy): `rf_gt.py` (text-layer line GT with cross-span bbox merge, Tr3 invisible-text
+  quality gate, deterministic 23-page subset rules v1, C9 on-the-fly derivation), `rf_eval.py` (greedy
+  IoU>=0.5 line pairing in the image px frame + character-DP CER over paired rows, D10-style read-only pred
+  cache, byte-identical double-run), `rf_cli.py` (`build-rf-gt` / `evaluate-rf` standalone entry),
+  `rf_overlay.py` (paired/unpaired overlay + ink-coverage probe). Readings: MY 0.9945 line_match_rate /
+  0.0128 cer_micro, BD 0.9885 / 0.0039, IE 0.2308 / 0.0073 — IE merged-cell text-layer line boxes are
+  structurally taller than OCR rows (counts match 1:1, text reads fine): the taxonomy #7 battlefield, feeding
+  R3/R4; the IE borderless probe page pairs normally (17/20). Third reconciliation leg (visual-block IoU)
+  registered as a gap: RF pages carry frame-only drawings. Evidence chain in PENDING P-027; the harness
+  architecture doc §2/§9 are refreshed (TEDS row corrected to implemented via WTW S-TEDS, 2026-09-28).
 
 ### Removed
 

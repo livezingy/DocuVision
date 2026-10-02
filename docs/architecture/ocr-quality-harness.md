@@ -35,9 +35,10 @@
 | **M1 受控退化** | **已实施**（local-only） | 单一前向仿射矩阵生成 `identity` / `rotate:{deg}+jpeg:{q}` 等退化试件；确定性（同输入同参数逐位可复现） |
 | **M2 弱 GT + 全量对照 runner** | **已实施**（local-only） | born-digital 文本层产弱 GT（词级 bbox + 文本）；runner 出 per-page × per-spec 的 15 列 CSV + HTML 报告 |
 | 指标核心 | **已实施**（local-only） | CER 三口径 / LCS 阅读序 / `line_exact_rate` / table 子分 / `cell_accuracy`；纯标准库 DP（见 §4 的 D2） |
+| **RF 频率表弱 GT + 行级对账**（P-027 R2） | **已实施**（local-only） | `rf_gt.py`（文本层行级 GT（line 聚合跨 span 合并）+ Tr3 不可见质量闸 + 确定性子集规则 v1，C9 现场派生）· `rf_eval.py`（图像 px 帧行级 greedy IoU≥0.5 配对 + 配对行内字符 DP CER；只读 pred cache；同缓存双跑逐字节）· `rf_cli.py`（`build-rf-gt` / `evaluate-rf` 外置独立入口，不动 harness_cli）· `rf_overlay.py`（配对红绿叠渲染 + 墨迹坐标探针） |
 | **M3 共识分诊**（档零） | **未实施** | 本包不做（§7）；原提案描述保留在 git 历史与 CHANGELOG 里，勿当现状引用 |
 | **M4 字段金标**（档三） | **未实施** | 同上；业务口径指标目前由既有 review_list / Proof Pack 承担 |
-| **TEDS**（表格结构树编辑距离） | **未实施** | 依赖结构真值 ⇒ 随 **P2**（表格结构 GT 对账）激活（PENDING P-018） |
+| **TEDS**（表格结构树编辑距离） | **已实施**（local-only，S-TEDS） | 2026-09-28 随 **P2** 落地（选型 = WTW）：`teds.py` 结构树 + `evaluate-table` 子命令；GT 无 cell 文本故为结构面 S-TEDS（PENDING P-018 P2 段；此前本行误标「未实施」系 P-027 WTW 遗留文档债，2026-10-02 更正） |
 
 **实现不入库（关键前提）**：`scripts/measure/**` 的源码、测试与产物**均不进 git**——`.gitignore` 的 `scripts/*` 是用户既定策略
 （"never track these folders"，仅逐个白名单放行门禁脚本），P-020 裁决**保持 local-only**。三个直接后果：
@@ -105,7 +106,7 @@
 ## 7. 明确不做（80/20 红线）
 
 - 不做 **M3 共识分诊**（档零）与 **M4 字段金标**（档三）——本包只交 M1+M2；要做须各自立项。
-- 不做 **TEDS**（依赖结构真值）——随 P2 激活。
+- 不做 **TEDS**（依赖结构真值）——原为 P-020 包边界；已于 2026-09-28 随 P2 落地（WTW 选型，见 §2 与 PENDING P-018）。
 - 不做**端到端模型重训**、**大规模人工标注**、**GT 标注平台化建设**。
 - **只测不治**：不做引擎微调/替换/超参搜索；不改 review_list 现有行为；不搬移其组件代码（import 复用）。
 - 不引新依赖进主线（自实现 DP / IoU / 秩相关，不引 jiwer / rapidfuzz / scipy）。
@@ -125,8 +126,12 @@
 
 ## 9. 关系与后续
 
-- **PENDING P-018**（GT 工厂立项）：P0 评测 harness + P1 弱 GT 合成 = 本 harness（已落地）；**下一待决项 = P2 表格结构 GT 对账的公开资源选型**
-  （PubTabNet / FinTabNet / WTW）。
+- **PENDING P-018**（GT 工厂立项）：P0 评测 harness + P1 弱 GT 合成 = 本 harness（已落地）；**P2 表格结构 GT 对账已落地**
+  （2026-09-28，选型 = WTW，`teds.py` + `evaluate-table`）；P3 已收口（2026-10-02，X3 = D'，引擎符号可读边界定格，
+  封存移交「VLM 符号读数」立项）。P1 验收已于客户 RF 语料兑现（P-027 R2，见下）。
+- **PENDING P-027**（RF 频率表 fixture 簇）：R1 语言盘点 + **R2 弱 GT 合成与行级对账已落地**（2026-10-02，rf 四件入本
+  harness §2；MY 0.9945 / BD 0.9885 / IE 0.2308——IE 合并格文本层行盒与 OCR 行块结构性错位 = taxonomy #7 主战场实证）；
+  R3（验收三闸 harness 化）与 R4（IE borderless/合并格专项）待排队，R2 的合并格发现与第三腿（视觉区块 IoU）缺口为其前置输入。
 - **PENDING P-002**（表格逐格对齐）：本 harness 把 mamba p12/p29 的红率从"人工看"变成**分数**，即 P-002 立项触发条件的量化入口。
 - **PENDING P-021**：`/api/v1/ocr` 坐标帧修复与哨兵（§5）。
 - **PENDING P-020**：harness 落地证据与规模偏差的登记条目（本文件是其规格的 living 载体）。

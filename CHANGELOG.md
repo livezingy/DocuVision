@@ -57,7 +57,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   propagates; no proxy invented); Confidence product source stays unmeasured by design (D8). GB2 byte-identical
   double-run (CSV `12476506…`); test_metrics 58→**71 passed** (+13 R4 assertions); `lint_file_size.py` OK. Evidence
   chain in PENDING P-027 (X4 verdict amended: X3-4 granularity fix landed by R4; blind-spot #1/#5 solutions adopted per
-  PENDING §801); execution record `docs/R&D/P027-RF-R4-执行记录.md` (local-only).
+  PENDING §801); execution record `docs/R&D/P027-RF-R4-执行记录.md` (local-only). Same-day envelope return (9/9 sha256
+  verified; cloud tree `ed38bd0c`, paddle stack = pinned versions): column binding IE 0.5278 / merged-cell completeness
+  IE 0.7917 (after fixing a GT trailing-comma false-miss; tests 72 passed) — **p079 band cell `40.7-4098MHz` (decimal
+  point of 40.98 lost) registered as P-002 follow-up trigger evidence** (taxonomy #7-family product-side failure while
+  the same page's column binding is fully correct); footnote-definition pages read as 2-column tables score 0 by
+  definition (no semantic-column structure, recorded as-is).
 
 ### Removed
 

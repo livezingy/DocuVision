@@ -37,6 +37,7 @@
 | 指标核心 | **已实施**（local-only） | CER 三口径 / LCS 阅读序 / `line_exact_rate` / table 子分 / `cell_accuracy`；纯标准库 DP（见 §4 的 D2） |
 | **RF 频率表弱 GT + 行级对账**（P-027 R2） | **已实施**（local-only） | `rf_gt.py`（文本层行级 GT（line 聚合跨 span 合并）+ Tr3 不可见质量闸 + 确定性子集规则 v1，C9 现场派生）· `rf_eval.py`（图像 px 帧行级 greedy IoU≥0.5 配对 + 配对行内字符 DP CER；只读 pred cache；同缓存双跑逐字节）· `rf_cli.py`（`build-rf-gt` / `evaluate-rf` 外置独立入口，不动 harness_cli）· `rf_overlay.py`（配对红绿叠渲染 + 墨迹坐标探针） |
 | **RF 验收三闸 harness**（P-027 R3） | **已实施**（local-only） | `rf_rows.py`（28 列行 schema 冻结 + 频段锚行派生（含折行接对/列窗几何归意/三国版式回退）+ 金样验证闸）· `rf_gates.py`（闸 1 行级字段在场核对 / 闸 2 频段全集在场率 + 缺口清单 / 闸 3 flag_rate——Confidence 无产品源读 None；无发明值 = OCR 频段对 ∖ 文本层）· `rf_gates_cli.py`（`build-rf-rows` / `evaluate-rf-gates` 外置壳 + `register(sub)` 供 harness_cli 3 行挂接）· `rf_words.py`（X3 词盒聚类预研件，NO-GO 留痕）。X3 预研 NO-GO：IE 文本层词级退化（词高中位 25pt 跨 ~2.5 视觉行 + 双列重复），几何配对层不可修复，IE 维持 line GT 已知局限口径（R2 0.2308 不回改），语义层修复归 R4 |
+| **RF 语义层专项**（P-027 R4） | **已实施**（local-only） | `rf_sem_gt.py`（IE 语义 GT（D2，词盒 bbox 配对几何禁用）：频段锚**全匹配**（书脊列排除 + 正文伪锚拒收）+ 三族脚注码语义列（5.xxx→ITU / ECA→Regional / IRL→National）+ ITU RR 服务词表（canonical 印刷域边界匹配）+ 合并格 = 频段列窗内容行覆盖；金样 9 页闸）· `rf_sem_eval.py`（行重建 D4′ 跨块端点拼对（X3-4 粒度修正：配对单元 = 频段行）/ 列绑定族→pred 列单射 / 合并格区间完整（不判几何 IoU）/ #1 双约束冲突与 #5 词法边界探针观测；pipeline envelope 缺失读 None（未测量 ≠ 0））· `rf_sem_cli.py`（`build-rf-sem-gt` / `evaluate-rf-sem` 外置壳 + `register(sub)` 挂接）。第三腿（视觉区块 IoU）结构性不可测（R3 词级退化传导，不发明 proxy）；Confidence 产品源维持另立项（D8） |
 | **M3 共识分诊**（档零） | **未实施** | 本包不做（§7）；原提案描述保留在 git 历史与 CHANGELOG 里，勿当现状引用 |
 | **M4 字段金标**（档三） | **未实施** | 同上；业务口径指标目前由既有 review_list / Proof Pack 承担 |
 | **TEDS**（表格结构树编辑距离） | **已实施**（local-only，S-TEDS） | 2026-09-28 随 **P2** 落地（选型 = WTW）：`teds.py` 结构树 + `evaluate-table` 子命令；GT 无 cell 文本故为结构面 S-TEDS（PENDING P-018 P2 段；此前本行误标「未实施」系 P-027 WTW 遗留文档债，2026-10-02 更正） |
@@ -139,8 +140,11 @@
   harness §2；MY 0.9945 / BD 0.9885 / IE 0.2308——IE 合并格文本层行盒与 OCR 行块结构性错位 = taxonomy #7 主战场实证）；
   **R3 验收三闸 harness 已落地**（2026-10-03，rf 三闸件入本 harness §2/§3；X3 词盒预研 NO-GO（IE 文本层词级退化），
   IE 按 X4 裁决维持已知局限口径；闸 1 row_correct all 0.8000 / 闸 2 presence all 0.8550 / 闸 3 flag_rate None，内部回归
-  不外引）；R4（IE borderless/合并格语义层专项 + 列绑定 + Confidence 产品源 + 盲区 #1/#5 候选裁决）待排队，R2/R3 的
-  合并格发现、第三腿（视觉区块 IoU）与置信度源缺口为其前置输入。
+  不外引）；**R4 IE 语义层专项已落地**（2026-10-03，rf_sem 三件入本 harness §2；技术路线 = 语义信号（频段锚全匹配 +
+  脚注码族 + 服务词表 + 列窗/区间），词盒几何弃用；行重建 D4′ 跨块拼对 23 页全 1.0000（X3-4 粒度修正落地，R3 闸 1
+  同面 0.8000）· #5 粘连 BD 3/114（RADIONAVIGATION5.470 实样本）· 列绑定/合并格待 9 页 envelope 回传读 None（云端
+  采集包备妥）；盲区 #1/#5 已由 PENDING §801 采纳兑现为观测口径；Confidence 产品源维持另立项；第三腿结构性不可测
+  （R3 词级退化传导）；内部回归不外引）。
 - **PENDING P-002**（表格逐格对齐）：本 harness 把 mamba p12/p29 的红率从"人工看"变成**分数**，即 P-002 立项触发条件的量化入口。
 - **PENDING P-021**：`/api/v1/ocr` 坐标帧修复与哨兵（§5）。
 - **PENDING P-020**：harness 落地证据与规模偏差的登记条目（本文件是其规格的 living 载体）。

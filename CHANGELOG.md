@@ -39,6 +39,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   43→58 passed (+15 R3 assertions); `lint_file_size.py` OK. Evidence chain in PENDING P-027 (X3/X4 verdicts +
   blind-spot #1/#5 candidate solutions registered for adjudication); execution record
   `docs/R&D/P027-RF-R3-执行记录.md` (local-only).
+- **P-027 — IE merged-cell / borderless semantic harness (R4)** (2026-10-03): the semantic-layer scale for the hardest
+  client page family (borderless + in-cell sub-intervals + merged cells), built after the X3 word-box pre-research proved
+  word-box geometry unreliable on IE (word-level text-layer degradation) — semantic signals only, no word-bbox pairing
+  geometry (D2). Local-only instruments under `scripts/measure/` (untracked): `rf_sem_gt.py` (IE semantic GT — strict
+  full-match band anchors that reject prose pseudo-anchors, three footnote code families as semantic columns
+  (5.xxx→ITU / ECA→Regional / IRL→National), ITU RR service vocab, merged-cell units = band column-window content
+  coverage; gold pages 9/9; conservation rows==anchors + zero unclassified), `rf_sem_eval.py` (four metrics: row rebuild
+  with D4-prime cross-block endpoint pairing — the X3-4 granularity fix (cell vs visual row → band row) landed; column
+  binding = family→pred-column injectivity; merged-cell = band-range completeness + sub-intervals present, no geometric
+  IoU; #1 scope-conflict and #5 no-space-token glue observation counters; pipeline-envelope-dependent metrics read
+  **None** until the cloud run returns — unmeasured ≠ 0), `rf_sem_cli.py` (`build-rf-sem-gt` / `evaluate-rf-sem`
+  external shell + `register(sub)` hook). Readings (text side, 23 pages, R2 cache reused, zero new inference): row
+  rebuild MY/BD/IE/all **1.0000** (R3 gate 1 read 0.8000 on the same data — the MY cross-block sub-interval cases now
+  join), #5 glue BD 3/114 = 0.0167 (`RADIONAVIGATION5.470`/`5.337` — the taxonomy #5 morphology), all 0.0049; the third
+  reconciliation leg (visual-block IoU) is registered as **structurally untestable** on IE (R3 word-level degradation
+  propagates; no proxy invented); Confidence product source stays unmeasured by design (D8). GB2 byte-identical
+  double-run (CSV `12476506…`); test_metrics 58→**71 passed** (+13 R4 assertions); `lint_file_size.py` OK. Evidence
+  chain in PENDING P-027 (X4 verdict amended: X3-4 granularity fix landed by R4; blind-spot #1/#5 solutions adopted per
+  PENDING §801); execution record `docs/R&D/P027-RF-R4-执行记录.md` (local-only).
 
 ### Removed
 

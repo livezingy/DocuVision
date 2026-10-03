@@ -303,6 +303,10 @@ Azure/AzureDocs/
 !test_data/testfiles/**/gt/
 !test_data/testfiles/**/gt/*.json
 
+# P-027 RF quarantine zone (client assets + derived artifacts) and P-018-P3 pinned font — never track (2026-10-03 Ying)
+test_data/rf-quarantine/
+test_data/fonts/
+
 # Staging intermediates stay untracked (`git rm --cached` 2026-09-17). This MUST stay last:
 # the `!test_data/testfiles/**` negations above re-include every PDF, so the earlier
 # `test_data/testfiles/GeneralFiles_staging/` line alone does not keep them out.

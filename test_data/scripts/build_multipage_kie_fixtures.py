@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build multipage PDF fixtures for Pro KIE acceptance (invoices + receipts)."""
+"""Build multipage PDF fixtures for Pro KIE acceptance (invoices)."""
 
 from __future__ import annotations
 
@@ -79,29 +79,11 @@ def build_invoice_multipage_3p(out_dir: Path) -> Path:
     return out_path
 
 
-def build_receipt_multipage_2p(out_dir: Path) -> Path:
-    fitz = _require_fitz()
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "receipt_multipage_2p.pdf"
-    p1 = TESTFILES / "receipts" / "receipt-with-tips.png"
-    p2 = TESTFILES / "receipts" / "contoso-receipt.png"
-    if not p1.is_file() or not p2.is_file():
-        raise FileNotFoundError("missing receipt source images")
-    doc = fitz.open()
-    _image_to_pdf_page(doc, fitz, p1)
-    _image_to_pdf_page(doc, fitz, p2)
-    doc.save(str(out_path))
-    doc.close()
-    return out_path
-
-
 def main() -> int:
     invoice_out = TESTFILES / "invoices" / "multipage"
-    receipt_out = TESTFILES / "receipts" / "multipage"
     built = []
     built.append(build_invoice_multipage_2p(invoice_out))
     built.append(build_invoice_multipage_3p(invoice_out))
-    built.append(build_receipt_multipage_2p(receipt_out))
     for path in built:
         print("wrote", path.relative_to(REPO_ROOT))
     return 0

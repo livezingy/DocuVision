@@ -56,7 +56,7 @@
 - [ ] 包含供应商 (Vendor)
 - [ ] 包含客户 (Customer)
 
-#### 收据 (`test_data/testfiles/templates/receipt/`)
+#### 收据 (`test_data/testfiles/receipts/`)
 - [ ] `receipt_sample_01.pdf` - PDF格式收据
 - [ ] `receipt_sample_02.jpg` - JPG格式收据
 
@@ -66,7 +66,7 @@
 - [ ] 包含总金额 (Total)
 - [ ] 包含商户名称 (Merchant)
 
-#### 证件 (`test_data/testfiles/templates/id_document/`)
+#### 证件 (`test_data/testfiles/images/kie/`)
 - [ ] `id_card_sample_01.jpg` - 身份证样本
 - [ ] `passport_sample_01.jpg` - 护照样本
 - [ ] `driver_license_sample_01.jpg` - 驾照样本
@@ -77,7 +77,7 @@
 - [ ] 包含出生日期 (Date of Birth)
 - [ ] 包含有效期 (Expiry Date)
 
-#### 名片 (`test_data/testfiles/templates/business_card/`)
+#### 名片 (`test_data/testfiles/images/kie/`)
 - [ ] `business_card_sample_01.jpg` - 名片样本1
 - [ ] `business_card_sample_02.png` - 名片样本2
 
@@ -88,7 +88,7 @@
 - [ ] 包含电话 (Phone)
 - [ ] 包含邮箱 (Email)
 
-#### 合同 (`test_data/testfiles/templates/contract/`)
+#### 合同 (`test_data/testfiles/GeneralFiles/`)
 - [ ] `contract_sample_01.pdf` - 合同样本
 
 **必需字段检查**：
@@ -157,8 +157,8 @@
    ```bash
    # 检查文件是否存在
    ls test_data/testfiles/invoices/
-   ls test_data/testfiles/templates/receipt/
-   ls test_data/testfiles/templates/id_document/
+   ls test_data/testfiles/receipts/
+   ls test_data/testfiles/images/kie/
    ```
 
 2. **文件格式**

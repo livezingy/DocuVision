@@ -1,4 +1,4 @@
-# 待决决策清单（PENDING）
+﻿# 待决决策清单（PENDING）
 
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
@@ -37,7 +37,7 @@
 - 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
 - 落地（2026-09-29，`feat/p002-table-alignment`，执行者 AgentE）：三层对应 + sanity 闸 + reason
   契约已实现并通过本机门禁（pytest 442 / audit / lint / docs_refs 全 0 违规）；golden 三件套
-  pin 与 4 处期望翻转见 CHANGELOG P-002 条目；设计稿执行期裁决 X1-X5 见设计稿 §0.3（local-only）。
+  pin 与 4 处期望翻转见 CHANGELOG P-002 条目；设计稿（local-only 草稿，已按 constraints.md 清理）执行期裁决 X1-X5 见 CHANGELOG P-002 条目（结论已晋升 provenance-review.md §4/§5）。
   **云端验证（2026-09-29）**：G4 判据 1-6/9 PASS（bank 12×value_match、symbol 全绿）；G5 INV
   零违规 + 候选格恒等，p12 红率 58.2%→0.8%、p29 97%→25.4%（双 PASS）；**正确性实证**：旧漏斗
   对 mamba p12 四格静默错填（'89.48'→'ppl ↓' 等列头标签），P-002 sanity 拦截（裁决 X5：sanity
@@ -51,10 +51,10 @@
   （止端点未印出，#7 家族）；同页列绑定三族全对（结构失效与列绑定保持独立可测）。次级证据：IE-p007
   服务文内 `925-960` 被误读为 `921 925.M`。判据与读数 = P-027 R4 执行记录 §4.1（local-only）；
   合并格/borderless 语义层硬化立项时以此为入口（R4 执行包 §6 义务）。
-- 执行期裁决 X3/X4 补录（2026-09-30，从 local 设计稿 §0.3 摘录 + 按当前树校准）：
+- 执行期裁决 X3/X4 补录（2026-09-30，从已清理的 local 设计稿摘录 + 按当前树校准；设计稿为 local-only 草稿，结论已晋升，不另留存档）：
   X3 = §12 A10 rg 模式漏 `"]` 匹配不到 golden 翻转锚点（原实测 :103-104）→ 模式已修正（`.\]`）；
        另：P-002 落地后该锚点值由 == 6 改 == 12/== 0、行号漂至 :105-106，§12 命令需按当前树同步
-       （设计稿 §12 已于 2026-09-30 更正为 `== 12|== 0` + `:105-106`）。
+       （设计稿 §12 更正值 `== 12|== 0` + `:105-106` 已并入本条目上文，设计稿不再留存）。
   X4 = EXP_X_MIN_RATIO 标定：0.15×表宽在多列窄表上爆炸（mamba p29 19 列/列宽 22.8pt → 窗 64.95pt=2.85 列宽，
        2 列零锚定；p34-t1 8 列中 5 列零锚定）→ 批准 0.15→0.05（2026-09-29）：p29 窗 21.6pt≈0.95 列宽；
        bank/symbol 读数不变（0.6×均匀列宽项主导）；其余三常数维持默认。dump 证据
@@ -277,6 +277,9 @@
   否决"连历史一起迁"：改写已推送历史，红线级，收益（省几十 MB）远小于代价。
 - 触发（保留）：clone 体积或 CI 时长成为实际问题时重议 ②。
 - 相关：`.gitignore` 的 `!test_data/testfiles/**` 负向块；kernel 的"大二进制入库须声明"条款。
+- 更新（2026-10-03）：`test_data/testfiles/receipts/multipage/`（含 `receipt_multipage_2p.pdf`，17.69MB）已在
+  testfiles 治理批次整体删除，上表该行仅作历史记录；`build_receipt_multipage_2p` 已从
+  `test_data/scripts/build_multipage_kie_fixtures.py` 移除。
 
 ### P-017 · F1 500 行预算是否调整（按域差异化预算 vs 上调预算）（2026-09-20，v1.9 S2-5 暴露）
 > status: open · since: 2026-09-20
@@ -452,7 +455,7 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
   `audit_agent_ops.py` 0 error / 0 warning、`--selftest` 16/16。
   **云端未验证**：C1 动态锚点-1/2/3（逐层坐标系生死判 / result JSON 字段 / mamba born-digital）与 G4 smoke
   须在 Pro GPU 机器真跑管线产 result JSON，步骤与判据见执行包 §10；按 AGENTS.md「本机无 GPU」红线，
-  **不宣称云端已验证**。执行包 `docs/R&D/P020-ocr-harness-M1M2-执行包.md` 保留（含 §10 runbook 与回填模板）。
+  **不宣称云端已验证**。执行包 `docs/R&D/runs/P020-ocr-harness-M1M2-执行包.md` 保留（含 §10 runbook 与回填模板）。
 - **状态（2026-09-24，云端 15 份 result JSON + 15 份 OCR JSON 回传后判读）**：
   - **锚点-1 通过（实证）**：`view` 层（**含 table/figure**，`envelope_builder.py:273-331` 逆旋转对全部 kind 统一生效）
     15/15 落试件画布；唯一纠偏页 `…__rotate_15`（`angle=270`）实证 view = 该层 `polygon_preprocessed`
@@ -551,7 +554,7 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
   `OCR/*.ocr.json` 相对修复后服务**已过期**，`cer_*` 须在落地后重测并记录新 SHA；
   ② 落地后执行包 §10.11 的 base-B 空间门禁将转为 **PASS**（base B 几何可用），但 **D-A 顺序配对仍是正解**
   （它把帧依赖解耦，是更稳的结构）；③ 若启用 base B 几何，需重跑 G3 复现 + G4 并回填 §8 状态行。
-  → 落地后这三条已落成**可执行清单**：`./P021-云端对照-执行清单与记录模板.md` §7（`commit.txt`/GPU 采集、
+  → 落地后这三条已落成**可执行清单**：`./runs/P021-云端对照-执行清单与记录模板.md` §7（`commit.txt`/GPU 采集、
   OCR JSON 的 SHA 清单、`cer_*` 与 G3 复现、§10.11 门禁 FAIL→PASS 回填，以及"精简动作排在门禁 PASS 之后"的顺序红线）。
 - **落地内容（2026-09-24，本 PR）**：
   ① 修法入 `backend/app/services/ocr_service.py`（`init_params` 增 `"use_doc_unwarping": False`；
@@ -606,7 +609,7 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
     （`commit.txt` head=`f3517c7` 且 `commit.diff` **0 字节**、`gpu.txt`、`versions.txt`、`ocr_sha256.txt`
     26/26 与产物对账一致）、判读脚本 `judge_round3.py`（复用 round2 门禁代码，仅改 `HERE`）。
   - **26 份响应与 round2 `after/` 侧逐字节相同**（同引擎同配置的确定性复现）⇒ **无实质差异，故不追加 CHANGELOG**；
-    round3 记录见 `./P021-云端对照-执行清单与记录模板.md` §6.6 与执行包 §10.12。
+    round3 记录见 `./runs/P021-云端对照-执行清单与记录模板.md` §6.6 与执行包 §10.12。
   - 收尾顺带更正采集块 `[6]` 自检的一处**假红**（原判据拿探针 `max_x` 与画布宽度比，marker ink 只占约 85% 画布宽
     ⇒ 正确树上也 8/8 假红），改用 marker 相似变换拟合，实测 8/8 PASS（详见执行包 §10.12）。
 - **现行控制**：**§10.11 已 PASS**，该判据自 2026-09-25 起降级为**回归哨兵**（再 `FAIL` ⇒ 引擎配置漂移，
@@ -798,12 +801,12 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **执行拆分（未排队；R1 可随任意 docs PR 随手带）**：R1 资产归位+语言盘点+taxonomy 转用例（小）→ R2 弱 GT 合成主线 = **中英文件**（MY/BD/IE 按推定英语主体、以 R1 盘点确认为准；P-018 P1 文本层路线迁移）→ R3 验收三闸 harness 化（P-020/P-027 家族）→ R4 爱尔兰 borderless 专项（T3 极限测试场）
 - **语言策略（10-02 Ying 裁决：主攻中英文）**：**BR（葡语）整体搁置**——结构表征价值由 R1 承接，不进 R2 主线、不写葡语专用归一化（diacritics/NBSP/soft-hyphen）；**解锁触发**：账本再捕 ≥1 条非中英文真实需求（第二语种 RFP/询单）→ 战略层重排裁决解锁 BR + 多语归一化专项
 - **R1 语言盘点落地（2026-10-02，R2 判定同步）**：MY/BD/IE 主体均确认为**英语**（判定规则 3 未触发，R2 中英主线成立；MY/BD 无国别码系列、IE = ITU 5.xxx + ECA + IRL1 三族并存），BR 葡语确认（**搁置维持**）；四件文本层均**可用**（仅个别公式页 θ/≤ 为源文件字体映射符号，表体零污染）。明细 = `test_data/rf-quarantine/rf-inventory.md`（隔离区 local-only）
-- **R2 弱 GT 合成与对账落地（2026-10-02，执行包 draft-v1，AgentE 执行）**：P-018 P1 文本层路线迁移至 RF 语料——行级位置配对对账（D11 抄录适配：greedy IoU≥0.5 一对一，配对帧 = 图像 px）。子集规则 v1 出 **23 页**（MY 7 + BD 7 + IE 9 含 borderless 探针页；MY/BD 全文无 `(Continued)` 标签页，2 槽如实记 None，名义 25 页）· **1427 行弱 GT**（C9：现场派生不留快照，pymupdf/源 sha256/命令随 derivation.json 落盘）· 质量闸 **0 页 excluded**（复现 R1 表体零污染）。对账读数（`line_match_rate` / `cer_micro` / `verbatim_pass_rate`）：**MY 0.9945 / 0.0128 / 8/8** · **BD 0.9885 / 0.0039 / 5/6**（唯一失配针 = 尾标点逗号→句点，逐字闸如实判失，taxonomy #2 机理）· **IE 0.2308 / 0.0073 / 1/2**——IE 6 个表页 GT 行盒中位高 132-138px（文本层把合并格单元读作跨多行 line 对象），OCR 块数与 GT 行数几乎一一对应且配对行内 cer 仅 0.0073 ⇒ **文本读出、几何结构性错位 = taxonomy #7 主战场实证**；IE borderless 探针页 p005 配对正常（17/20）⇒ 失败主因是合并格而非无框线。**X1 裁决 = (a)** C1 生死锚点按字面 MY-p007 目录页跑（PASS 0.9508/0.1346）；**X2 留痕** = 判分器首版误用 bbox_pt 帧致 paired=0，修正为 §3 契约 bbox_px 帧 + 回归测试钉死；**X3 已裁决（2026-10-03）** = IE 合并格页词盒分裂配对预研**排进 R3 前置**（见下条）。三方第三腿（版面区块 IoU）**缺口如实登记**：RF 页 drawings 仅框架线（IE 无框线页 = 0），视觉块不可直接产出，时间盒一次已花，归 R4。**R4 判读（2026-10-03）= 结构性不可测**：R3 §2.4 词级退化传导——词元几何与唯一性不可靠 ⇒ 词簇区块 proxy 亦不可靠；不发明 proxy，如需视觉腿另行立项。`(Continued)` 观测：IE-p158 OCR 读出（yes/yes，taxonomy #6 观测兑现）。证据链：pred_manifest 25 行 sha256 复算 **0 不符**（含 2 个误 POST 的叠渲染件，已隔离 `cache_nonpage/`）；GB2 同缓存双跑 CSV/report **逐字节相同**（CSV `71e2d32e…`）；tracked 恰 3 文件（本条 + CHANGELOG + harness 架构文档）。产物 = 隔离区 `derived/{gt,png,cache,eval}/` + 判分器四件（local-only，不入 git）；执行记录 = `docs/R&D/P027-RF-R2-执行记录.md`（local-only）
+- **R2 弱 GT 合成与对账落地（2026-10-02，执行包 draft-v1，AgentE 执行）**：P-018 P1 文本层路线迁移至 RF 语料——行级位置配对对账（D11 抄录适配：greedy IoU≥0.5 一对一，配对帧 = 图像 px）。子集规则 v1 出 **23 页**（MY 7 + BD 7 + IE 9 含 borderless 探针页；MY/BD 全文无 `(Continued)` 标签页，2 槽如实记 None，名义 25 页）· **1427 行弱 GT**（C9：现场派生不留快照，pymupdf/源 sha256/命令随 derivation.json 落盘）· 质量闸 **0 页 excluded**（复现 R1 表体零污染）。对账读数（`line_match_rate` / `cer_micro` / `verbatim_pass_rate`）：**MY 0.9945 / 0.0128 / 8/8** · **BD 0.9885 / 0.0039 / 5/6**（唯一失配针 = 尾标点逗号→句点，逐字闸如实判失，taxonomy #2 机理）· **IE 0.2308 / 0.0073 / 1/2**——IE 6 个表页 GT 行盒中位高 132-138px（文本层把合并格单元读作跨多行 line 对象），OCR 块数与 GT 行数几乎一一对应且配对行内 cer 仅 0.0073 ⇒ **文本读出、几何结构性错位 = taxonomy #7 主战场实证**；IE borderless 探针页 p005 配对正常（17/20）⇒ 失败主因是合并格而非无框线。**X1 裁决 = (a)** C1 生死锚点按字面 MY-p007 目录页跑（PASS 0.9508/0.1346）；**X2 留痕** = 判分器首版误用 bbox_pt 帧致 paired=0，修正为 §3 契约 bbox_px 帧 + 回归测试钉死；**X3 已裁决（2026-10-03）** = IE 合并格页词盒分裂配对预研**排进 R3 前置**（见下条）。三方第三腿（版面区块 IoU）**缺口如实登记**：RF 页 drawings 仅框架线（IE 无框线页 = 0），视觉块不可直接产出，时间盒一次已花，归 R4。**R4 判读（2026-10-03）= 结构性不可测**：R3 §2.4 词级退化传导——词元几何与唯一性不可靠 ⇒ 词簇区块 proxy 亦不可靠；不发明 proxy，如需视觉腿另行立项。`(Continued)` 观测：IE-p158 OCR 读出（yes/yes，taxonomy #6 观测兑现）。证据链：pred_manifest 25 行 sha256 复算 **0 不符**（含 2 个误 POST 的叠渲染件，已隔离 `cache_nonpage/`）；GB2 同缓存双跑 CSV/report **逐字节相同**（CSV `71e2d32e…`）；tracked 恰 3 文件（本条 + CHANGELOG + harness 架构文档）。产物 = 隔离区 `derived/{gt,png,cache,eval}/` + 判分器四件（local-only，不入 git）；执行记录 = `docs/R&D/runs/P027/R2-执行记录.md`（local-only）
 - **X3 裁决（2026-10-03，Ying）**：IE 合并格页词盒分裂配对预研**排进 R3 前置**——R3（验收三闸 harness 化）启动前先处理：GT 行盒跨多视觉行（IE 六表页中位高 132-138px）时，以词级盒（`get_text("words")`，A2 锚点先例）行聚类重建配对单元后再对 OCR 块配对。预研判据与执行规格 = R3 执行包的前置裁决段；**R2 读数维持原样不回改**（IE 0.2308 即现行口径下的如实读数，预研成果仅用于其后的复测/升级）。
 - **X3 预研结论（2026-10-03，执行包前置段 A，判据 1-4 全不过 = NO-GO）**：`rf_words.py`（231 行，y 中心聚类阈值=词高中位×0.5 写死）按 A.2.1 规格落地——**X3-1** 重建行中位高 97.0px（窗 18-30px）· **X3-2** IE 六页 paired=0、match_rate 0.0000（阈 ≥0.60）· **X3-3** 零配对行 · **X3-4** 恒等闸原文口径结构性不可满足（MY-p007 dict line 是**单元格粒度**：61 条 = 25 视觉行带；修正口径 25=25 全配对但 min IoU 0.7428 < 0.95）。**根因比 A.0 假设深一层**：IE 六页文本层**词级**退化（词高中位 25pt ≈ 2.5 视觉行、p99 70pt，且同内容双列重复 x≈138/x≈275 成对）——词元几何与唯一性本身不可靠，几何配对层救不了，真实修复在语义层（归 R4）。R2 的 0.2308 维持原样不回改；未降阈值/未换页/未改判据（修正口径仅作诊断留痕）。证据 = `derived/{gt_words,eval_x3,overlay_x3}/`；执行记录 §2。
 - **X4 裁决（2026-10-03，用户确认）**：X3 NO-GO 确认；**R3 主体（三闸 harness 化）以「IE = line GT 已知局限口径」继续**——IE 六页用 R2 line GT（0.2308 口径）如实低读数 + 缺口登记 R4；X3-4 原文口径的粒度缺陷（cell vs visual row）随 R4 一并修正。**（已落地 2026-10-03 R4 D4**：配对单元 = 频段行 + D4′ 跨块端点拼对，行重建 23 页 1.0000，见 R4 落地段**）**
-- **R3 验收三闸 harness 化落地（2026-10-03，执行包 draft-v1，本会话执行）**：客户三金件机检化为**可复现行级秤**（只评不修，P-020 边界）——`rf_rows.py`（464 行：28 列 schema 冻结 + 频段锚行派生 + x0 列窗几何归意的脚注字段；**金样闸 4/6 全对**（MY×2/BD×2 Row_ID+ITU+National 全对）+ 2/6 Row_ID 级（IE 脚注列按 X4 局限记 None））· `rf_gates.py`（343 行：闸 1 行 join + 脚注 token 在场 + row_correct；闸 2 文本层频段全集在场率 + 缺口清单双向；闸 3 flag_rate（Confidence 无产品源 → **None 未测量 ≠ 0**，R4 缺口）；无发明值 = OCR 频段对 ∖ 文本层频段对）· `rf_gates_cli.py`（87 行，`build-rf-rows`/`evaluate-rf-gates` 外置壳）· `harness_cli.py` 挂接 +3 行（7 子命令）。D4 边界：pred 行结构化投影不做（IE 几何损坏 + 列绑定缺口），闸 1 = 字段级在场核对（解释性裁定，Ying 可另裁）。判分读数（23 页 65 行，读 R2 缓存**零新增推理**；内部回归不外引）：闸 1 row_correct **MY 0.6000 / BD 1.0000 / IE 0.8750 / all 0.8000**（footnote_set 全 1.0000，join 52/65）· 闸 2 presence **MY 1.0000 / BD 0.8065 / IE 0.8205 / all 0.8550**（112/131，缺口清单双向落 CSV）· 闸 3 flag_rate **None**（Confidence 无产品源，R4 缺口）· 发明值 3。守恒断言 rows==anchors 全页过；GB2 同缓存双跑三产物**逐字节相同**（CSV `51c89fe6…`）；`test_metrics.py` 43→**58 passed**（+15 R3 断言）；`lint_file_size.py` OK。tracked 恰 3 文件（本条 + CHANGELOG + harness 架构文档）；产物 = 隔离区 `derived/{r3,eval_r3,eval_r3_b}/` + `plan_r3.json`（subset 三件合并，执行计划澄清 #1）；执行记录 = `docs/R&D/P027-RF-R3-执行记录.md`（local-only）
+- **R3 验收三闸 harness 化落地（2026-10-03，执行包 draft-v1，本会话执行）**：客户三金件机检化为**可复现行级秤**（只评不修，P-020 边界）——`rf_rows.py`（464 行：28 列 schema 冻结 + 频段锚行派生 + x0 列窗几何归意的脚注字段；**金样闸 4/6 全对**（MY×2/BD×2 Row_ID+ITU+National 全对）+ 2/6 Row_ID 级（IE 脚注列按 X4 局限记 None））· `rf_gates.py`（343 行：闸 1 行 join + 脚注 token 在场 + row_correct；闸 2 文本层频段全集在场率 + 缺口清单双向；闸 3 flag_rate（Confidence 无产品源 → **None 未测量 ≠ 0**，R4 缺口）；无发明值 = OCR 频段对 ∖ 文本层频段对）· `rf_gates_cli.py`（87 行，`build-rf-rows`/`evaluate-rf-gates` 外置壳）· `harness_cli.py` 挂接 +3 行（7 子命令）。D4 边界：pred 行结构化投影不做（IE 几何损坏 + 列绑定缺口），闸 1 = 字段级在场核对（解释性裁定，Ying 可另裁）。判分读数（23 页 65 行，读 R2 缓存**零新增推理**；内部回归不外引）：闸 1 row_correct **MY 0.6000 / BD 1.0000 / IE 0.8750 / all 0.8000**（footnote_set 全 1.0000，join 52/65）· 闸 2 presence **MY 1.0000 / BD 0.8065 / IE 0.8205 / all 0.8550**（112/131，缺口清单双向落 CSV）· 闸 3 flag_rate **None**（Confidence 无产品源，R4 缺口）· 发明值 3。守恒断言 rows==anchors 全页过；GB2 同缓存双跑三产物**逐字节相同**（CSV `51c89fe6…`）；`test_metrics.py` 43→**58 passed**（+15 R3 断言）；`lint_file_size.py` OK。tracked 恰 3 文件（本条 + CHANGELOG + harness 架构文档）；产物 = 隔离区 `derived/{r3,eval_r3,eval_r3_b}/` + `plan_r3.json`（subset 三件合并，执行计划澄清 #1）；执行记录 = `docs/R&D/runs/P027/R3-执行记录.md`（local-only）
 - **R3 设计时裁决已定（盲区 #1/#5 候选方案，2026-10-03 Ying 采纳）**：**#1 脚注子区间作用域** = 「行带包络 + 区间包含」双约束绑定（脚注 token 归属其 y 带所在频段行；印刷子区间的脚注以区间包含校验），harness 侧只做作用域越界计数观测，修复归产品侧；**#5 无空格 token（RADIONAVIGATION5.76）** = 「词法边界探针」计量（token 同时命中服务词表前缀与 `5.\d+` 脚注词法后缀即计一次粘连），harness 只输出粘连率观测，切分修复归产品/R4。#9 已由 R3 闸 2 兑现其机器化形态（在场核对）。
-- **R4 IE 语义层专项落地（2026-10-03，执行包 draft-v2，本会话执行）**：R3 §6.3 缺口的**语义层秤**（只评不修，P-020 边界；技术路线 = 语义信号而非词盒几何）——`rf_sem_gt.py`（337 行：IE 语义 GT = **锚形全匹配**频段行（书脊列排除，正文伪锚拒收、p158 真锚找回）+ 三族脚注码语义列（5.xxx→ITU / ECA→Regional / IRL→National）+ 服务词表（ITU_services.csv canonical 印刷域边界匹配）+ 合并格 = 频段列窗内容行覆盖；金样 9/9；守恒 rows==anchors + 未归类 0）· `rf_sem_eval.py`（416 行：行重建 **D4′ 跨块端点拼对**（X3-4 粒度修正落地：配对单元 = 频段行）/ 列绑定族→pred 列单射 / 合并格区间完整（起止印出 + 子区间不缺失，不判几何 IoU）/ #1 双约束冲突与 #5 词法边界探针观测；envelope 缺失读 **None（未测量 ≠ 0）**）· `rf_sem_cli.py`（101 行，`build-rf-sem-gt` / `evaluate-rf-sem` 外置壳）· `harness_cli.py` 挂接 +5 行。判分读数（文本侧 23 页 55 行，R2 缓存复用**零新增推理**；内部回归不外引）：行重建 **MY/BD/IE/all 全 1.0000**（R3 闸 1 同数据面 0.8000；MY 跨块子区间案例 149.9-150.05 命中）；#5 粘连 **BD 3/114 = 0.0167**（`RADIONAVIGATION5.470`/`5.337` 实样本 @ BD-p134）、IE 0/46、all 0.0049；#1 观测面 0（9 页子集无嵌套子区间行，金样页 p55/p244 不子集如实登记）；列绑定/合并格读数 **None**（IE 9 页 envelope 云端采集包备妥待执行，`derived/r4/cloud_pack/`）；Confidence 产品源维持未测量（D8，产品侧另立项）。§6.3 六条缺口承接：1/2/5 本包主体落地、3 维持未测量（产品源另立项）、4 已由本清单 §801 采纳兑现为观测口径、6 已由 §802 落地。GB2 双跑逐字节（CSV `12476506…`）；`test_metrics.py` 58→**71 passed**（+13 R4 断言，X3 旧断言零改动）；`lint_file_size.py` OK。tracked 恰 3 文件（本条 + CHANGELOG + harness 架构文档）；产物 = 隔离区 `derived/{plan_r4_ie.json, r4/, eval_r4/, eval_r4_b/}`；执行记录 = `docs/R&D/P027-RF-R4-执行记录.md`（local-only）。**envelope 回传补判（同日）**：云端采集 9/9 sha256 复核 0 不符（commit `ed38bd0c` + paddle 三件套 = kernel 锁定版本，零漂移）——列绑定 **IE 0.5278** / 合并格完整 **IE 0.7917**（GT 尾逗号假错位修正后，回归测试 72 passed，GB2 CSV `ca0a4fe9…`）；**p079 `40.7-4098MHz`（40.98 小数点丢失）= #7 家族产品侧失效实证，已登记 P-002 follow-up 触发证据**（同页列绑定全对 = 结构失效与绑定保持独立可测）；脚注定义页（p318/p331）被管线读成 2 列表、语义列结构不存在，0 读数为口径内如实读数。
+- **R4 IE 语义层专项落地（2026-10-03，执行包 draft-v2，本会话执行）**：R3 §6.3 缺口的**语义层秤**（只评不修，P-020 边界；技术路线 = 语义信号而非词盒几何）——`rf_sem_gt.py`（337 行：IE 语义 GT = **锚形全匹配**频段行（书脊列排除，正文伪锚拒收、p158 真锚找回）+ 三族脚注码语义列（5.xxx→ITU / ECA→Regional / IRL→National）+ 服务词表（ITU_services.csv canonical 印刷域边界匹配）+ 合并格 = 频段列窗内容行覆盖；金样 9/9；守恒 rows==anchors + 未归类 0）· `rf_sem_eval.py`（416 行：行重建 **D4′ 跨块端点拼对**（X3-4 粒度修正落地：配对单元 = 频段行）/ 列绑定族→pred 列单射 / 合并格区间完整（起止印出 + 子区间不缺失，不判几何 IoU）/ #1 双约束冲突与 #5 词法边界探针观测；envelope 缺失读 **None（未测量 ≠ 0）**）· `rf_sem_cli.py`（101 行，`build-rf-sem-gt` / `evaluate-rf-sem` 外置壳）· `harness_cli.py` 挂接 +5 行。判分读数（文本侧 23 页 55 行，R2 缓存复用**零新增推理**；内部回归不外引）：行重建 **MY/BD/IE/all 全 1.0000**（R3 闸 1 同数据面 0.8000；MY 跨块子区间案例 149.9-150.05 命中）；#5 粘连 **BD 3/114 = 0.0167**（`RADIONAVIGATION5.470`/`5.337` 实样本 @ BD-p134）、IE 0/46、all 0.0049；#1 观测面 0（9 页子集无嵌套子区间行，金样页 p55/p244 不子集如实登记）；列绑定/合并格读数 **None**（IE 9 页 envelope 云端采集包备妥待执行，`derived/r4/cloud_pack/`）；Confidence 产品源维持未测量（D8，产品侧另立项）。§6.3 六条缺口承接：1/2/5 本包主体落地、3 维持未测量（产品源另立项）、4 已由本清单 §801 采纳兑现为观测口径、6 已由 §802 落地。GB2 双跑逐字节（CSV `12476506…`）；`test_metrics.py` 58→**71 passed**（+13 R4 断言，X3 旧断言零改动）；`lint_file_size.py` OK。tracked 恰 3 文件（本条 + CHANGELOG + harness 架构文档）；产物 = 隔离区 `derived/{plan_r4_ie.json, r4/, eval_r4/, eval_r4_b/}`；执行记录 = `docs/R&D/runs/P027/R4-执行记录.md`（local-only）。**envelope 回传补判（同日）**：云端采集 9/9 sha256 复核 0 不符（commit `ed38bd0c` + paddle 三件套 = kernel 锁定版本，零漂移）——列绑定 **IE 0.5278** / 合并格完整 **IE 0.7917**（GT 尾逗号假错位修正后，回归测试 72 passed，GB2 CSV `ca0a4fe9…`）；**p079 `40.7-4098MHz`（40.98 小数点丢失）= #7 家族产品侧失效实证，已登记 P-002 follow-up 触发证据**（同页列绑定全对 = 结构失效与绑定保持独立可测）；脚注定义页（p318/p331）被管线读成 2 列表、语义列结构不存在，0 读数为口径内如实读数。
 - **已裁决并落地（2026-10-03 Ying 授权）：隔离区 git 防护（R3 执行计划澄清 #6）**：隔离区非二进制产物（md/csv/html/jsonl/txt/sha256/tar.gz，含客户文本的 gt jsonl 与判分 CSV）未被 gitignore 覆盖（R3 登记 22、R3 执行后实测 32），已增补 `.gitignore` 的 `test_data/rf-quarantine/` + `test_data/fonts/`（独立加固 commit，不入 GB3 计数）；「commit 只 add 指定文件 + porcelain 核对、严禁 `git add test_data/`」纪律保留为兜底（R2 起有效）。
 - **排序**：P-018 P3 在前；分岔 C——RF/监管再现真实需求信号则 P-027 直升第一优先（类比 P-018 分岔 B）

@@ -311,3 +311,6 @@ test_data/fonts/
 # the `!test_data/testfiles/**` negations above re-include every PDF, so the earlier
 # `test_data/testfiles/GeneralFiles_staging/` line alone does not keep them out.
 test_data/testfiles/GeneralFiles_staging/
+# Non-standard / local-only samples (`others/`): never track. Must stay after the
+# `!test_data/testfiles/**` negations so they don't re-include these files.
+test_data/testfiles/others/

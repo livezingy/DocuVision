@@ -94,7 +94,7 @@ test_data/
   - `invoice_sample_02.jpg`
   - `invoice_sample_03.png`
 
-#### 收据 (`testfiles/templates/receipt/`)
+#### 收据 (`testfiles/receipts/`)
 - **必需字段**：
   - 收据号码 (Receipt Number)
   - 日期 (Date)
@@ -104,7 +104,7 @@ test_data/
   - `receipt_sample_01.pdf`
   - `receipt_sample_02.jpg`
 
-#### 证件 (`testfiles/templates/id_document/`)
+#### 证件 (`testfiles/images/kie/`)
 - **必需字段**：
   - 姓名 (Name)
   - 证件号码 (ID Number)
@@ -115,7 +115,7 @@ test_data/
   - `passport_sample_01.jpg` - 护照
   - `driver_license_sample_01.jpg` - 驾照
 
-#### 名片 (`testfiles/templates/business_card/`)
+#### 名片 (`testfiles/images/kie/`)
 - **必需字段**：
   - 姓名 (Name)
   - 职位 (Title)
@@ -126,7 +126,7 @@ test_data/
   - `business_card_sample_01.jpg`
   - `business_card_sample_02.png`
 
-#### 合同 (`testfiles/templates/contract/`)
+#### 合同 (`testfiles/GeneralFiles/`)
 - **必需字段**：
   - 合同编号 (Contract Number)
   - 签署日期 (Sign Date)

@@ -8,9 +8,9 @@
 
 ```bash
 # Windows PowerShell
-Copy-Item "您的发票.pdf" "test_data\testfiles\templates\invoice\invoice_sample_01.pdf"
-Copy-Item "您的收据.jpg" "test_data\testfiles\templates\receipt\receipt_sample_01.jpg"
-Copy-Item "您的证件.jpg" "test_data\testfiles\templates\id_document\id_card_sample_01.jpg"
+Copy-Item "您的发票.pdf" "test_data\testfiles\invoices\invoice_sample_01.pdf"
+Copy-Item "您的收据.jpg" "test_data\testfiles\receipts\receipt_sample_01.jpg"
+Copy-Item "您的证件.jpg" "test_data\testfiles\images\kie\id_card_sample_01.jpg"
 ```
 
 ### 步骤 2: 使用在线工具生成测试文件

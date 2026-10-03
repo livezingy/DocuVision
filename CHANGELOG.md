@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Conservation assertion rows==anchors per page; GB2 byte-identical double-run (CSV `51c89fe6…`); test_metrics
   43→58 passed (+15 R3 assertions); `lint_file_size.py` OK. Evidence chain in PENDING P-027 (X3/X4 verdicts +
   blind-spot #1/#5 candidate solutions registered for adjudication); execution record
-  `docs/R&D/P027-RF-R3-执行记录.md` (local-only).
+  `docs/R&D/runs/P027/R3-执行记录.md` (local-only).
 - **P-027 — IE merged-cell / borderless semantic harness (R4)** (2026-10-03): the semantic-layer scale for the hardest
   client page family (borderless + in-cell sub-intervals + merged cells), built after the X3 word-box pre-research proved
   word-box geometry unreliable on IE (word-level text-layer degradation) — semantic signals only, no word-bbox pairing
@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   propagates; no proxy invented); Confidence product source stays unmeasured by design (D8). GB2 byte-identical
   double-run (CSV `12476506…`); test_metrics 58→**71 passed** (+13 R4 assertions); `lint_file_size.py` OK. Evidence
   chain in PENDING P-027 (X4 verdict amended: X3-4 granularity fix landed by R4; blind-spot #1/#5 solutions adopted per
-  PENDING §801); execution record `docs/R&D/P027-RF-R4-执行记录.md` (local-only). Same-day envelope return (9/9 sha256
+  PENDING §801); execution record `docs/R&D/runs/P027/R4-执行记录.md` (local-only). Same-day envelope return (9/9 sha256
   verified; cloud tree `ed38bd0c`, paddle stack = pinned versions): column binding IE 0.5278 / merged-cell completeness
   IE 0.7917 (after fixing a GT trailing-comma false-miss; tests 72 passed) — **p079 band cell `40.7-4098MHz` (decimal
   point of 40.98 lost) registered as P-002 follow-up trigger evidence** (taxonomy #7-family product-side failure while
@@ -87,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clipping; **D8** character-level provenance inside a line is structurally unmeasurable (the OCR side emits
   line-level boxes only) and is declared in the report header. Verified locally: G1 identical-render hash,
   G2 11 known-answer assertions, G3 byte-identical repeat runs, audit 0/0. The cloud anchors and the G4 smoke
-  run live in `docs/R&D/P020-ocr-harness-M1M2-执行包.md` §10 — no GPU locally, so nothing is claimed as
+  run live in `docs/R&D/runs/P020-ocr-harness-M1M2-执行包.md` §10 — no GPU locally, so nothing is claimed as
   cloud-verified by this repository. Read out on 2026-09-24 from 15 returned result JSONs: the per-layer
   coordinate anchor **passed** (the view layer, tables and figures alike, is inverse-rotated back into the input
   frame when the preprocessor rotates), and the result JSON was confirmed to carry **no** cell-level geometry at

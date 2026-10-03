@@ -21,6 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   R3/R4; the IE borderless probe page pairs normally (17/20). Third reconciliation leg (visual-block IoU)
   registered as a gap: RF pages carry frame-only drawings. Evidence chain in PENDING P-027; the harness
   architecture doc §2/§9 are refreshed (TEDS row corrected to implemented via WTW S-TEDS, 2026-09-28).
+- **P-027 — three-gate acceptance harness (R3)** (2026-10-03): the client acceptance spec (5 Targets) turned into a
+  reproducible row-level scale over the RF corpus (internal regression only — no sales-facing numbers). Local-only
+  instruments under `scripts/measure/` (untracked): `rf_rows.py` (frozen 28-column row schema; band-anchor row
+  derivation with x0 column-window geometric attribution; gold-row gate 4/6 full-match on Row_ID + ITU/National
+  footnotes, 2/6 Row-ID-level for IE under the X4 known-limitation verdict), `rf_gates.py` (gate 1 row join +
+  footnote-token presence + row-correct; gate 2 full text-layer band enumeration vs OCR presence with missing-list
+  reported both ways; gate 3 flag rate — Confidence has no product source yet, read as None, gap registered for R4;
+  invented values = OCR freq pairs absent from the text layer), `rf_gates_cli.py` (`build-rf-rows` /
+  `evaluate-rf-gates` external shell), `harness_cli.py` mounted via a 3-line `register(sub)` hook. Gate-1 X3
+  pre-research verdict: **NO-GO** (all four criteria fail; root cause = IE text layer is corrupted at word level —
+  median word height 25pt across ~2.5 visual lines plus duplicated columns), IE stays on the line-GT
+  known-limitation path (R2 0.2308 unchanged) pending the R4 semantic-layer fix. Readings over 23 pages / 65 rows
+  (R2 cache reused, zero new inference): gate 1 row-correct MY 0.6000 / BD 1.0000 / IE 0.8750 / all 0.8000
+  (footnote-set 1.0000), gate 2 presence MY 1.0000 / BD 0.8065 / IE 0.8205 / all 0.8550, gate 3 flag rate None.
+  Conservation assertion rows==anchors per page; GB2 byte-identical double-run (CSV `51c89fe6…`); test_metrics
+  43→58 passed (+15 R3 assertions); `lint_file_size.py` OK. Evidence chain in PENDING P-027 (X3/X4 verdicts +
+  blind-spot #1/#5 candidate solutions registered for adjudication); execution record
+  `docs/R&D/P027-RF-R3-执行记录.md` (local-only).
 
 ### Removed
 

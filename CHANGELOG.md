@@ -21,6 +21,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   R3/R4; the IE borderless probe page pairs normally (17/20). Third reconciliation leg (visual-block IoU)
   registered as a gap: RF pages carry frame-only drawings. Evidence chain in PENDING P-027; the harness
   architecture doc §2/§9 are refreshed (TEDS row corrected to implemented via WTW S-TEDS, 2026-09-28).
+- **P-027 — three-gate acceptance harness (R3)** (2026-10-03): the client acceptance spec (5 Targets) turned into a
+  reproducible row-level scale over the RF corpus (internal regression only — no sales-facing numbers). Local-only
+  instruments under `scripts/measure/` (untracked): `rf_rows.py` (frozen 28-column row schema; band-anchor row
+  derivation with x0 column-window geometric attribution; gold-row gate 4/6 full-match on Row_ID + ITU/National
+  footnotes, 2/6 Row-ID-level for IE under the X4 known-limitation verdict), `rf_gates.py` (gate 1 row join +
+  footnote-token presence + row-correct; gate 2 full text-layer band enumeration vs OCR presence with missing-list
+  reported both ways; gate 3 flag rate — Confidence has no product source yet, read as None, gap registered for R4;
+  invented values = OCR freq pairs absent from the text layer), `rf_gates_cli.py` (`build-rf-rows` /
+  `evaluate-rf-gates` external shell), `harness_cli.py` mounted via a 3-line `register(sub)` hook. Gate-1 X3
+  pre-research verdict: **NO-GO** (all four criteria fail; root cause = IE text layer is corrupted at word level —
+  median word height 25pt across ~2.5 visual lines plus duplicated columns), IE stays on the line-GT
+  known-limitation path (R2 0.2308 unchanged) pending the R4 semantic-layer fix. Readings over 23 pages / 65 rows
+  (R2 cache reused, zero new inference): gate 1 row-correct MY 0.6000 / BD 1.0000 / IE 0.8750 / all 0.8000
+  (footnote-set 1.0000), gate 2 presence MY 1.0000 / BD 0.8065 / IE 0.8205 / all 0.8550, gate 3 flag rate None.
+  Conservation assertion rows==anchors per page; GB2 byte-identical double-run (CSV `51c89fe6…`); test_metrics
+  43→58 passed (+15 R3 assertions); `lint_file_size.py` OK. Evidence chain in PENDING P-027 (X3/X4 verdicts +
+  blind-spot #1/#5 candidate solutions registered for adjudication); execution record
+  `docs/R&D/runs/P027/R3-执行记录.md` (local-only).
+- **P-027 — IE merged-cell / borderless semantic harness (R4)** (2026-10-03): the semantic-layer scale for the hardest
+  client page family (borderless + in-cell sub-intervals + merged cells), built after the X3 word-box pre-research proved
+  word-box geometry unreliable on IE (word-level text-layer degradation) — semantic signals only, no word-bbox pairing
+  geometry (D2). Local-only instruments under `scripts/measure/` (untracked): `rf_sem_gt.py` (IE semantic GT — strict
+  full-match band anchors that reject prose pseudo-anchors, three footnote code families as semantic columns
+  (5.xxx→ITU / ECA→Regional / IRL→National), ITU RR service vocab, merged-cell units = band column-window content
+  coverage; gold pages 9/9; conservation rows==anchors + zero unclassified), `rf_sem_eval.py` (four metrics: row rebuild
+  with D4-prime cross-block endpoint pairing — the X3-4 granularity fix (cell vs visual row → band row) landed; column
+  binding = family→pred-column injectivity; merged-cell = band-range completeness + sub-intervals present, no geometric
+  IoU; #1 scope-conflict and #5 no-space-token glue observation counters; pipeline-envelope-dependent metrics read
+  **None** until the cloud run returns — unmeasured ≠ 0), `rf_sem_cli.py` (`build-rf-sem-gt` / `evaluate-rf-sem`
+  external shell + `register(sub)` hook). Readings (text side, 23 pages, R2 cache reused, zero new inference): row
+  rebuild MY/BD/IE/all **1.0000** (R3 gate 1 read 0.8000 on the same data — the MY cross-block sub-interval cases now
+  join), #5 glue BD 3/114 = 0.0167 (`RADIONAVIGATION5.470`/`5.337` — the taxonomy #5 morphology), all 0.0049; the third
+  reconciliation leg (visual-block IoU) is registered as **structurally untestable** on IE (R3 word-level degradation
+  propagates; no proxy invented); Confidence product source stays unmeasured by design (D8). GB2 byte-identical
+  double-run (CSV `12476506…`); test_metrics 58→**71 passed** (+13 R4 assertions); `lint_file_size.py` OK. Evidence
+  chain in PENDING P-027 (X4 verdict amended: X3-4 granularity fix landed by R4; blind-spot #1/#5 solutions adopted per
+  PENDING §801); execution record `docs/R&D/runs/P027/R4-执行记录.md` (local-only). Same-day envelope return (9/9 sha256
+  verified; cloud tree `ed38bd0c`, paddle stack = pinned versions): column binding IE 0.5278 / merged-cell completeness
+  IE 0.7917 (after fixing a GT trailing-comma false-miss; tests 72 passed) — **p079 band cell `40.7-4098MHz` (decimal
+  point of 40.98 lost) registered as P-002 follow-up trigger evidence** (taxonomy #7-family product-side failure while
+  the same page's column binding is fully correct); footnote-definition pages read as 2-column tables score 0 by
+  definition (no semantic-column structure, recorded as-is).
 
 ### Removed
 
@@ -45,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clipping; **D8** character-level provenance inside a line is structurally unmeasurable (the OCR side emits
   line-level boxes only) and is declared in the report header. Verified locally: G1 identical-render hash,
   G2 11 known-answer assertions, G3 byte-identical repeat runs, audit 0/0. The cloud anchors and the G4 smoke
-  run live in `docs/R&D/P020-ocr-harness-M1M2-执行包.md` §10 — no GPU locally, so nothing is claimed as
+  run live in `docs/R&D/runs/P020-ocr-harness-M1M2-执行包.md` §10 — no GPU locally, so nothing is claimed as
   cloud-verified by this repository. Read out on 2026-09-24 from 15 returned result JSONs: the per-layer
   coordinate anchor **passed** (the view layer, tables and figures alike, is inverse-rotated back into the input
   frame when the preprocessor rotates), and the result JSON was confirmed to carry **no** cell-level geometry at

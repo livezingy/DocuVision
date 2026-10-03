@@ -11,6 +11,20 @@
 | `passport_sample_01.png` | `passport` | 护照样例 |
 | `bank_card_sample_01.png` | `bank_card` | 银行卡样例 |
 
+## 并入的遗留样例（2026-10-03 自 BankCard/、IDCard/、passports/ 迁移，待 Cloud 复核）
+
+> 以下样例由历史目录并入，**未纳入 KIE-ACCEPT 验收矩阵**，`document_type` 为按文件名推断值，首次使用前需人工复核并补 ground-truth。
+
+| 文件 | 推断 document_type | 来源 |
+|------|--------------------|------|
+| `icbc.png` | `bank_card` | BankCard/ |
+| `zgyh.jpg` | `bank_card` | BankCard/ |
+| `DriverLicense.png` | `id_card`（驾照样式，待定） | IDCard/ |
+| `businessCard.png` | `id_card`（名片样式，待定） | IDCard/ |
+| `id-us-green-card.png` | `id_card`（绿卡样式，待定） | IDCard/ |
+| `Passport.png` | `passport` | passports/ |
+| `id-passport.png` | `passport` | passports/ |
+
 ## 合成身份证 ground-truth（虚构，仅供验收）
 
 | 文件 | name | id_number |

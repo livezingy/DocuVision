@@ -12,7 +12,7 @@ const path = require('path');
 
 // frontend/tests/e2e/helpers -> repo root
 const REPO_ROOT = path.join(__dirname, '..', '..', '..', '..');
-const FRAGMENT_DIR = path.join(REPO_ROOT, 'test_data', 'TestResult', 'PhaseUI', 'coverage-fragments');
+const FRAGMENT_DIR = path.join(REPO_ROOT, 'test_data', 'local', 'PhaseUI', 'coverage-fragments');
 
 module.exports = async function globalSetup() {
   fs.rmSync(FRAGMENT_DIR, { recursive: true, force: true });

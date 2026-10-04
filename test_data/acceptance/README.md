@@ -1,37 +1,48 @@
-# 测试数据说明
+# 测试数据说明（`test_data/` 总览）
 
-仓库中 **`test_data/` 根下目录**：
+本目录（`acceptance/`）存放验收矩阵/清单/规划；本文件兼作 **`test_data/` 根目录总览**。
+
+## `test_data/` 根下目录
 
 | 目录 | 用途 | Git |
 |------|------|-----|
-| `acceptance/` | 验收矩阵、清单、快速开始 | tracked |
-| `AutoTest/` | 自动化测试规划 | tracked |
-| `scripts/` | 验收脚本（batch KIE、fixture 生成等） | tracked |
-| `testfiles/` | 分类样例（pdf、images、invoices 等） | tracked |
-| `Azure/` | Azure Layout / DI 风格参考 JSON | tracked |
-| `TestResult/` | 本地截图、导出、规划稿 | **gitignored** |
+| `acceptance/` | 验收矩阵、清单、快速开始、UI E2E 规划（本目录） | tracked |
+| `scripts/` | 验收与 fixture 脚本 | tracked |
+| `testfiles/` | 分类固定样例（pdf、images、invoices 等，公开合成） | tracked |
+| `fonts/` | P-018-P3 钉版字体（Paddle 渲染基线） | **gitignored** |
+| `assets/<client-id>/` | **不可再生源资产**：客户机密件（`raw/`）+ 公开标准（`public/`）+ `manifest.json` + `notes/` | **gitignored** |
+| `derived/` | **可再生派生产物**：`gt/` `cache/` `eval/` `packs/` | **gitignored** |
+| `local/` | 本地产物（原 `TestResult/`）：截图、导出、评测运行 | **gitignored** |
+
+> **分层原则（2026-10-04）**：**不可再生（`assets/`）与可再生（`derived/`）物理隔离**；`assets/<client-id>/manifest.json` 为指纹唯一机器真源，由 `test_data/scripts/verify_assets.py`（内容指纹）+ `scripts/assets_manifest_audit.py`（结构/在场）校验。
+> Azure 风格参考 JSON 已于 2026-10-04 迁至 [`docs/R&D/reference/azure/`](../../docs/R&D/reference/azure/)；`AutoTest/` 已撤销，其 `PRO_UI_E2E_PLAN.md` 归入本目录。
 
 ## 📁 `test_data` 根目录结构
 
 ```
 test_data/
-├── acceptance/     # 验收矩阵、清单、快速开始
-├── AutoTest/       # Playwright E2E 等自动化规划
-├── scripts/        # 验收与 fixture 脚本
-├── testfiles/      # 所有待测/固定样例
-├── Azure/          # Azure 参考 JSON
-├── TestResult/     # 本地产物（gitignored）
-└── .gitignore      # 仅忽略 TestResult/
+├── acceptance/       # 验收矩阵、清单、快速开始、UI E2E 规划 + 本总览
+├── scripts/          # 验收与 fixture 脚本
+├── testfiles/        # 分类固定样例（进 git）
+├── fonts/            # 钉版字体（gitignored）
+├── assets/           # 客户源资产（gitignored，永不进 git）
+│   ├── upwork-022102306242203617428/   # P-027 RF：raw/ · public/ · manifest.json · README · notes/
+│   └── upwork-legacy-202610/           # 历史多单附件：raw/ · manifest.json · README
+├── derived/          # 可再生派生产物（gitignored）：gt/ cache/ eval/ packs/
+├── local/            # 本地产物（gitignored，原 TestResult/）
+└── .gitignore        # 仅一条规则：local/；其余见根 .gitignore
 ```
 
-样例文件的**物理路径**形如：`test_data/testfiles/pdf/sample_report.pdf`（原 `test_data/pdf/...` 已迁入 `testfiles/`）。
+> **Git 规则分布**：`local/` 由本目录 `.gitignore` 管理；`assets/`、`derived/`、`fonts/`、`testfiles/GeneralFiles_staging/` 由**仓库根 `.gitignore`** 统一管理（顺序敏感，详见根文件注释）。改任一侧前请先看另一侧。
+
+样例文件的**物理路径**形如：`test_data/testfiles/pdf/sample_report.pdf`。
 
 **UI 自动化 vs 手工验收**（E2E 绿缩小手工范围、助手交付提醒）：[UI_VERIFICATION_MATRIX.md](UI_VERIFICATION_MATRIX.md)
 
 ## 云端与旧目录（Git 之外）
 
-- **代码已更新后**：在云端工作区执行一次 `git pull`，已从 Git 删除的路径会随提交消失；若磁盘上仍有**未跟踪**的旧目录（例如历史 `test_data/pdf`），可手动删除：`rm -rf test_data/pdf test_data/images ...`（仅删除你确认不再需要的目录）。
-- **不要让 CI/脚本再写入**已废弃路径：流水线里若有硬编码 `test_data/pdf` 等，请改为 `test_data/testfiles/...`；生成物统一写入 `test_data/TestResult/` 或 `backend/outputs/`，二者均不应作为「需归档的源码树」依赖。
+- **代码已更新后**：在云端工作区执行一次 `git pull`，已从 Git 删除的路径会随提交消失；若磁盘上仍有**未跟踪**的旧目录（例如历史 `test_data/rf-quarantine`、`test_data/TestResult`），可手动删除：`rm -rf test_data/rf-quarantine test_data/TestResult`（仅删除你确认不再需要的目录）。
+- **不要让 CI/脚本再写入**已废弃路径：流水线里若有硬编码旧路径，请改为 `test_data/local/`（临时产物）或 `test_data/assets`/`test_data/derived`；生成物统一写入 `test_data/local/` 或 `backend/outputs/`。
 - **持久化云盘**：若平台在仓库外同步了旧副本，与本次仓库布局无关，需在平台侧改挂载目录或清理镜像/快照策略。
 
 ## 📄 测试文件准备指南

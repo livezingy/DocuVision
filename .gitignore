@@ -240,9 +240,9 @@ scripts/outputs/
 test_data/scripts/node_modules/
 test_data/testfiles/GeneralFiles_staging/
 
-# Cloud test screenshots / artifacts (not versioned)
-test_data/TestResult/
-test_data/TestResult/PLAN/
+# Local test artefacts (not versioned) — renamed TestResult/ -> local/ (2026-10-04)
+test_data/local/
+test_data/local/PLAN/
 *Upwork*
 
 # Test data (keep structure but ignore actual test files)
@@ -266,6 +266,7 @@ scripts/*
 !scripts/audit_agent_ops.py
 !scripts/test_registry_audit.py
 !scripts/docs_refs_audit.py
+!scripts/assets_manifest_audit.py
 !scripts/lint_routes.py
 !scripts/lint_file_size.py
 !scripts/file_size_allowlist.json
@@ -285,12 +286,11 @@ scripts/*
 !scripts/aistudio_setup.sh
 !test_data/scripts/
 !test_data/scripts/**
-Azure/AzureDocs/
+# Azure-style reference pack: moved out of test_data on 2026-10-04, then fully untracked by
+# decision (2026-10-04). The whole `docs/R&D/reference/azure/` tree stays local-only via the
+# `docs/R&D/**` ignore above (L182) - deliberately no negation here.
 
-# test_data: track Azure reference JSON + testfiles binaries (override global *.json / test_data binary rules above)
-!test_data/Azure/
-!test_data/Azure/**/
-!test_data/Azure/**/*.json
+# test_data: track acceptance/ scripts + testfiles binaries (override global *.json / test_data binary rules above)
 !test_data/testfiles/
 !test_data/testfiles/**/
 !test_data/testfiles/**/*.pdf
@@ -303,14 +303,12 @@ Azure/AzureDocs/
 !test_data/testfiles/**/gt/
 !test_data/testfiles/**/gt/*.json
 
-# P-027 RF quarantine zone (client assets + derived artifacts) and P-018-P3 pinned font — never track (2026-10-03 Ying)
-test_data/rf-quarantine/
+# P-027 RF assets (client source, never track) + derived artefacts + P-018-P3 pinned font — never track (2026-10-04 Ying)
+test_data/assets/
+test_data/derived/
 test_data/fonts/
 
 # Staging intermediates stay untracked (`git rm --cached` 2026-09-17). This MUST stay last:
 # the `!test_data/testfiles/**` negations above re-include every PDF, so the earlier
 # `test_data/testfiles/GeneralFiles_staging/` line alone does not keep them out.
 test_data/testfiles/GeneralFiles_staging/
-# Non-standard / local-only samples (`others/`): never track. Must stay after the
-# `!test_data/testfiles/**` negations so they don't re-include these files.
-test_data/testfiles/others/

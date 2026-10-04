@@ -1,4 +1,4 @@
-# Batch KIE acceptance (Pro :8000). Outputs under test_data/TestResult/PhaseBatch/
+# Batch KIE acceptance (Pro :8000). Outputs under test_data/local/PhaseBatch/
 param(
     [string]$RepoRoot = (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent),
     [string]$ApiRoot = "http://127.0.0.1:8000",
@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $manifestPath = Join-Path $RepoRoot "test_data\testfiles\batch\manifest.json"
-$outDir = Join-Path $RepoRoot "test_data\TestResult\PhaseBatch"
+$outDir = Join-Path $RepoRoot "test_data\local\PhaseBatch"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
 if (-not (Test-Path $manifestPath)) {

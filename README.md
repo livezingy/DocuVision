@@ -57,7 +57,7 @@ DocuVision/
 ├── frontend/          # Pro static SPA
 ├── packages/docuvision-core/  # Shared utils + table column mapping
 ├── docs/architecture/ # Design specs and trackers
-└── test_data/         # acceptance, testfiles, Azure refs; TestResult excluded
+└── test_data/         # acceptance, testfiles, Azure refs; local excluded
 ```
 
 ---

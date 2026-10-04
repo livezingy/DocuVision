@@ -69,7 +69,7 @@ def summarize_file(path: Path, document_type: str = "invoice") -> None:
 
 def main(argv: list[str]) -> None:
     if len(argv) < 2:
-        root = _BACKEND.parent / "test_data" / "TestResult" / "PhaseCDE"
+        root = _BACKEND.parent / "test_data" / "local" / "PhaseCDE"
         print(f"Usage: python {Path(__file__).name} <dir-or-json> [...]")
         print(f"  default dir: {root}")
         if not root.is_dir():

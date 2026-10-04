@@ -30,6 +30,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import docs_refs_audit as docs_refs  # noqa: E402
 import frontend_coupling as frontend_map  # noqa: E402
+import assets_manifest_audit as assets_manifest  # noqa: E402
 import sync_agent_rules as sync_mod  # noqa: E402
 import test_registry_audit as test_registry  # noqa: E402
 import unit_suite_pin as unit_pin  # noqa: E402
@@ -374,6 +375,7 @@ def run_selftest() -> int:
     cases: list[tuple[str, bool]] = list(test_registry.selftest_cases())
     cases += list(docs_refs.selftest_cases())
     cases += list(unit_pin.selftest_cases())
+    cases += list(assets_manifest.selftest_cases())
 
     def ok(name: str, cond: bool) -> None:
         cases.append((name, bool(cond)))
@@ -448,7 +450,8 @@ def main() -> int:
     issues = (check_agent_rules() + docs_refs.check_doc_drift() + docs_refs.check_retired_refs()
               + docs_refs.check_pending_staleness()
               + check_module_map() + test_registry.check_test_registry()
-              + test_registry.check_stub_scope() + unit_pin.check_unit_pin())
+              + test_registry.check_stub_scope() + unit_pin.check_unit_pin()
+              + assets_manifest.check_assets_manifest())
     errors = [i for i in issues if i["level"] == "ERROR"]
     warnings = [i for i in issues if i["level"] == "WARN"]
     if "--json" in argv:

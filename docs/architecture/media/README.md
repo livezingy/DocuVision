@@ -61,7 +61,7 @@ cd ~/DocuVision && bash test_data/scripts/run_m1_table_mapping_acceptance.sh
 pwsh -File test_data/scripts/run_batch_mapped_acceptance.ps1
 ```
 
-Pass = `MAP-TEMPLATE-001 pass` + `M1 acceptance PASSED` + `MAPPED-BATCH-001` (artifacts under `test_data/TestResult/`).
+Pass = `MAP-TEMPLATE-001 pass` + `M1 acceptance PASSED` + `MAPPED-BATCH-001` (artifacts under `test_data/local/`).
 
 ### After recording
 

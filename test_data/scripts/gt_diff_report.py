@@ -34,7 +34,7 @@ Scoring rules:
       human queue (lowest confidence first).
 
 Output:
-    test_data/TestResult/gt_diff/<slug>/report.json   (NOT *.log -- the
+    test_data/local/gt_diff/<slug>/report.json   (NOT *.log -- the
     auto-clean script deletes *.log recursively) + console summary.
 
 Usage:
@@ -54,7 +54,7 @@ import unicodedata
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_OUT_ROOT = REPO_ROOT / "test_data" / "TestResult" / "gt_diff"
+DEFAULT_OUT_ROOT = REPO_ROOT / "test_data" / "local" / "gt_diff"
 
 GLYPH_RE = re.compile(r"[\u2713\u2714\u2715\u2716\u2717\u2718\u2719\u271a\u00d7\u2217\u2014\u2013\u2212]")
 WS_RE = re.compile(r"\s+")

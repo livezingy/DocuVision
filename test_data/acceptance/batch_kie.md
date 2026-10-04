@@ -16,4 +16,4 @@ Requires batch pipeline to use full `DocumentPipelineOrchestrator` (KIE enabled)
 - Manifest may declare `document_type` at set level **and** inside `options`; the acceptance script merges set-level into `options` before upload.
 
 Manifest: `test_data/testfiles/batch/manifest.json`.  
-Script: `test_data/scripts/run_batch_kie_acceptance.ps1` (outputs under `test_data/TestResult/PhaseBatch/`, gitignored; exits non-zero if BATCH-002 fails).
+Script: `test_data/scripts/run_batch_kie_acceptance.ps1` (outputs under `test_data/local/PhaseBatch/`, gitignored; exits non-zero if BATCH-002 fails).

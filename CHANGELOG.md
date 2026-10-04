@@ -67,6 +67,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Changed
+- **P-028 — F1 pure-move split (PR1)** (2026-10-04): zero-behavior file split to clear the 500-line budget — the
+  layout block (``W_*`` word indices, P-002 geometry constants, ``RowCluster``/``ColGroup``/``LayoutModel``/
+  ``build_layout_model``) moved verbatim from `table_alignment.py` (499→312) into new `table_layout.py` (202 lines);
+  the candidate/geometry/text-layer block (``is_candidate_cell``/``derive_cell_bbox``/``_extract_cell_text_layer``/
+  ``_words_union_bbox``/``_pt_rect`` plus the pinned symbol set and candidate regexes) moved verbatim from
+  `table_backfill.py` (497→394) into new `table_cell_geo.py` (121 lines). Both main modules re-import the moved
+  symbols, so every existing import path (including the test-facing re-export bridge) is unchanged. Verified: pytest
+  full suite 442 passed / 9 skipped / 5 collection errors — identical to baseline; audit 0/0; lint OK.
 
 ### Fixed
 

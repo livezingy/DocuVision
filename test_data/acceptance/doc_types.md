@@ -1,6 +1,6 @@
 # 按文档类型的验收矩阵（人工 + 自动化）
 
-分类存放的样例根目录为 **`test_data/testfiles/`**（按子目录区分类型）；卡证 KIE 固定样例在 **`test_data/testfiles/images/kie/`**。云端截图与临时导出放在 **`test_data/TestResult/`**（已加入 `.gitignore`，不纳入 Git）。
+分类存放的样例根目录为 **`test_data/testfiles/`**（按子目录区分类型）；卡证 KIE 固定样例在 **`test_data/testfiles/images/kie/`**。云端截图与临时导出放在 **`test_data/local/`**（已加入 `.gitignore`，不纳入 Git）。
 
 固定样例放在 `test_data/` 下，避免散测。自动化命令见各行的「自动化」列。云测顺序与 **KIE-ACCEPT-001/002** 见 [docs/architecture/CLOUD_VALIDATION.md](../../docs/architecture/CLOUD_VALIDATION.md)。
 

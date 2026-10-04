@@ -55,7 +55,7 @@ UI E2E 的目标是：在 **固定后端 + 固定样例** 环境下，对 **关�
 **建议输出目录（与 Cloud 验收一致，可 gitignore）：**
 
 ```
-test_data/TestResult/PhaseUI/
+test_data/local/PhaseUI/
   playwright-report/          # HTML（可选提交摘要）
   results.json                # 机器可读
   junit.xml                   # CI
@@ -157,9 +157,9 @@ test_data/TestResult/PhaseUI/
 // 示例：仅规划，未启用
 reporter: [
   ['list'],
-  ['html', { outputFolder: '../../test_data/TestResult/PhaseUI/playwright-report' }],
-  ['json', { outputFile: '../../test_data/TestResult/PhaseUI/results.json' }],
-  ['junit', { outputFile: '../../test_data/TestResult/PhaseUI/junit.xml' }],
+  ['html', { outputFolder: '../../test_data/local/PhaseUI/playwright-report' }],
+  ['json', { outputFile: '../../test_data/local/PhaseUI/results.json' }],
+  ['junit', { outputFile: '../../test_data/local/PhaseUI/junit.xml' }],
 ],
 timeout: 120_000,  // KIE 路径
 ```
@@ -191,7 +191,7 @@ timeout: 120_000,  // KIE 路径
 1. **运行位置**：仅 Cloud Studio 手动？还是 GitHub Actions（无 GPU 时是否 mock）？  
 2. **静态资源**：已通过 `run.py` 挂载；`PW_BASE_URL=http://127.0.0.1:8000/frontend`（见 v1.2.1 Cloud 清单 §6）  
 3. **超时与并行**：KIE 用例是否串行、`workers: 1`？  
-4. **结果入库**：`TestResult/PhaseUI/` 是否 gitignore（建议 yes）？Tracker 是否增加「阶段 UI-E2E」表？  
+4. **结果入库**：`local/PhaseUI/` 是否 gitignore（建议 yes）？Tracker 是否增加「阶段 UI-E2E」表？  
 5. **与 Lite 关系**：Pro 与 Lite 分离 spec 目录，避免混跑。
 
 ---

@@ -1,7 +1,7 @@
 # 文档同步（强制，防漂移）
 
 > 生成自 kernel `docs/agent-ops/core/`（doc-sync）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: doc-sync.md:5295ae0a6a088c51 -->
+<!-- kernel-ref: doc-sync.md:94bfc9e7db7472bf -->
 
 ## 根因
 文档滞后源于：无强制触发 / 无归属 / 文档远离代码 / 无漂移检测 / 文档与测试脱节。以下机制对症。
@@ -43,7 +43,7 @@
 | living | `docs/architecture/*`、`docs/README.md` | 改契约代码时同步 |
 | frozen | `docs/release/RELEASE_*`、`MERGE_MAIN_v*` | 发版快照，日常不改 |
 | append-only | `KIE_TEST_RUN_TRACKER.md` | 只追加批次 |
-| local only | `docs/R&D/*`（除 README）、`test_data/TestResult/`、`*Upwork*` | 不得提交 |
+| local only | `docs/R&D/*`（除 README）、`test_data/assets/`、`test_data/derived/`、`test_data/local/`、`*Upwork*` | 不得提交 |
 
 - 新增/重命名 `docs/` 文档时更新 `docs/README.md` 索引。
 - 验收路径以 `test_data/testfiles/` 为准；acceptance 文档勿引用不存在的 fixture。

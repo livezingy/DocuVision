@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $manifestPath = Join-Path $RepoRoot "test_data\testfiles\batch\manifest.json"
-$outDir = Join-Path $RepoRoot "test_data\TestResult\PhaseBatch"
+$outDir = Join-Path $RepoRoot "test_data\local\PhaseBatch"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
 if (-not (Test-Path $manifestPath)) {

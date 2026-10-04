@@ -9,7 +9,7 @@
 - **字段校验引擎**（post-v1.2 P0）：date/currency/regex + `quality` 扩展 — 建议 `feature/kie-field-validation`。
 - **custom schema / 模板持久化**：超越 v1.1 extend-only `kie_query_fields`。
 - **字段 bbox / 画布联动**：见 [kie.md](./kie.md) §1「不在本文」。
-- **Playwright UI E2E**：规划见 [PRO_UI_E2E_PLAN.md](../../test_data/AutoTest/PRO_UI_E2E_PLAN.md)；脚手架见 [frontend/tests/e2e/](../../frontend/tests/e2e/)（`process-smoke.e2e.js`、`process-queue.e2e.js`）。
+- **Playwright UI E2E**：规划见 [PRO_UI_E2E_PLAN.md](../../test_data/acceptance/PRO_UI_E2E_PLAN.md)；脚手架见 [frontend/tests/e2e/](../../frontend/tests/e2e/)（`process-smoke.e2e.js`、`process-queue.e2e.js`）。
 
 **v1.2.0 已交付（不再跟进为缺口）**：多页 PDF `kie_pages`、Batch Processing UI、`export.csv` / `export.json`。
 

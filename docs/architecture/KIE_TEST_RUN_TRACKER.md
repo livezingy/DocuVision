@@ -4,7 +4,7 @@ Last updated: 2026-06-12
 Scope: Cloud verification for invoice + card + receipt KIE (contract + production + id_card precision); **v1.1 `kie_query_fields`** (Phase F)
 
 验证步骤见 [CLOUD_VALIDATION.md](./CLOUD_VALIDATION.md)（**长期保留**：发版/改 KIE 后按同流程回归）。  
-Phase C/D/E 原始 JSON 可放在 `test_data/TestResult/PhaseCDE/`（`.gitignore`，不提交 Git）。
+Phase C/D/E 原始 JSON 可放在 `test_data/local/PhaseCDE/`（`.gitignore`，不提交 Git）。
 
 Release 1.0：[RELEASE_1.0_CHECKLIST.md](../release/RELEASE_1.0_CHECKLIST.md) · **Release 1.1**：[RELEASE_1.1_CHECKLIST.md](../release/RELEASE_1.1_CHECKLIST.md) · Known limitations：[KNOWN_LIMITATIONS.md](../release/KNOWN_LIMITATIONS.md)
 

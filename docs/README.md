@@ -40,7 +40,7 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 | [architecture/KIE_TEST_RUN_TRACKER.md](architecture/KIE_TEST_RUN_TRACKER.md) | KIE batch run log (append-only) |
 | [../test_data/acceptance/README.md](../test_data/acceptance/README.md) | Acceptance matrix index |
 | [../test_data/acceptance/UI_VERIFICATION_MATRIX.md](../test_data/acceptance/UI_VERIFICATION_MATRIX.md) | UI E2E vs manual scope; assistant manual-test reminders |
-| [../test_data/AutoTest/PRO_UI_E2E_PLAN.md](../test_data/AutoTest/PRO_UI_E2E_PLAN.md) | Playwright E2E plan |
+| [../test_data/acceptance/PRO_UI_E2E_PLAN.md](../test_data/acceptance/PRO_UI_E2E_PLAN.md) | Playwright E2E plan |
 | [../backend/tests/KIE_ACCEPTANCE_CRITERIA.md](../backend/tests/KIE_ACCEPTANCE_CRITERIA.md) | KIE acceptance criteria |
 
 ## Release
@@ -64,7 +64,7 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 | **living** | Update with code changes (`docs/architecture/*`, this index) |
 | **frozen** | Snapshot at release (`docs/release/RELEASE_*`, `test_data/acceptance/MERGE_MAIN_v*`) |
 | **append-only** | Add entries only (`KIE_TEST_RUN_TRACKER.md`) |
-| **local only** | Never commit (`test_data/TestResult/`, `*Upwork*`, `docs/R&D/*` except `R&D/README.md`) |
+| **local only** | Never commit (`test_data/local/`, `*Upwork*`, `docs/R&D/*` except `R&D/README.md`) |
 
 ## Agent-ops (multi-agent rules)
 

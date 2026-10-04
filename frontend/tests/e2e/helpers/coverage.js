@@ -10,7 +10,7 @@
  *
  * Deliberately non-blocking: nothing here can fail a run (see PENDING P-008 gap 2 - the
  * enforcement venue is still open). Per-test fragments land in
- * `test_data/TestResult/PhaseUI/coverage-fragments/` (already gitignored) and are merged by
+ * `test_data/local/PhaseUI/coverage-fragments/` (already gitignored) and are merged by
  * `coverage-report.js`, which runs as Playwright's globalTeardown.
  */
 
@@ -26,7 +26,7 @@ const base = require('@playwright/test');
 
 // frontend/tests/e2e/helpers -> repo root
 const REPO_ROOT = path.join(__dirname, '..', '..', '..', '..');
-const OUT_DIR = path.join(REPO_ROOT, 'test_data', 'TestResult', 'PhaseUI');
+const OUT_DIR = path.join(REPO_ROOT, 'test_data', 'local', 'PhaseUI');
 const FRAGMENT_DIR = path.join(OUT_DIR, 'coverage-fragments');
 
 /** Injected into the page before any script: records registrations and invocations. */

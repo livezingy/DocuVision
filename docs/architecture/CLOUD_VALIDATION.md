@@ -135,7 +135,7 @@ cd "${DOCUVISION_ROOT:-$HOME/DocuVision}"           # or cd /workspace/DocuVisio
 bash test_data/scripts/run_m1_table_mapping_acceptance.sh
 ```
 
-脚本输出 `CLOUD_PROVIDER=tencent|baidu`、写入 `test_data/TestResult/PhaseV14/M1/*.json`；通过判据：`M1 acceptance PASSED`。详见 [MERGE_MAIN_v1.4 §3](../../test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md#3-map-template-001--pro-table-mapping-single-file) 与 [media/README.md M1](media/README.md).
+脚本输出 `CLOUD_PROVIDER=tencent|baidu`、写入 `test_data/local/PhaseV14/M1/*.json`；通过判据：`M1 acceptance PASSED`。详见 [MERGE_MAIN_v1.4 §3](../../test_data/acceptance/MERGE_MAIN_v1.4_CLOUD_CHECKLIST.md#3-map-template-001--pro-table-mapping-single-file) 与 [media/README.md M1](media/README.md).
 
 **无 UI 验收（终端，与 UI 等价）**
 
@@ -413,7 +413,7 @@ pytest tests/test_live_api.py::TestLiveInvoiceKie -s
 
 ```bash
 cd backend
-python tests/tools/summarize_kie_results.py ../test_data/TestResult/PhaseCDE
+python tests/tools/summarize_kie_results.py ../test_data/local/PhaseCDE
 ```
 
 ### 阶段 FRONT-C1 — 前端拆分验收（v1.8.3，2026-09-16 已验证）

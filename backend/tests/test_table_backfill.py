@@ -392,7 +392,7 @@ def test_finalize_mismatch_writes_no_anchor_and_no_data() -> None:
     assert counts["sanity_reject"] == 1
 
 
-def test_finalize_reason_counts_stay_eight_key_closed() -> None:
+def test_finalize_reason_counts_stay_nine_key_closed() -> None:
     word = _word(10, 10, 40, 20, "1234")
     _, _, _, _, _, stats1, counts1 = _call_finalize(
         PROVENANCE_TEXT_CONFIRMED, REASON_VALUE_MATCH, [word], "1234", "1234"
@@ -400,7 +400,7 @@ def test_finalize_reason_counts_stay_eight_key_closed() -> None:
     _, _, _, _, _, stats2, counts2 = _call_finalize(
         PROVENANCE_TEXT_BACKFILLED, REASON_GEO, [word], "1234", "l234"
     )
-    assert set(counts1) == set(REASON_KEYS) and len(REASON_KEYS) == 8
+    assert set(counts1) == set(REASON_KEYS) and len(REASON_KEYS) == 9
     assert sum(counts1.values()) == stats1["confirmed"] + stats1["backfilled"] + stats1["mismatch"]
     assert sum(counts2.values()) == 1
     assert counts2["geometric"] == 1

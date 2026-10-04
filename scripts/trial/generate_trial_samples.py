@@ -339,6 +339,64 @@ def build_nonuniform_table(fontfile):
     return doc
 
 
+def build_merged_band_table(fontfile):
+    """P-028 G1 golden: merged band cell whose interval endpoints sit on two
+    visual rows inside the merged span, plus a normal control row.
+
+    Drawn content vs the golden test's OCR data (the test reconstructs the
+    table dict) differs on purpose:
+      * the merged cell prints "40.7 -" / "40.98 MHz" (both decimal points
+        present; the end one deliberately small — the recognition-layer trap
+        per the P-028 C1 X1=B verdict) while the OCR cell text is
+        "40.7-4098MHz" (the small end decimal point is lost at recognition);
+      * the control row prints exactly its OCR text ("40.66 - 40.7 MHz").
+    """
+    doc = fitz.open()
+    page = doc.new_page(width=A4[0], height=A4[1])
+    fname = _register_font(page, fontfile)
+
+    _textbox(page, fname, fitz.Rect(40, 30, 555, 46), "Merged Band Table — P-028 Golden", size=12, color=ACCENT)
+
+    top, left, row_h = 80, 40, 24
+    col_widths = [200, 160]
+    total_w = sum(col_widths)
+    n_rows = 4  # header / band sub-row 1 / band sub-row 2 / control
+
+    # horizontal lines; no separator between the two sub-rows (merged cell)
+    y = top
+    for r in range(n_rows + 1):
+        if r != 2:
+            page.draw_line(fitz.Point(left, y), fitz.Point(left + total_w, y), color=(0.7, 0.72, 0.75), width=0.8)
+        y += row_h
+    # verticals (the merged cell has no inner verticals to skip: rows merge
+    # horizontally identical, only the horizontal separator is dropped)
+    x0, x1 = left, left + col_widths[0]
+    x2 = left + total_w
+    for x in (x0, x1, x2):
+        page.draw_line(fitz.Point(x, top), fitz.Point(x, top + n_rows * row_h), color=(0.7, 0.72, 0.75), width=0.8)
+
+    # header
+    _textbox(page, fname, fitz.Rect(x0 + 4, top + 2, x1 - 4, top + row_h - 2), "Frequency Band (MHz)", size=9, color=INK)
+    _textbox(page, fname, fitz.Rect(x1 + 4, top + 2, x2 - 4, top + row_h - 2), "Note", size=9, color=INK)
+
+    # merged band cell: endpoints on two lines inside the span (rows 1-2);
+    # the end decimal point is drawn at 5.5pt (small-font design position)
+    line1_y = top + row_h + 14
+    line2_y = top + 2 * row_h + 14
+    page.insert_text(fitz.Point(x0 + 4, line1_y), "40.7 -", fontname=fname, fontsize=9, color=INK)
+    w40 = fitz.Font(fontfile=fontfile).text_length("40", fontsize=9)
+    wdot = fitz.Font(fontfile=fontfile).text_length(".", fontsize=5.5)
+    page.insert_text(fitz.Point(x0 + 4, line2_y), "40", fontname=fname, fontsize=9, color=INK)
+    page.insert_text(fitz.Point(x0 + 4 + w40, line2_y), ".", fontname=fname, fontsize=5.5, color=INK)
+    page.insert_text(fitz.Point(x0 + 4 + w40 + wdot, line2_y), "98 MHz", fontname=fname, fontsize=9, color=INK)
+
+    # normal control row (prints exactly its OCR text)
+    control_y = top + 3 * row_h
+    _textbox(page, fname, fitz.Rect(x0 + 4, control_y + 2, x1 - 4, control_y + row_h - 2), "40.66 - 40.7 MHz", size=9, color=INK)
+    _textbox(page, fname, fitz.Rect(x1 + 4, control_y + 2, x2 - 4, control_y + row_h - 2), "control", size=9, color=INK)
+    return doc
+
+
 README = """# Trial sample pack (GLM trial P0-3)
 
 Deterministic, vector-drawn PDFs for the 1-hour remote diagnostic demo.

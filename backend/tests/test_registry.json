@@ -179,6 +179,10 @@
   "test_table_backfill.py": {
     "kind": "full"
   },
+  "test_table_band_range.py": {
+    "kind": "full",
+    "note": "band-range parser + validator case table (P-028 L1; pure logic, no paddle/server)"
+  },
   "test_table_header_structure.py": {
     "kind": "full"
   },

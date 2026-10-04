@@ -23,6 +23,7 @@ from generate_trial_samples import (  # noqa: E402
     SYMBOL_NAMES,
     SYMBOLS,
     build_bank_statement,
+    build_merged_band_table,
     build_nonuniform_table,
     build_symbol_grid,
     find_font,
@@ -127,6 +128,7 @@ def test_bank_statement_backfill_confirms_amounts(tmp_path) -> None:
         "crossing": 0,
         "multi_line": 0,
         "shape_mismatch": 0,
+        "band_range_incomplete": 0,
     }
 
 
@@ -170,6 +172,7 @@ def test_symbol_grid_backfill_symbols_value_match(tmp_path) -> None:
         "crossing": 0,
         "multi_line": 0,
         "shape_mismatch": 0,
+        "band_range_incomplete": 0,
     }
     assert table["cell_align_reason"][1][0] == "value_match"
     assert table["cell_provenance"][4][0] == "text_confirmed"
@@ -219,3 +222,57 @@ def test_nonuniform_table_golden(tmp_path) -> None:
     assert counts["cluster"] == 1
     assert counts["no_aligned_line"] == 2
     assert sum(counts.values()) == summary["cells_candidates"]
+
+
+def test_merged_band_cell_flagged_band_range_incomplete(tmp_path) -> None:
+    # P-028 G1: the merged band cell whose OCR text lost the end decimal
+    # point (X1=B verdict — recognition-layer loss, assembly lossless) is
+    # flagged band_range_incomplete with the original string passed through
+    # verbatim (no silent fix); the legal control row walks the funnel
+    # unchanged (value_match) and carries no band_range key.
+    path = str(tmp_path / "merged_band_table.pdf")
+    _write(build_merged_band_table(_font()), path)
+    rows = [
+        ["Frequency Band (MHz)", "Note"],
+        ["40.7-4098MHz", ""],  # merged cell text (spans vision rows 1-2)
+        ["", ""],
+        ["40.66 - 40.7 MHz", "control"],
+    ]
+    table = {
+        "id": "t1",
+        "page": 1,
+        "bbox": {
+            "x": 40 * 2,
+            "y": 80 * 2,
+            "width": (200 + 160) * 2,
+            "height": (len(rows) * 24) * 2,
+        },
+        "data": rows,
+    }
+    summary = backfill_tables([table], path, enabled=True)
+    assert summary["pages_text_layer_trusted"] == 1
+    assert summary["cells_candidates"] == 2, summary  # band cell + control cell
+    assert summary["cells_mismatch"] == 1, summary
+    assert summary["cells_confirmed"] == 1, summary
+    # the merged cell: flagged, original string passes through verbatim
+    assert table["cell_provenance"][1][0] == "text_mismatch"
+    assert table["cell_align_reason"][1][0] == "band_range_incomplete"
+    assert table["data"][1][0] == "40.7-4098MHz"
+    # diagnosis carries raw + flags + both endpoint texts
+    details = summary["mismatch_details"]
+    assert len(details) == 1, details
+    diag = details[0]
+    assert diag["row"] == 1 and diag["col"] == 0
+    assert diag["reason"] == "band_range_incomplete"
+    assert diag["band_range"] == {
+        "raw": "40.7-4098MHz",
+        "flags": ["magnitude_gap"],
+        "start_text": "40.7",
+        "end_text": "4098",
+    }
+    # the control row walks the funnel unchanged (confirmed, not in details)
+    assert table["cell_provenance"][3][0] == "text_confirmed"
+    assert table["cell_align_reason"][3][0] == "value_match"
+    counts = summary["align_reason_counts"]
+    assert counts["band_range_incomplete"] == 1
+    assert counts["value_match"] == 1

@@ -75,6 +75,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `table_backfill.py` (497→394) into new `table_cell_geo.py` (121 lines). Both main modules re-import the moved
   symbols, so every existing import path (including the test-facing re-export bridge) is unchanged. Verified: pytest
   full suite 442 passed / 9 skipped / 5 collection errors — identical to baseline; audit 0/0; lint OK.
+- **P-028 — merged-cell band-range hardening (PR2, L1-L3)** (2026-10-04): pattern-driven flag for frequency band
+  cells whose interval magnitude jumps (> 2 decades) — the IE-p079 `40.7-4098MHz` case (decimal point of 40.98 lost
+  at recognition, P-002 follow-up evidence; C1 three-way reconciliation verdict **X1=B recognition-layer** with
+  zero assembly loss). New `table_band_range.py` (88 lines, pure functions): `parse_band_range` (「number - number -
+  unit」 pattern, MHz/GHz/kHz/Hz case-folded, thousand-separator spaces folded) + `validate_band_range` (value
+  domain + `magnitude_gap`); hook in `backfill_table_cells` (between `_solve_candidate` and `_finalize`): a flagged
+  cell gets `text_mismatch` + the new 9th reason value `band_range_incomplete` with the **original string passed
+  through verbatim** (no silent fix) and a `band_range` diagnostic (`raw`/`flags`/`start_text`/`end_text`) in
+  `mismatch_details`; legal intervals walk the original funnel. Old 8 reason values unchanged (pure addition,
+  enum-closure pins updated 8→9; golden pins carry `band_range_incomplete: 0`). G1 golden `build_merged_band_table`
+  (merged span with endpoints on two rows + small-font decimal point + control row) and the ≥12-case G2 parser
+  table are pinned in tests; optional L4 retry stays **off** by default (`settings.TABLE_BAND_RETRY`, zero code
+  path). Local gates: pytest 451 passed / 9 skipped / 5 collection errors, audit 0/0, lint OK. BACKFILL-001 cloud
+  re-verification (three gates + IE-p079 flag-visibility reading) pending — runbook in the P-028 execution package
+  §3, readings local-only.
 
 ### Fixed
 

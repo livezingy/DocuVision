@@ -9,6 +9,7 @@ from app.services.table_alignment import (
     PROVENANCE_BACKFILLED_LITERAL,
     PROVENANCE_CONFIRMED_LITERAL,
     PROVENANCE_MISMATCH_LITERAL,
+    REASON_BAND_RANGE,
     REASON_CLUSTER,
     REASON_CROSSING,
     REASON_GEO,
@@ -43,8 +44,9 @@ def test_reason_enum_is_closed() -> None:
         REASON_CROSSING,
         REASON_MULTI,
         REASON_SHAPE,
+        REASON_BAND_RANGE,
     )
-    assert len(set(REASON_KEYS)) == 8
+    assert len(set(REASON_KEYS)) == 9
 
 
 def test_equal_length_single_confusion_passes() -> None:

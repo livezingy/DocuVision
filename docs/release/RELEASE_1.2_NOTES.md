@@ -19,7 +19,7 @@ Merge gate (2026-06-12): Phase A **37/37**, MP-002, H-Batch **6/6** `kie_product
 
 - Batch Excel export; Lite batch API.
 - Generic field validation engine; `document_type=custom`; field bbox overlay.
-- Playwright UI E2E (planned in `test_data/AutoTest/PRO_UI_E2E_PLAN.md`).
+- Playwright UI E2E (planned in `test_data/acceptance/PRO_UI_E2E_PLAN.md`).
 
 ## Upgrade
 

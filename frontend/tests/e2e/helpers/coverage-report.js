@@ -2,7 +2,7 @@
  * Merges the runtime-coverage fragments into one Markdown report (P-008 gap 2, MVP).
  *
  * Runs as Playwright's `globalTeardown` (wired in `playwright.config.js`), so a `npm run
- * test:e2e` produces `test_data/TestResult/PhaseUI/coverage-<date>.md` plus a one-line
+ * test:e2e` produces `test_data/local/PhaseUI/coverage-<date>.md` plus a one-line
  * stdout summary. It is a *report*, never a gate: it cannot fail a run. What it is for:
  * turning "which e2e scenario touched which module, and did the registered handlers ever
  * fire" from nobody's guess into a list, so the next dead-code cleanup (P-010) has a
@@ -19,7 +19,7 @@ const path = require('path');
 
 // frontend/tests/e2e/helpers -> frontend/
 const FRONTEND_DIR = path.join(__dirname, '..', '..', '..');
-const OUT_DIR = path.join(FRONTEND_DIR, '..', 'test_data', 'TestResult', 'PhaseUI');
+const OUT_DIR = path.join(FRONTEND_DIR, '..', 'test_data', 'local', 'PhaseUI');
 const FRAGMENT_DIR = path.join(OUT_DIR, 'coverage-fragments');
 
 function walkJs(dir) {

@@ -41,7 +41,7 @@ Copy-Item "您的证件.jpg" "test_data\testfiles\images\kie\id_card_sample_01.j
 test_data/
 ├── acceptance/          # 验收说明与矩阵（本目录）
 ├── Azure/               # Azure 参考 JSON
-├── TestResult/          # 本地/云端临时输出（不提交 Git）
+├── local/          # 本地/云端临时输出（不提交 Git）
 └── testfiles/
     ├── invoices/
     │   ├── sample-invoice.png

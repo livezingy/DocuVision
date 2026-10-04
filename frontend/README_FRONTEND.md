@@ -61,7 +61,7 @@ frontend/
 > `deps.*` 集合；缺 key = 留空桩，多 key = 死注入）+ `python scripts/check_frontend_baseline.py --edges`
 > （跨域边表，须与设计稿一致）。
 > **运行时覆盖度报告（P-008 gap 2 的 MVP，2026-09-17 起）**：`npm run test:e2e` 顺带产出
-> `test_data/TestResult/PhaseUI/coverage-<date>.md` —— 模块加载覆盖（loaded vs `modules/**`）/ 各模块
+> `test_data/local/PhaseUI/coverage-<date>.md` —— 模块加载覆盖（loaded vs `modules/**`）/ 各模块
 > 监听器"注册 vs 触发"（含"注册了但从未触发"）/ 按目录聚合 / 运行时 pageerror+console.error；
 > 记录点由 `helpers/coverage.js` 注入（patch `EventTarget.prototype.addEventListener`，按注册点堆栈归属到模块），
 > 由 `helpers/coverage-report.js`（globalTeardown）合并、`helpers/coverage-setup.js` 每次清空。

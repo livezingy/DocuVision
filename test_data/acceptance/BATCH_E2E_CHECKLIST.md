@@ -15,7 +15,7 @@ Last updated: 2026-06-05
 | Shell | **zsh/bash**（Cloud Studio 默认） |
 | 后端 | 单独终端运行 `python run.py`，端口 `8000` |
 | 前端 | 静态页或 `frontend/index.html` 经 HTTP 打开（UI 用例） |
-| 输出目录 | `test_data/TestResult/PhaseBatch/`（gitignored） |
+| 输出目录 | `test_data/local/PhaseBatch/`（gitignored） |
 
 ### 0.1 激活环境与启动服务（终端 1）
 
@@ -42,7 +42,7 @@ curl -s "$API_ROOT/health" | python3 -m json.tool | head -20
 export REPO_ROOT="/workspace/DocuVision"
 export API_ROOT="http://127.0.0.1:8000"
 export BATCH_API="$API_ROOT/api/v1/batch"
-export OUT_DIR="$REPO_ROOT/test_data/TestResult/PhaseBatch"
+export OUT_DIR="$REPO_ROOT/test_data/local/PhaseBatch"
 mkdir -p "$OUT_DIR"
 ```
 

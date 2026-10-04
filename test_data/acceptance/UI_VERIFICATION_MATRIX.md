@@ -67,7 +67,7 @@ cd frontend && npm run test:e2e
 | **三栏 resize** | 拖拽 handle 有效 | 改 `panel-resize.js` / layout CSS |
 | **视觉/文案** | 按钮 SVG、空态、主题 | 改 `components.css` / `styles.css`；E2E 不断言像素 |
 
-Planning detail: [PRO_UI_E2E_PLAN.md](../AutoTest/PRO_UI_E2E_PLAN.md).
+Planning detail: [PRO_UI_E2E_PLAN.md](./PRO_UI_E2E_PLAN.md).
 
 ## 3. 按代码改动推断手工范围（助手交付用）
 
@@ -87,4 +87,4 @@ Planning detail: [PRO_UI_E2E_PLAN.md](../AutoTest/PRO_UI_E2E_PLAN.md).
 
 ## 5. 维护
 
-- 新增 Playwright `test('UI-…')` 时：更新 §2.2 表与 [PRO_UI_E2E_PLAN.md](../AutoTest/PRO_UI_E2E_PLAN.md).
+- 新增 Playwright `test('UI-…')` 时：更新 §2.2 表与 [PRO_UI_E2E_PLAN.md](./PRO_UI_E2E_PLAN.md).

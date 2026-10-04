@@ -1,2 +1,2 @@
 # 仅忽略本地/云端生成的结果目录（不纳入 Git）
-TestResult/
+local/

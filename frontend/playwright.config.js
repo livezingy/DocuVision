@@ -1,7 +1,7 @@
 const { defineConfig } = require('@playwright/test');
 const path = require('path');
 
-const phaseUiDir = path.join(__dirname, '..', 'test_data', 'TestResult', 'PhaseUI');
+const phaseUiDir = path.join(__dirname, '..', 'test_data', 'local', 'PhaseUI');
 const repoRoot = path.join(__dirname, '..');
 const e2eEntryUrl = process.env.PW_INDEX_URL || 'http://127.0.0.1:8000/frontend/index.html';
 // scripts/e2e_static_server.py is a stdlib ThreadingHTTPServer with a 256-deep accept
@@ -25,7 +25,7 @@ module.exports = defineConfig({
   // locally the default (cores / 2) is faster and has been stable at 14/14.
   workers: process.env.CI ? 2 : undefined,
   // P-008 gap 2 (MVP): clear stale fragments before the run and merge this run's into
-  // test_data/TestResult/PhaseUI/coverage-<date>.md. A report, not a gate - see the header.
+  // test_data/local/PhaseUI/coverage-<date>.md. A report, not a gate - see the header.
   globalSetup: path.join(__dirname, 'tests', 'e2e', 'helpers', 'coverage-setup.js'),
   globalTeardown: path.join(__dirname, 'tests', 'e2e', 'helpers', 'coverage-report.js'),
   use: {

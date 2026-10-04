@@ -1,13 +1,13 @@
 # 项目事实与测试验证
 
 > 生成自 kernel `docs/agent-ops/core/`（environment, testing）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: environment.md:dc45a8094b72d500; testing.md:60cc84330c3588d5 -->
+<!-- kernel-ref: environment.md:791dd134f4b5e1b3; testing.md:60cc84330c3588d5 -->
 
 ## 项目目标
 DocuVision 旨在**可运行于云端服务器**，提供**试用/演示**，展示主要能力，可直接**投标 Upwork 部分工作**或符合用户基本需求并**接受定制**。开发优先级以"能否上云演示 + 能否投标/定制"为衡量。
 
 ## 关于项目
-使用 Paddle 组件的仿 Azure 智能文档处理系统。`test_data/Azure/` 下为 Azure 风格参考 JSON；样例与验收矩阵见 `test_data/testfiles/`、`test_data/acceptance/`。
+使用 Paddle 组件的仿 Azure 智能文档处理系统。`docs/R&D/reference/azure/` 下为 Azure 风格参考 JSON；样例与验收矩阵见 `test_data/testfiles/`、`test_data/acceptance/`。
 
 ## 技术栈
 - paddlepaddle-gpu 3.3.0 / paddleocr 3.3.2 / paddlex 3.3.12 / Qwen2.5-VL
@@ -24,12 +24,12 @@ DocuVision/
 ├── frontend/             # Pro SPA
 ├── packages/docuvision-core/
 ├── docs/                 # 索引见 docs/README.md
-└── test_data/            # acceptance/testfiles/Azure/TestResult(gitignore)
+└── test_data/            # acceptance/testfiles(samples) + assets/derived/local(gitignore)
 ```
 
 ## 目录卫生
 - `.cursor/` 只放 `rules/*.mdc` 与 `skills/*.md`。禁止一次性脚本、临时产物、数据/权重/日志。
-- 正确归属：一次性脚本 → `scripts/`；R&D 临时片段 → `docs/R&D/upwork/`（local only）；临时输出 → `test_data/TestResult/`（gitignore）。
+- 正确归属：一次性脚本 → `scripts/`；R&D 临时片段 → `docs/R&D/upwork/`（local only）；临时输出 → `test_data/local/`（gitignore）。
 - 发现遗留产物**带证据报告**，不擅删（删除属红线）。
 
 ## 按任务选读文档（勿全量通读）

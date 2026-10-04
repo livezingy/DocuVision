@@ -128,7 +128,7 @@
 |---|---|
 | `P020-ocr-harness-M1M2-执行包.md`（`docs/R&D/runs/`） | §3 设计细化 / §9 护栏 / **§10 runbook 与回填模板** / §10.11-§10.12 空间门禁与判读修正 |
 | `P021-云端对照-执行清单与记录模板.md`（`docs/R&D/runs/`） | P-021 的对照执行清单、OCR JSON SHA 清单、§6.6 round3 记录 |
-| `test_data/TestResult/harness/` | 云端产物（`round3_20260925/` 的 `commit.txt` + `gpu.txt` + `versions.txt` + `ocr_sha256.txt`）与判读脚本 |
+| `test_data/local/harness/` | 云端产物（`round3_20260925/` 的 `commit.txt` + `gpu.txt` + `versions.txt` + `ocr_sha256.txt`）与判读脚本 |
 | `scripts/measure/**` | 仪器本体与自测（local-only，见 §2） |
 
 ## 9. 关系与后续

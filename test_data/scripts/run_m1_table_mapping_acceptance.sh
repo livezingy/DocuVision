@@ -17,7 +17,7 @@ source "$SCRIPT_DIR/lib/cloud_env.sh"
 init_cloud_env
 
 BANK_SAMPLE="${BANK_SAMPLE:-$REPO_ROOT/test_data/testfiles/GeneralFiles/bank_statement_sample.pdf}"
-OUT_DIR="${OUT_DIR:-$REPO_ROOT/test_data/TestResult/PhaseV14/M1}"
+OUT_DIR="${OUT_DIR:-$REPO_ROOT/test_data/local/PhaseV14/M1}"
 EXPECTED_API_VERSION="${EXPECTED_API_VERSION:-1.4.0}"
 
 mkdir -p "$OUT_DIR"

@@ -17,13 +17,13 @@
 
 | 文件 | 推断 document_type | 来源 |
 |------|--------------------|------|
-| `icbc.png` | `bank_card` | BankCard/ |
+| ~~`icbc.png`~~ | `bank_card` | BankCard/ — **2026-10-04 删除**：与 `bank_card_sample_01.png` 字节级重复（MD5 一致），保留被 `test_kie_acceptance_baseline.py` 与 Cloud 矩阵引用的规范名 |
 | `zgyh.jpg` | `bank_card` | BankCard/ |
 | `DriverLicense.png` | `id_card`（驾照样式，待定） | IDCard/ |
 | `businessCard.png` | `id_card`（名片样式，待定） | IDCard/ |
 | `id-us-green-card.png` | `id_card`（绿卡样式，待定） | IDCard/ |
 | `Passport.png` | `passport` | passports/ |
-| `id-passport.png` | `passport` | passports/ |
+| ~~`id-passport.png`~~ | `passport` | passports/ — **2026-10-04 删除**：与 `passport_sample_01.png` 字节级重复（1.30MB，MD5 一致），且文件名违反 R2（连字符非下划线） |
 
 ## 合成身份证 ground-truth（虚构，仅供验收）
 

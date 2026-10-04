@@ -68,7 +68,7 @@ Usage:
         --version <v> --slug <slug> --source html
 
     Output:  ../testfiles/PDF_Parsing/gt/<slug>.gt.json
-    Cache:   ../../TestResult/gt_cache/  (gitignored, re-run friendly)
+    Cache:   ../../local/gt_cache/  (gitignored, re-run friendly)
 
 Encoding discipline: explicit utf-8 everywhere; stdout reconfigured to
 utf-8 (Windows GBK consoles crash on U+2713 etc.). Run with the
@@ -90,7 +90,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_GT_DIR = REPO_ROOT / "test_data" / "testfiles" / "PDF_Parsing" / "gt"
-DEFAULT_CACHE_DIR = REPO_ROOT / "test_data" / "TestResult" / "gt_cache"
+DEFAULT_CACHE_DIR = REPO_ROOT / "test_data" / "local" / "gt_cache"
 
 HEADING_TAGS = {"h1", "h2", "h3", "h4"}
 # Captions in this corpus always print as "Table N:" / "Figure N:"; the

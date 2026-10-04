@@ -14,8 +14,9 @@ from docuvision_core.utils.pdf_text_utils import normalize_for_compare
 
 from app.services.page_text_trust import judge_page_trust
 from app.services.table_alignment import (
-    REASON_CROSSING, REASON_GEO, REASON_KEYS, REASON_MULTI, REASON_NO_LINE,
-    REASON_SANITY, REASON_SHAPE, REASON_VALUE_MATCH, LayoutModel, T1Status,
+    REASON_BAND_RANGE, REASON_CROSSING, REASON_GEO, REASON_KEYS, REASON_MULTI,
+    REASON_NO_LINE, REASON_SANITY, REASON_SHAPE, REASON_VALUE_MATCH,
+    LayoutModel, T1Status,
     build_layout_model, is_ocr_confusion, resolve_t1_collision, solve_t1,
     solve_t3,
 )
@@ -27,6 +28,7 @@ from app.services.table_cell_geo import (
     derive_cell_bbox,
     is_candidate_cell,
 )
+from app.services.table_band_range import parse_band_range, validate_band_range
 
 # provenance values (v1.8 §4.4; text_mismatch added in v1.8.1 §6)
 PROVENANCE_VISION = "vision"
@@ -160,7 +162,7 @@ def backfill_table_cells(
     cell value is never replaced on mismatch). ``sibling_bboxes`` are the
     other same-page tables' pt rects (D9); words centered inside a sibling
     never enter the T1 neighborhood. Returns the per-table counts plus
-    ``align_reason_counts`` (8 keys, always present, sum == candidates).
+    ``align_reason_counts`` (9 keys, always present, sum == candidates).
     """
     stats: Dict[str, Any] = {"candidates": 0, "confirmed": 0, "backfilled": 0, "mismatch": 0}
     data = table.get("data")
@@ -211,6 +213,24 @@ def backfill_table_cells(
             provenance, reason, words, text_layer_text, bbox = _solve_candidate(
                 model, table_bbox, page_words, n_rows, n_cols, i, j, cell_text
             )
+            # P-028 L2: band-range pattern gate (flag-only, no silent fix).
+            # Pattern-driven: cells that do not parse are untouched; a parse
+            # with flags forces text_mismatch + band_range_incomplete while
+            # the cell data passes through verbatim; a legal interval walks
+            # the original funnel outcome.
+            band_diag = None
+            band_br = parse_band_range(cell_text)
+            if band_br is not None:
+                band_flags = validate_band_range(band_br)
+                if band_flags:
+                    provenance = PROVENANCE_TEXT_MISMATCH
+                    reason = REASON_BAND_RANGE
+                    band_diag = {
+                        "raw": band_br.raw,
+                        "flags": band_flags,
+                        "start_text": band_br.start_text,
+                        "end_text": band_br.end_text,
+                    }
             _finalize(
                 provenance=provenance, reason=reason, words=words,
                 text_layer_text=text_layer_text, cell_text=cell_text,
@@ -220,7 +240,7 @@ def backfill_table_cells(
             )
 
             if provenance == PROVENANCE_TEXT_MISMATCH and mismatch_records is not None:
-                mismatch_records.append({
+                record = {
                     "page": page_num,
                     "table_index": table_index,
                     "row": i,
@@ -228,7 +248,10 @@ def backfill_table_cells(
                     "ocr_text": cell_text,
                     "text_layer_text": text_layer_text,
                     "reason": reason,
-                })
+                }
+                if band_diag is not None:
+                    record["band_range"] = band_diag
+                mismatch_records.append(record)
 
             if debug_records is not None:
                 debug_records.append({

@@ -26,7 +26,7 @@ from app.services.table_layout import (
     LayoutModel, build_layout_model,  # re-export：table_backfill 与测试路径稳定
 )
 
-# --- P-002 C1: reason contract (8 values, D2) ---------------------------
+# --- P-002 C1: reason contract (9 values, D2; P-028 adds band_range) -----
 # Spec provenance-review.md §5 pins 6 values; "cluster" and "sanity_reject"
 # extend it because the three-layer pipeline has two outcomes the 6-value
 # enum cannot express (P-002 §4): a T3-resolved cell, and an alignment that
@@ -39,6 +39,7 @@ REASON_NO_LINE = "no_aligned_line"
 REASON_CROSSING = "crossing"
 REASON_MULTI = "multi_line"
 REASON_SHAPE = "shape_mismatch"
+REASON_BAND_RANGE = "band_range_incomplete"
 
 REASON_KEYS: Tuple[str, ...] = (
     REASON_VALUE_MATCH,
@@ -49,6 +50,7 @@ REASON_KEYS: Tuple[str, ...] = (
     REASON_CROSSING,
     REASON_MULTI,
     REASON_SHAPE,
+    REASON_BAND_RANGE,
 )
 
 # --- P-002 C1: backfill sanity gate (spec provenance-review.md §4.2) ----

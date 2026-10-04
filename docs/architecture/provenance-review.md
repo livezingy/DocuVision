@@ -102,6 +102,24 @@ table_step（orchestrator）
 - **实现位置**：已实现于 `table_alignment.is_ocr_confusion`，在 `table_backfill` 的琥珀分支
   （T2/T3 回填替换前）调用，绿格天然过闸不调用；属漏斗行为变更 → BACKFILL-001 云端重验。
 
+### 4.4 频段区间模式校验（P-028，`band_range_incomplete`——防不完整区间静默通过）
+
+- **动机**：合并格频段单元的小字号小数点在 OCR/rec 层丢失（P-027 R4：IE-p079 `40.7-4098MHz`，
+  `40.98` 的点丢失 ⇒ 止端点量级漂移）。P-028 C1 三方对账裁决 **X1 = B（识别层）**：文本层 GT
+  `40.7 - 40.98 MHz` 完整印出、R2 cache OCR 与管线 cell 串的小数点均缺、三方内容多重集相等
+  （拼装层零丢段丢词）——产品侧只能**旗标**，不能修（R6：旗标 + 透传 + 可选重试，不静默补点）。
+- **规则规格**（纯模式驱动，不做语义列识别）：`table_band_range.parse_band_range` 命中
+  「数字-数字-单位」模式（单位族 MHz/GHz/kHz/Hz 大小写归一、千分位空白按位折叠）才校验；
+  `validate_band_range` 旗标 = 值域（非负 / 有限 / start ≤ end）+ `magnitude_gap`（单位统一后
+  |log10(start) − log10(end)| > 2 decade）。命中非空旗标 → `text_mismatch` +
+  `band_range_incomplete`（reason 契约第 9 值），cell 数据**原值透传**（禁修正、禁猜小数点）；
+  `mismatch_details[].band_range` 携带 `{raw, flags, start_text, end_text}` 诊断；合法区间走原
+  流程。L4 可选重试（`settings.TABLE_BAND_RETRY`，默认关）关闭时零行为差异。
+- **效果与诚实边界**：拦截的 = 区间端点量级跳变 > 2 decade（如 `40.7-4098MHz`）。拦不住的 =
+  cache 形态折叠串（`40 7 - 40 98` → 407-4098，gap 1.0 decade，不触发）与真实宽带（阈值误报，
+  阈值 2 decade 写死进 G2 用例表，超标走 Ying 裁决不改常数，R7）；信任门未放行的页（无文本层 /
+  不信任）整页不进漏斗，旗标不适用（诚实边界，非缺陷）。属漏斗行为变更 → BACKFILL-001 云端重验。
+
 ## 5. v1.9 三层对应机制（已实现，P-002 / `table_alignment.py`）
 
 对应机制决定"哪个文本层词属于哪个格子"。v1.9（P-002）起按精度降级三层，逐候选格依序求解：
@@ -119,7 +137,8 @@ T1 唯一命中（或碰撞消解唯一落位）→ T2 → T3，全部无果诚�
 `quality.table_backfill.align_reason_counts`（8 键恒在场、sum == candidates）+
 `mismatch_details[].reason` 与 debug 记录 `reason` + review 表第 6 列（`col_reason` 双语）。
 **reason 8 值** = 规格草案 6 值 + `cluster`（T3 解决）+ `sanity_reject`（对齐成功但 sanity 拒绝）——
-6 值枚举无法表示这两类结局（纯加法，向后兼容）。
+6 值枚举无法表示这两类结局（纯加法，向后兼容）。P-028 起扩至 **9 值**（+`band_range_incomplete`，
+见 §4.4；旧 8 值字符串与语义零改动）。
 **边界原则**：文本层管真值与对应，vision 结构管语义（行列含义、合并格）；扫描件无文本层，
 本机制整体不适用，其信任叙事走引擎级指标（symbol_benchmark 等），两条叙事不混。
 

@@ -62,6 +62,10 @@
     "kind": "full",
     "note": "P-029 G1 evidence findings schema contract (pydantic, pure logic, no paddle/server)"
   },
+  "evidence/test_verifier.py": {
+    "kind": "full",
+    "note": "P-029 G2 evidence verifier ladder V0-V6 + gates B/C (pure logic, no paddle/server)"
+  },
   "test_analyze_kie_options.py": {
     "kind": "full"
   },

@@ -167,6 +167,7 @@ site/
 .GLM/
 # ZCode IDE ignore file (auto-synced copy of .gitignore + ZCode default rules) - local tool artefact
 .zcodeignore
+.zcode/
 docker/
 docs/*
 !docs/architecture/

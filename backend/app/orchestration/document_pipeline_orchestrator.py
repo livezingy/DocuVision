@@ -812,6 +812,25 @@ async def kie_step(ctx: PipelineContext) -> None:
     )
 
 
+async def evidence_step(ctx: PipelineContext) -> None:
+    """P-029 L5: optional evidence gate (default off via EVIDENCE_ENABLED).
+
+    Runs after the envelope so quote grounding can use the fused layer's
+    per-page text; verifies PICO findings fail-closed and routes near_match
+    / slot findings to HITL (see services/evidence/gate.py).
+    """
+    from app.core.config import settings
+
+    if not getattr(settings, "EVIDENCE_ENABLED", False):
+        return
+    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
+    orchestrator.ensure_not_cancelled(ctx)
+    await orchestrator.update_progress(ctx, 90, "Evidence verification (gate A/B/C)...")
+    from app.services.evidence.gate import run_evidence_gate
+
+    ctx["result"]["evidence"] = await run_evidence_gate(ctx)
+
+
 async def finalize_step(ctx: PipelineContext) -> None:
     orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
     orchestrator.ensure_not_cancelled(ctx)
@@ -1223,6 +1242,7 @@ class DocumentPipelineOrchestrator:
             formula_step,
             seal_step,
             phase1_envelope_step,  # Build Phase 1 Envelope (preprocessing, raw, fused, view, quality)
+            evidence_step,  # P-029: optional evidence gate (EVIDENCE_ENABLED, default off)
             finalize_step,
         ]
 

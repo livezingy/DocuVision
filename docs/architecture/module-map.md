@@ -1,7 +1,7 @@
 # DocuVision Module Map（当前态模块地图）
 
 > Status: living — 结构变化时同步（owning 行见 `docs/agent-ops/core/doc-sync.md`）
-> 最近对照：v1.10.0 / commit b4e4a55（2026-09-30，v1.10 收口：P-002 表格三层对应重构（§4 服务内部依赖增 table_backfill→table_alignment 行）+ P-021 OCR 坐标帧修复 + P-020/P-022/P-023/P-026/P-027 测量与门禁族；无 §2/§3 域结构变化）
+> 最近对照：v1.11.0 / commit d9ee9f7（2026-10-05，v1.11 收口：P-028 band-range + F1 拆分链；docs-only release，无 §2/§3 域结构变化）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
 > 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F7 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-6 条——

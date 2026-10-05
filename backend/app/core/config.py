@@ -97,6 +97,13 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DOCUVISION_WEBHOOK_ADMIN_TOKEN", "WEBHOOK_ADMIN_TOKEN"),
     )
 
+    # Evidence layer (P-029) — per-instance opt-in; runs the evidence gate
+    # after the KIE stage (fail-closed verification + failure ledger)
+    EVIDENCE_ENABLED: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("DOCUVISION_EVIDENCE_ENABLED", "EVIDENCE_ENABLED"),
+    )
+
     # KIE (Qwen2.5-VL) — HuggingFace id or local directory
     KIE_QWEN_MODEL_ID: str = Field(
         default=os.path.expanduser(

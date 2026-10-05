@@ -167,6 +167,7 @@ site/
 .GLM/
 # ZCode IDE ignore file (auto-synced copy of .gitignore + ZCode default rules) - local tool artefact
 .zcodeignore
+.zcode/
 docker/
 docs/*
 !docs/architecture/
@@ -214,6 +215,8 @@ backend/outputs/
 !test_data/scripts/package.json
 # Full OpenAPI snapshot baseline (v1.8.2 SPLIT-U1)
 !backend/tests/snapshots/*.json
+# Evidence layer closed word lists (P-029): versioned data file, single source for the verifier
+!backend/app/services/evidence/closed_lists.json
 # Test registration table (P-008 check 4) - the audit reads it, so it must be versioned
 !backend/tests/test_registry.json
 # E2E runtime-error allowlist (P-008 gap 2, step 2) - the Playwright fixture reads it and it is
@@ -285,6 +288,10 @@ scripts/*
 !scripts/unit_suite_pin.json
 !scripts/trial/
 !scripts/trial/**
+# Offline QA tools ported from the sciextract handover (P-029 §1: make_spotcheck /
+# make_test_report / convert_golden; archive/RUNBOOK.md is form-B record keeping)
+!scripts/qa/
+!scripts/qa/**
 !scripts/aistudio_setup.sh
 !test_data/scripts/
 !test_data/scripts/**

@@ -58,6 +58,22 @@
   "kie/test_value_typer.py": {
     "kind": "full"
   },
+  "evidence/test_findings_schema.py": {
+    "kind": "full",
+    "note": "P-029 G1 evidence findings schema contract (pydantic, pure logic, no paddle/server)"
+  },
+  "evidence/test_verifier.py": {
+    "kind": "full",
+    "note": "P-029 G2 evidence verifier ladder V0-V6 + gates B/C (pure logic, no paddle/server)"
+  },
+  "evidence/test_gate.py": {
+    "kind": "full",
+    "note": "P-029 G3 evidence gate: fail-closed ledger, HITL routing, flag-off zero behavior (mock, no paddle/server)"
+  },
+  "evidence/test_golden_baseline.py": {
+    "kind": "full",
+    "note": "P-029 G5 golden-set sentinel: 45-record ratchet baseline (pure logic, no paddle/server)"
+  },
   "test_analyze_kie_options.py": {
     "kind": "full"
   },

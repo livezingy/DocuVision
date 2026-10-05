@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-10-05
+
 ### Added
 - **P-027 — RF frequency-table weak GT + line-level reconciliation (R2)** (2026-10-02): migrated the P-018 P1
   text-layer weak-GT route onto the RF allocation corpus (MY/BD/IE client PDFs, quarantine zone; internal

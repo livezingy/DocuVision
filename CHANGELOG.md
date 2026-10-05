@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **P-029 — Evidence-grounded extraction verification layer (gates A/B/C)** (2026-10-05): ported the RCT-validated
+  three-gate method (verbatim quote grounding / hedge fidelity / PICO slot completeness) from the sciextract
+  handover assets into an in-process `backend/app/services/evidence/` layer: `findings_schema.py` (FindingRecord
+  contract, `evidence-findings/1.0`, PROMPT_VERSION=v3 bound to the new `kie_configs/pico.yaml` template header —
+  mismatch is a gate ERROR), `closed_lists.json` (single-source closed word lists, EN 14 hedge seed),
+  `normalize.py` + `verifier.py` (V0-V6 normalization ladder, pinned near_match prefix criterion, never silently
+  corrected, zero imports from KIE code), and `gate.py` (fail-closed export, failure ledger, HITL routing).
+  Optional pipeline hook `evidence_step` gated by `EVIDENCE_ENABLED` (default False; zero behavior when off).
+  Golden-set ratchet sentinel: 45-record baseline in `backend/tests/evidence/golden/` asserted by
+  `test_golden_baseline.py` (35 verbatim_exact / 3 near_match / 7 unsupported, 38/38 faithful, 0 overclaim,
+  0 empty slots, statement_type 28/13/4/0); offline QA tools under `scripts/qa/` (make_spotcheck,
+  make_test_report, convert_golden with a byte-identical double-run check). Ratchet bump on
+  `document_pipeline_orchestrator.py` 1248->1268 authorized by Ying 2026-10-05 (X2-2). Evidence chain in
+  PENDING P-029; execution record `docs/R&D/runs/P029/` (local-only).
+
 ## [1.11.0] — 2026-10-05
 
 ### Added

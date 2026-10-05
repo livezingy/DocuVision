@@ -1,18 +1,13 @@
 """Evidence findings schema contract (single source of truth, P-029 design L1).
 
-FindingRecord contract verified by the evidence layer's three gates: quote
-grounding (A), hedge fidelity (B), PICO slot completeness (C). The
-kie_configs PICO template and the verifier bind to PROMPT_VERSION here;
-a mismatch is a gate ERROR (design D7: no two-source drift).
-
+FindingRecord contract verified by three gates: quote grounding (A), hedge
+fidelity (B), PICO slot completeness (C). The kie_configs PICO template and
+the verifier bind to PROMPT_VERSION here; mismatch = gate ERROR (D7).
 ``PicoSlots`` is the first domain slot template; new domains register their
 own Slots classes via ``register_slot_template`` (core shape untouched).
-
-Fail-closed: silent nulls (None / empty / missing slot keys) are validation
-errors, unreported slot values must use the literal ``NOT_REPORTED``
-(spelling variants rejected so canonicalization cannot be skipped), and a
-rejected finding (verdict ``unsupported`` or fidelity ``overclaim``) must
-carry a ``LedgerEntry``.
+Fail-closed: silent nulls are validation errors, unreported slots must use
+the literal ``NOT_REPORTED`` (variants rejected), and a rejected finding
+(verdict ``unsupported`` or fidelity ``overclaim``) must carry a ledger.
 """
 from __future__ import annotations
 
@@ -47,8 +42,7 @@ def check_prompt_version_binding(template_version: Optional[str]) -> None:
     """Bind the kie_configs PICO template header version to this contract (L1/D7)."""
     if template_version != PROMPT_VERSION:
         raise EvidenceSchemaError(
-            f"prompt version binding mismatch: template={template_version!r} "
-            f"contract={PROMPT_VERSION!r}"
+            f"prompt version binding mismatch: template={template_version!r} contract={PROMPT_VERSION!r}"
         )
 
 
@@ -187,8 +181,8 @@ class FindingRecord(BaseModel):
             expected = "overclaim" if self.hedge.fidelity == "overclaim" else "unsupported"
             if self.ledger.reject_class != expected:
                 raise ValueError(
-                    f"ledger.reject_class={self.ledger.reject_class!r} contradicts "
-                    f"verdict={self.verdict!r}/fidelity={self.hedge.fidelity!r}"
+                    f"ledger.reject_class={self.ledger.reject_class!r} contradicts verdict="
+                    f"{self.verdict!r}/fidelity={self.hedge.fidelity!r}"
                 )
         return self
 

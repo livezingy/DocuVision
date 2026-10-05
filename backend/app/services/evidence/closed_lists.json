@@ -1,0 +1,32 @@
+{
+  "schema_version": "closed_lists/1.0",
+  "seed_provenance": {
+    "hedge_en_14": "extract_qwen.py SYSTEM_PROMPT closed hedge list, PROMPT_VERSION=v3 (handover sha256[:12] 029317adea32); calibrated on the 45-record golden set (P-029 C2)",
+    "hedge_zh_12": "no handover seed; to be seeded by the first Chinese-domain data PR (P-029 execution record X1-2)",
+    "causal_verbs": "no handover seed; to be seeded by the first data PR (P-029 execution record X1-2)"
+  },
+  "hedge": {
+    "en": [
+      "may",
+      "might",
+      "could",
+      "possibly",
+      "suggests",
+      "suggested",
+      "suggesting",
+      "indicates",
+      "indicated",
+      "appears",
+      "seem",
+      "seems",
+      "likely",
+      "unclear"
+    ],
+    "zh": []
+  },
+  "causal_verbs": {
+    "CAUSAL": [],
+    "ASSOCIATIONAL": [],
+    "NEUTRAL": []
+  }
+}

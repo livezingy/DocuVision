@@ -58,6 +58,10 @@
   "kie/test_value_typer.py": {
     "kind": "full"
   },
+  "evidence/test_findings_schema.py": {
+    "kind": "full",
+    "note": "P-029 G1 evidence findings schema contract (pydantic, pure logic, no paddle/server)"
+  },
   "test_analyze_kie_options.py": {
     "kind": "full"
   },

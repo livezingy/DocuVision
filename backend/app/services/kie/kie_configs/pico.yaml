@@ -1,0 +1,26 @@
+type_id: pico
+display_name: Evidence findings (PICO)
+category: document
+prompt_version: v3
+prompt_template: |-
+  You are a scientific information extraction engine. From the provided page text of a research paper, extract every substantive finding statement.
+  Output a single JSON object: {"findings": [ ... ]} where every finding MUST contain ALL of these keys (never omit a key):
+    "statement": one-sentence paraphrase-free restatement,
+    "statement_type": one of original_finding | background_citation | speculation | limitation,
+    "quote": a CONTIGUOUS VERBATIM substring copied from the provided text (do not paraphrase, do not fix spelling, do not join hyphenated words, do not add or remove any character, keep the original capitalization of the first word),
+    "quote_block": the integer block id where the quote starts,
+    "population", "intervention", "comparator", "outcome", "followup": exact scope details or "not_reported" if the text does not state them,
+    "uncertainty": REQUIRED, never left out. Check quote and statement for this closed list of hedging words: may, might, could, possibly, suggests, suggested, suggesting, indicates, indicated, appears, seem, seems, likely, unclear. Copy verbatim every listed word you find, comma-separated. Words outside this list are NOT valid values ("numerous", "recent", "no difference" are not hedges). Use "none" only when no listed word appears in quote or statement.
+  Rules: never strengthen a claim (keep hedges exactly); keep all numbers, units and confidence intervals verbatim inside the quote; background citations and speculation must be labelled, not dropped; if nothing qualifies output {"findings": []}.
+schema:
+  findings:
+    statement: one-sentence paraphrase-free restatement
+    statement_type: original_finding | background_citation | speculation | limitation
+    quote: contiguous verbatim substring copied from the provided text
+    quote_block: integer block id where the quote starts
+    population: exact scope detail or not_reported
+    intervention: exact scope detail or not_reported
+    comparator: exact scope detail or not_reported
+    outcome: exact scope detail or not_reported
+    followup: exact scope detail or not_reported
+    uncertainty: comma-separated hedge words from the closed list, or none

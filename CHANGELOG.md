@@ -67,6 +67,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Changed
+- **Asset-manifest verification: dual schema + deterministic content fingerprints** (2026-10-05):
+  `test_data/scripts/verify_assets.py` now reads both manifest shapes — source assets
+  (`assets[].path`, byte-level sha256) and output packs (`artifacts[].file`) — and an empty or
+  unrecognised manifest exits non-zero instead of reporting "0 rows OK" (a pack manifest was silently
+  scored as a pass). Pack artifacts additionally carry `fingerprint.kind = "content"`
+  (`text_sha256` + `pages` + `words` + `rotation`) instead of a byte sha256, because **PyMuPDF writes
+  a random `/ID[1]` on every `save()`**: regenerating the same page twice yields different bytes
+  (verified — two identical runs of the P-028 generator gave `4d5aa2e0…` vs `62801eb3…`), so a byte
+  sha256 is not a reproducible basis for derived PDFs. The content fingerprint is stable across runs
+  and still discriminates the two IE-p079 artifacts by `rotation` (90 = original, skipped by backfill
+  §6/D10; 0 = the G4 flag-reading evidence pack) — they share one `text_sha256` because
+  `set_rotation(0)` touches metadata only. Content-level entries verify through PyMuPDF and report
+  `UNVERIFIED` with a non-zero exit when it is unavailable, never a silent pass. The source-asset byte
+  path is unchanged.
 - **P-028 — F1 pure-move split (PR1)** (2026-10-04): zero-behavior file split to clear the 500-line budget — the
   layout block (``W_*`` word indices, P-002 geometry constants, ``RowCluster``/``ColGroup``/``LayoutModel``/
   ``build_layout_model``) moved verbatim from `table_alignment.py` (499→312) into new `table_layout.py` (202 lines);
@@ -88,8 +102,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (merged span with endpoints on two rows + small-font decimal point + control row) and the ≥12-case G2 parser
   table are pinned in tests; optional L4 retry stays **off** by default (`settings.TABLE_BAND_RETRY`, zero code
   path). Local gates: pytest 451 passed / 9 skipped / 5 collection errors, audit 0/0, lint OK. BACKFILL-001 cloud
-  re-verification (three gates + IE-p079 flag-visibility reading) pending — runbook in the P-028 execution package
-  §3, readings local-only.
+  re-verification **PASS (three gates)**: G4 bank PASS (12× value_match, 9th key present and 0 — non-band cells
+  undisturbed); G4 IE-p079 flag-visibility PASS (rot0 evidence pack with `/Rotate` cleared — `reason=band_range_incomplete`,
+  `flags=["magnitude_gap"]`, original string passed through verbatim); G5 INV PASS (zero violations, p12 ≈ 0.8%,
+  p29 ≈ 25.4% — no regression); G6 WTW sentinel PASS (local no-op scoring, 300 fixtures, `wtw_metrics.csv`
+  sha256 `e44d5e6d…b770968` byte-identical to the P-002 control; the scorer's `extract_predictions` reads only
+  rows/cols/html/bbox/polygon, so the P-028 change surface is orthogonal to it). Known non-P-028 reading: G4 symbol
+  2/4 vs baseline 4 (`is_candidate_cell` moved verbatim; L2 only fires on band patterns) — per-cell dump pending,
+  routed to Ying. Readings local-only (runbook in the P-028 execution package §3).
 
 ### Fixed
 

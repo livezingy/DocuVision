@@ -165,6 +165,8 @@ site/
 .codebuddy/plans/
 # GLM rules dir retired (6634d86); ignore locally rebuilt copies
 .GLM/
+# ZCode IDE ignore file (auto-synced copy of .gitignore + ZCode default rules) - local tool artefact
+.zcodeignore
 docker/
 docs/*
 !docs/architecture/

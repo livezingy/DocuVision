@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-## [1.12.0] — 2026-10-06
+## [1.12.0] — 2026-10-05
 
 ### Added
 - **P-029 — Evidence-grounded extraction verification layer (gates A/B/C)** (2026-10-05): ported the RCT-validated

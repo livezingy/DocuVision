@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Removed
+
+### Changed
+
+### Fixed
+
+## [1.12.0] — 2026-10-06
+
+### Added
 - **P-029 — Evidence-grounded extraction verification layer (gates A/B/C)** (2026-10-05): ported the RCT-validated
   three-gate method (verbatim quote grounding / hedge fidelity / PICO slot completeness) from the sciextract
   handover assets into an in-process `backend/app/services/evidence/` layer: `findings_schema.py` (FindingRecord

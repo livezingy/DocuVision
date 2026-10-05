@@ -1,13 +1,10 @@
 """Evidence findings schema contract (single source of truth, P-029 design L1).
 
-FindingRecord contract verified by three gates: quote grounding (A), hedge
-fidelity (B), PICO slot completeness (C). The kie_configs PICO template and
-the verifier bind to PROMPT_VERSION here; mismatch = gate ERROR (D7).
-``PicoSlots`` is the first domain slot template; new domains register their
-own Slots classes via ``register_slot_template`` (core shape untouched).
-Fail-closed: silent nulls are validation errors, unreported slots must use
-the literal ``NOT_REPORTED`` (variants rejected), and a rejected finding
-(verdict ``unsupported`` or fidelity ``overclaim``) must carry a ledger.
+Three gates verify FindingRecord values: quote grounding (A), hedge fidelity (B),
+slot completeness (C). The PICO template and verifier bind to PROMPT_VERSION here;
+mismatch = gate ERROR (D7). PicoSlots is the first slot template; new domains
+register via register_slot_template. Fail-closed: silent nulls rejected, unreported
+slots must be the literal NOT_REPORTED, rejected findings need a ledger entry.
 """
 from __future__ import annotations
 
@@ -20,8 +17,7 @@ SCHEMA_VERSION = "evidence-findings/1.0"
 PROMPT_VERSION = "v3"
 NOT_REPORTED = "NOT_REPORTED"
 
-# Upstream spellings that MUST be canonicalized to NOT_REPORTED before
-# validation (golden conversion rule, execution record X1-4).
+# Upstream spellings that MUST be canonicalized to NOT_REPORTED before validation (X1-4).
 _UNREPORTED_VARIANTS = {"not_reported", "not reported", "not specified", "none"}
 
 FINDING_ID_RE = re.compile(r"^F-[0-9]{3}$")
@@ -41,9 +37,7 @@ class EvidenceSchemaError(ValueError):
 def check_prompt_version_binding(template_version: Optional[str]) -> None:
     """Bind the kie_configs PICO template header version to this contract (L1/D7)."""
     if template_version != PROMPT_VERSION:
-        raise EvidenceSchemaError(
-            f"prompt version binding mismatch: template={template_version!r} contract={PROMPT_VERSION!r}"
-        )
+        raise EvidenceSchemaError(f"prompt version binding mismatch: template={template_version!r} contract={PROMPT_VERSION!r}")
 
 
 class SourceRef(BaseModel):
@@ -105,10 +99,9 @@ def register_slot_template(domain: str, slots_cls: Type[BaseModel]) -> None:
 
 
 def get_slot_template(domain: str) -> Type[BaseModel]:
-    try:
-        return SLOT_TEMPLATES[domain]
-    except KeyError:
-        raise EvidenceSchemaError(f"unknown slot template domain: {domain!r}") from None
+    if domain not in SLOT_TEMPLATES:
+        raise EvidenceSchemaError(f"unknown slot template domain: {domain!r}")
+    return SLOT_TEMPLATES[domain]
 
 
 class HedgeFidelity(BaseModel):
@@ -180,10 +173,7 @@ class FindingRecord(BaseModel):
         if self.ledger is not None:
             expected = "overclaim" if self.hedge.fidelity == "overclaim" else "unsupported"
             if self.ledger.reject_class != expected:
-                raise ValueError(
-                    f"ledger.reject_class={self.ledger.reject_class!r} contradicts verdict="
-                    f"{self.verdict!r}/fidelity={self.hedge.fidelity!r}"
-                )
+                raise ValueError(f"ledger.reject_class={self.ledger.reject_class!r} contradicts {self.verdict!r}/{self.hedge.fidelity!r}")
         return self
 
 
@@ -200,8 +190,6 @@ def parse_findings_jsonl_line(obj: object) -> FindingRecord:
         raise EvidenceSchemaError("findings line must be a JSON object")
     check_prompt_version_binding(obj.get("prompt_version"))
     if obj.get("schema_version") != SCHEMA_VERSION:
-        raise EvidenceSchemaError(
-            f"schema version mismatch: got {obj.get('schema_version')!r}, expected {SCHEMA_VERSION!r}"
-        )
+        raise EvidenceSchemaError(f"schema version mismatch: got {obj.get('schema_version')!r}, expected {SCHEMA_VERSION!r}")
     payload = {k: v for k, v in obj.items() if k not in ("schema_version", "prompt_version")}
     return FindingRecord.model_validate(payload)

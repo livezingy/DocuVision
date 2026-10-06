@@ -15,6 +15,10 @@
     "kind": "phase-a-ci",
     "note": "KIE service contract (mock)"
   },
+  "test_kie_domain_consistency.py": {
+    "kind": "full",
+    "note": "P-030 X8 domain-consistency sentinel: _KEYWORDS == KIE_SUPPORTED_DOC_TYPES (6==6), frozenset subset of _registry.yaml (mock, no paddle/server)"
+  },
   "test_ocr_service_engine_params.py": {
     "kind": "phase-a-ci",
     "note": "OCR engine init-param contract (use_doc_unwarping=False, P-021; mock, no paddle)"

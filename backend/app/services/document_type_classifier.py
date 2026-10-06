@@ -23,6 +23,16 @@ _KEYWORDS = {
         "affording coverage",
         "acord 25",
     ),
+    # Also appended last (P-031): same tie discipline as coi. The keywords are
+    # the X1-calibrated set measured on the committed pico fixtures; re-run the
+    # negative arm before extending.
+    "pico": (
+        "randomized",
+        "controlled trial",
+        "placebo",
+        "double-blind",
+        "primary outcome",
+    ),
 }
 
 

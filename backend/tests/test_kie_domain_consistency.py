@@ -1,12 +1,9 @@
-"""P-030 X8 domain-consistency sentinel (coi stage).
+"""P-030 X8 / P-031 X6 domain-consistency sentinel.
 
-Asserts the three coi-domain registries stay aligned after the P-030b wiring:
-- classifier keywords and the KIE supported set are equal (6 == 6);
-- the KIE supported set is contained in the kie_configs registry.
-
-The registry is a superset on purpose: ``pico`` is already registered but its
-pipeline wiring belongs to P-031, so full equality (7 == 7 == 7) is deferred
-to the P-031 sentinel.
+Asserts the doc-type registries stay fully aligned after the P-031 pico
+wiring (7 == 7 == 7):
+- classifier keywords == KIE supported set;
+- the KIE supported set == the kie_configs registry keys.
 """
 
 from pathlib import Path
@@ -29,13 +26,12 @@ _REGISTRY = (
 
 def test_classifier_keywords_match_kie_supported_doc_types() -> None:
     assert set(_KEYWORDS.keys()) == set(KIE_SUPPORTED_DOC_TYPES)
-    assert len(_KEYWORDS) == 6
+    assert len(_KEYWORDS) == 7
 
 
-def test_kie_supported_doc_types_subset_of_registry() -> None:
+def test_kie_supported_doc_types_match_registry() -> None:
     registry = yaml.safe_load(_REGISTRY.read_text(encoding="utf-8"))
     registry_keys = set(registry["types"].keys())
-    assert set(KIE_SUPPORTED_DOC_TYPES) <= registry_keys
-    # Superset guard: pico stays registered without being wired (P-031 scope).
+    assert set(KIE_SUPPORTED_DOC_TYPES) == registry_keys
     assert "pico" in registry_keys
     assert "coi" in registry_keys

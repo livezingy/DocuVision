@@ -28,6 +28,24 @@ def test_analyze_auto_enable_kie_for_invoice():
     assert opts.get("enable_kie") is True
 
 
+def test_analyze_explicit_pico_accepted_with_kie_enabled():
+    # P-031 X4 API arm: explicit pico passes through verbatim. The backend
+    # fallback set intentionally does not auto-enable pico (coi precedent);
+    # callers pass enable_kie explicitly, the frontend derives it from
+    # KIE_DOC_TYPES.
+    files = {"file": ("sample-pico.png", make_file_bytes(), "image/png")}
+    data = {"document_type": "pico", "enable_kie": "1"}
+
+    resp = client.post("/api/v1/analyze", files=files, data=data)
+    assert resp.status_code == 200
+    body = resp.json()
+    task_id = body.get("task_id")
+    assert task_id in tasks
+    opts = tasks[task_id]["options"]
+    assert opts.get("document_type") == "pico"
+    assert opts.get("enable_kie") is True
+
+
 def test_analyze_respects_explicit_disable_kie():
     files = {"file": ("sample-auto.png", make_file_bytes(), "image/png")}
     data = {"document_type": "auto", "enable_kie": "0"}

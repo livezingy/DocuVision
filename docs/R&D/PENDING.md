@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **17** 条）
+## 待确认（本区共 **19** 条）
 
-- **机检索引（勿手改）**：`P-002` `P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-021` `P-023` `P-024` `P-025` `P-026` `P-027` `P-028` `P-029`
+- **机检索引（勿手改）**：`P-002` `P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-021` `P-023` `P-024` `P-025` `P-026` `P-027` `P-028` `P-029` `P-030` `P-031`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -835,3 +835,28 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **执行期裁定(已登记执行记录)**:X1-2 闭表 ZH 12 词/因果三档无交接种子 ⇒ 空骨架入库随首个中文域数据 PR 补种;X1-3 `.gitignore` 增 `scripts/qa/**` 与 `closed_lists.json` 白名单例外(全局 `scripts/*`/`*.json` 拦下入仓件);X1-4 `quote_span` Optional(10 条不可定位记录);X1-5 pico 模板落 `kie_configs/` 根(KieManager 仅按根加载,templates/ 注册会落空);X1-6 不改 `KIE_SUPPORTED_DOC_TYPES`(管线 doc-type 接线待 Ying 决策);X1-7 verifier 判据修正(V6=V5+剥连字符、前缀 V4 quote 对 V6 haystack,金样 45 条零失配后钉死);X1-8 门禁语义(缺页/不可信页⇒unsupported 拒收;槽不完整/schema 不合法⇒HITL 不导出;export_allowed=零拒收)。
 - **门禁读数(2026-10-05 本机)**:金样校准 **35 verbatim_exact / 3 near_match / 7 unsupported 零失配**、fidelity 45/45 faithful(38/38 口径复现)、hedge_set 与 groundtruth 0 分歧、statement_type 28/13/4/0;全量 pytest **531 passed / 19 skipped / 5 errors**(= 开工基线 451/19/5 + 80 evidence 测试,skip/error 签名逐数一致);audit 0/0;selftest 63 不变;lint_file_size OK(含 X2-2 授权数)/lint_routes OK;`convert_golden.py` 双跑逐字节一致。连带审计:`compute_fill_confidence` = 填充率启发式非模型自报 ⇒ 无偏差证据(只审不改)。
 - **待办(Ying)**:①拉最新代码落地比对审计,过审后本条置 landed;②能力卡片 v1.11 §2 行 12 原文未随仓(C4 裁决:C4 时回报补原文,由本侧合入 v1.12 行 13);③闭表 ZH 12 词 + 因果动词三档种子(或确认随首个中文域数据 PR);④PICO 域接入 analyze 管线的 doc-type 接线是否开(X1-6)。
+
+### P-030 · 投标驱动资产沉淀（PII mask + COI/ACORD 25）执行包审核（2026-10-06）
+> status: decided · since: 2026-10-06
+- 来源:执行包 `docs/R&D/runs/P030_P031/P-030-执行包-v1.md`（Agent D 出包 2026-10-06，执行者 AgentE；3 天硬顶 2026-10-09 12:26）。
+- 审核结论:**有条件通过 → 语义偏差点已全部修正，无 P1 遗留**（锚点 A1-A14 逐条重锚，代码基线 `main ea9f0dc` 实测命中）。
+- 修正清单（消歧，避免执行端语义偏差）:
+  1. **A1**:`enable_pii_mask` 独立新增到 `AnalyzeOptions`（不参照 enable_seal 款式）；删 `ProcessingOptions` 死代码（`api_models.py:182`，全库零引用）；enable_seal 极小众——**仅注记、代码暂不动**（移除另议，用户 2026-10-06 裁决）。
+  2. **A10/A11**:kie_configs 路径由「（根）」修正为 `backend/app/services/kie/kie_configs/`。
+  3. **X8 一致性哨兵**:降为 coi 阶段内断言——`_KEYWORDS` keys == `KIE_SUPPORTED_DOC_TYPES` 且 frozenset ⊆ `_registry.yaml` keys（`pico` 已注册、属 P-031 接入范围，本包不纳入全等断言）。
+  4. **A13**:+coi 唯一改动点 = A12（`kie-config.js:19`），`options-dialog.js` 零改动；**X2** 措辞改「非三变体形态不掩」；**§4.1** 补 mask 字段级作用范围（禁触 evidence verbatim quote / document_info）；「六触面」口径明确为 A7/A8/A9/A11/A12/A13（A10 新建、A14 目录非触面）。
+- 执行记录（2026-10-06,分支 `feat/p030-pii-coi`,基线 main `4ef3fc1`）:P-030a 全链落地（A1 `enable_pii_mask` 独立新增 + 删 `ProcessingOptions` 死代码;A2/A3 六处声明;A4 `pii_mask_step` 插 evidence 与 finalize 之间;A5 就地改写 + `kie_fields`↔envelope `view.fields` 同对象引用传播,落库前必掩;evidence/document_info 禁触）+ P-030b 六触面（A7 frozenset 6 值;A8/X7 错误消息从 frozenset 派生;A9 `_KEYWORDS` +coi 末位追加;A10 coi.yaml 五字段;A11 registry;A12 前端 Set+radio,label=Certificate of Insurance (COI);A14 fixtures 5 份入库）。enable_seal 未动（移除另议）。
+- 执行期裁定（已登记）:①棘轮 = orchestrator 1268→**1297**（2026-10-06 Ying 授权「沿 P-029 先例」,分两步:步序 +27、X7 派生 +2）;②`route_contract_freeze` 按其自述以 `DOCUVISION_ROUTE_FREEZE=write` 重生成（diff 仅两路由签名各 +`enable_pii_mask`,55 路由不变）;③A12 label 实际落点 = `index.html` KIE radio 组（执行包写 kie-config.js,锚点偏差已申报）;④analyzer/documents 的 auto-KIE 兜底硬编码 3 类集合未动（零 diff 面,coi 自动启用由前端 Set 覆盖,后端兜底扩面另议）;⑤M1 = 用户提供的冻结 pilot 语料包 `SOURCE_DOCUMENTS.pdf`（10 附件 10/10 sha256 核验,替代「两渠道」限定,Ying 2026-10-06 指认）;⑥vitest 用例棘轮 E2 67→68（X9 新增断言）。
+- X5/X6 记录:fixture 脱敏核查 = 5 份入库件（2 合成 + 2 机构公开样本 + 1 负例）模式扫描 + 目检零真实 PII,无需抹除,逐份 sha256 对照进 `test_data/testfiles/coi/README.md`;X6 三步 = 改前基线存档 + 关键词命中矩阵（4 ACORD 件全命中/负例与商务 PDF 零命中）+ 双向回归 PASS（4 ACORD→coi;FL 负例 id_card、cosent receipt、financial/layout/report/金样 auto 0.0 逐字不变）。
+- 门禁读数（2026-10-06 本机）:全量 pytest **548 passed / 19 skipped / 5 errors**（= 开工基线 531/19/5 + 17,skip/error 签名逐文件一致）;audit 0/0;selftest 63 不变;lint_file_size（含授权数 1297）/lint_routes/lint_frontend/check_frontend_baseline OK;vitest 68/68;`test_route_inventory` 55 全绿。
+- 待办(Ying):①GPU 验证五项（五字段/suggested/mask X4 对照/EVIDENCE_ENABLED 重跑/openapi_baseline 重生成,复制粘贴命令见 local-only RUNBOOK §3）;②落地比对审计,过审后本条置 landed;③`tests/snapshots/openapi_baseline.json` 重生成后随 Cloud 回提交。
+
+### P-031 · PICO 域接入 analyze 管线 doc-type 接线执行包审核（2026-10-06）
+> status: decided · since: 2026-10-06
+- 来源:执行包 `docs/R&D/runs/P030_P031/P-031-执行包-v1.md`（Agent D 出包 2026-10-06，执行者 AgentE；P-030 merge 后实施，串行 D5）。
+- 审核结论:**有条件通过 → 语义偏差点已全部修正，无 P1 遗留**（锚点 A1-A15 逐条重锚，代码基线 `main ea9f0dc` 实测命中）。
+- 修正清单（消歧，避免执行端语义偏差）:
+  1. **X6 一致性哨兵**:由「若 P-030b 未随带落地」改为**必做**——P-031 落地后最终全等 `_registry.yaml` keys == `KIE_SUPPORTED_DOC_TYPES` == `_KEYWORDS` keys（pico 接入后 7==7==7），承接 P-030 X8 阶段内断言（frozenset ⊆ registry）。
+  2. **A7/A9** 补「零改动」标注:`document_profile.py` suggested 随 A5 `_KEYWORDS` 自动生效、`options-dialog.js` enableKie 随 A8 `KIE_DOC_TYPES` 自动生效，均非独立改动点。
+  3. **P-030 footer 同步**:X2 为条件式（P-030 落地后降为验证项）、X6 为必做。
+- 待办:P-030 merge 后实施；实施日重锚（符号双锚）；判据校准三步 + 双向回归记录进 PR。承接 P-029 待办 ④（PICO doc-type 接线）的「开」裁决。

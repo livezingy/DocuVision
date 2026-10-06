@@ -32,9 +32,6 @@ execution packs & records — temporary, deletable once the project lands).
 | [P027/R3-执行记录.md](runs/P027/R3-执行记录.md) | P-027 R3 验收三闸 harness 化执行记录 |
 | [P027/R4-执行包.md](runs/P027/R4-执行包.md) | P-027 R4 IE 语义层专项执行包 |
 | [P027/R4-执行记录.md](runs/P027/R4-执行记录.md) | P-027 R4 IE 语义层专项执行记录 |
-| [P029/P-029-执行记录.md](runs/P029/P-029-执行记录.md) | P-029 evidence 校验层执行记录（X0-X2 静态自检 + C1-C4 各片门禁输出；落地比对审计通过，PENDING P-029 置 landed） |
-| [P029/P-029-evidence校验层-设计稿.md](runs/P029/P-029-evidence校验层-设计稿.md) | P-029 设计稿（draft-v2）：L1-L7 规格单一真源 + sciextract→FindingRecord 字段映射表 |
-| [P029/P-029-evidence校验层-执行包.md](runs/P029/P-029-evidence校验层-执行包.md) | P-029 执行包（draft-v1）：前置 / 转交材料 / 锚点 / 切片命令 / 护栏 / 记录模板 |
 
 **Authoritative docs** live in [../architecture/](../architecture/) and [../README.md](../README.md).
 

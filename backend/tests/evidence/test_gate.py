@@ -104,6 +104,28 @@ def test_missing_or_untrusted_grounding_is_fail_closed(pages, trusted):
     assert record.quote_span is None
 
 
+def test_missing_page_key_is_fail_closed_but_supplying_page_grounds():
+    """P-031 E2E follow-up (PENDING P-029, page-attribution gap).
+
+    The gate resolves the grounding page from ``candidate["page"]`` (gate.py:169-172).
+    The pico KIE emits ``quote_block`` (a block id) but no ``page``, so pipeline
+    findings arrive without it and are fail-closed as axis-A unsupported even when
+    the quote is present on a trusted page. Supplying the page lets the very same
+    quote ground and export -- pinning both halves of the contract.
+    """
+    faithful = grounded_candidate(statement=QUOTE)  # hedges match -> no axis-B reject
+    no_page = {key: value for key, value in faithful.items() if key != "page"}
+
+    blocked = gate.verify_candidates([no_page], PAGES, TRUSTED, "doc.pdf")
+    assert blocked.rejected == 1 and blocked.export_allowed is False
+    entry = blocked.ledger[0]
+    assert entry["axis"] == "A" and entry["page"] is None
+    assert entry["detail"] == "grounding unavailable (missing or untrusted page)"
+
+    ok = gate.verify_candidates([faithful], PAGES, TRUSTED, "doc.pdf")  # page == 1
+    assert ok.rejected == 0 and ok.export_allowed is True
+
+
 def test_incomplete_slots_routed_to_hitl_not_exported():
     candidate = grounded_candidate(population="   ", comparator=None)
     report = gate.verify_candidates([candidate], PAGES, TRUSTED, "doc.pdf")

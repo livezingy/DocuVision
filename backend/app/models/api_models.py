@@ -12,8 +12,6 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
-from app.core.config import settings
-
 
 class PreprocessingMetadata(BaseModel):
     """Preprocessing layer: input/output dimensions, rotation, coordinate space strategy"""
@@ -177,29 +175,6 @@ class JobStatus(BaseModel):
     message: str = ""
     created_at: datetime = None
     completed_at: Optional[datetime] = None
-
-
-class ProcessingOptions(BaseModel):
-    enable_layout: bool = True
-    enable_table: bool = True
-    enable_formula: bool = False
-    enable_seal: bool = False
-    enable_figure_export: bool = True
-    enable_kie: bool = False
-    document_type: str = "auto"
-    language: str = "en"
-    ocr_engine: Optional[str] = None
-    layout_engine: Optional[str] = None
-    table_engine: Optional[str] = None
-    table_allow_fullpage_fallback: bool = settings.TABLE_ALLOW_FULLPAGE_FALLBACK
-    formula_disable_layout: bool = False
-    formula_disable_preprocess: bool = False
-    formula_two_stage_threshold_retry: bool = True
-    formula_primary_layout_threshold: float = 0.5
-    formula_fallback_layout_threshold: float = 0.2
-    formula_layout_threshold: Optional[float] = None
-    pipeline_formula_batch_size: int = 1
-    return_raw: bool = False
 
 
 class TaskStatus(BaseModel):

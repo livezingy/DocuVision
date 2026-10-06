@@ -863,3 +863,4 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
   2. **A7/A9** 补「零改动」标注:`document_profile.py` suggested 随 A5 `_KEYWORDS` 自动生效、`options-dialog.js` enableKie 随 A8 `KIE_DOC_TYPES` 自动生效，均非独立改动点。
   3. **P-030 footer 同步**:X2 为条件式（P-030 落地后降为验证项）、X6 为必做。
 - 待办:P-030 merge 后实施；实施日重锚（符号双锚）；判据校准三步 + 双向回归记录进 PR。承接 P-029 待办 ④（PICO doc-type 接线）的「开」裁决。
+- 进度(2026-10-06):实施计划 v1 已出（`runs/P030_P031/P-031-实施计划-v1.md`，三处修正：A4 已派生→X2 降验证项；GPU 命令改逐字段 Form 形态；registry 零改动）。**可先行前端面已落地** commit `4a0d47e`（分支 `feat/p031-pico-doctype`，叠于 feat/p030-pii-coi）：T4 Set+pico、T5 radio `optPico`（label 逐字 X3 裁决）、kie-config.test.js equality+X9 款扩 pico 断言（扩款不加款，68 pin 不变）；前端四道门禁当天实测全绿（vitest 7 files/68 tests · eslint · lint_frontend F1-F7 · check_frontend_baseline C1-C9）。**T1/T3 与后端测试面挂起待 M1 RCT 语料**（仓内已查证无替代语料；T3 禁发明护栏），后端测试前哨兵 6==6 断言不受影响（T1 与 T3 同 commit 落地以保哨兵全绿）。

@@ -56,6 +56,7 @@ def test_phase1_defaults_match_legacy_defaults(monkeypatch):
     assert opts["enable_table"] is True
     assert opts["enable_formula"] is False
     assert opts["enable_seal"] is False
+    assert opts["enable_pii_mask"] is False
     assert opts["enable_kie"] is False
     assert opts["document_type"] == "auto"
     assert opts["language"] == "en"
@@ -75,6 +76,7 @@ def test_phase1_propagates_engine_and_formula_params(monkeypatch):
             "enable_table": "1",
             "enable_formula": "1",
             "enable_seal": "1",
+            "enable_pii_mask": "1",
             "language": "ch",
             "ocr_engine": "paddleocr",
             "layout_engine": "paddlex",
@@ -95,6 +97,7 @@ def test_phase1_propagates_engine_and_formula_params(monkeypatch):
     assert opts["enable_table"] is True
     assert opts["enable_formula"] is True
     assert opts["enable_seal"] is True
+    assert opts["enable_pii_mask"] is True
     assert opts["language"] == "ch"
     assert opts["ocr_engine"] == "paddleocr"
     assert opts["layout_engine"] == "paddlex"

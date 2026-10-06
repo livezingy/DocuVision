@@ -15,7 +15,8 @@ from pydantic import BaseModel
 
 
 class AnalyzeOptions(BaseModel):
-    """The 24 shared analyze Form parameters plus the v1.8 backfill switch.
+    """The 24 shared analyze Form parameters plus the v1.8 backfill switch
+    and the P-030a PII-mask switch.
 
     Field names are the diff anchor — do not rename without updating both
     routes and the OpenAPI snapshot test.
@@ -47,6 +48,8 @@ class AnalyzeOptions(BaseModel):
     enable_hitl: bool = True
     # v1.8 新增
     table_text_backfill: Literal["off", "auto"] = "auto"
+    # P-030a 新增（默认关 = 零行为；出口字段级 PII 掩码，见 services/pii_mask.py）
+    enable_pii_mask: bool = False
 
 
 def options_to_pipeline_dict(

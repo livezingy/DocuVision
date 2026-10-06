@@ -79,14 +79,87 @@ def canonicalize_slots(raw: Dict[str, Any]) -> Dict[str, str]:
     return out
 
 
+def _page_no_of(page: Dict[str, Any]) -> Optional[int]:
+    """Resolve the 1-based page number from any fused/view page envelope key."""
+    raw_no = page.get("page_num", page.get("page", page.get("page_id")))
+    if raw_no is None:
+        return None
+    try:
+        return int(raw_no)
+    except (TypeError, ValueError):
+        return None
+
+
+def block_id_to_page(fused: Dict[str, Any]) -> Dict[str, int]:
+    """Map fused ``block_id`` -> 1-based page number (P-029 page-attribution fix).
+
+    The pico KIE emits ``quote_block`` (an integer block id) but no ``page``; the
+    fused envelope carries the per-block ``block_id`` and its ``page_num``, so we
+    can attribute each finding to the page its quote starts on. Keys are stored
+    as strings so lookup is order-independent of the id's original type.
+    """
+    mapping: Dict[str, int] = {}
+    for page in (fused or {}).get("pages", []):
+        page_no = _page_no_of(page)
+        if page_no is None:
+            continue
+        for block in page.get("blocks", []):
+            bid = block.get("block_id", block.get("id"))
+            if bid is None:
+                continue
+            mapping[str(bid)] = page_no
+    return mapping
+
+
+def enrich_candidate_pages(
+    candidates: List[Dict[str, Any]],
+    fused: Dict[str, Any],
+    kie_fields_by_page: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    """Inject a ``page`` into KIE finding candidates that lack one (P-029 X1-6 gap).
+
+    Resolution order when ``candidate["page"]`` is absent/non-int:
+      1. ``quote_block`` -> fused ``block_id`` page (most precise, multi-page safe);
+      2. single-key ``kie_fields_by_page`` (single-page extraction default).
+
+    Candidates that resolve to no page stay untouched and are fail-closed by the
+    gate (axis A), preserving the existing contract pinned by the test branch.
+    """
+    block_page = block_id_to_page(fused)
+    single_page: Optional[int] = None
+    if isinstance(kie_fields_by_page, dict):
+        digit_keys = [k for k in kie_fields_by_page.keys() if str(k).isdigit()]
+        if len(digit_keys) == 1:
+            single_page = _page_no_of({"page": digit_keys[0]})
+    out: List[Dict[str, Any]] = []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            out.append(candidate)
+            continue
+        if isinstance(candidate.get("page"), int):
+            out.append(candidate)
+            continue
+        resolved: Optional[int] = None
+        qb = candidate.get("quote_block")
+        if qb is not None:
+            resolved = block_page.get(str(qb))
+        if resolved is None:
+            resolved = single_page
+        if resolved is not None:
+            enriched = dict(candidate)
+            enriched["page"] = resolved
+            out.append(enriched)
+        else:
+            out.append(candidate)
+    return out
+
+
 def page_texts_from_fused(fused: Dict[str, Any]) -> Dict[int, str]:
     """Per-page normalized grounding text from the fused envelope layer."""
     texts: Dict[int, str] = {}
     for page in (fused or {}).get("pages", []):
-        raw_no = page.get("page", page.get("page_id", 1))
-        try:
-            page_no = int(raw_no)
-        except (TypeError, ValueError):
+        page_no = _page_no_of(page)
+        if page_no is None:
             continue
         chunks = [
             str((block.get("payload") or {}).get("text") or "")
@@ -286,6 +359,15 @@ async def run_evidence_gate(ctx: Dict[str, Any]) -> Dict[str, Any]:
     result = ctx.get("result") or {}
     kie_fields = result.get("kie_fields") if isinstance(result.get("kie_fields"), dict) else {}
     candidates = kie_fields.get("findings") if isinstance(kie_fields, dict) else None
+    if isinstance(candidates, list) and candidates:
+        # P-029 page-attribution fix: pico KIE emits quote_block, not page, so
+        # attribute each finding to its fused page before grounding (fail-closed
+        # if no page can be resolved).
+        candidates = enrich_candidate_pages(
+            candidates,
+            ctx.get("phase1_fused") or {},
+            result.get("kie_fields_by_page"),
+        )
     block: Dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "prompt_version": PROMPT_VERSION,

@@ -33,6 +33,11 @@
             "title": "Enable Layout",
             "type": "boolean"
           },
+          "enable_pii_mask": {
+            "default": false,
+            "title": "Enable Pii Mask",
+            "type": "boolean"
+          },
           "enable_seal": {
             "default": false,
             "title": "Enable Seal",
@@ -218,6 +223,11 @@
           "enable_layout": {
             "default": true,
             "title": "Enable Layout",
+            "type": "boolean"
+          },
+          "enable_pii_mask": {
+            "default": false,
+            "title": "Enable Pii Mask",
             "type": "boolean"
           },
           "enable_seal": {

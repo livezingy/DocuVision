@@ -10,6 +10,7 @@ from app.services.kie.query_fields import (
     attach_kie_query_fields_to_options,
     build_merged_schema,
     list_filled_query_fields,
+    load_base_schema,
     parse_kie_query_fields,
     validate_and_prepare_query_fields,
 )
@@ -72,6 +73,23 @@ def test_validate_and_prepare_invoice():
     assert len(specs) == 1
     assert "PurchaseOrderRef" in merged
     assert "invoice_number" in merged
+
+
+def test_coi_base_schema_carries_five_jd_fields():
+    # P-030b A10: the coi base schema is the acceptance object — exactly the
+    # five JD-aligned fields, no extras.
+    schema = load_base_schema("coi")
+    assert set(schema.keys()) == {"carrier", "policy_type", "eff_date", "exp_date", "limits"}
+
+
+def test_validate_and_prepare_coi():
+    specs, merged = validate_and_prepare_query_fields(
+        "coi",
+        ["EndorsementNumber"],
+    )
+    assert len(specs) == 1
+    assert "EndorsementNumber" in merged
+    assert {"carrier", "policy_type", "eff_date", "exp_date", "limits"} <= set(merged.keys())
 
 
 def test_attach_requires_kie_when_query_present():

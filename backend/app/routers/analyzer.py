@@ -144,6 +144,7 @@ async def analyze_document(
     enable_table: bool = Form(True),
     enable_formula: bool = Form(False),
     enable_seal: bool = Form(False),
+    enable_pii_mask: bool = Form(False),
     enable_figure_export: bool = Form(True),
     enable_kie: bool = Form(False),
     document_type: str = Form("auto"),
@@ -181,13 +182,14 @@ async def analyze_document(
     # "true"/"false" strings will cause validation errors
     logger.info(
         "Analyze endpoint received - enable_layout={}, enable_table={}, "
-        "enable_formula={}, enable_seal={}, enable_kie={}, document_type={}, "
+        "enable_formula={}, enable_seal={}, enable_pii_mask={}, enable_kie={}, document_type={}, "
         "table_allow_fullpage_fallback={}, formula_disable_layout={}, formula_disable_preprocess={}, "
         "pipeline_formula_batch_size={}, return_raw={}",
         enable_layout,
         enable_table,
         enable_formula,
         enable_seal,
+        enable_pii_mask,
         enable_kie,
         document_type,
         table_allow_fullpage_fallback,
@@ -214,6 +216,7 @@ async def analyze_document(
         enable_table=enable_table,
         enable_formula=enable_formula,
         enable_seal=enable_seal,
+        enable_pii_mask=enable_pii_mask,
         enable_figure_export=enable_figure_export,
         enable_kie=enable_kie,
         document_type=document_type,

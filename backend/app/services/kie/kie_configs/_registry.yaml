@@ -5,3 +5,4 @@ types:
   passport: passport
   bank_card: bank_card
   pico: pico
+  coi: coi

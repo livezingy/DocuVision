@@ -14,6 +14,15 @@ _KEYWORDS = {
     "id_card": ("identity", "date of birth", "license", "passport"),
     "bank_card": ("card number", "valid thru", "credit card", "debit"),
     "passport": ("passport", "nationality", "mrz"),
+    # Appended last on purpose: max() breaks score ties by insertion order, so
+    # the existing five types keep their exact pre-coi tie behavior (P-030 X6).
+    "coi": (
+        "certificate of liability insurance",
+        "this certificate is issued as a matter of information only",
+        "certificate holder",
+        "affording coverage",
+        "acord 25",
+    ),
 }
 
 

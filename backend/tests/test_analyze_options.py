@@ -16,6 +16,17 @@ def test_defaults() -> None:
     assert "table_template" not in d
 
 
+def test_pii_mask_defaults_off_and_propagates() -> None:
+    # P-030a X4: 默认关 = 零行为（沿 EVIDENCE_ENABLED 默认值钉死纪律）。
+    assert AnalyzeOptions().enable_pii_mask is False
+    d = options_to_pipeline_dict(AnalyzeOptions(), table_allow_fullpage_fallback_default=False)
+    assert d["enable_pii_mask"] is False
+    d_on = options_to_pipeline_dict(
+        AnalyzeOptions(enable_pii_mask=True), table_allow_fullpage_fallback_default=False
+    )
+    assert d_on["enable_pii_mask"] is True
+
+
 def test_fallback_default_applied_when_unset() -> None:
     ao = AnalyzeOptions(table_allow_fullpage_fallback=None)
     d = options_to_pipeline_dict(ao, table_allow_fullpage_fallback_default=True)

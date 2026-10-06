@@ -29,7 +29,7 @@ const domainMap = JSON.parse(
 describe('kie-config', () => {
     it('keeps the values the app relies on', () => {
         expect([...KIE_DOC_TYPES].sort()).toEqual([
-            'bank_card', 'id_card', 'invoice', 'passport', 'receipt',
+            'bank_card', 'coi', 'id_card', 'invoice', 'passport', 'receipt',
         ]);
         expect(KIE_FIELD_NAME_RE.test('invoice_no')).toBe(true);
         expect(KIE_FIELD_NAME_RE.test('1bad')).toBe(false);
@@ -39,6 +39,16 @@ describe('kie-config', () => {
         expect([...TABLE_MAPPING_IMAGE_EXTENSIONS]).toEqual([
             'png', 'jpg', 'jpeg', 'tif', 'tiff', 'gif', 'bmp', 'webp',
         ]);
+    });
+
+    it('exposes coi as a KIE processing mode with the spec label (P-030 X9)', () => {
+        const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
+        const kieGroup = html.match(/<div class="kie-options-group">[\s\S]*?<p class="kie-note[^"]*"/);
+        expect(kieGroup).not.toBeNull();
+        const group = kieGroup[0];
+        expect(group).toContain('id="optCoi"');
+        expect(group).toContain('value="coi"');
+        expect(group).toContain('Certificate of Insurance (COI)');
     });
 
     it('is imported by a consumer and no longer declared in app.js', () => {

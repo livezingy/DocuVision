@@ -47,6 +47,8 @@ When stage is `completed` **and** KIE was attempted for a supported `document_ty
 | id_card | `name`, `id_number` |
 | passport | `passport_number`, `name` |
 | bank_card | `bank_card_number`, `bank_name` |
+| coi | `carrier`, `policy_type`, `eff_date`, `exp_date`, `limits` |
+| pico | `findings` |
 
 Implementation: `app.services.kie.kie_field_metrics.evaluate_kie_production_hit`
 

@@ -831,6 +831,32 @@ async def evidence_step(ctx: PipelineContext) -> None:
     ctx["result"]["evidence"] = await run_evidence_gate(ctx)
 
 
+async def pii_mask_step(ctx: PipelineContext) -> None:
+    """P-030a: optional exit PII mask (enable_pii_mask, default off).
+
+    Runs after the evidence gate (its verdict is already written) and before
+    finalize so nothing unmasked reaches persist_task_safe. Field-level scope:
+    rewrites tax-id variants in the result tree in place; the evidence and
+    document_info subtrees are never touched. kie_fields is shared by
+    reference with the envelope view, so masking propagates to view.fields.
+    """
+    options = ctx["options"]
+    if not options.get("enable_pii_mask", False):
+        return
+    orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
+    orchestrator.ensure_not_cancelled(ctx)
+    from app.services.pii_mask import mask_result_exit
+
+    count = mask_result_exit(ctx["result"])
+    # X3: log the count only — never the matched values.
+    logger.info(
+        "PII mask applied | task_id={} | masked_values={}",
+        str(ctx.get("task_id", "") or ""),
+        count,
+    )
+    await orchestrator.update_progress(ctx, 95, f"PII mask applied | values={count}")
+
+
 async def finalize_step(ctx: PipelineContext) -> None:
     orchestrator: DocumentPipelineOrchestrator = ctx["orchestrator"]
     orchestrator.ensure_not_cancelled(ctx)
@@ -1243,6 +1269,7 @@ class DocumentPipelineOrchestrator:
             seal_step,
             phase1_envelope_step,  # Build Phase 1 Envelope (preprocessing, raw, fused, view, quality)
             evidence_step,  # P-029: optional evidence gate (EVIDENCE_ENABLED, default off)
+            pii_mask_step,  # P-030a: optional exit PII mask (enable_pii_mask, default off)
             finalize_step,
         ]
 

@@ -173,6 +173,10 @@
   "test_phase1_analyze_form.py": {
     "kind": "full"
   },
+  "test_pii_mask.py": {
+    "kind": "full",
+    "note": "P-030a X2-X4 exit PII mask: three-variant masking, scope exclusions, step wiring (mock, no paddle/server)"
+  },
   "test_proof_pack_cli.py": {
     "kind": "full"
   },

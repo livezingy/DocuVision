@@ -14,6 +14,14 @@ _COI_FIXTURES = [
     "coi_acord25_tampa_sample.pdf",
 ]
 
+_PICO_FIXTURES = [
+    "pub_bmc_PMC10685505.pdf",
+    "pub_springer_PMC10719124.pdf",
+    "pub_bmcmed_PMC13613656.pdf",
+    "pub_bmcpubh_PMC13595506.pdf",
+    "pub_plosone_PMC13618946.pdf",
+]
+
 
 def test_classify_invoice_text() -> None:
     result = classify_document("", text_hint="Invoice Number INV-001 Bill To Customer")
@@ -41,6 +49,28 @@ def test_classify_coi_fixtures_file_level() -> None:
         path = _PROJECT_ROOT / "test_data" / "testfiles" / "coi" / name
         result = classify_document(str(path))
         assert result["document_type"] == "coi", f"{name}: {result}"
+
+
+def test_classify_pico_text() -> None:
+    result = classify_document(
+        "",
+        text_hint=(
+            "This randomized controlled trial assessed the primary outcome. "
+            "Patients were given placebo in a double-blind design."
+        ),
+    )
+    assert result["document_type"] == "pico"
+    assert result["confidence"] > 0
+
+
+def test_classify_pico_fixtures_file_level() -> None:
+    # P-031 X1 bidirectional regression, positive arm: every committed OA RCT
+    # fixture (the calibration corpus C1) must classify as pico from its
+    # page-1 text layer.
+    for name in _PICO_FIXTURES:
+        path = _PROJECT_ROOT / "test_data" / "testfiles" / "pico" / name
+        result = classify_document(str(path))
+        assert result["document_type"] == "pico", f"{name}: {result}"
 
 
 def test_classifier_non_coi_outputs_unchanged_vs_pre_coi_baseline() -> None:

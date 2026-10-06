@@ -8,6 +8,8 @@ import importlib.util
 import asyncio
 from datetime import datetime
 
+from app.services.kie.query_fields import KIE_SUPPORTED_DOC_TYPES
+
 
 _ORCH_PATH = Path(__file__).resolve().parents[1] / "app" / "orchestration" / "document_pipeline_orchestrator.py"
 _SPEC = importlib.util.spec_from_file_location("orchestrator_for_tests", _ORCH_PATH)
@@ -95,6 +97,10 @@ def test_kie_step_auto_doc_type_returns_legible_error_code() -> None:
     assert meta["error_code"] == "auto_document_type_requires_explicit_choice"
     assert meta["stage"] == "skipped_auto_doc_type"
     assert "select a specific" in meta["error_message"]
+    # P-031 X2 linkage assertion: the type list inside the auto message must
+    # stay derived from the frozenset so future additions cannot drift.
+    listed = meta["error_message"].rsplit("(", 1)[1].split(")")[0]
+    assert listed == "/".join(sorted(KIE_SUPPORTED_DOC_TYPES))
 
 
 def test_kie_step_unsupported_doc_type_keeps_generic_error_code() -> None:
@@ -113,6 +119,48 @@ def test_kie_step_unsupported_doc_type_keeps_generic_error_code() -> None:
     assert meta["succeeded"] is False
     assert meta["error_code"] == "unsupported_document_type"
     assert meta["stage"] == "skipped_doc_type"
+
+
+def test_kie_step_explicit_pico_routes_as_explicit() -> None:
+    """P-031 X4 explicit override: the classifier suggestion is non-binding
+    (document_profile A7) — an explicit document_type=pico must reach the KIE
+    service verbatim. ``kie_step`` never consults the classifier, so no suggest
+    call is needed here; that keeps this Phase A test free of pdfplumber (P-023),
+    and the classifier-suggestion side is covered by
+    test_document_type_classifier.py."""
+    captured = {}
+
+    class _MockKieService:
+        async def extract_fields(self, file_path: str, document_type: str, **kwargs):
+            captured["document_type"] = document_type
+            return {
+                "fields": {"statement": {"value": "x"}},
+                "confidence_avg": 0.5,
+                "items_count": 1,
+                "metadata": {"engine": "mock"},
+            }
+
+    async def call_maybe_async(func, *args, **kwargs):
+        if asyncio.iscoroutinefunction(func):
+            return await func(*args, **kwargs)
+        return func(*args, **kwargs)
+
+    orch = _FakeOrchestrator()
+    orch.services = {"kie_service": _MockKieService()}
+    orch.call_maybe_async = call_maybe_async
+
+    ctx = {
+        "options": {"enable_kie": True, "document_type": "pico"},
+        "result": {},
+        "orchestrator": orch,
+        "file_path": "dummy.pdf",
+    }
+
+    asyncio.run(kie_step(ctx))
+
+    assert captured["document_type"] == "pico"
+    assert ctx["result"]["kie_meta"]["succeeded"] is True
+    assert ctx["result"]["kie_meta"]["stage"] == "completed"
 
 
 def test_phase1_envelope_respects_return_raw_false() -> None:

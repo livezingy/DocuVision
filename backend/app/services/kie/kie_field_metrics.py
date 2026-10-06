@@ -12,6 +12,12 @@ _PRODUCTION_KEY_HINTS: Dict[str, List[str]] = {
     "id_card": ["name", "id_number"],
     "passport": ["passport_number", "name"],
     "bank_card": ["bank_card_number", "bank_name"],
+    # 新增 KIE doc-type 的第 7 触面（P-030b / P-031）：生产 hit（ACE-002）与
+    # kie_confidence_avg 的填充率启发共用本表，登记缺失会使
+    # evaluate_kie_production_hit 落 unsupported_doc_type:{doc}（UI 假告警）
+    # 且 compute_fill_confidence 恒 0.0。新增 doc-type 必须在此补一行。
+    "coi": ["carrier", "policy_type", "eff_date", "exp_date", "limits"],
+    "pico": ["findings"],
 }
 
 # id_card 专项精度（KIE-ACCEPT-003）：在 002 之上要求号码字段可用

@@ -182,6 +182,45 @@ Use **`1` / `0`** for `enable_kie` and other bool Form fields (not `true`/`false
 
 API ids: `[A-Za-z][A-Za-z0-9_]*` only (no spaces). UI normalizes spaces to `_`. See [kie-custom-fields.md](../docs/architecture/kie-custom-fields.md).
 
+## Doc-type wiring verification (add a new KIE doc-type)
+
+Reuse after wiring a new `document_type` into the analyze pipeline (coi/pico pattern).
+Contract notes (corrected — an earlier draft used `options={...}` JSON, which FastAPI
+silently ignores): `/api/v1/analyze` takes **per-field multipart Form** and is **async**
+(submit → `task_id` → poll `GET /api/v1/tasks/{id}` → `GET …/result`); `suggested_document_type`
+comes from `POST /api/v1/document/profile`, **not** analyze.
+
+```bash
+export API_ROOT="http://127.0.0.1:8000"
+export PICO=test_data/testfiles/pico
+export COI=test_data/testfiles/coi
+
+# 1. KIE findings (逐字段 Form, 异步轮询)
+T=$(curl -s -X POST "$API_ROOT/api/v1/analyze" \
+  -F "file=@$PICO/pub_bmc_PMC10685505.pdf" -F "document_type=pico" -F "enable_kie=1" | jq -r .task_id)
+for i in $(seq 1 120); do ST=$(curl -s "$API_ROOT/api/v1/tasks/$T" | jq -r .status); [ "$ST" = completed ] && break; sleep 2; done
+curl -s "$API_ROOT/api/v1/tasks/$T/result" | jq '.kie_fields'
+
+# 2. classifier suggestion (来自 /document/profile, 非 analyze)
+curl -s -X POST "$API_ROOT/api/v1/document/profile" -F "file=@$COI/coi_acord25_synth_green.pdf" \
+  | jq '{suggested_document_type, confidence:.classification_confidence}'
+
+# 3. explicit override — 显式 document_type 不被建议覆盖; 非前端直选须显式 enable_kie=1
+#    (analyzer 的 auto-KIE 兜底硬编码 3 类未扩, 故 API 直调必须 enable_kie=1)
+
+# 4. production-hit / fill-confidence (质量层) — 新增 doc-type 须登记
+#    backend/app/services/kie/kie_field_metrics.py _PRODUCTION_KEY_HINTS,
+#    否则 UI 假告警 unsupported_doc_type:{doc} 且 kie_confidence_avg=0.0
+
+# 5. evidence grounding (pico 有 findings 时) — 须 DOCUVISION_EVIDENCE_ENABLED=true 重启服务;
+#    gate.py:169-172 需 candidate["page"] — KIE 只发 quote_block, 故 pico 现恒 fail-closed (见 PENDING P-029)
+
+# 6. regression — 其余 doc-type 不被污染: 同第 2 步逐件 suggested 不变
+
+# 一致性哨兵 (必做, 落地后最终全等):
+pytest tests/test_kie_domain_consistency.py   # _registry.yaml keys == KIE_SUPPORTED_DOC_TYPES == _KEYWORDS keys
+```
+
 ## Batch API quick reference
 
 ```bash

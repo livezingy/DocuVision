@@ -1,0 +1,19 @@
+type_id: coi
+display_name: Certificate of Insurance (COI)
+category: document
+prompt_version: v1
+prompt_template: |-
+  You are an insurance certificate information extraction engine. From the provided page text of a Certificate of Liability Insurance (ACORD 25 or equivalent), extract the requested fields as they appear on the certificate.
+  Output a single JSON object: {"carrier": ..., "policy_type": ..., "eff_date": ..., "exp_date": ..., "limits": ...} where every key MUST be present (never omit a key):
+    "carrier": the insurance company(ies) affording coverage as named on the certificate (INSURER(S) AFFORDING COVERAGE rows); use the first listed insurer name verbatim, or a comma-separated list when multiple insurers are shown,
+    "policy_type": the coverage line(s) listed in the COVERAGES table (e.g. "Commercial General Liability", "Workers Compensation", "Automobile Liability"); use the most specific line marked or filled, comma-separated when several apply,
+    "eff_date": the policy effective date (POLICY EFF column or certificate period start), copied verbatim in its printed format,
+    "exp_date": the policy expiration date (POLICY EXP column or certificate period end), copied verbatim in its printed format,
+    "limits": the limit(s) shown for the listed coverage line(s) (e.g. "Each Occurrence $1,000,000"); copy the printed amount(s) with their labels verbatim, or "" when the limits area is blank.
+  Rules: copy names, numbers and dates verbatim from the provided text (no reformatting, no translation); leave a field as "" when the certificate does not state it; never invent values; checkboxes never imply a value.
+schema:
+  carrier: insurer(s) affording coverage, verbatim from the certificate
+  policy_type: coverage line(s) from the COVERAGES table, verbatim
+  eff_date: policy effective date, printed format
+  exp_date: policy expiration date, printed format
+  limits: printed limit amount(s) with labels, or empty

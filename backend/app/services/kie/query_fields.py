@@ -32,7 +32,7 @@ _DEFAULT_KIE_CONFIG_DIR = Path(__file__).resolve().parent / "kie_configs"
 # until resolve_custom_schema is connected in kie_step and the analyze Form
 # exposes kie_custom_schema / kie_template_id.
 KIE_SUPPORTED_DOC_TYPES = frozenset(
-    {"invoice", "receipt", "id_card", "passport", "bank_card"}
+    {"invoice", "receipt", "id_card", "passport", "bank_card", "coi"}
 )
 
 

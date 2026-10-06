@@ -558,10 +558,12 @@ async def kie_step(ctx: PipelineContext) -> None:
         # what to fix instead of a generic "unsupported" message.
         if document_type == "auto":
             error_code = "auto_document_type_requires_explicit_choice"
+            # D2 (P-030 X7): derive the type list from the frozenset so future
+            # additions cannot drift from this message.
+            supported_list = "/".join(sorted(supported_doc_types))
             error_message = (
                 "document_type='auto' cannot run KIE; select a specific "
-                "document_type (invoice/receipt/id_card/passport/bank_card) "
-                "to enable KIE."
+                f"document_type ({supported_list}) to enable KIE."
             )
             stage = "skipped_auto_doc_type"
         else:

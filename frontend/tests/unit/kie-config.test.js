@@ -29,7 +29,7 @@ const domainMap = JSON.parse(
 describe('kie-config', () => {
     it('keeps the values the app relies on', () => {
         expect([...KIE_DOC_TYPES].sort()).toEqual([
-            'bank_card', 'coi', 'id_card', 'invoice', 'passport', 'receipt',
+            'bank_card', 'coi', 'id_card', 'invoice', 'passport', 'pico', 'receipt',
         ]);
         expect(KIE_FIELD_NAME_RE.test('invoice_no')).toBe(true);
         expect(KIE_FIELD_NAME_RE.test('1bad')).toBe(false);
@@ -41,7 +41,7 @@ describe('kie-config', () => {
         ]);
     });
 
-    it('exposes coi as a KIE processing mode with the spec label (P-030 X9)', () => {
+    it('exposes coi and pico as KIE processing modes with spec labels (P-030 X9 + P-031 X3)', () => {
         const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
         const kieGroup = html.match(/<div class="kie-options-group">[\s\S]*?<p class="kie-note[^"]*"/);
         expect(kieGroup).not.toBeNull();
@@ -49,6 +49,9 @@ describe('kie-config', () => {
         expect(group).toContain('id="optCoi"');
         expect(group).toContain('value="coi"');
         expect(group).toContain('Certificate of Insurance (COI)');
+        expect(group).toContain('id="optPico"');
+        expect(group).toContain('value="pico"');
+        expect(group).toContain('Evidence Extraction (PICO)');
     });
 
     it('is imported by a consumer and no longer declared in app.js', () => {

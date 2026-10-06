@@ -16,7 +16,7 @@
  */
 
 /** Document types the KIE stage accepts (callers lower-case the candidate first). */
-export const KIE_DOC_TYPES = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card', 'coi']);
+export const KIE_DOC_TYPES = new Set(['invoice', 'receipt', 'id_card', 'passport', 'bank_card', 'coi', 'pico']);
 
 /** KIE field names must be identifier-like. */
 export const KIE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;

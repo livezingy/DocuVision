@@ -8,7 +8,6 @@ import importlib.util
 import asyncio
 from datetime import datetime
 
-from app.services.document_type_classifier import classify_document
 from app.services.kie.query_fields import KIE_SUPPORTED_DOC_TYPES
 
 
@@ -125,10 +124,10 @@ def test_kie_step_unsupported_doc_type_keeps_generic_error_code() -> None:
 def test_kie_step_explicit_pico_routes_as_explicit() -> None:
     """P-031 X4 explicit override: the classifier suggestion is non-binding
     (document_profile A7) — an explicit document_type=pico must reach the KIE
-    service verbatim even when the classifier would suggest another type."""
-    suggestion = classify_document("", text_hint="Invoice Number INV-001 Bill To Customer")
-    assert suggestion["document_type"] == "invoice"  # what a profile would suggest
-
+    service verbatim. ``kie_step`` never consults the classifier, so no suggest
+    call is needed here; that keeps this Phase A test free of pdfplumber (P-023),
+    and the classifier-suggestion side is covered by
+    test_document_type_classifier.py."""
     captured = {}
 
     class _MockKieService:

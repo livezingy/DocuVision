@@ -425,3 +425,50 @@ def test_m1_service_text_first_channel(monkeypatch):
     assert debug["n_windows"] == 2 and debug["window_chars"] == [len(payload["windows"][0]), len(payload["windows"][1])]
     assert result["metadata"]["text_first"] == {"source": "text_layer", "n_windows": 2}
     assert result["confidence_avg"] >= 0.0
+
+
+# ------------------------------------- C1a: real-corpus life gate (local face)
+
+
+def test_c1a_bmc_page5_text_first_grounding_hit(tmp_path, monkeypatch):
+    """C1 life anchor, local face (P-032 §2 C1): on the real pub_bmc paper,
+    a verbatim page-5 quote from the M1 payload grounds deterministically to
+    (page=5, span non-empty), and the M5 predicate trusts page 1."""
+    import app.services.hitl_queue as hq_module
+
+    source = grounding_source(str(BMC_PDF))
+    blocks5 = source.blocks[5]
+    assert blocks5, "page 5 must carry native text blocks"
+    block_idx = next(
+        i for i, text in enumerate(blocks5) if "no differences in peak troponin" in text
+    )
+    # The model's quote is copied verbatim from the payload block text (C1:
+    # quote exists verbatim in the grounding text by construction).
+    quote = "There were no differences in peak troponin"
+    assert quote in blocks5[block_idx]
+
+    monkeypatch.setattr(settings, "EVIDENCE_ENABLED", True)
+    monkeypatch.setattr(settings, "EVIDENCE_TEXT_FIRST", True)
+    monkeypatch.setattr(hq_module, "hitl_queue", HitlReviewQueue())
+    ctx = _gate_ctx(tmp_path, BMC_PDF, [_candidate(quote, quote_block=f"[p5_b{block_idx}]")])
+    block = asyncio.run(gate.run_evidence_gate(ctx))
+    assert block["findings"], block
+    record = block["findings"][0]
+    assert record["source"]["page_num"] == 5  # 接地命中：page=5
+    assert record["verdict"] == "verbatim_exact"
+    assert record["quote_span"]  # span 非空
+    assert block["export_allowed"] is True
+    assert block["stats"]["page_injected"] == 1
+    assert block["stats"]["marker_hint_hits"] == 1  # marker hint resolved it
+    # M5 predicate: BMC page 1 (invisible_ratio 0.0, image_coverage ~0.61)
+    # is trusted under the evidence criterion -- the C1 DoD pair.
+    assert 1 in block["stats"]["trusted_pages"]
+    assert 5 in block["stats"]["trusted_pages"]
+
+
+def test_c1a_bmc_payload_covers_page5():
+    """M2 DoD local face: the payload builder on the real corpus covers page 5
+    (the findings page) with text_layer source and absolute-page markers."""
+    payloads = tf.build_text_first_payloads(str(BMC_PDF), {"elements": []}, list(range(1, 6)))
+    assert 5 in payloads and payloads[5]["source"] == tf.SOURCE_TEXT_LAYER
+    assert any("[p5_b" in window for window in payloads[5]["windows"])

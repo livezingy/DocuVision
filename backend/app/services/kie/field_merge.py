@@ -6,7 +6,9 @@ from typing import Any, Dict, List
 
 
 _SKIP_MERGE_KEYS = frozenset({"raw_output"})
-_LIST_MERGE_KEYS = frozenset({"items", "line_items"})
+# "findings" joins the list whitelist in P-032 M3: pico findings accumulate
+# per page (extend) instead of later pages silently overwriting earlier ones.
+_LIST_MERGE_KEYS = frozenset({"items", "line_items", "findings"})
 
 
 def _is_empty_value(value: Any) -> bool:
@@ -26,7 +28,7 @@ def merge_kie_fields(
     Merge page dicts in ascending page order.
 
     Scalars: later non-empty overwrites earlier empty; conflicts favor later page.
-    List keys (items): extend in page order.
+    List keys (items, line_items, findings): extend in page order.
     raw_output: never merged into top-level.
     """
     merged: Dict[str, Any] = {}

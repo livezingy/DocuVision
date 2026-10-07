@@ -21,6 +21,7 @@ from app.services.kie.kie_field_metrics import (
     evaluate_kie_production_hit,
 )
 from app.services.kie.kie_pages import resolve_kie_pages
+from app.services.kie.text_first import build_text_first_payloads, text_first_enabled
 from app.services.document_info_utils import resolve_document_page_count
 from app.services.file_type_detector import detect_file_type
 from app.services.pdf_raster import pdf_page_count, rasterize_pdf_page
@@ -606,7 +607,7 @@ async def kie_step(ctx: PipelineContext) -> None:
         await orchestrator.update_progress(ctx, 80, "KIE extraction skipped (service unavailable)")
         return
 
-    # Prepare richer inputs for KIE: prefer preprocessed image and table meta when available
+    # Prepare richer inputs for KIE; record them for traceability
     _task = ctx.get("task")
     if not isinstance(_task, dict):
         _task = {}
@@ -619,12 +620,10 @@ async def kie_step(ctx: PipelineContext) -> None:
     table_meta = ctx["result"].get("table_extraction_meta", {}) if isinstance(ctx["result"].get("table_extraction_meta"), dict) else {}
     tables = ctx["result"].get("tables", []) if isinstance(ctx["result"].get("tables"), list) else []
 
-    # Record the inputs used for KIE for traceability
     ctx["result"]["kie_input"] = {
         "file_path": ctx.get("file_path"),
         "preprocessed_image_path": preprocessed_image_path,
-        "layout_present": bool(layout),
-        "table_meta": table_meta,
+        "layout_present": bool(layout), "table_meta": table_meta,
         "tables_count": len(tables),
     }
 
@@ -649,6 +648,7 @@ async def kie_step(ctx: PipelineContext) -> None:
         settings.KIE_MAX_PAGES,
     )
     multipage = is_pdf and len(selected_pages) > 1
+    tf_payloads = build_text_first_payloads(file_path, layout, selected_pages) if text_first_enabled(document_type, is_pdf) else {}
 
     await orchestrator.update_progress(ctx, 79, "KIE: preparing model and inputs...")
     t_kie0 = time.perf_counter()
@@ -661,20 +661,19 @@ async def kie_step(ctx: PipelineContext) -> None:
 
     async def _extract_one_page(page_num: int, vl_image_path: Optional[str]) -> Dict[str, Any]:
         prep = preprocessed_image_path if page_num == 1 else None
-        if vl_image_path:
+        if vl_image_path or page_num in tf_payloads:
             prep = None
         return await orchestrator.call_maybe_async(
             kie_service.extract_fields,
             file_path,
             document_type,
             preprocessed_image_path=prep,
-            layout=layout,
-            table_meta=table_meta,
-            tables=tables,
+            layout=layout, table_meta=table_meta, tables=tables,
             query_fields=query_fields or None,
             merged_schema=merged_schema,
             vl_image_path=vl_image_path,
             page_number=page_num,
+            text_payload=tf_payloads.get(page_num),
         )
 
     try:
@@ -682,10 +681,9 @@ async def kie_step(ctx: PipelineContext) -> None:
             await orchestrator.update_progress(
                 ctx, 79, f"KIE: inference running (page {page_num}/{selected_pages[-1]})..."
             )
-            vl_path: Optional[str] = None
-            temp_path: Optional[str] = None
+            vl_path = temp_path = None
             if is_pdf:
-                if page_num == 1 and _pp_ok and preprocessed_image_path:
+                if page_num == 1 and _pp_ok and preprocessed_image_path or page_num in tf_payloads:
                     vl_path = None
                 else:
                     raster_path, temp_path = rasterize_pdf_page(file_path, page_num, matrix_scale=2.0)

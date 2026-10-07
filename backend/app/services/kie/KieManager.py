@@ -154,3 +154,25 @@ class KieManager:
             "type": actual_type,
             "fields": fields if fields else {"raw_output": raw_text}
         }
+
+    def extract_text_first(self, page_text, option_type, query_fields=None, merged_schema=None):
+        """Text-first branch (P-032 M1): prompt over the marker-annotated page
+        text, no image (Qwen VL text branch; ``_qwen_generate`` already sends
+        no image when the messages carry none). The image branch above is
+        untouched."""
+        prompt = self.get_prompt(
+            option_type,
+            query_fields=query_fields,
+            merged_schema=merged_schema,
+        )
+        messages = [
+            {"role": "user", "content": [
+                {"type": "text", "text": prompt + "\n\n" + page_text}
+            ]}
+        ]
+        raw_text = self._qwen_generate(messages, max_new_tokens=2048)
+        fields = self._parse_json(raw_text)
+        return {
+            "type": option_type,
+            "fields": fields if fields else {"raw_output": raw_text}
+        }

@@ -65,6 +65,41 @@ def _items_count_from_fields(fields: Dict[str, Any]) -> int:
     return 0
 
 
+def _merge_text_window_fields(field_dicts: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Merge per-window KIE field dicts for one page (P-032 M1).
+
+    List values (findings) extend in window order; findings duplicated across
+    the 1-block window overlap are deduped first-wins by (quote, statement).
+    Scalars: last non-empty wins; ``raw_output`` keeps the first window's."""
+    merged: Dict[str, Any] = {}
+    for fields in field_dicts:
+        if not isinstance(fields, dict):
+            continue
+        for key, value in fields.items():
+            if key == "raw_output":
+                merged.setdefault(key, value)
+            elif isinstance(value, list):
+                existing = merged.get(key)
+                merged[key] = (existing + value) if isinstance(existing, list) else list(value)
+            elif value not in (None, ""):
+                merged[key] = value
+    findings = merged.get("findings")
+    if isinstance(findings, list) and findings:
+        seen = set()
+        deduped = []
+        for finding in findings:
+            key = (
+                str(finding.get("quote") if isinstance(finding, dict) else finding),
+                str(finding.get("statement") if isinstance(finding, dict) else finding),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(finding)
+        merged["findings"] = deduped
+    return merged
+
+
 def _is_hub_model_id(value: str) -> bool:
     """True when value looks like a HuggingFace / ModelScope repo id (not a filesystem path)."""
     text = (value or "").strip()
@@ -251,6 +286,92 @@ class QwenDocumentKIEService:
         out["_infer_ms"] = infer_ms
         return out
 
+    def _sync_extract_text(
+        self,
+        window_text: str,
+        document_type: str,
+        *,
+        query_fields: Optional[List[Dict[str, str]]] = None,
+        merged_schema: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """P-032 M1: one text-branch model call over one payload window."""
+        mgr = self._get_manager()
+        t0 = time.time()
+        out = mgr.extract_text_first(
+            window_text,
+            document_type,
+            query_fields=query_fields,
+            merged_schema=merged_schema,
+        )
+        infer_ms = int((time.time() - t0) * 1000)
+        if not isinstance(out, dict):
+            out = {"type": document_type, "fields": {}}
+        out["_infer_ms"] = infer_ms
+        return out
+
+    async def _extract_text_first(
+        self,
+        file_path: str,
+        document_type: str,
+        text_payload: Dict[str, Any],
+        *,
+        query_fields: Optional[List[Dict[str, str]]] = None,
+        merged_schema: Optional[Dict[str, Any]] = None,
+        page_number: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """P-032 M1: run the text branch over the payload's marker-annotated
+        windows (per-page calls; sliding windows merged per page, overlapping
+        duplicate findings deduped first-wins)."""
+        windows = [str(w) for w in (text_payload.get("windows") or []) if str(w).strip()]
+        source_tag = str(text_payload.get("source") or "text_layer")
+        debug_input: Dict[str, Any] = {
+            "file_path": file_path,
+            "mode": "text_first",
+            "input_source": source_tag,
+            "input_chars": int(text_payload.get("n_chars") or 0),
+            "n_windows": len(windows),
+            "window_chars": [len(w) for w in windows],
+            "page_number": page_number,
+        }
+        loop = asyncio.get_event_loop()
+        field_dicts: List[Dict[str, Any]] = []
+        infer_ms = 0
+        async with self._infer_lock:
+            for window in windows:
+                raw = await loop.run_in_executor(
+                    None,
+                    lambda w=window: self._sync_extract_text(
+                        w,
+                        document_type,
+                        query_fields=query_fields,
+                        merged_schema=merged_schema,
+                    ),
+                )
+                infer_ms += int(raw.pop("_infer_ms", 0) or 0)
+                fields = raw.get("fields") if isinstance(raw.get("fields"), dict) else {}
+                field_dicts.append(fields)
+        fields = _merge_text_window_fields(field_dicts)
+        logger.info(
+            "KIE text-first | type=%s page=%s source=%s windows=%s chars=%s",
+            document_type, page_number, source_tag, len(windows),
+            text_payload.get("n_chars"),
+        )
+        return {
+            "fields": fields,
+            "confidence_avg": compute_fill_confidence(fields, document_type),
+            "items_count": _items_count_from_fields(fields),
+            "metadata": {
+                "engine": "qwen2.5-vl",
+                "resolved_document_type": document_type,
+                "items_source": "n/a",
+                "kie_model_load_ms": self._init_wall_ms + infer_ms,
+                "infer_ms": infer_ms,
+                "kie_query_fields_count": len(query_fields) if query_fields else 0,
+                "text_first": {"source": source_tag, "n_windows": len(windows)},
+            },
+            "debug_input": debug_input,
+        }
+
     async def extract_fields(
         self,
         file_path: str,
@@ -264,8 +385,20 @@ class QwenDocumentKIEService:
         merged_schema: Optional[Dict[str, Any]] = None,
         vl_image_path: Optional[str] = None,
         page_number: Optional[int] = None,
+        text_payload: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Orchestrator-compatible KIE contract (fields + metadata + debug_input)."""
+
+        if text_payload:
+            # P-032 M1: text-first channel -- no image is resolved or sent.
+            return await self._extract_text_first(
+                file_path,
+                document_type,
+                text_payload,
+                query_fields=query_fields,
+                merged_schema=merged_schema,
+                page_number=page_number,
+            )
 
         temp_path: Optional[str] = None
         if vl_image_path and os.path.isfile(vl_image_path):

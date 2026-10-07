@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from app.services.evidence import verifier  # noqa: E402
+from app.services.evidence.findings_schema import PROMPT_VERSION  # noqa: E402
 from app.services.evidence.gate import canonicalize_slots  # noqa: E402
 
 DEFAULT_SOURCE = ROOT / "docs" / "R&D" / "runs" / "P029"
@@ -126,6 +127,9 @@ def convert(source_dir: Path) -> tuple:
                 },
                 "ledger": ledger,
                 "grounding_page_key": finding["grounding_page_key"],
+                # P-032 C4: per-record prompt-version stamp (harness metadata,
+                # stripped before FindingRecord validation like the key above).
+                "prompt_version": PROMPT_VERSION,
             }
         )
     return out_records, out_pages

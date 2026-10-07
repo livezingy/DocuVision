@@ -8,10 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-
-### Removed
+- **P-032 — evidence text-first hardening** (2026-10-07): pico KIE gains a text-first extraction channel gated by
+  `DOCUVISION_EVIDENCE_TEXT_FIRST` (default off; zero behavior when off): the pico input becomes the PDF's native
+  text layer segmented into blocks with globally-unique `[p{page}_b{block}]` markers (per-page calls; pages longer
+  than the model window split at block boundaries with a 1-block overlap; page coverage defaults to layout-located
+  body pages under the flag), while the evidence gate grounds quotes against the SAME native text deterministically
+  — marker hint first, then the V0-V6 ladder scan (lowest page wins), else the best word-prefix page so the ledger
+  detail stays the pinned `N/Mw prefix` (never "grounding unavailable"). Evidence-specific trust predicate
+  `total_chars > 0 and invisible_ratio < 0.5` (image coverage deliberately ignored; the E1 `judge_page_trust` and its
+  other consumers untouched). `evidence.stats.page_injected` on the text-first path counts deterministic verbatim
+  hits; per-page input source tags (`text_layer` / `fused_ocr`) recorded in the KIE `debug_input`.
 
 ### Changed
+- **P-032 C4**: `kie_configs/pico.yaml` prompt v3 → v4 (quote_block cites block markers; the ambiguous
+  "From the provided page text" sentence removed) with `findings_schema.PROMPT_VERSION = v4`, now machine-bound to
+  the real template header; golden 45 records restamped with a per-record `prompt_version` (harness metadata) via
+  `convert_golden.py`, all 45 invariants re-verified green.
+
+### Removed
 
 ### Fixed
 

@@ -40,11 +40,17 @@ from app.services.evidence.findings_schema import (
     SourceRef,
     findings_jsonl_line,
 )
+from app.services.evidence.grounding import (
+    attribute_candidates,
+    grounding_source,
+    trusted_grounding_page_set,
+)
 from app.services.evidence.normalize import normalize
 
 EVIDENCE_HITL_NEAR_MATCH = "near_match_review"
 EVIDENCE_HITL_SLOT = "evidence_slot_incomplete"
 EVIDENCE_HITL_SCHEMA = "evidence_schema_invalid"
+
 
 _SLOT_KEYS = ("population", "intervention", "comparator", "outcome", "follow_up")
 
@@ -388,16 +394,31 @@ async def run_evidence_gate(ctx: Dict[str, Any]) -> Dict[str, Any]:
     kie_fields = result.get("kie_fields") if isinstance(result.get("kie_fields"), dict) else {}
     candidates = kie_fields.get("findings") if isinstance(kie_fields, dict) else None
     raw_candidates = candidates
+    from app.services.kie.text_first import text_first_from_ctx
+
+    text_first = text_first_from_ctx(ctx)
+    attribution: Dict[str, int] = {}
+    page_texts: Dict[int, str] = {}
+    trusted: Set[int] = set()
     if isinstance(candidates, list) and candidates:
-        # P-029 page-attribution fix: pico KIE emits no page, so attribute each
-        # finding to the page KIE processed before grounding (fail-closed if no
-        # page can be resolved).
-        candidates = enrich_candidate_pages(
-            candidates,
-            ctx.get("phase1_fused") or {},
-            result.get("kie_meta"),
-            result.get("kie_fields_by_page"),
-        )
+        if text_first:
+            # P-032 M4: deterministic attribution on the native text layer --
+            # the same source the M1 payload fed the model; the
+            # kie_pages_processed / quote_block heuristics are NOT consulted.
+            source = grounding_source(str(ctx.get("file_path") or ""))
+            candidates, attribution = attribute_candidates(candidates, source)
+            page_texts = source.texts
+            trusted = trusted_grounding_page_set(str(ctx.get("file_path") or ""))
+        else:
+            # P-029 page-attribution fix: pico KIE emits no page, so attribute each
+            # finding to the page KIE processed before grounding (fail-closed if no
+            # page can be resolved).
+            candidates = enrich_candidate_pages(
+                candidates,
+                ctx.get("phase1_fused") or {},
+                result.get("kie_meta"),
+                result.get("kie_fields_by_page"),
+            )
     block: Dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "prompt_version": PROMPT_VERSION,
@@ -411,8 +432,9 @@ async def run_evidence_gate(ctx: Dict[str, Any]) -> Dict[str, Any]:
         return block
 
     paper_id = str(ctx.get("task", {}).get("file_name") or "unknown")
-    page_texts = page_texts_from_fused(ctx.get("phase1_fused") or {})
-    trusted = trusted_page_set(str(ctx.get("file_path") or ""))
+    if not text_first:
+        page_texts = page_texts_from_fused(ctx.get("phase1_fused") or {})
+        trusted = trusted_page_set(str(ctx.get("file_path") or ""))
     report = verify_candidates(candidates, page_texts, trusted, paper_id)
 
     from app.services.hitl_queue import hitl_queue
@@ -438,7 +460,14 @@ async def run_evidence_gate(ctx: Dict[str, Any]) -> Dict[str, Any]:
     ) if isinstance(candidates, list) else 0
     block["stats"] = {
         **report.stats,
-        "page_injected": after - before,
+        **attribution,
+        # text-first: deterministic verbatim hits (marker hint + ladder scan);
+        # legacy: enrich before/after delta (P-029 semantics, unchanged)
+        "page_injected": (
+            attribution.get("marker_hint_hits", 0) + attribution.get("scan_hits", 0)
+            if text_first
+            else after - before
+        ),
         "page_texts_pages": sorted(page_texts),
         "trusted_pages": sorted(trusted),
     }

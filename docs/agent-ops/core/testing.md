@@ -48,7 +48,8 @@
 - 移除符号/文件前全库搜索（code+tests+docs+`.github`），列出每处引用。
 - 不删文件除非本轮明确授权（红线）；默认带证据报告候选。
 - 刻意保留：Legacy Task API、Feature-flag 路径、Cloud 手动脚本。
-- 本地静态检查：`ruff check backend/ packages/docuvision-core/ --select F401,F841`。
+- 本地静态检查：`ruff check backend/ packages/docuvision-core/ --select F401,F821,F841`。
+  - `F821`（未定义名）必须显式扫：`from __future__ import annotations` 把注解变成字符串，未导入的类型名（如 `Set`）在运行期与 `F401/F841` 下都不报，只在解析注解（`typing.get_type_hints`）或类型检查时才炸（P-032 独立审阅 D1 教训）。
 
 ## 手工测试提醒
 手动测试**仅含需云端启动服务器的测试**。每次改动应用代码或 UI 须附 Manual test scope：

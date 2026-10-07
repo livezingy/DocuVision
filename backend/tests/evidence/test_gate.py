@@ -219,14 +219,14 @@ def test_run_evidence_gate_end_to_end(tmp_path, monkeypatch):
     assert block["failure_ledger"][0]["reject_class"] == "overclaim"
 
 
-def test_evidence_step_injects_page_from_quote_block(tmp_path, monkeypatch):
-    """P-029 page-attribution fix: a pico finding that carries ``quote_block``
-    (block id) but no ``page`` must be attributed to its fused page and grounded,
-    instead of failing closed as axis-A unsupported.
+def test_evidence_step_attributes_processed_page_when_quote_block_unmappable(tmp_path, monkeypatch):
+    """P-029 page-attribution fix (PENDING option 1).
 
-    Mirrors the P-031 E2E failure: KIE emits ``quote_block`` only, the gate needs
-    ``page`` to locate the grounding text, and without injection every finding is
-    rejected. Here the same quote on a trusted page grounds and exports.
+    The pico prompt injects only the schema -- no block ids -- so the model's
+    ``quote_block`` is not a fused ``block_id`` (P-031 Cloud run: quote_block
+    matched nothing, page stayed null). The finding must instead be attributed to
+    the page KIE actually processed (``kie_meta.kie_pages_processed``); here a
+    deliberately bogus ``quote_block=999`` proves we do not rely on it.
     """
     from app.core.config import settings
     from app.orchestration.document_pipeline_orchestrator import evidence_step
@@ -241,14 +241,17 @@ def test_evidence_step_injects_page_from_quote_block(tmp_path, monkeypatch):
         "blocks": [{"block_id": 7, "payload": {"text": QUOTE + " Follow-up was 30 days."}}],
     }]}
     finding = grounded_candidate(statement=QUOTE)  # faithful -> no axis-B reject
-    finding.pop("page")  # pico KIE omits page, emits quote_block instead
-    finding["quote_block"] = 7
+    finding.pop("page")  # pico KIE emits no page
+    finding["quote_block"] = 999  # unmappable: must NOT be used for attribution
 
     ctx = {
         "task_id": "t-page-inject",
         "task": {"file_name": "doc.pdf"},
         "file_path": pdf_path,
-        "result": {"kie_fields": {"findings": [finding]}},
+        "result": {
+            "kie_fields": {"findings": [finding]},
+            "kie_meta": {"kie_pages_processed": [1]},
+        },
         "phase1_fused": fused,
         "orchestrator": _StubOrchestrator(),
     }
@@ -258,6 +261,25 @@ def test_evidence_step_injects_page_from_quote_block(tmp_path, monkeypatch):
     assert block["export_allowed"] is True
     assert block["failure_ledger"] == []
     assert len(block["findings"]) == 1
+    assert block["stats"]["page_injected"] == 1
+
+
+def test_enrich_scans_processed_pages_for_quote():
+    """Multi-page: no single processed page, so locate the quote's own page."""
+    fused = {"pages": [
+        {"page_num": 1, "blocks": [{"payload": {"text": "unrelated intro paragraph"}}]},
+        {"page_num": 2, "blocks": [{"payload": {"text": QUOTE + " tail"}}]},
+    ]}
+    candidate = {"statement": QUOTE, "quote": QUOTE}
+    out = gate.enrich_candidate_pages([candidate], fused, {"kie_pages_processed": [1, 2]})
+    assert out[0]["page"] == 2
+
+
+def test_enrich_leaves_unresolvable_candidate_for_fail_closed():
+    """No processed page and no fused text -> no page injected (fail-closed)."""
+    candidate = {"statement": "x", "quote": "nothing matches here"}
+    out = gate.enrich_candidate_pages([candidate], {"pages": []}, None, None)
+    assert "page" not in out[0]
 
 
 def test_run_evidence_gate_no_findings_is_clean_noop(tmp_path, monkeypatch):

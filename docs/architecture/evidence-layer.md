@@ -1,7 +1,7 @@
 # Evidence Layer（证据接地抽取校验层）— P-029
 
 > Status: living — **权威：`backend/tests/evidence/`**（契约由 pytest 承载，本文为人类可读派生视图）
-> 最近对照：v1.11.0 / commit d9ee9f7（2026-10-05，P-029 C1-C4 落地）
+> 最近对照：feat/p032-text-first @ 8c09afc（2026-10-07，P-032 M1-M5 + C4 落地；C1b/C5 Cloud 复验待执行）
 > 来源：sciextract RCT 报告 v2 实证的三闸方法（闸 A 逐字 quote 接地 / 闸 B hedge 保真 / 闸 C 槽完整性），
 > 自交接件移植（设计稿/执行包/执行记录 local-only：`docs/R&D/runs/P029/`）。
 
@@ -17,12 +17,14 @@
 
 | 模块 | 职责 |
 |---|---|
-| `backend/app/services/evidence/findings_schema.py` | FindingRecord 契约（`SCHEMA_VERSION = evidence-findings/1.0`）；`PROMPT_VERSION = v3` 与 `kie_configs/pico.yaml` 模板头版本绑定，不一致 = 门禁 ERROR（防抽取模板与校验契约两处漂移）；`PicoSlots` 为首张域槽模板，新域经 `register_slot_template` 注册、核心形状不动 |
-| `backend/app/services/evidence/closed_lists.json` | 闭表单一真源（`closed_lists/1.0`）：hedge EN 14 词（prompt v3 白名单种子，金样校准）；ZH 12 词与因果动词三档待首个中文域数据 PR 补种，不自行造词 |
+| `backend/app/services/evidence/findings_schema.py` | FindingRecord 契约（`SCHEMA_VERSION = evidence-findings/1.0`）；`PROMPT_VERSION = v4`（P-032 C4）与 `kie_configs/pico.yaml` 模板头版本绑定（机器校验读真实模板头），不一致 = 门禁 ERROR（防抽取模板与校验契约两处漂移）；`PicoSlots` 为首张域槽模板，新域经 `register_slot_template` 注册、核心形状不动 |
+| `backend/app/services/evidence/closed_lists.json` | 闭表单一真源（`closed_lists/1.0`）：hedge EN 14 词（prompt 白名单种子，金样校准）；ZH 12 词与因果动词三档待首个中文域数据 PR 补种，不自行造词 |
 | `backend/app/services/evidence/normalize.py` | 接地归一器（交接件 `ingest_pdf.py` 的 `normalize()` + `LIGATURES` 原样移植；只入 evidence 层，不进表格域） |
 | `backend/app/services/evidence/verifier.py` | V0-V6 归一梯 + 判类写死 + 闸 B 集差语义 + 闸 C 槽行；`--selftest` 自检入口；全链 UTF-8、诊断 ASCII（Windows GBK 守卫） |
-| `backend/app/services/evidence/gate.py` | fail-closed 门禁：failure ledger、HITL 路由、findings JSONL 产物、页接地文本构建与 E1 页信任闸 |
-| `backend/app/services/kie/kie_configs/pico.yaml` | PICO 域模板（prompt v3 冻结版 + `prompt_version: v3` 头 + schema），`_registry.yaml` 注册；KieManager 可加载 |
+| `backend/app/services/evidence/gate.py` | fail-closed 门禁：failure ledger、HITL 路由、findings JSONL 产物、页接地文本构建与页信任闸（旗标分叉见 §4） |
+| `backend/app/services/evidence/grounding.py` | P-032 新增：同源原生文本层构建（`grounding_source`，PyMuPDF 按页分块）+ evidence 专用信任谓词（`trusted_grounding_page_set`，M5：`total_chars>0` 且 `invisible_ratio<0.5`）+ 确定性页归属（`attribute_candidates`：marker 提示 → V0-V6 梯扫最低页 → 最高前缀比页兜底承载 `N/Mw prefix` detail）；`page_text_trust.py` 本体只读不动 |
+| `backend/app/services/kie/text_first.py` | P-032 新增（M1/M2，纯逻辑）：`[p{页}_b{块}]` marker 注入（绝对页号、0 起块序）、块边界滑窗（重叠 1 块）、正文页判定（≥8 body 型元素且 ≥500 字符，裁决常量）与页解析包装；与 `grounding_source` 同源是契约 |
+| `backend/app/services/kie/kie_configs/pico.yaml` | PICO 域模板（prompt v4 + `prompt_version: v4` 头 + schema，`quote_block` 引 marker），`_registry.yaml` 注册；KieManager 可加载 |
 
 ## §3 三闸语义（写死）
 
@@ -48,6 +50,24 @@
   `evidence_slot_incomplete` / `evidence_schema_invalid`；payload 带 closed_lists 版本、两词表快照与
   matched_variant/detail），处置经既有 HITL resolve 流程回写。
 - 全通过 ⇒ findings JSONL（`schema_version + prompt_version + verdict + provenance`）随任务结果与 DEBUG 产物落盘。
+
+### §4.1 text-first 分支（P-032，默认关）
+
+- 旗标 `EVIDENCE_TEXT_FIRST`（默认 **False**，env `DOCUVISION_EVIDENCE_TEXT_FIRST`/`EVIDENCE_TEXT_FIRST`，须与
+  `EVIDENCE_ENABLED` 同开）：`run_evidence_gate` 与 pico KIE 输入同时切到 text-first 通道；**旗标关 = #68 图片
+  通道行为逐分支原样**（enrich 三级启发式 / fused 接地 / E1 信任集）。
+- **抽取输入**（M1/M2）：pico 在 PDF 上不再喂图——每页喂「原生文本层按块拼接 + `[p{页}_b{块}]` marker」（每页
+  一次调用；超窗按块边界滑窗、重叠 1 块）；默认页集 = layout 正文页（≥8 body 型元素且 ≥500 字符）再交
+  `KIE_MAX_PAGES` 截断；`debug_input` 记录每页输入来源 `text_layer`/`fused_ocr`（M5 谓词失败页显式降级 fused_ocr
+  并在证据闸 fail-closed，不静默混用；两通道皆无文本的页回落图片通道，以 payload 缺席显式呈现）。
+- **确定性接地**（M4）：页归属不再用 `kie_pages_processed`/`quote_block` 启发式——marker 提示页优先，其次对
+  同源原生文本做 V0-V6 梯扫（页序升序、最低页胜），全落空归属最高前缀比页使 ledger detail 保持 `N/Mw prefix`
+  （E2 禁 `grounding unavailable`）；命中后 `SourceRef.page_num` + `quote_span` 落记录。
+- **信任判据**（M5）：evidence 专用谓词 = `total_chars>0 且 invisible_ratio<0.5`（原生文本层存在且非 OCR 覆盖
+  层），**弃用** `image_coverage`（E1 表格回填判据保留其另外 3 个消费者）；BMC 首页（image_coverage≈0.61）在此
+  判据下受信。
+- `evidence.stats`：text-first 路径的 `page_injected` = 确定性逐字命中数（marker 提示 + 梯扫），并附
+  `marker_hint_hits`/`scan_hits`/`prefix_only`/`unresolved` 计数；legacy 路径语义不变。
 
 ## §5 金样哨兵（棘轮）
 

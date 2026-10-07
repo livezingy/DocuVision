@@ -213,7 +213,9 @@ curl -s -X POST "$API_ROOT/api/v1/document/profile" -F "file=@$COI/coi_acord25_s
 #    否则 UI 假告警 unsupported_doc_type:{doc} 且 kie_confidence_avg=0.0
 
 # 5. evidence grounding (pico 有 findings 时) — 须 DOCUVISION_EVIDENCE_ENABLED=true 重启服务;
-#    gate.py:169-172 需 candidate["page"] — KIE 只发 quote_block, 故 pico 现恒 fail-closed (见 PENDING P-029)
+#    P-032 text-first 通道: 再加 DOCUVISION_EVIDENCE_TEXT_FIRST=true (默认 off) — pico 抽取改喂
+#    原生文本层 + [p{page}_b{block}] marker, 接地同源, evidence.stats.page_injected = 确定性命中数;
+#    关闭时保持 #68 图片通道行为 (gate 行为对照, 见 docs/R&D/runs/P029/P032-执行记录.md)
 
 # 6. regression — 其余 doc-type 不被污染: 同第 2 步逐件 suggested 不变
 

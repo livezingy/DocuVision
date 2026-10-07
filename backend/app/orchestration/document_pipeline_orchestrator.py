@@ -20,8 +20,8 @@ from app.services.kie.kie_field_metrics import (
     evaluate_kie_id_card_precision,
     evaluate_kie_production_hit,
 )
-from app.services.kie.kie_pages import resolve_kie_pages
-from app.services.kie.text_first import build_text_first_payloads, text_first_enabled
+from app.services.kie.text_first import (
+    build_text_first_payloads, resolve_pages_text_first, text_first_enabled)
 from app.services.document_info_utils import resolve_document_page_count
 from app.services.file_type_detector import detect_file_type
 from app.services.pdf_raster import pdf_page_count, rasterize_pdf_page
@@ -642,13 +642,10 @@ async def kie_step(ctx: PipelineContext) -> None:
     is_pdf = os.path.splitext(file_path)[1].lower() == ".pdf"
     page_count = pdf_page_count(file_path) if is_pdf else 1
     pages_spec = options.get("kie_pages")
-    selected_pages, pages_truncated = resolve_kie_pages(
-        pages_spec,
-        page_count,
-        settings.KIE_MAX_PAGES,
-    )
+    tf_active = text_first_enabled(document_type, is_pdf)
+    selected_pages, pages_truncated = resolve_pages_text_first(pages_spec, page_count, settings.KIE_MAX_PAGES, text_first=tf_active, layout=layout)
     multipage = is_pdf and len(selected_pages) > 1
-    tf_payloads = build_text_first_payloads(file_path, layout, selected_pages) if text_first_enabled(document_type, is_pdf) else {}
+    tf_payloads = build_text_first_payloads(file_path, layout, selected_pages) if tf_active else {}
 
     await orchestrator.update_progress(ctx, 79, "KIE: preparing model and inputs...")
     t_kie0 = time.perf_counter()

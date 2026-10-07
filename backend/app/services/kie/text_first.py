@@ -51,6 +51,21 @@ def text_first_enabled(document_type: str, is_pdf: bool) -> bool:
         return False
 
 
+def text_first_from_ctx(ctx: Dict[str, Any]) -> bool:
+    """Same-source text-first decision from a pipeline ctx (P-032 review D2).
+
+    Resolves the document type from ``result.kie_meta.resolved_document_type``
+    and PDF-ness from ``file_path``, then defers to :func:`text_first_enabled` --
+    the same predicate the KIE step uses, so the extraction channel and the
+    evidence grounding path cannot diverge (unknown type / non-PDF -> legacy).
+    """
+    result = ctx.get("result") or {}
+    kie_meta = result.get("kie_meta") if isinstance(result.get("kie_meta"), dict) else {}
+    doc_type = str(kie_meta.get("resolved_document_type") or "")
+    is_pdf = str(ctx.get("file_path") or "").lower().endswith(".pdf")
+    return text_first_enabled(doc_type, is_pdf)
+
+
 def block_marker(page_num: int, block_index: int) -> str:
     """Globally-unique block marker: absolute page number, 0-based block."""
     return f"[p{page_num}_b{block_index}]"

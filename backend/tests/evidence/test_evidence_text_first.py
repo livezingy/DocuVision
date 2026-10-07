@@ -210,7 +210,7 @@ def _gate_ctx(tmp_path, pdf, candidates):
         "result": {
             "kie_fields": {"findings": candidates},
             "kie_fields_by_page": {"1": {"findings": candidates}},
-            "kie_meta": {"kie_pages_processed": [1]},
+            "kie_meta": {"kie_pages_processed": [1], "resolved_document_type": "pico"},
         },
     }
 
@@ -266,6 +266,41 @@ def test_m4_gate_flag_off_keeps_legacy_branch(tmp_path, monkeypatch):
     assert block["findings"][0]["source"]["page_num"] == 1
     assert block["stats"]["page_injected"] == 1  # legacy enrich semantics
     assert "marker_hint_hits" not in block["stats"]
+
+
+def test_d2_gate_text_first_scope_mirrors_m1(tmp_path, monkeypatch):
+    """D2: the gate must follow the SAME decision as the KIE extraction step.
+
+    Flag on but a resolved doc type M1 would NOT run text-first for (non-pico):
+    the gate must take the legacy enrich path too, so the extraction channel and
+    the grounding path cannot diverge."""
+    quote = "Treatment may reduce infarct size in patients."
+    pdf = _make_pdf(tmp_path, pages=((("Before it. " + quote + " After it.",), ()),))
+    monkeypatch.setattr(settings, "EVIDENCE_ENABLED", True)
+    monkeypatch.setattr(settings, "EVIDENCE_TEXT_FIRST", True)
+    import app.services.hitl_queue as hq_module
+
+    monkeypatch.setattr(hq_module, "hitl_queue", HitlReviewQueue())
+    assert tf.text_first_enabled("invoice", is_pdf=True) is False  # M1 side
+    ctx = _gate_ctx(tmp_path, pdf, [_candidate(quote)])
+    ctx["result"]["kie_meta"]["resolved_document_type"] = "invoice"
+    block = asyncio.run(gate.run_evidence_gate(ctx))
+    assert "marker_hint_hits" not in block["stats"]  # legacy path, same as M1
+    assert block["stats"]["page_injected"] == 1
+
+
+def test_d2_gate_text_first_requires_pdf(tmp_path, monkeypatch):
+    """Non-PDF input: M1 stays on the image channel, so the gate must too."""
+    quote = "Treatment may reduce infarct size in patients."
+    monkeypatch.setattr(settings, "EVIDENCE_ENABLED", True)
+    monkeypatch.setattr(settings, "EVIDENCE_TEXT_FIRST", True)
+    import app.services.hitl_queue as hq_module
+
+    monkeypatch.setattr(hq_module, "hitl_queue", HitlReviewQueue())
+    ctx = _gate_ctx(tmp_path, tmp_path / "note.txt", [_candidate(quote)])
+    block = asyncio.run(gate.run_evidence_gate(ctx))
+    assert "marker_hint_hits" not in block["stats"]  # legacy path
+    assert block["stats"]["page_injected"] == 1
 
 
 # ------------------------------------------------- M1: marker / window / payload

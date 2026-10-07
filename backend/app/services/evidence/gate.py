@@ -52,15 +52,6 @@ EVIDENCE_HITL_SLOT = "evidence_slot_incomplete"
 EVIDENCE_HITL_SCHEMA = "evidence_schema_invalid"
 
 
-def _text_first_enabled() -> bool:
-    """P-032 feature flag (default off): text-first extraction + grounding."""
-    try:
-        from app.core.config import settings
-
-        return bool(getattr(settings, "EVIDENCE_TEXT_FIRST", False))
-    except Exception:
-        return False
-
 _SLOT_KEYS = ("population", "intervention", "comparator", "outcome", "follow_up")
 
 # Spelling variants that must be canonicalized to NOT_REPORTED (execution
@@ -403,7 +394,9 @@ async def run_evidence_gate(ctx: Dict[str, Any]) -> Dict[str, Any]:
     kie_fields = result.get("kie_fields") if isinstance(result.get("kie_fields"), dict) else {}
     candidates = kie_fields.get("findings") if isinstance(kie_fields, dict) else None
     raw_candidates = candidates
-    text_first = _text_first_enabled()
+    from app.services.kie.text_first import text_first_from_ctx
+
+    text_first = text_first_from_ctx(ctx)
     attribution: Dict[str, int] = {}
     page_texts: Dict[int, str] = {}
     trusted: Set[int] = set()

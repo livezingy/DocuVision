@@ -74,6 +74,10 @@
     "kind": "full",
     "note": "P-029 G3 evidence gate: fail-closed ledger, HITL routing, flag-off zero behavior (mock, no paddle/server)"
   },
+  "evidence/test_evidence_text_first.py": {
+    "kind": "full",
+    "note": "P-032 text-first: M5 evidence trust predicate, M4 deterministic grounding, M1 marker/window/payload (mock, no paddle/server)"
+  },
   "evidence/test_golden_baseline.py": {
     "kind": "full",
     "note": "P-029 G5 golden-set sentinel: 45-record ratchet baseline (pure logic, no paddle/server)"

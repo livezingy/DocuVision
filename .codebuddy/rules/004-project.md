@@ -1,7 +1,7 @@
 # 项目事实与测试验证
 
 > 生成自 kernel `docs/agent-ops/core/`（environment, testing）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: environment.md:791dd134f4b5e1b3; testing.md:98b1e7d744dabd05 -->
+<!-- kernel-ref: environment.md:791dd134f4b5e1b3; testing.md:3369e6ec971b12ae -->
 
 ## 项目目标
 DocuVision 旨在**可运行于云端服务器**，提供**试用/演示**，展示主要能力，可直接**投标 Upwork 部分工作**或符合用户基本需求并**接受定制**。开发优先级以"能否上云演示 + 能否投标/定制"为衡量。
@@ -89,6 +89,12 @@ DocuVision/
 - 刻意保留：Legacy Task API、Feature-flag 路径、Cloud 手动脚本。
 - 本地静态检查：`ruff check backend/ packages/docuvision-core/ --select F401,F821,F841`。
   - `F821`（未定义名）必须显式扫：`from __future__ import annotations` 把注解变成字符串，未导入的类型名（如 `Set`）在运行期与 `F401/F841` 下都不报，只在解析注解（`typing.get_type_hints`）或类型检查时才炸（P-032 独立审阅 D1 教训）。
+
+## 执行包自检（写/审 执行包时，4 条机检化）
+- **静态可解析**：新增/改动模块须过 `ruff --select F401,F821,F841`，且 `python -c "import <mod>"` 不炸（注解名受 F821 覆盖）。
+- **跨模块不变量**：执行包须显式列「单源不变量 + 机器断言」并落测试——例：某判定只能由唯一函数给出，两侧不得各读各的旗标（P-032 D2）。
+- **读数可复算**：执行记录任何「N→M」须附产生该数的命令（`pytest --collect-only -q` / `git grep -c`），禁止口算（P-032 D3）。
+- **引用先核对**：引用「符号名/行号/阈值/字段」前按真源核对；符号名不存在则改名并登记偏差（P-032：`_build_prompt` 实为 `get_prompt`）。
 
 ## 手工测试提醒
 手动测试**仅含需云端启动服务器的测试**。每次改动应用代码或 UI 须附 Manual test scope：

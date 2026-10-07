@@ -91,12 +91,12 @@ def _page_no_of(page: Dict[str, Any]) -> Optional[int]:
 
 
 def block_id_to_page(fused: Dict[str, Any]) -> Dict[str, int]:
-    """Map fused ``block_id`` -> 1-based page number (P-029 page-attribution fix).
+    """Map fused ``block_id`` -> 1-based page number.
 
-    The pico KIE emits ``quote_block`` (an integer block id) but no ``page``; the
-    fused envelope carries the per-block ``block_id`` and its ``page_num``, so we
-    can attribute each finding to the page its quote starts on. Keys are stored
-    as strings so lookup is order-independent of the id's original type.
+    Weak legacy hint only: the pico prompt injects just the schema (no block ids,
+    no page text), so the model's ``quote_block`` is not a real fused ``block_id``
+    and usually maps to nothing. Kept last in the resolution order; the reliable
+    page is the one KIE actually processed (see ``enrich_candidate_pages``).
     """
     mapping: Dict[str, int] = {}
     for page in (fused or {}).get("pages", []):
@@ -111,26 +111,51 @@ def block_id_to_page(fused: Dict[str, Any]) -> Dict[str, int]:
     return mapping
 
 
+def _processed_single_page(
+    kie_meta: Optional[Dict[str, Any]],
+    kie_fields_by_page: Optional[Dict[str, Any]],
+) -> Optional[int]:
+    """The page KIE read when exactly one page was processed, else ``None``."""
+    processed: List[int] = []
+    if isinstance(kie_meta, dict):
+        raw = kie_meta.get("kie_pages_processed")
+        if isinstance(raw, (list, tuple)):
+            processed = [p for p in raw if isinstance(p, int)]
+    if len(processed) == 1:
+        return processed[0]
+    if isinstance(kie_fields_by_page, dict):
+        keys = [k for k in kie_fields_by_page.keys() if str(k).isdigit()]
+        if len(keys) == 1:
+            return int(keys[0])
+    return None
+
+
 def enrich_candidate_pages(
     candidates: List[Dict[str, Any]],
     fused: Dict[str, Any],
+    kie_meta: Optional[Dict[str, Any]] = None,
     kie_fields_by_page: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """Inject a ``page`` into KIE finding candidates that lack one (P-029 X1-6 gap).
 
+    P-031 E2E showed pipeline findings arrive with no ``page`` and fail closed.
+    The fix (PENDING P-029 option 1) attributes them to the page KIE actually
+    processed; ``quote_block`` is *not* usable for attribution because the pico
+    prompt carries no block ids.
+
     Resolution order when ``candidate["page"]`` is absent/non-int:
-      1. ``quote_block`` -> fused ``block_id`` page (most precise, multi-page safe);
-      2. single-key ``kie_fields_by_page`` (single-page extraction default).
+      1. the single processed page (``kie_meta.kie_pages_processed`` / single-key
+         ``kie_fields_by_page``) -- authoritative for the default 1-page run;
+      2. fused page whose normalized text contains the normalized quote
+         (multi-page findings);
+      3. ``quote_block`` -> fused ``block_id`` (weak legacy hint, kept last).
 
     Candidates that resolve to no page stay untouched and are fail-closed by the
-    gate (axis A), preserving the existing contract pinned by the test branch.
+    gate (axis A), preserving the pinned contract.
     """
+    page_texts = page_texts_from_fused(fused)
+    single_page = _processed_single_page(kie_meta, kie_fields_by_page)
     block_page = block_id_to_page(fused)
-    single_page: Optional[int] = None
-    if isinstance(kie_fields_by_page, dict):
-        digit_keys = [k for k in kie_fields_by_page.keys() if str(k).isdigit()]
-        if len(digit_keys) == 1:
-            single_page = _page_no_of({"page": digit_keys[0]})
     out: List[Dict[str, Any]] = []
     for candidate in candidates:
         if not isinstance(candidate, dict):
@@ -139,18 +164,21 @@ def enrich_candidate_pages(
         if isinstance(candidate.get("page"), int):
             out.append(candidate)
             continue
-        resolved: Optional[int] = None
-        qb = candidate.get("quote_block")
-        if qb is not None:
-            resolved = block_page.get(str(qb))
+        resolved = single_page
+        if resolved is None and page_texts:
+            needle = normalize(str(candidate.get("quote") or ""))
+            if needle:
+                hits = [p for p, text in sorted(page_texts.items()) if needle in text]
+                if hits:
+                    resolved = hits[0]
         if resolved is None:
-            resolved = single_page
+            qb = candidate.get("quote_block")
+            if qb is not None:
+                resolved = block_page.get(str(qb))
         if resolved is not None:
-            enriched = dict(candidate)
-            enriched["page"] = resolved
-            out.append(enriched)
-        else:
-            out.append(candidate)
+            candidate = dict(candidate)
+            candidate["page"] = resolved
+        out.append(candidate)
     return out
 
 
@@ -359,13 +387,15 @@ async def run_evidence_gate(ctx: Dict[str, Any]) -> Dict[str, Any]:
     result = ctx.get("result") or {}
     kie_fields = result.get("kie_fields") if isinstance(result.get("kie_fields"), dict) else {}
     candidates = kie_fields.get("findings") if isinstance(kie_fields, dict) else None
+    raw_candidates = candidates
     if isinstance(candidates, list) and candidates:
-        # P-029 page-attribution fix: pico KIE emits quote_block, not page, so
-        # attribute each finding to its fused page before grounding (fail-closed
-        # if no page can be resolved).
+        # P-029 page-attribution fix: pico KIE emits no page, so attribute each
+        # finding to the page KIE processed before grounding (fail-closed if no
+        # page can be resolved).
         candidates = enrich_candidate_pages(
             candidates,
             ctx.get("phase1_fused") or {},
+            result.get("kie_meta"),
             result.get("kie_fields_by_page"),
         )
     block: Dict[str, Any] = {
@@ -396,7 +426,22 @@ async def run_evidence_gate(ctx: Dict[str, Any]) -> Dict[str, Any]:
     block["findings"] = report.lines
     block["failure_ledger"] = report.ledger
     block["export_allowed"] = report.export_allowed
-    block["stats"] = report.stats
+    # Self-diagnosing stats: distinguishes "page not injected" from "grounding
+    # text missing/untrusted" (both otherwise surface as the same axis-A detail).
+    before = sum(
+        1 for c in raw_candidates
+        if isinstance(c, dict) and isinstance(c.get("page"), int)
+    ) if isinstance(raw_candidates, list) else 0
+    after = sum(
+        1 for c in candidates
+        if isinstance(c, dict) and isinstance(c.get("page"), int)
+    ) if isinstance(candidates, list) else 0
+    block["stats"] = {
+        **report.stats,
+        "page_injected": after - before,
+        "page_texts_pages": sorted(page_texts),
+        "trusted_pages": sorted(trusted),
+    }
 
     _write_artifacts(ctx, report)
     return block

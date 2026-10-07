@@ -104,6 +104,16 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DOCUVISION_EVIDENCE_ENABLED", "EVIDENCE_ENABLED"),
     )
 
+    # P-032 evidence text-first hardening — pico KIE reads the native text
+    # layer with [p{page}_b{block}] markers and grounding runs on the same
+    # source (default off: legacy image channel + fused-OCR grounding)
+    EVIDENCE_TEXT_FIRST: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "DOCUVISION_EVIDENCE_TEXT_FIRST", "EVIDENCE_TEXT_FIRST"
+        ),
+    )
+
     # KIE (Qwen2.5-VL) — HuggingFace id or local directory
     KIE_QWEN_MODEL_ID: str = Field(
         default=os.path.expanduser(

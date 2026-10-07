@@ -202,8 +202,9 @@ def test_ledger_on_admitted_finding_rejected():
 # --- version binding (G1) --------------------------------------------------------
 
 def test_prompt_version_binding():
-    fs.check_prompt_version_binding("v3")
-    for bad in ("v2", "V3", None, "v4"):
+    # P-032 C4: pico template and contract both moved to v4.
+    fs.check_prompt_version_binding("v4")
+    for bad in ("v2", "V4", None, "v3"):
         with pytest.raises(fs.EvidenceSchemaError):
             fs.check_prompt_version_binding(bad)
 
@@ -266,3 +267,19 @@ def test_pico_prompt_carries_exactly_the_closed_hedge_list():
     listed = prompt.split(marker, 1)[1].split(". Copy verbatim", 1)[0]
     listed_words = [w.strip() for w in listed.replace("hedging words:", "").split(",")]
     assert listed_words == hedge_en
+
+
+def test_pico_template_header_bound_to_contract():
+    # P-032 C4 (adjudication 1): pico.yaml's prompt_version header and the
+    # contract PROMPT_VERSION must be the same value -- checked against the
+    # real config file, not a literal, so either side drifting fails here.
+    from pathlib import Path
+
+    import yaml
+
+    config = (
+        Path(__file__).resolve().parents[2]
+        / "app" / "services" / "kie" / "kie_configs" / "pico.yaml"
+    )
+    header = yaml.safe_load(config.read_text(encoding="utf-8"))["prompt_version"]
+    fs.check_prompt_version_binding(header)

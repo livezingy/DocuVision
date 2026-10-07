@@ -22,7 +22,7 @@ import json
 from pathlib import Path
 
 from app.services.evidence import verifier
-from app.services.evidence.findings_schema import FindingRecord
+from app.services.evidence.findings_schema import PROMPT_VERSION, FindingRecord
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 
@@ -48,7 +48,10 @@ def test_golden_size_and_schema_validity():
     assert len(RECORDS) == 45 and len(PAGES) == 18
     empty_slots = 0
     for line in RECORDS:
-        payload = {k: v for k, v in line.items() if k != "grounding_page_key"}
+        payload = {
+            k: v for k, v in line.items()
+            if k not in ("grounding_page_key", "prompt_version")
+        }
         record = FindingRecord.model_validate(payload)  # silent null would raise here
         for slot in ("population", "intervention", "comparator", "outcome", "follow_up"):
             if getattr(record.pico, slot) == "NOT_REPORTED":
@@ -103,3 +106,10 @@ def test_pinned_statement_type_counts():
         "speculation": 4,
         "limitations": 0,
     }
+
+
+def test_golden_prompt_version_stamped():
+    # P-032 C4: every golden record carries the prompt-version stamp and it
+    # must equal the contract version (a PROMPT_VERSION bump without a golden
+    # migration fails here, per the adjudication-1 binding duty).
+    assert RECORDS and all(line.get("prompt_version") == PROMPT_VERSION for line in RECORDS)

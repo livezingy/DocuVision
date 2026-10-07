@@ -14,7 +14,7 @@ from typing import Dict, Literal, Optional, Tuple, Type
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 SCHEMA_VERSION = "evidence-findings/1.0"
-PROMPT_VERSION = "v3"
+PROMPT_VERSION = "v4"
 NOT_REPORTED = "NOT_REPORTED"
 
 # Upstream spellings that MUST be canonicalized to NOT_REPORTED before validation (X1-4).

@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `total_chars > 0 and invisible_ratio < 0.5` (image coverage deliberately ignored; the E1 `judge_page_trust` and its
   other consumers untouched). `evidence.stats.page_injected` on the text-first path counts deterministic verbatim
   hits; per-page input source tags (`text_layer` / `fused_ocr`) recorded in the KIE `debug_input`.
+- **E3 - fixture reproducibility gate** (2026-10-08, P-033): the `lint` job now runs
+  `node test_data/scripts/generate_general_testfiles_pure.mjs --check`, which writes nothing and exits 1
+  when a committed sample drifts from what the zero-dependency generator produces. Four samples had
+  drifted silently before this (they predate the ASCII-safe fix and a column-width change; PR #74
+  converged them) and no other gate could see it - only a human re-running the generator could. A thin
+  Python wrapper was deliberately not added. Registered in `module-map.md` §5 as **E3**; the
+  `test_data/testfiles/README.md` R3 rule points at it, and `lint.yml`'s push paths gained the two
+  `test_data/**` gate inputs (bypass-only; PRs never filter paths). Scope is that generator's three output
+  directories: image fixtures (JPEG/PNG are not byte-reproducible) and the other generators stay out -
+  the boundary is written down in the PENDING entry.
 
 ### Changed
 - **P-032 C4**: `kie_configs/pico.yaml` prompt v3 → v4 (quote_block cites block markers; the ambiguous

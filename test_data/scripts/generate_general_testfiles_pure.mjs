@@ -11,6 +11,17 @@ const OUT = process.env.DOCUVISION_PDF_OUT
   ? path.resolve(process.env.DOCUVISION_PDF_OUT)
   : path.join(__dirname, "..", "testfiles", "GeneralFiles");
 
+// Modes:
+//   (default)      write every sample
+//   --check        write nothing; report outputs whose bytes differ, exit 1 on drift
+//   --only <name>  write/check just that file (basename, e.g. invoice_line_items_sample.pdf)
+const argv = process.argv.slice(2);
+const CHECK = argv.includes("--check");
+const onlyIdx = argv.indexOf("--only");
+const ONLY = onlyIdx >= 0 ? String(argv[onlyIdx + 1] || "") : "";
+
+let drift = 0;
+
 function sanitizeAscii(text) {
   return String(text)
     .replace(/\u2014/g, " - ")
@@ -147,18 +158,45 @@ function textPage(title, subtitle, bodyLines) {
   return { items, lines: [] };
 }
 
-function write(name, pages) {
-  const outPath = path.join(OUT, name);
-  fs.mkdirSync(OUT, { recursive: true });
-  fs.writeFileSync(outPath, buildPdf(pages), "utf8");
+function emit(dir, name, pages) {
+  if (ONLY && name !== ONLY) return;
+  fs.mkdirSync(dir, { recursive: true });
+  const outPath = path.join(dir, name);
+  const content = buildPdf(pages);
+  if (CHECK) {
+    const onDisk = fs.existsSync(outPath) ? fs.readFileSync(outPath, "utf8") : null;
+    if (onDisk !== content) {
+      drift += 1;
+      console.log("DRIFT", path.relative(__dirname, outPath));
+    }
+    return;
+  }
+  fs.writeFileSync(outPath, content, "utf8");
   console.log("Wrote", outPath);
 }
 
-function writeTo(dir, name, pages) {
+function emitText(dir, name, text) {
+  if (ONLY) return;
   fs.mkdirSync(dir, { recursive: true });
   const outPath = path.join(dir, name);
-  fs.writeFileSync(outPath, buildPdf(pages), "utf8");
+  if (CHECK) {
+    const onDisk = fs.existsSync(outPath) ? fs.readFileSync(outPath, "utf8") : null;
+    if (onDisk !== text) {
+      drift += 1;
+      console.log("DRIFT", path.relative(__dirname, outPath));
+    }
+    return;
+  }
+  fs.writeFileSync(outPath, text, "utf8");
   console.log("Wrote", outPath);
+}
+
+function write(name, pages) {
+  emit(OUT, name, pages);
+}
+
+function writeTo(dir, name, pages) {
+  emit(dir, name, pages);
 }
 
 write("financial_report_01.pdf", [
@@ -243,7 +281,10 @@ writeTo(INVOICE_OUT, "invoice_line_items_sample.pdf", [
       ["Travel expenses", "1", "350.00", "350.00"],
       ["Software license", "5", "99.00", "495.00"],
     ],
-    true
+    true,
+    // Explicit widths (was the 4-column default [90,250,90,110], which overlapped
+    // the wide Description column and merged cells on regeneration).
+    [200, 60, 90, 90]
   ),
 ]);
 
@@ -255,7 +296,7 @@ const invoiceReadme = `# Invoice test samples
 
 Regenerate: \`node test_data/scripts/generate_general_testfiles_pure.mjs\`
 `;
-fs.writeFileSync(path.join(INVOICE_OUT, "README.md"), invoiceReadme, "utf8");
+emitText(INVOICE_OUT, "README.md", invoiceReadme);
 
 // Synthetic (fully fictional, no real PII) driver-license text-layer fixture:
 // positive arm for the id_card keyword classifier after the bare-"license"
@@ -293,5 +334,10 @@ const readme = `# GeneralFiles — Trial / Cloud Test Samples
 
 Regenerate: \`node test_data/scripts/generate_general_testfiles_pure.mjs\`
 `;
-fs.writeFileSync(path.join(OUT, "README.md"), readme, "utf8");
+emitText(OUT, "README.md", readme);
+
+if (CHECK) {
+  console.log(drift === 0 ? "check: OK - no drift" : `check: ${drift} drifted output(s)`);
+  process.exit(drift === 0 ? 0 : 1);
+}
 console.log("Done.");

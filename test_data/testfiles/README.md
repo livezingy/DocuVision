@@ -20,7 +20,7 @@
 
 - **R1 目录唯一**：每类文档只放一个权威目录，勿新建平行目录（如曾经的 `templates/`、`BankCard/`）。
 - **R2 命名规范**：`类型_描述_编号.扩展名`，小写、无空格、无 `[ ] ( )`、无非 ASCII 隐形字符（如 `U+202F`）。禁用 `foo.pdf`、`P903454_1.jpg` 这类无意义名。
-- **R3 可再生成**：凡能用脚本再生成的样例，必须提供生成脚本并写入对应 README 的「Regenerate」行；只提交「样例 + 脚本」，不提交一次性手工产物。
+- **R3 可再生成**：凡能用脚本再生成的样例，必须提供生成脚本并写入对应 README 的「Regenerate」行；只提交「样例 + 脚本」，不提交一次性手工产物。**改生成脚本后必须同批重跑并提交**：`node test_data/scripts/generate_general_testfiles_pure.mjs --check` 必须报 `OK - no drift`（有漂移即非零退出）；只想重生成单个样例用 `--only <文件名>`，不加参数为全量写入。历史的「脚本改了但夹具未重跑」漂移见 2026-10-08 收敛批次（PR 记录）。
 - **R4 隐私与临时产物不入库**：真实个人/客户/敏感文档、相机照片、截图、调试输出一律放 `test_data/local/` 或本地目录，**不进 `testfiles/`**。客户/来源资产归属 `test_data/assets/<namespace>/`（原 `others/` 已迁至 `assets/upwork-legacy-202610/`，永不进 git）。
 - **R5 体积门槛**：单个样例 ≤ 10MB；超限须在对应 README 说明必要性。`receipts/multipage/receipt_multipage_2p.pdf`（17.7MB）已因此移除。
 - **R6 新目录先登记**：新增子目录须同时放 `README.md`（用途、来源、生成脚本、字段/GT），否则视为不完整。

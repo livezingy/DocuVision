@@ -535,6 +535,7 @@ Phase1 Job-based 端点的 Form 参数与 legacy `POST /api/v1/analyze` 完全�
 | `kie_pages` | str? | `"1"` | KIE 页范围（PDF） |
 | `table_template` | str? | null | `bank_statement`/`invoice_line_items`，触发列映射 |
 | `enable_hitl` | bool | `true` | HITL 审核 |
+| `enable_pii_mask` | bool | `false` | 出口 PII 掩码（v1.11）：`pii_mask_step` 插在 evidence 与 finalize 之间，只改写 `kie_fields`↔`view.fields` 同对象引用，**禁触** `evidence` / `document_info`（字段级作用范围见 `document_pipeline_orchestrator.py::pii_mask_step` docstring + CHANGELOG `[1.12.0]`） |
 
 兼容行为：`document_type` 为 `invoice`/`receipt`/`id_card` 且未显式开 `enable_kie` 时，自动启用 KIE（与 legacy 一致）。
 
@@ -551,6 +552,8 @@ Phase1 Job-based 端点的 Form 参数与 legacy `POST /api/v1/analyze` 完全�
 | `receipt` | 触发收据字段提取 |
 | `passport` | 触发护照字段提取 |
 | `bank_card` | 触发银行卡字段提取 |
+| `coi` | 触发保险凭证（ACORD 25：carrier/policy_type/eff_date/exp_date/limits）字段提取（v1.11） |
+| `pico` | 触发循证（RCT：findings）提取（v1.11） |
 
 （与 [kie.md](./kie.md) 中 `kie_step` 支持的 `document_type` 一致；**不含**已移除的 `card_group` 与 `financial_report`。）
 
@@ -687,7 +690,7 @@ Phase1 Job-based 端点的 Form 参数与 legacy `POST /api/v1/analyze` 完全�
 
 ### 7.8 KIE 与 raw 返回策略（新增）
 
-当 `enable_kie=true` 时，系统会按 `document_type` 触发 **`QwenDocumentKIEService`**（支持 `invoice` / `receipt` / `id_card` / `passport` / `bank_card`）。编排器在信封构建阶段将非空的 `kie_fields` 合并进 **`view.fields`**，并在 **`quality`** 中写入可观测字段。实现细节见 [kie.md](./kie.md)。
+当 `enable_kie=true` 时，系统会按 `document_type` 触发 **`QwenDocumentKIEService`**（支持 `invoice` / `receipt` / `id_card` / `passport` / `bank_card` / `coi` / `pico`；新增类型的登记触面见 [kie.md](./kie.md) §4.2）。编排器在信封构建阶段将非空的 `kie_fields` 合并进 **`view.fields`**，并在 **`quality`** 中写入可观测字段。实现细节见 [kie.md](./kie.md)。
 
 **文档级 KIE 实现要点（与代码一致）**
 

@@ -23,15 +23,23 @@ execution packs & records — temporary, deletable once the project lands).
 | [azure-contract-and-paddle-discovery.md](reference/azure-contract-and-paddle-discovery.md) | Azure sample observations + contract direction notes |
 
 ### runs/ (per-project execution packs/records — temporary, local-only)
+
+Deletion rule: a pack/record is deletable once its project lands (PENDING status `landed`/`retained`); while it is still `open`/`decided` the record stays, because it is cited as the evidence source.
+
 | File | Purpose |
 |------|---------|
-| [P020-ocr-harness-M1M2-执行包.md](runs/P020-ocr-harness-M1M2-执行包.md) | OCR harness 执行包：设计细化 / 护栏 / **§10 云端 runbook 与回填模板** / §10.11-§10.12 空间门禁 |
-| [P021-云端对照-执行清单与记录模板.md](runs/P021-云端对照-执行清单与记录模板.md) | P-021 云端对照的执行清单、OCR JSON SHA 清单与 round3 记录 |
 | [P027/R2-执行记录.md](runs/P027/R2-执行记录.md) | P-027 R2 弱 GT 合成与文本层对账执行记录 |
 | [P027/R3-执行包.md](runs/P027/R3-执行包.md) | P-027 R3 验收三闸 harness 化执行包 |
 | [P027/R3-执行记录.md](runs/P027/R3-执行记录.md) | P-027 R3 验收三闸 harness 化执行记录 |
 | [P027/R4-执行包.md](runs/P027/R4-执行包.md) | P-027 R4 IE 语义层专项执行包 |
 | [P027/R4-执行记录.md](runs/P027/R4-执行记录.md) | P-027 R4 IE 语义层专项执行记录 |
+
+**保留依据**：`runs/P027/` 是唯一在册子目录，保留理由写在 PENDING **P-027** 条目（该条 status = `decided`，未到删除条件）。
+
+**已清理（2026-10-07 索引校正；本目录为 local-only，git 无历史可回溯，故清理批次未逐件留痕）**：
+`runs/P020-ocr-harness-M1M2-执行包.md`（实质结论已由 living doc [../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) + CHANGELOG 承载）·
+`runs/P021-云端对照-执行清单与记录模板.md`（结论已由 PENDING P-021 round3 段 + CHANGELOG 承载）·
+P-029 / P-030 / P-031 / P-032 的 local-only 执行包与记录（各自 landed 后按「提炼后删除」清理）。
 
 **Authoritative docs** live in [../architecture/](../architecture/) and [../README.md](../README.md).
 

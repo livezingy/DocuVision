@@ -1,7 +1,9 @@
 # Evidence Layer（证据接地抽取校验层）— P-029
 
 > Status: living — **权威：`backend/tests/evidence/`**（契约由 pytest 承载，本文为人类可读派生视图）
-> 最近对照：feat/p032-text-first @ 8c09afc（2026-10-07，P-032 M1-M5 + C4 落地；C1b/C5 Cloud 复验待执行）
+> 最近对照：main `21983d0`（2026-10-07，#69 merge；P-032 M1-M5 + C4 落地，Cloud 复验 `baffc46` **全绿**——
+> E1 引文逐字命中 3/3 / E5 多页不丢 10=10 / E7 回归 620 passed·0 fail）。P-032 已结并**晋升出 PENDING**（2026-10-07；
+> 本文即 `backend/app/services/evidence/**` 的 owning living doc，契约见 §2 模块表与 §4.1 text-first 分支）。
 > 来源：sciextract RCT 报告 v2 实证的三闸方法（闸 A 逐字 quote 接地 / 闸 B hedge 保真 / 闸 C 槽完整性），
 > 自交接件移植（设计稿/执行包/执行记录 local-only：`docs/R&D/runs/P029/`）。
 

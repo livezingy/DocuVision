@@ -4,7 +4,6 @@
  */
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -258,15 +257,18 @@ Regenerate: \`node test_data/scripts/generate_general_testfiles_pure.mjs\`
 `;
 fs.writeFileSync(path.join(INVOICE_OUT, "README.md"), invoiceReadme, "utf8");
 
-// Synthetic (fully fictional, no real PII) driver-license fixture: positive
-// arm for the id_card keyword classifier after the bare-"license" narrowing
-// (2026-10-08). Content must contain >= 2 id_card keywords ("driver license"
-// + "date of birth") so it clears the single-keyword guard.
-const ID_OUT = path.join(__dirname, "..", "testfiles", "id_card");
-writeTo(ID_OUT, "id_card_synthetic_sample.pdf", [
+// Synthetic (fully fictional, no real PII) driver-license text-layer fixture:
+// positive arm for the id_card keyword classifier after the bare-"license"
+// narrowing (2026-10-08). Lives in the authoritative card / ID directory
+// (test_data/testfiles/README.md R1: 卡证 -> images/kie/), and must contain
+// >= 2 id_card keywords ("driver license" + "date of birth") to clear the
+// single-keyword guard. Its README entry is hand-maintained in
+// test_data/testfiles/images/kie/README.md (next to the other card samples).
+const KIE_OUT = path.join(__dirname, "..", "testfiles", "images", "kie");
+writeTo(KIE_OUT, "id_card_driver_license_01.pdf", [
   textPage(
     "SYNTHETIC SAMPLE - NOT A REAL DOCUMENT",
-    "Driver License (synthetic test fixture; all data fictional)",
+    "Driver License (synthetic text-layer fixture; all data fictional)",
     [
       "STATE OF SAMPLE            DRIVER LICENSE",
       "DL N0: S1234567            CLASS: D",
@@ -278,18 +280,6 @@ writeTo(ID_OUT, "id_card_synthetic_sample.pdf", [
     ]
   ),
 ]);
-
-const idCardPdf = path.join(ID_OUT, "id_card_synthetic_sample.pdf");
-const idCardSha = crypto.createHash("sha256").update(fs.readFileSync(idCardPdf)).digest("hex");
-const idCardReadme = `# id_card test samples
-
-| File | Purpose | sha256 |
-|------|---------|--------|
-| \`id_card_synthetic_sample.pdf\` | Synthetic driver-license fixture (positive arm for the \`id_card\` keyword classifier; all data fictional, no real PII) | \`${idCardSha}\` |
-
-Regenerate: \`node test_data/scripts/generate_general_testfiles_pure.mjs\`
-`;
-fs.writeFileSync(path.join(ID_OUT, "README.md"), idCardReadme, "utf8");
 
 const readme = `# GeneralFiles — Trial / Cloud Test Samples
 

@@ -20,7 +20,7 @@
 | 模块 | 职责 |
 |---|---|
 | `backend/app/services/evidence/findings_schema.py` | FindingRecord 契约（`SCHEMA_VERSION = evidence-findings/1.0`）；`PROMPT_VERSION = v4`（P-032 C4）与 `kie_configs/pico.yaml` 模板头版本绑定（机器校验读真实模板头），不一致 = 门禁 ERROR（防抽取模板与校验契约两处漂移）；`PicoSlots` 为首张域槽模板，新域经 `register_slot_template` 注册、核心形状不动 |
-| `backend/app/services/evidence/closed_lists.json` | 闭表单一真源（`closed_lists/1.0`）：hedge EN 14 词（prompt 白名单种子，金样校准）；ZH 12 词与因果动词三档待首个中文域数据 PR 补种，不自行造词 |
+| `backend/app/services/evidence/closed_lists.json` | 闭表单一真源（`closed_lists/1.0`）：hedge EN 14 词（prompt 白名单种子，金样校准）；ZH 12 词与因果动词三档**有意留空**（2026-10-07 裁决：不补种、不设触发条件；中文域 Gate B/C 不覆盖，边界见 `capability-card-v1.12` §3） |
 | `backend/app/services/evidence/normalize.py` | 接地归一器（交接件 `ingest_pdf.py` 的 `normalize()` + `LIGATURES` 原样移植；只入 evidence 层，不进表格域） |
 | `backend/app/services/evidence/verifier.py` | V0-V6 归一梯 + 判类写死 + 闸 B 集差语义 + 闸 C 槽行；`--selftest` 自检入口；全链 UTF-8、诊断 ASCII（Windows GBK 守卫） |
 | `backend/app/services/evidence/gate.py` | fail-closed 门禁：failure ledger、HITL 路由、findings JSONL 产物、页接地文本构建与页信任闸（旗标分叉见 §4） |

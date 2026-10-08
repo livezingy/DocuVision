@@ -19,8 +19,9 @@ execution packs & records — temporary, deletable once the project lands).
 |------|---------|
 | [DocuVision-项目全景图.md](reference/DocuVision-项目全景图.md) | 跨项目切换回来的第一入口（结构/版本/在途事项速览；结构变化时刷新本图） |
 | [capability-card-v1.12.md](reference/capability-card-v1.12.md) | 面向 Agent U 的投标能力卡（v1.0.3）：13 能力域（+行 12 RCT 验证资产 / 行 13 evidence 校验层）+ 诚实边界 + 营销词黑名单 + 数字来源索引；tag `v1.12.0` 已回填 |
-| [capability-card-v1.10-v1.0.md](reference/capability-card-v1.10-v1.0.md) | 前版能力卡（v1.0.2）：11 能力域；tag `v1.10.0` 已回填（历史留档） |
-| [azure-contract-and-paddle-discovery.md](reference/azure-contract-and-paddle-discovery.md) | Azure sample observations + contract direction notes |
+| [azure/azure-contract-and-paddle-discovery.md](reference/azure/azure-contract-and-paddle-discovery.md) | Azure sample observations + contract direction notes（2026-10-08 索引校正：实际在 `reference/azure/` 子目录下） |
+
+> **已清理（2026-10-08 索引校正）**：`capability-card-v1.10-v1.0.md`（前版能力卡，磁盘已不在；其历史内容由 git 历史承载）。
 
 ### runs/ (per-project execution packs/records — temporary, local-only)
 

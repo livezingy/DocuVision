@@ -11,6 +11,15 @@
 | `passport_sample_01.png` | `passport` | 护照样例 |
 | `bank_card_sample_01.png` | `bank_card` | 银行卡样例 |
 
+## 分类器正例（文本层 PDF，2026-10-08）
+
+| 文件 | document_type | 说明 |
+|------|----------------|------|
+| `id_card_driver_license_01.pdf` | `id_card` | **合成驾照样式 PDF**（全虚构、页面印 `SYNTHETIC SAMPLE`）：`document/profile` 关键词分类器的正例，含 `driver license` + `date of birth`（≥2 关键词，过单证据护栏）。图片类卡证样例（`DriverLicense.png` 等）无文本层，不适用于该分类器 |
+
+生成（零依赖、字节确定性；该脚本同时生成 `GeneralFiles/` 与 `invoices/` 的样例）：
+`node test_data/scripts/generate_general_testfiles_pure.mjs`
+
 ## 并入的遗留样例（2026-10-03 自 BankCard/、IDCard/、passports/ 迁移，待 Cloud 复核）
 
 > 以下样例由历史目录并入，**未纳入 KIE-ACCEPT 验收矩阵**，`document_type` 为按文件名推断值，首次使用前需人工复核并补 ground-truth。

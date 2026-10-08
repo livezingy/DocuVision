@@ -257,6 +257,30 @@ Regenerate: \`node test_data/scripts/generate_general_testfiles_pure.mjs\`
 `;
 fs.writeFileSync(path.join(INVOICE_OUT, "README.md"), invoiceReadme, "utf8");
 
+// Synthetic (fully fictional, no real PII) driver-license text-layer fixture:
+// positive arm for the id_card keyword classifier after the bare-"license"
+// narrowing (2026-10-08). Lives in the authoritative card / ID directory
+// (test_data/testfiles/README.md R1: 卡证 -> images/kie/), and must contain
+// >= 2 id_card keywords ("driver license" + "date of birth") to clear the
+// single-keyword guard. Its README entry is hand-maintained in
+// test_data/testfiles/images/kie/README.md (next to the other card samples).
+const KIE_OUT = path.join(__dirname, "..", "testfiles", "images", "kie");
+writeTo(KIE_OUT, "id_card_driver_license_01.pdf", [
+  textPage(
+    "SYNTHETIC SAMPLE - NOT A REAL DOCUMENT",
+    "Driver License (synthetic text-layer fixture; all data fictional)",
+    [
+      "STATE OF SAMPLE            DRIVER LICENSE",
+      "DL N0: S1234567            CLASS: D",
+      "LN: SAMPLE                 FN: JANE",
+      "DATE OF BIRTH: 01-JAN-1990    EXP: 01-JAN-2030",
+      "ISS: 01-JAN-2024           SEX: F   HGT: 5-06",
+      "ADDRESS: 100 EXAMPLE ST, SAMPLETOWN, SAMPLE 00000",
+      "RESTRICTIONS: NONE         ENDORSEMENTS: NONE",
+    ]
+  ),
+]);
+
 const readme = `# GeneralFiles — Trial / Cloud Test Samples
 
 | File | Purpose | Suggested track |

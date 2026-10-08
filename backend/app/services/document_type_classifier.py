@@ -11,7 +11,25 @@ import pdfplumber
 _KEYWORDS = {
     "invoice": ("invoice", "bill to", "invoice number", "tax id"),
     "receipt": ("receipt", "thank you", "subtotal", "payment"),
-    "id_card": ("identity", "date of birth", "license", "passport"),
+    # Bare "license" removed 2026-10-08: a generic English word (CC-BY lines,
+    # contractor "LICENSE NUMBER", "software license renewal") made any such
+    # page-1 text classify as id_card with confidence 1.0 (P-031 observation:
+    # 4/5 OA RCT papers; fixtures coi_negative_fl_exemption.pdf and
+    # transaction_ledger_unbordered.pdf). Driver-specific phrases only, British
+    # spellings included. Tie discipline (P-030 X6) unchanged: values edited
+    # in place, key order untouched.
+    "id_card": (
+        "identity",
+        "date of birth",
+        "driver license",
+        "driver's license",
+        "drivers license",
+        "driver licence",
+        "driver's licence",
+        "driving licence",
+        "driving license",
+        "passport",
+    ),
     "bank_card": ("card number", "valid thru", "credit card", "debit"),
     "passport": ("passport", "nationality", "mrz"),
     # Appended last on purpose: max() breaks score ties by insertion order, so
@@ -54,6 +72,11 @@ def classify_document(file_path: str, text_hint: str = "") -> Dict[str, Any]:
     if scores.get(best, 0) == 0:
         return {"document_type": "auto", "confidence": 0.0, "scores": scores}
     total = sum(scores.values()) or 1
+    if total == 1:
+        # Single keyword hit across all types is not enough evidence to suggest
+        # a type: under the share-of-total confidence it would surface as a
+        # 100%-confident hint (the bare-"license" failure mode).
+        return {"document_type": "auto", "confidence": 0.0, "scores": scores}
     return {
         "document_type": best,
         "confidence": round(scores[best] / total, 3),

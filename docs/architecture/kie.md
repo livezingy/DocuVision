@@ -83,6 +83,7 @@ flowchart LR
 - **一致性哨兵**：`backend/tests/test_kie_domain_consistency.py` 断言 `_KEYWORDS` == `KIE_SUPPORTED_DOC_TYPES` == `_registry.yaml` keys（三向相等，当前 7==7==7）；`auto` 的错误消息文案也从该 frozenset 派生（防第二份清单漂移）。
 - 第 7 处的人读数据表见 [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md) §Required key hints。
 - **`enable_kie` 的自动启用是前端行为**：后端 `auto` 兜底硬编码集合（invoice/receipt/id_card）自 v1.4 起未扩面，`coi`/`pico` 靠前端 `KIE_DOC_TYPES` 命中后显式传参（扩后端兜底属另行立项）。
+- **分类器边界**：`document_type_classifier` 为关键词启发式（MVP），`/document/profile` 的 `suggested_document_type` 仅作提示、可误判——词表裸词即假阳源（2026-10-08 已收窄：`id_card` 去掉裸 `license`、改 driver-license 家族（含英式拼写），并加"全类型仅 1 词命中不建议"护栏）。改词表须重跑负向臂（`test_document_type_classifier.py`）+ `document/profile` 云端单点复验。
 
 ## 5. 对外契约（稳定）
 

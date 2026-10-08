@@ -64,6 +64,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **P-023** (rule + gate `check_stub_scope` / T2 shipped; the entry keeps the two failure-mode precedents).
   Each states its reason in the entry, so DOC-3 no longer clocks them.
   `Promotion-check: 6 eligible (P-002 P-021 P-028 P-029 P-030 P-031) -> promoted; 3 landed -> retained (P-015 P-020 P-023)`.
+- **id_card classifier: bare `license` keyword narrowed + single-evidence guard** (2026-10-08): the
+  `document/profile` suggestion misfired on any page-1 text containing the generic word "license" -
+  4/5 OA RCT papers (P-031 observation), the workers-compensation exemption letter
+  (`coi_negative_fl_exemption.pdf`, its only hit was the contractor "LICENSE NUMBER") and the
+  transaction-ledger fixture all classified `id_card` at confidence 1.0. The `id_card` keyword list now
+  uses driver-specific phrases only (US + British spellings), and a single keyword hit across all types
+  no longer suggests a type (previously: a 100%-confident hint). Measured over all 33 committed PDFs:
+  exactly one pinned expectation flips (`coi_negative_fl_exemption.pdf` id_card 1.0 -> auto 0.0,
+  re-pinned with rationale), the ledger fixture joins the negative arm, the four pico papers rise
+  0.667/0.75/0.667/0.8 -> 1.0 (type unchanged), and a synthetic (fully fictional, no real PII)
+  driver-license fixture now covers the positive arm (`test_data/testfiles/id_card/`, produced by the
+  zero-dependency generator with its sha256 recorded in the fixture README). Heuristic boundary noted in
+  `kie.md` §4.2. Touches `POST /api/v1/document/profile` only - KIE/pipeline untouched, P-032 E1-E7
+  unaffected.
 
 ### Removed
 

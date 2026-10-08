@@ -4,6 +4,7 @@
  */
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -256,6 +257,39 @@ const invoiceReadme = `# Invoice test samples
 Regenerate: \`node test_data/scripts/generate_general_testfiles_pure.mjs\`
 `;
 fs.writeFileSync(path.join(INVOICE_OUT, "README.md"), invoiceReadme, "utf8");
+
+// Synthetic (fully fictional, no real PII) driver-license fixture: positive
+// arm for the id_card keyword classifier after the bare-"license" narrowing
+// (2026-10-08). Content must contain >= 2 id_card keywords ("driver license"
+// + "date of birth") so it clears the single-keyword guard.
+const ID_OUT = path.join(__dirname, "..", "testfiles", "id_card");
+writeTo(ID_OUT, "id_card_synthetic_sample.pdf", [
+  textPage(
+    "SYNTHETIC SAMPLE - NOT A REAL DOCUMENT",
+    "Driver License (synthetic test fixture; all data fictional)",
+    [
+      "STATE OF SAMPLE            DRIVER LICENSE",
+      "DL N0: S1234567            CLASS: D",
+      "LN: SAMPLE                 FN: JANE",
+      "DATE OF BIRTH: 01-JAN-1990    EXP: 01-JAN-2030",
+      "ISS: 01-JAN-2024           SEX: F   HGT: 5-06",
+      "ADDRESS: 100 EXAMPLE ST, SAMPLETOWN, SAMPLE 00000",
+      "RESTRICTIONS: NONE         ENDORSEMENTS: NONE",
+    ]
+  ),
+]);
+
+const idCardPdf = path.join(ID_OUT, "id_card_synthetic_sample.pdf");
+const idCardSha = crypto.createHash("sha256").update(fs.readFileSync(idCardPdf)).digest("hex");
+const idCardReadme = `# id_card test samples
+
+| File | Purpose | sha256 |
+|------|---------|--------|
+| \`id_card_synthetic_sample.pdf\` | Synthetic driver-license fixture (positive arm for the \`id_card\` keyword classifier; all data fictional, no real PII) | \`${idCardSha}\` |
+
+Regenerate: \`node test_data/scripts/generate_general_testfiles_pure.mjs\`
+`;
+fs.writeFileSync(path.join(ID_OUT, "README.md"), idCardReadme, "utf8");
 
 const readme = `# GeneralFiles — Trial / Cloud Test Samples
 

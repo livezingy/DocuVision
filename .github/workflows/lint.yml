@@ -12,7 +12,18 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["backend/**", "frontend/**", "scripts/**", ".github/workflows/lint.yml"]
+    # `test_data/testfiles/**` + `test_data/scripts/**` are P-033's gate inputs (the fixture
+    # generator and its outputs); they only matter for a bypass push, since the ruleset
+    # routes everything through a PR - and PRs never filter paths (see below).
+    paths:
+      [
+        "backend/**",
+        "frontend/**",
+        "scripts/**",
+        "test_data/testfiles/**",
+        "test_data/scripts/**",
+        ".github/workflows/lint.yml",
+      ]
   pull_request:
     branches: [main]
     # 2026-09-20 (branch protection): `paths` dropped on purpose. `lint` and `e2e` are
@@ -70,6 +81,15 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      # P-033 (2026-10-08): fixture reproducibility. The zero-dependency generator must
+      # round-trip every committed sample; `--check` writes nothing and exits 1 on drift.
+      # Four samples had silently drifted before this gate existed (they predate the
+      # ASCII-safe fix and a column-width change - PR #74 converged them), invisible to
+      # every other gate because only a human re-running the generator could see it.
+      # The script needs no npm packages, so it sits before `npm ci` and fails fast.
+      - name: Fixture reproducibility (generator --check)
+        run: node test_data/scripts/generate_general_testfiles_pure.mjs --check
 
       - name: Install frontend toolchain (from lockfile)
         run: npm ci

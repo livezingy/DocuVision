@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **13** 条）
+## 待确认（本区共 **14** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -652,6 +652,16 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **资产指纹校验口径修正（2026-10-05）**：`test_data/scripts/verify_assets.py` 扩到双 schema（`assets[].path` 源资产 + `artifacts[].file` 产出件）+ **空清单防呆**（此前 `derived/*` 的 pack 清单因 schema 不识别被静默判「0 行 OK」= 假通过）。**口径修正（重要，勿再退回字节 sha）**：PyMuPDF `save()` 每次写入随机 `/ID[1]`，**派生产物字节不可复现**（同命令两次运行 sha256 不同，实测 `4d5aa2e0…` vs `62801eb3…`），故字节 sha256 不能作 `derived/packs/*` 的基准；改用**内容指纹**（`text_sha256` + `pages` + `words` + `rotation`），跨 run 稳定且仍能以 `rotation` 区分 IE-p079 两个产物（90 原始 / 0 证据包，text_sha 相同因 `set_rotation(0)` 只改元数据）。内容级校验走 PyMuPDF，不可用时记 `UNVERIFIED` 且非零退出，绝不静默通过；源资产字节路径零改动。实证：pack `c4_ie_p079` 2/2 OK、assets 12/12 OK（2 命名空间）、空清单 exit 1。P-028 rot0 证据包已按 generator 本地重生成（源件 sha `ae4ae7d8…` 校验通过），与云端实例**内容等价**（82 词 / rotation 0 / band 词 40.7+40.98 / judge_page_trust=text_layer 全部一致），字节 sha 不可比。
 - **testfiles/others 迁入 assets（2026-10-04，Ying 授权）**：`test_data/testfiles/others/`（此前多个 **无单号** Upwork 需求单附件，4 件：`911_History_Report [1-10].pdf` / `ejemplo1_resultado.jpeg` / `ejemplo2_resultado.jpeg` / `P903454_1.jpg`）迁入新客户命名空间 `test_data/assets/upwork-legacy-202610/`（`raw/` 4 件原样保留 + `manifest.json` 4 件 SHA256 + `README.md`），与 `upwork-022102306242203617428/` 同构。命名 `legacy` 表「历史/无单号」、`202610` 界定「2026-10 前」。**校验/审计泛化**：`test_data/scripts/verify_assets.py` 与 `scripts/assets_manifest_audit.py` 由硬编码单 client 改为**遍历 `assets/*/` 全部命名空间**（新命名空间零改码接入；每个命名空间目录须含 `manifest.json`）。根 `.gitignore` 移除失效的 `test_data/testfiles/others/` 规则；`testfiles/README.md` / `acceptance/README.md` 同步。客户附件仅 `test_data/` 内重组，未出仓库。
 - **R3 D4 边界解释性裁定追认（2026-10-05，Ying）**：R3 §5.2 的实现形态——闸 1 退化为「字段级在场核对」（pred 行结构化投影不做）、「无发明值」取 OCR 输出侧形态（幻影频段计数）——**追认为正式口径（保守形态即为口径），该裁定「Ying 可另裁」口关闭**。语义钉死：`row_correct`（行级 join）与 `presence_rate`（字段在场）为两个**独立强度**判据，各自如实登记、不互相折算；R4 D4′ 的行重建（配对单元 = 频段行 + 跨块端点拼对）属**判分器粒度修正**（X3-4 兑现），不改变本裁定「pred 侧行结构化投影不做」的边界；若未来产品侧 IE 语义层修复（R3 缺口 1）落地后需要行级投影核对，属新立项范围、不回改本口径。
+
+### P-033 · 测试夹具可复现哨兵：生成器 `--check` 进 CI（2026-10-08）
+> status: landed · since: 2026-10-08
+- **来源**：2026-10-08 夹具收敛批次（PR #74）实测——`generate_general_testfiles_pure.mjs` 与已提交样例**不幂等**：4 件因早于 ASCII-safe 修复（`b16c83a`）而文本层带 U+2014 三字节乱码（pdfplumber 读作 `(cid:226)(cid:128)(cid:148)`），1 件因列宽默认值变化重生成即并字（`Professional services4 0- Phase 1`），1 个 README 漂移。**漂移此前完全无机检**：只有人重跑才看得见——与 P-008「声明的东西是否真被接上」同类缺口。
+- **机制**：生成器已具备 `--check`（不写、列出漂移件、有漂移 exit 1）与 `--only <文件名>`；本条目把它**接进 CI**——在既有的必需检查 `lint` job 内、Node 就绪后执行 `node test_data/scripts/generate_general_testfiles_pure.mjs --check`，非零退出即红（沿用 P-008/P-025 的"复用既有 required check"取向）。
+- **落点**：`.github/workflows/lint.yml`（lint job 新步，置于 Node setup 之后、`npm ci` 之前 = 失败快、且该脚本零 npm 依赖；**红线文件，用户 2026-10-08 显式授权**）· `module-map.md` §5 登记 **E3** · `test_data/testfiles/README.md` R3 写明"CI 强制" · CHANGELOG。
+- **判据**：`--check` 输出 `OK - no drift` 且 exit 0（收敛前实测 `6 drifted output(s)` 且 exit 1）。
+- **能力边界（必须写明，否则方案变幻觉）**：本门禁只覆盖**该生成器**的三个输出（`GeneralFiles/`、`invoices/`、`images/kie/` 的新样例）；**不纳入**其他夹具生成器（如 `test_data/scripts/generate_kie_id_card_samples.py` 的 PIL 渲染件）与**图片类夹具**（JPEG/PNG 编码与元数据不可字节复现）——纳入前须先证明"内容指纹可复现"（口径参照 `test_data/scripts/verify_assets.py`）。local-only 面（`docs/R&D/**`、`scripts/measure/**`）不在视野。
+- **触发条件**：改 `generate_general_testfiles_pure.mjs` 或 `test_data/testfiles/**` 样例时（本地先跑 `--check`，CI 兜底）；新增夹具生成器时按上条评估是否纳入。
+- **相关**：PR #74（`--check`/`--only` 与收敛批次）· `test_data/testfiles/README.md` R1/R3 · P-008（"声明但未接线"形态）· P-025（门禁 + 检查点范式）。
 
 - **`docs/R&D/runs/P027/` 保留理由（2026-10-07 登记）**：该目录 5 件（`R2-执行记录` · `R3-执行包` · `R3-执行记录` · `R4-执行包` · `R4-执行记录`）**尚不可删**——按 `docs/R&D/README.md` 的 runs 政策（"temporary, deletable once the project lands"，来源 commit `b3dcfa2`），删除前提是**本条 land**；现 status = `decided`，在途义务未清（R3 缺口 1 IE 语义层产品侧修复 / D8 Confidence 产品源 / BR 葡语解锁触发 / 分岔 C 优先级重排 / R1 taxonomy 转用例）。三条引用使其成为不可断的判据出处：①CHANGELOG `[1.11.0]` P-027 R2/R3/R4 三段以 `runs/P027/R3-执行记录.md`、`R4-执行记录.md` 为 execution record；②本仓 P-002 条目（follow-up 触发证据段）把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；③R4 记录 §6「保留判据与明细」是隔离区 `test_data/derived/**` 证据链的唯一盘存表。**触发**：本条转 `landed`/`retained` 时，同批删除本目录并同步 `docs/R&D/README.md` 的 runs 索引（对照：P-030/P-031/P-032 的 local-only 执行包已按「提炼后删除」清理）。
 

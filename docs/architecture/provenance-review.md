@@ -1,7 +1,7 @@
 # 表格回填与 Provenance Review 机制（技术参考）
 
 > 状态：§1-§3 为 v1.8/v1.8.1 **已实现行为**（分支 `feature/v1.8.1`，c37e35c）；§4-§5 为 **v1.9 已实现**（P-002 三层对应 + sanity 闸，`feat/p002-table-alignment`）。
-> 代码归属：`backend/app/services/table_backfill.py`（漏斗）、`table_alignment.py`（对齐层新代码宿主：布局模型 / T1 / T3 / sanity，P-002 D1）、`page_text_trust.py`（页信任）、
+> 代码归属：`backend/app/services/table_backfill.py`（漏斗）、`table_alignment.py`（对齐层：T1/T2/T3 + sanity 宿主，P-002 D1）、`table_layout.py`（布局模型，P-028 F1 拆分）、`table_cell_geo.py`（候选/几何/文本层块，P-028 F1 拆分）、`table_band_range.py`（频段区间模式校验，P-028 新增）、`page_text_trust.py`（页信任）、
 > `proof_render.py` / `proof_report.py` / `proof_pack.py`（证明包）。
 
 ## 1. Review 覆盖范围（现有行为）

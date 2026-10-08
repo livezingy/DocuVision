@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **20** 条）
+## 待确认（本区共 **13** 条）
 
-- **机检索引（勿手改）**：`P-002` `P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-021` `P-023` `P-024` `P-025` `P-026` `P-027` `P-028` `P-029` `P-030` `P-031` `P-032`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -17,49 +17,10 @@
 - 历史：P-001 已按用户裁决移除 2026-09-20，后续有需要再立项；P-012 已结并晋升 `docs/architecture/v1.7-roadmap.md`；
 **P-022 已结并晋升 `docs/architecture/doc-governance.md`**（2026-09-25，走本抬头「结论确认 → 晋升 → 移除」正规流程；门禁登记为 `module-map.md` §5 的 **DOC-1 / DOC-2**；此前索引漏登 P-022 亦随该次修正）；
 **P-007 / P-010 / P-013 / P-016 已结并移除**（2026-09-25 清账批次，同走「结论确认 → 晋升 → 移除」流程；结论分别由 `docs/architecture/v1.9-roadmap.md` §Scope S1 ｜ `docs/agent-ops/operations.md` §CI 成本与配额 + CHANGELOG ｜ `docs/agent-ops/doc-sync-ownership.md` 主表+脚注 2 ｜ kernel `frontend.md` 已知 gap 条目承载，明细证据仍在 CHANGELOG 与 git 历史）；
-**P-006 已按用户裁决移除**（2026-09-26，**非**晋升路径：其主体 `.zcode/` 目录连同 `.gitignore` 的 `.zcode/plans/` 规则一并删除，预计半年内不使用该工具，后续要用再立项；该目录从未入库，故无 git 历史可回溯）
-
-### P-002 · 表格逐格对齐的文本优先重构（v1.9 候选，2026-09-13）
-> status: landed · since: 2026-09-29
-- 来源：v1.8.1 PROOF-001 云端实测（mamba p12/p29 红率 58%/97%，均匀网格对应在非等宽表上大面积失准）
-  + 用户裁决（红框停画、绿/琥珀锚定印刷字符已落地 c37e35c）；用户提出"比对应直接基于文本坐标"。
-- 现状边界：born-digital 表格的逐格红/绿标注精度受均匀网格限制；琥珀（真实修正）已由
-  `cell_word_bbox` 锚定精确；红（对齐失败）不画、仅入清单。
-- 待决项（三层对应 + 两条配套）：
-  1. **值匹配优先**：表 bbox 邻域文本层词中找与 OCR 值归一化相等的词（治"准确数字被标红"）；
-  2. **几何包含**（现状三关）作降级；
-  3. **文本聚类映射**：y 聚行 / x 分列，映射 vision 网格索引（处理非等宽与同值碰撞）；
-  4. `mismatch_details`/对齐记录加 `reason` 字段（value_match/geometric/no_aligned_line/crossing/multi_line）；
-  5. **回填 sanity 规则**：仅当 OCR 值与文本层值呈 OCR 混淆形态（同长度/同字符集小扰动）才改值，
-     否则标红——封死非等宽表上"推导框完整装下邻居值 → 回填错值"的注入路径。
-- 触发条件：真实客户文档（trial 3-5 单）证明需要逐格红/绿标注或出现误报投诉时立项；
-  立项即需 BACKFILL-001 云端重验。责任仓：`table_backfill.py` 对应层 + 契约 `reason` 字段。
-- 技术规格存档：`docs/architecture/provenance-review.md`（§4 sanity 规则规格 / §5 三层对应）。
-- 落地（2026-09-29，`feat/p002-table-alignment`，执行者 AgentE）：三层对应 + sanity 闸 + reason
-  契约已实现并通过本机门禁（pytest 442 / audit / lint / docs_refs 全 0 违规）；golden 三件套
-  pin 与 4 处期望翻转见 CHANGELOG P-002 条目；设计稿（local-only 草稿，已按 constraints.md 清理）执行期裁决 X1-X5 见 CHANGELOG P-002 条目（结论已晋升 provenance-review.md §4/§5）。
-  **云端验证（2026-09-29）**：G4 判据 1-6/9 PASS（bank 12×value_match、symbol 全绿）；G5 INV
-  零违规 + 候选格恒等，p12 红率 58.2%→0.8%、p29 97%→25.4%（双 PASS）；**正确性实证**：旧漏斗
-  对 mamba p12 四格静默错填（'89.48'→'ppl ↓' 等列头标签），P-002 sanity 拦截（裁决 X5：sanity
-  上界改观察口径、p34 记已知局限、混淆集不动）。**云端三 Gate 全过（2026-09-29）**：G6 WTW
-  哨兵 PASS（5 单 no-op 强断言逐键复现旧缓存；本机重判分 `wtw_metrics.csv` sha256 ==
-  `e44d5e6d1de26fda2da1238699f04b8aa2c4b9d8acc2adeebfba14f3db770968` 与 GB2 逐位一致）。
-  PR #46 已合并（b16c19d，2026-09-29），转 **landed**；结论已晋升 `provenance-review.md` §4/§5，
-  90 天晋升审视按 kernel `doc-sync.md` 惯例执行。
-- **follow-up 触发证据（2026-10-03，P-027 R4 envelope 判分登记，只登记不修）**：IE-p079（无框线合并格页，
-  客户自评「最难」版式）管线频段单元 `40.7-4098MHz`——`40.98` 小数点丢失 ⇒ 合并格频段范围不完整
-  （止端点未印出，#7 家族）；同页列绑定三族全对（结构失效与列绑定保持独立可测）。次级证据：IE-p007
-  服务文内 `925-960` 被误读为 `921 925.M`。判据与读数 = P-027 R4 执行记录 §4.1（local-only）；
-  合并格/borderless 语义层硬化立项时以此为入口（R4 执行包 §6 义务）。
-- **follow-up 立项兑现（2026-10-03）：P-028 承接，BACKFILL-001 云端重验义务随迁。** BACKFILL-001 三 Gate 复验完成（2026-10-04）：G4 bank/主证 + G5 INV + G6 WTW 哨兵全过 ⇒ 本条 follow-up 义务兑现（读数与已知回退项见 P-028 条目 C4 行）。
-- 执行期裁决 X3/X4 补录（2026-09-30，从已清理的 local 设计稿摘录 + 按当前树校准；设计稿为 local-only 草稿，结论已晋升，不另留存档）：
-  X3 = §12 A10 rg 模式漏 `"]` 匹配不到 golden 翻转锚点（原实测 :103-104）→ 模式已修正（`.\]`）；
-       另：P-002 落地后该锚点值由 == 6 改 == 12/== 0、行号漂至 :105-106，§12 命令需按当前树同步
-       （设计稿 §12 更正值 `== 12|== 0` + `:105-106` 已并入本条目上文，设计稿不再留存）。
-  X4 = EXP_X_MIN_RATIO 标定：0.15×表宽在多列窄表上爆炸（mamba p29 19 列/列宽 22.8pt → 窗 64.95pt=2.85 列宽，
-       2 列零锚定；p34-t1 8 列中 5 列零锚定）→ 批准 0.15→0.05（2026-09-29）：p29 窗 21.6pt≈0.95 列宽；
-       bank/symbol 读数不变（0.6×均匀列宽项主导）；其余三常数维持默认。dump 证据
-       `backend/debug/c0_mamba_layout_preview.json`（local-only）。代码落点 `table_alignment.py:144-153`。
+**P-006 已按用户裁决移除**（2026-09-26，**非**晋升路径：其主体 `.zcode/` 目录连同 `.gitignore` 的 `.zcode/plans/` 规则一并删除，预计半年内不使用该工具，后续要用再立项；该目录从未入库，故无 git 历史可回溯）；
+**P-032 已结并晋升 `docs/architecture/evidence-layer.md`**（2026-10-07，走「结论确认 → 晋升 → 移除」正规流程：该文即 `backend/app/services/evidence/**` 的 owning living doc，text-first 契约在其 §2 模块表（`grounding.py`/`text_first.py`/`pico.yaml` 三行）+ §4.1 text-first 分支（旗标语义 / 抽取输入 / 信任判据 / `evidence.stats` 键）；Cloud 复验读数（`baffc46`：E1 3/3 逐字命中 / E5 10=10 / E7 620 passed）记入该文「最近对照」行，明细证据仍在 CHANGELOG `[Unreleased]` 与 git 历史；两项后续项经用户裁决删除，故无遗留动作）；
+**P-002 / P-021 / P-028 / P-029 / P-030 / P-031 已结并移除**（2026-10-07 清账批次，同走「结论确认 → 晋升 → 移除」流程；结论现载体：P-002 → `docs/architecture/provenance-review.md` §4/§5 ｜ P-021 → `docuvision-system-design.md` §3.2–§3.4 + `ocr-quality-harness.md` §5 + `docs/demo/QUALITY_CASE_STUDY.md` + 契约单测 ｜ P-028 → `provenance-review.md` §4.4 ｜ P-029 → `evidence-layer.md` + `capability-card-v1.12` 行 13 ｜ P-030 → `kie.md` §4/§4.2 + `docuvision-system-design.md` §7.1/§7.8 ｜ P-031 → `kie.md` §4.2 + `KIE_ACCEPTANCE_CRITERIA.md` §Required key hints；明细证据仍在 CHANGELOG 与 git 历史）；另 **P-021 的 F1 判例**（allowlist 内文件按记录值钉死，改前先查 allowlist）已随本批次并入 `DEVELOPMENT.md` 第 1 条；
+**P-015 / P-020 / P-023 由 `landed` 改列 `retained`**（2026-10-07，用户裁决；保留理由已写入各条首行——分别保留 LFS 否决理由与重议触发 / harness 证据附件与规模偏差 / stub 作用域判例）
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 > status: retained · since: 2026-09-26
@@ -255,7 +216,8 @@
   （接 CI 仍需授权）。历史保留在本条与 CHANGELOG + git，不再计入待确认。
 
 ### P-015 · 大文件与 Git LFS 取舍（2026-09-17，治理批次评估）
-> status: landed · since: 2026-09-17
+> status: retained · since: 2026-09-17
+- **保留理由（2026-10-07，landed → retained；用户裁决）**：结论①（维持现状）与「新增 >5MB 二进制须在 PR 声明」已由 kernel `docs/agent-ops/core/constraints.md` §通用工程纪律承载（该条款正文仍引用本条：「见 P-015 的取舍」）；本条目保留的是**否决 Git LFS 的理由**与**重议触发**（clone 体积或 CI 时长成为实际问题时重开②）——两者只在此处留档，落在 living doc 会无谓扩面。
 - 背景：本批次按要求扫描 `test_data/testfiles/**` 与 `docs/architecture/media/**` 中 **>5MB** 的文件，
   产出 LFS 候选清单（**只评估报告，不执行迁移**）。
 - 实测（2026-09-17；四个文件均经 `git ls-files` 确认**已被跟踪**，即已进 git 历史）：
@@ -429,7 +391,8 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
   结论（CI 会复跑）不变，机制口径以 workflow 为准。
 
 ### P-020 · OCR 质量测量 harness M1+M2 落地（P-018 P0/P1 实施，2026-09-22 四轮讨论定稿）
-> status: landed · since: 2026-09-24
+> status: retained · since: 2026-09-24
+- **保留理由（2026-10-07，landed → retained；用户裁决）**：规格与口径已于 2026-09-26 晋升 `docs/architecture/ocr-quality-harness.md`（该文 §7 明示本条目 = 「harness 落地证据与规模偏差的登记条目」）；本条目保留的是**唯一入库的证据附件**——云读数（锚点-1/2、base B 空间门禁 15/15 FAIL→PASS、G4 smoke 曲线）、实际 **1958 行 vs 预算 1205（+62.5%，用户 2026-09-22 裁决接受）** 的据实偏差、C1 静态核对结论（result JSON 无 cell 级 bbox ⇒ cell accuracy 口径）。
 - 交付（**local-only，不入 git**）：`scripts/measure/{__init__,metrics,degrade,gt_factory,harness_cli,test_metrics}.py`
   ——机器本地测量仪器，源码与产物均留本机不入库。`.gitignore:273 scripts/*` 是用户既定策略（271-272 行注释原文
   「User-requested: never track these folders」），本次裁决**保持 local-only、未改 `.gitignore`**。
@@ -490,136 +453,9 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
   设计稿 `ocr-quality-measurement-design.md`）已随之删除；自此本条只承载**证据与规模偏差**（云读数、1958 行偏差、
   C1 静态核对），改规格去 living doc、勿改本条。
 
-### P-021 · `POST /api/v1/ocr` 返回坐标不在上传图像像素系（unwarping 未关闭）（2026-09-24，P-020 云端坐标核验产出；同日裁决并落地入库，round3 已于 09-25 验证）
-> status: landed · since: 2026-09-25
-- **现象**：该端点是**已冻结的公开契约**（`backend/tests/snapshots/openapi_baseline.json`、
-  `route_contract_freeze.json`、`test_route_inventory.py` 三处登记），但契约**未声明**
-  `text_blocks[].bbox/polygon` 的坐标空间；实测其**不等于**上传图像像素系，而是相差一个**非刚性**形变
-  （8 张合成探针实测 scale 1.1084–1.2257 且随探针变、拟合残差 9.9–51.6px、`frame_w` 2227–4067 无规律），
-  旋转亦被**抹平**（探针 3° → 残留 −0.82°、15° → 残留 −2.80°）。凡消费该端点的场景（前端叠加框、
-  裁剪、导出标注、与其它坐标源对齐）都会错位。
-- **根因**：`backend/app/services/ocr_service.py:64-70` 的 `init_params` 只设了
-  `use_doc_orientation_classify=False`，**未设 `use_doc_unwarping`**；PaddleOCR 3.3.2 中
-  `use_doc_preprocessor` 默认为 **true**，其中 unwarping（UVDoc）**实际取值为 true**，det 因而跑在
-  **形变后的画布**上，返回的 `dt_polys` 即该画布坐标。同仓 `layout_service.py:113-120` 早已显式设
-  `use_doc_unwarping=False`（注释原文：Unwarping applies non-linear image deformation … the probe confirms
-  correct spacing），`formula_service.py:188-189` 亦在另一路显式置 False——**只有 OCR 这一路漏了**。
-  链路其余部分已排除：`_convert_predict_dict`(L130-191) / `_parse_result`(L326-368) / `_call_ocr`(L227-262)
-  **全程逐点透传、零坐标归一化**；`text_det_params` = `limit_side_len=64 / limit_type=min /
-  max_side_limit=4000`，对 2550×3300 不触发 resize。
-- **一行修法**：`ocr_service.py:64-70` 的 `init_params` 增加 `"use_doc_unwarping": False,`。
-  （该文件**受 git 跟踪**，修改需走 CHANGELOG / `audit_agent_ops.py` 义务。）
-- **⚠️ 行数判断更正（2026-09-24 落地时实测）**：原文曾写"改后 458 < 500，不触 F1 文件规模门禁"——**错**。
-  `ocr_service.py` 在 `scripts/file_size_allowlist.json` 中被**棘轮钉在 457 行**，规则 **R-b** 的硬上限
-  **就是记录值本身**（不是 500；`--update` 只能下调、CI 从不传它）。故 `+1` 行即 FAIL（实测 `+9` 行时
-  `[FAIL] 466 > allowlist 457`）。落地做法：把该处 4 行注释压成 3 行，与新增的 1 行 dict 项**净零**，
-  实测 457 行、`lint_file_size.py OK`。**教训**：F1 的"500"是自由文件预算，allowlist 内的文件另有更紧的棘轮，
-  改这些文件前必须先查 allowlist。
-- **验证证据（2026-09-24，云端 Pro GPU，commit `a73468b`）**：8 张合成标定探针（`cal/`，含 `cal_truth.json`
-  的精确 ink 真值）经 `POST /api/v1/ocr` 走**改前/改后**对照：
-  - `scale` 1.1084–1.2257 → **0.9992–1.0001**；拟合残差 9.9–51.6px → **0.6–1.1px**；
-  - `frame_w` 2227–4067（无规律）→ **等于各探针自身宽度**（2000 / 2549 / 2718 / 3316 / 3598，
-    含横向 3600×2400 ⇒ 也不按短边归一化）；
-  - 旋转 3° → **−2.99°**、15° → **−14.99°**（幅值等于探针角 ⇒ 未 deskew，语义正确；负号为
-    图像 y 轴向下的坐标约定）；
-  - `cal_shift300`（内容整体 +300px、画布不变）的 `extent_x0` 由 250（内容被重取景）→ **443**
-    （base 为 145，差 +298 对应内容 +300 ⇒ 不再重取景）；
-  - **8/8 原始响应逐字节改变** ⇒ 配置确已生效（首轮 after 曾与 before 完全一致，因未重启进程）；
-    脚本输出判据 `VERDICT: endpoint == INPUT PIXEL FRAME`。
-  - 证据落点（均 local-only、不入 git）：`test_data/TestResult/harness/cloud_run/cal/cal_out/` 下
-    `layer0_engine_params.txt`（直读 `doc_preprocessor_res.model_settings.use_doc_unwarping: true`）、
-    `layer1_result_structure.txt`、`layer2_calibration_{before,after}.txt`、
-    `cal_ocr_{before,after}/`；完整说明与判据见 `_cloud_coord_check.md`（§0 结论 / §0.1 修复验证）。
-- **补录收口（2026-09-25：原缺的 `commit` / GPU / 版本已补齐）**：
-  - `commit` = **`a73468b`**（`a73468ba504645353561c3fd54fb0da1f9cff11a`，2026-09-17）——`commit_before.txt` /
-    `commit_after.txt` **两侧 head 相同** ✓（2026-09-25 事后采集）。**before 侧树是干净的**：`commit_before.diff`
-    = **0 字节**、porcelain 仅两条 `??` ⇒ "临时改动已回滚"由独立证据确认。同批入库：`gpu.txt`、`versions.txt`、
-    `pip_freeze.txt`、`judge_report.txt`。
-  - **环境**：GPU **NVIDIA A10 / driver 580.65.06 / 23028 MiB**｜Python 3.11.1｜paddleocr **3.3.2**｜
-    paddlex **3.3.12**｜PyMuPDF **1.25.5**（在 pin `>=1.24,<1.26` 内）｜paddle 3.3.0 / torch 2.6.0+cu124（取自 `/health`）。
-  - **读数可迁移性的关键旁证**：云端树比本地 main 旧 7 天（`a73468b` 09-17 vs `2c2589f` 09-24），但**被测文件同一 blob**——
-    云端 `commit_after.diff` 的前像为 **`80c1fc5`**，入库提交前像**同为 `80c1fc5`** ⇒ `ocr_service.py` **逐字节相同**
-    （09-17→09-24 之间的改动不涉及本议题），故 round2 读数可迁移到入库提交。
-  - ⚠️ **云端补丁形态**：**仅加一行**（树 458 行，结果 blob `9cefadb`）；入库版为注释压缩后的**净零**（457 行，
-    blob `5ef2596`）⇒ **行为等价、文本不同**，**复现时勿按字节比对**云端 diff 与入库提交。
-  - ⚠️ **两条证据瑕疵（均不影响结论）**：① `after_restart.txt` 的 PID **94** 启动 **06:08:36**（UTC）早于
-    `before_health` 的 06:21:26 ⇒ 该快照记的是 **before 阶段那个进程**，**不能证明"重启过"**（间接证据＝引擎
-    惰性初始化 + 首轮"未重启 → after 与 before **逐字节相同**"的实测）；② `commit_before.txt` 采集时刻
-    （`09-25T00:38:11Z`）**晚于** `commit_after.txt`（`00:37:17Z`）⇒ 这对快照是**事后重建**、只锚定两侧**代码状态**
-    （拍 before 快照时把 `ocr_service.py` 还原过），**非"测量当时的进程状态"**。详见执行清单 §6.1。
-- **副作用未知项**（**落地前必须补**）：unwarping 本为拍照/弯曲页准备，关闭可能降低那类文档的识别质量。
-  现有读数只覆盖 8 张**合成**探针（检出 12/12 不变、池化置信度 0.9921 → 0.9921、非旋转探针最低置信度
-  0.912 → 0.999 反而上升 ⇒ 平坦页上 unwarping 是在帮倒忙），**不能替代真实文档评估**：需用
-  `test_data/testfiles` 的 15 份试件 PNG 在改前/改后各跑一次 `/api/v1/ocr`，比对 `text` 字段与置信度，
-  重点覆盖表格、密集文本、以及存在真实弯曲/透视的样本。
-- **连带重测义务**：① 该修复会**改变 OCR 文本**（8/8 响应不同），故 P-020 现有 15 份
-  `OCR/*.ocr.json` 相对修复后服务**已过期**，`cer_*` 须在落地后重测并记录新 SHA；
-  ② 落地后执行包 §10.11 的 base-B 空间门禁将转为 **PASS**（base B 几何可用），但 **D-A 顺序配对仍是正解**
-  （它把帧依赖解耦，是更稳的结构）；③ 若启用 base B 几何，需重跑 G3 复现 + G4 并回填 §8 状态行。
-  → 落地后这三条已落成**可执行清单**：`./runs/P021-云端对照-执行清单与记录模板.md` §7（`commit.txt`/GPU 采集、
-  OCR JSON 的 SHA 清单、`cer_*` 与 G3 复现、§10.11 门禁 FAIL→PASS 回填，以及"精简动作排在门禁 PASS 之后"的顺序红线）。
-- **落地内容（2026-09-24，本 PR）**：
-  ① 修法入 `backend/app/services/ocr_service.py`（`init_params` 增 `"use_doc_unwarping": False`；
-  注释压至 3 行以守 457 行棘轮，见上「行数判断更正」）；
-  ② 新增契约单测 `backend/tests/test_ocr_service_engine_params.py`：stub `paddle` + 按文件路径加载，
-  **无需 Paddle/GPU**；断言 `use_doc_unwarping is False`（`is` 严格判据）、
-  GPU 分支同样为 False、`device ∈ {cpu, gpu}`（非 `gpu:0`）、`use_doc_orientation_classify is False`，
-  并断言 `is_ready()` 为真以排除"失败路径上记 kwargs"的假绿。
-  **⚠️ 作用域更正（2026-09-25）**：首版照抄 `test_layout_page_skip.py` 的**模块级** stub，在 CI 首跑就把邻居
-  `test_table_template_analyze.py` 的环境闸门（`pytest.importorskip("paddle")`）伪造放行而误红——已改为
-  `monkeypatch` + fixture 作用域并加哨兵断言（`186047e`）。**那个先例本身不完整**；成因、规则与门禁见
-  **P-023**（随独立分支 `chore/agent-ops-stub-scope` 落地）；
-  ③ 该测试已登记 `backend/tests/test_registry.json`（`kind: phase-a-ci`）**并**加入 `kie-phase-a.yml`
-  Phase A 清单（登记而不接线会触发 audit check 4 的 WARN，破坏 0/0）；`.cursor/rules/006-cloud-testing.mdc`
-  的 Phase A 最小集同步；
-  ④ **反向对照（防恒过）**：把该 flag 改为 `True`／整行删除 → 单测均 FAIL；原样 → PASS；
-  ⑤ 归属表新增 `backend/app/services/ocr_service.py` 行（owning doc = `docuvision-system-design.md`
-  §3.2–§3.4）。**该设计文档早已声明 `use_doc_unwarping=False` 为"当前固定为 False，引擎 init 硬编码"
-  （§3.4）/ "永久禁用"（§3.3）** ⇒ 本 PR 是**代码追齐文档**，不是引入新语义。
-- **round2 读数与单调性归因（2026-09-24，云端 Pro GPU，commit `a73468b`）**：G-B 15 组合
-  **12 改善 / 0 回退 / 3 持平**；文本量大幅恢复（cosent r3 2712→4963、mamba r15 1361→2849 字符等），
-  置信度多数持平或上升。**单调性 sanity：before 5/5 → after 3/5**。两处破口、坐标与归因
-  （**用户 2026-09-24 裁决：按"口径性质偏离、不影响结论"接受**）：
-  - **① `cosent-form-test-document` identity → rotate_3**：`cer_micro` 0.6509 → **0.5646**（降 0.086）。
-    **归因 = 微观加权/分母效应**：同样两组上 `cer_macro` 方向**相反**（0.2758 vs 0.3022，即 identity 更好）、
-    `line_exact_rate` 几乎相同（0.714 vs 0.700）、`matched_rate` 0.75 vs 0.714 ⇒ **只有 `cer_micro` 说 identity 更差**。
-  - **② `financial_report_01` rotate_3 → rotate_15**：`cer_micro` 0.9581 → **0.9443**（Δ0.014）。
-    **铁证**：`matched_rate` 1.0 → 0.5、`cer_macro` 0.3616 → **0.7857**（r15 差 0.42）、
-    `cer_nontable` 0.3663 → 0.5714 ⇒ **三项都判 r15 更差**，唯 `cer_micro` 反向——该 fixture 仅 2 条文本 GT 行，
-    分母极小，micro 口径抖动即可翻转顺序。
-  - **旁证**：`cer_corpus` 在 **before/after 两侧都 4/5 破**（如 bank `2.2727>2.2500>0.8864`）⇒
-    该指标族本就不单调；round-1 恰好 5/5 单调是偶然，故"以 `cer_micro` 为准"作为**单项** sanity 判据不稳。
-  - **口径含义（不在本 PR 内）**：若要把曲线 sanity 改硬，应改为**多指标判据**（例如 `cer_macro` 与
-    `matched_rate` 同时单调），属口径变更、须登记（对照执行包 §10.9）。
-  - **块级/表级不参与**：`cer_table` 与 `blocks.csv`（text/table/figure 的 gt_n/ocr_n/matched/mean_iou）
-    在 before/after **逐字节相同**（表/块取自 base A，本轮未重跑 analyze），故两处破口只能来自 base B 文本侧。
-- **状态（2026-09-25）**：**已落地（代码 + 契约单测 + CI 接线入库）** + **round3 云端复测已验证**。
-  round2 证据链已收口（commit / GPU / 版本补录见上，两处残留瑕疵已登记）；云端 round2 对该文件的临时改动
-  **已回滚**——`commit_before.diff`（**0 字节**）+ `commit_before.porcelain.txt`（仅两条 `??`）**独立证实**，
-  不再只是自述。`P-020 修改面 = 0` 仍保持（harness 侧未改）。
-- **round3 读数（2026-09-25，云端 `f3517c7` Merge PR #35 + **重启后的进程**；本机判读）**：
-  - **§10.11 base-B 空间门禁 FAIL→PASS，8/8**：`scale 0.9992–1.0001`、`mean_res 0.64–1.13px`、
-    `rot −2.99°/−14.99°`（= 探针角）、`in_frame 8/8`。**未沿用 round2 的 G-A 读数**（本轮在含修法的构建上
-    重新调用 `/api/v1/ocr` 采集）。严判（自设 `mean_res ≤ 1px`）6/8，两例 `1.13/1.03px`，与 round2 §6.2 同例同值。
-  - **15 组合 `cer_*` / G-C 关键串与 round2 after 侧完全一致**（`cosent identity 0.6509`、`financial r15 0.9443`、
-    `mamba r15 0.0670`；照片 `8/8 · 6/6 · 5/5`）；**G3 两次 `metrics.csv` 逐位相等**（sha256 `c41b7502…d6ef2e`）。
-  - **单调性复检（多指标）**：`cer_micro` 3/5、`cer_macro` 4/5、`matched_rate` 0/5 ⇒ round2 §6.5-2 遗留项提出的
-    "改看 `cer_macro` + `matched_rate` 同时单调"**作为硬判据不成立**（`matched_rate` 是配对覆盖、非质量单调量）
-    ⇒ 曲线 sanity 维持**提示性**口径，不升级为门禁（属口径变更，另行登记）。
-  - **环境**：GPU `NVIDIA A10 / driver 580.65.06 / 23028 MiB`、Python 3.11.1、paddleocr 3.3.2、paddlex 3.3.12、
-    PyMuPDF 1.25.5（与 round2 同批一致）；**产物** `test_data/TestResult/harness/round3_20260925/`
-    （`commit.txt` head=`f3517c7` 且 `commit.diff` **0 字节**、`gpu.txt`、`versions.txt`、`ocr_sha256.txt`
-    26/26 与产物对账一致）、判读脚本 `judge_round3.py`（复用 round2 门禁代码，仅改 `HERE`）。
-  - **26 份响应与 round2 `after/` 侧逐字节相同**（同引擎同配置的确定性复现）⇒ **无实质差异，故不追加 CHANGELOG**；
-    round3 记录见 `./runs/P021-云端对照-执行清单与记录模板.md` §6.6 与执行包 §10.12。
-  - 收尾顺带更正采集块 `[6]` 自检的一处**假红**（原判据拿探针 `max_x` 与画布宽度比，marker ink 只占约 85% 画布宽
-    ⇒ 正确树上也 8/8 假红），改用 marker 相似变换拟合，实测 8/8 PASS（详见执行包 §10.12）。
-- **现行控制**：**§10.11 已 PASS**，该判据自 2026-09-25 起降级为**回归哨兵**（再 `FAIL` ⇒ 引擎配置漂移，
-  如 `use_doc_unwarping` 被重新打开、或换/升级 OCR 引擎改了坐标帧）；**D-A 顺序配对仍是正解**——
-  base B 只用于文本、几何取自 view 层（base A），理由是它把帧依赖解耦（与坐标当前是否可用无关）。
-
 ### P-023 · 测试 stub 作用域无规则：模块级 `sys.modules` 占位会**伪造「本机已装 Paddle」**（2026-09-25，P-021 首次 CI 运行产出；同日裁决并落地 R1–R3）
-> status: landed · since: 2026-09-25
+> status: retained · since: 2026-09-25
+- **保留理由（2026-10-07，landed → retained；用户裁决）**：规则与门禁均已入库——kernel `docs/agent-ops/core/testing.md` §pytest 边界（清单内必须作用域化）+ §测试登记口径（加进 CI 清单须跑完整文件列表）+ `scripts/test_registry_audit.py::check_stub_scope`（audit check 5）+ `module-map.md` §5 **T2**；本条目保留的是**判例**：「模块级 stub 伪造“本机已装 Paddle”」与「单文件验证掩盖跨文件污染」两个失效形态——与 P-008 保留 T1/T2 判例同型，且是 check 5 规则的出处。
 
 - **来源**：P-021 的契约单测首次进 Phase A CI（与 P-021 的修法同批）后 `kie-contract` **17s FAIL**，且失败在
   **本改动未触碰的文件**：`tests/test_table_template_analyze.py::test_analyze_form_accepts_table_template`
@@ -730,8 +566,7 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **现行控制（2026-09-25 起生效）**：kernel `constraints.md` 沟通方式节新增两个强制检查点（可辨识压缩输入 ⇒ 触发已发生；
   交付检查点一行 `Session-check: …`，全 0 也写），两副本（`.cursor/rules/001-general.mdc` / `.codebuddy/rules/001-general.md`）
   已由 `scripts/sync_agent_rules.py` 再生成、未手改。
-- **遗留义务（(a) 的前置实测）**：下次发生压缩后，向会话中的 Agent 提问「你现在读的是压缩摘要吗」，把可否辨识回填本条目；
-  不可辨识则 kernel ① 条按其自述失效（只靠 ②），并在本行登记实测结果与日期。
+- **遗留义务已撤销（2026-10-07 用户裁决）**：原「(a) 的前置实测」——下次压缩后向 Agent 提问「你现在读的是压缩摘要吗」并回填可否辨识——**不可控且没有必要**，撤销该实测义务与登记要求。kernel `constraints.md` ① 条维持原条件条款文本不动；其「不可辨识即自动失效」分支自此**不再追踪**，实际按「只靠 ② 检查点运转」执行（本条保留 (a)+(b) 的裁决与落地记录本身）。
 - **触发条件**：任何长对话（≥1 次压缩、或触及四条代理任一）收尾 / 换阶段时；改 `constraints.md` 的会话管理条时同查本条目。
 - **状态（2026-09-25）**：**已裁决并落地**——采纳 (a)+(b) 带三修正；kernel `constraints.md` 沟通方式节已增两个强制检查点，
   两副本已由 sync 再生成，CHANGELOG（Unreleased/Changed）已记一段；(c) 挂起、(d) 降级（理由见上）。
@@ -818,67 +653,5 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **testfiles/others 迁入 assets（2026-10-04，Ying 授权）**：`test_data/testfiles/others/`（此前多个 **无单号** Upwork 需求单附件，4 件：`911_History_Report [1-10].pdf` / `ejemplo1_resultado.jpeg` / `ejemplo2_resultado.jpeg` / `P903454_1.jpg`）迁入新客户命名空间 `test_data/assets/upwork-legacy-202610/`（`raw/` 4 件原样保留 + `manifest.json` 4 件 SHA256 + `README.md`），与 `upwork-022102306242203617428/` 同构。命名 `legacy` 表「历史/无单号」、`202610` 界定「2026-10 前」。**校验/审计泛化**：`test_data/scripts/verify_assets.py` 与 `scripts/assets_manifest_audit.py` 由硬编码单 client 改为**遍历 `assets/*/` 全部命名空间**（新命名空间零改码接入；每个命名空间目录须含 `manifest.json`）。根 `.gitignore` 移除失效的 `test_data/testfiles/others/` 规则；`testfiles/README.md` / `acceptance/README.md` 同步。客户附件仅 `test_data/` 内重组，未出仓库。
 - **R3 D4 边界解释性裁定追认（2026-10-05，Ying）**：R3 §5.2 的实现形态——闸 1 退化为「字段级在场核对」（pred 行结构化投影不做）、「无发明值」取 OCR 输出侧形态（幻影频段计数）——**追认为正式口径（保守形态即为口径），该裁定「Ying 可另裁」口关闭**。语义钉死：`row_correct`（行级 join）与 `presence_rate`（字段在场）为两个**独立强度**判据，各自如实登记、不互相折算；R4 D4′ 的行重建（配对单元 = 频段行 + 跨块端点拼对）属**判分器粒度修正**（X3-4 兑现），不改变本裁定「pred 侧行结构化投影不做」的边界；若未来产品侧 IE 语义层修复（R3 缺口 1）落地后需要行级投影核对，属新立项范围、不回改本口径。
 
-### P-028 · 合并格频段区间硬化:区间模式校验 + reason 契约扩展(2026-10-04 执行包 draft-v1,Ying 裁决执行)
-> status: landed · since: 2026-10-04
-- 来源:P-002 follow-up 触发证据(IE-p079 `40.7-4098MHz`,`40.98` 小数点丢失,#7 家族产品侧失效;2026-10-03 登记) + 两稿设计(`P-028-F1拆分预案` / `P-028-合并格频段区间硬化设计稿`,local-only)+ 执行包(吸收审核结论 1 P0 + 1 P1 + 3 P2,X0-1~X0-6 写死)。
-- 范围:区间模式校验(新 `backend/app/services/table_band_range.py`,parse/validate 纯函数,单位族 MHz/GHz/kHz/Hz) + reason 契约扩展(`REASON_BAND_RANGE = "band_range_incomplete"`,`REASON_KEYS` 8→9,旧 8 值零改动) + 挂点禁静默修正(`backfill_table_cells` 内命中即 `text_mismatch` + `band_range` 诊断,原值透传) + 可选 L4 重试(`settings.TABLE_BAND_RETRY` 默认关,关闭时零行为差异)+ BACKFILL-001 云端重验。
-- 前置:**F1 拆分 PR 已执行**(2026-10-04,`chore/p028-f1-split`):`table_alignment.py` 499→312(布局块迁入新 `table_layout.py` 202 行)/ `table_backfill.py` 497→394(候选/几何/文本层块迁入新 `table_cell_geo.py` 121 行);零行为变更,pytest 全量 442/9/5 与基线逐数一致,audit 0/0,lint OK。
-- **C1 判别实验（2026-10-04,本会话;脚本 `scripts/measure/p028_c1_reconcile.py` local-only）**:IE-p079 合并格频段 cell 三方对账——文本层弱 GT `IE-p079-L0020 = "40.7 - 40.98 MHz"`（完整印出,合并格跨行 bbox）/ R2 cache OCR `"40 7 - 40 98 MHz"`（两个小数点全丢）/ 管线 cell `"40.7-4098MHz"`（止端点小数点丢）——**三方内容多重集相等 ⇒ 拼装层零丢段丢词,损失 100% 在识别层,X1 = B（识别层）**,非纯 A,未触发 C2 暂停条件。判据字面偏差如实登记:管线 ≠ cache 逐字（管线保留 1 个小数点、cache 全丢）,按标点/空白不敏感的等价口径判 B。
-- **C2/C3 落地（2026-10-04,`feat/p028-band-range`,本会话执行）**:L1 `table_band_range.py`（88 行,BandRange dataclass + parse/validate 纯函数）/ L2 挂点（`_solve_candidate` 与 `_finalize` 之间,命中非空旗标 ⇒ `text_mismatch` + `band_range_incomplete`,原值透传,`mismatch_details[].band_range` 诊断 = {raw, flags, start_text, end_text};合法区间与未命中走原流程）/ L3 reason 契约 8→9（`REASON_BAND_RANGE = "band_range_incomplete"`,旧 8 值零改动）/ §2.5 三处 pin 受控更新（enum 封闭 9 值、finalize 键数 9、两处金样字典 +`"band_range_incomplete": 0`;第三处 :217 索引式断言不受影响未动）/ G2 解析器用例表 29 例（含 `40.7-4098MHz` 单旗裁决、阈值恰好 2.0 decade 边界、cache 形态折叠串不触发等;X0-9 单旗落表）/ G1 金样 `build_merged_band_table()`（合并格端点分置两行 + 5.5pt 小数点设计位 + 正常对照行;断言旗标命中 + 原串透传逐字一致 + 诊断起止正确 + 对照行 value_match）/ 新测试文件登记 `test_registry.json`（kind full）。执行期裁决 X0-7（主模块 import 行补 `T1_MAX_RUN_WORDS`,执行包缺口——`_gen_runs` :367 使用而包写死 import 行漏列）、X0-8（D3 分段 sha:backfill 段 A :24-29 + 段 B :38-138,PROVENANCE 区 :31-35 留下）、X0-9 如上,均已登记执行记录。本机门禁:**pytest 451 passed / 9 skipped / 5 errors**（= 基线 442 + G2 8 项 + G1 1 项,skip/error 签名与基线一致）· audit 0/0 · lint OK · G5 编排 2 passed · 行数账 alignment 314 / backfill 417（<450）/ layout 202 / cell_geo 121 / band_range 88（≤200）。
-- **C4 BACKFILL-001 云端复验（2026-10-04,三 Gate 全过 → landed）**:G4 bank PASS（12×value_match + 第 9 键在场且 0,非区间 cell 零扰动）· G4 IE-p079 主证 PASS（rot0 证据包 `set_rotation(0)` 清 /Rotate 后旗标可见:`data='40.7 -4098MHz'` 原值透传、`provenance=text_mismatch`、`reason=band_range_incomplete`、`flags=["magnitude_gap"]` 单旗,符合 X0-9;五跑卡点 = `page.rotation=90` 触发 §4.2 未旋转页检查,非信任门、非 P-028 代码问题）· G5 INV PASS（INV 零违规、候选格恒等、p12 ≈ 0.8%、p29 ≈ 25.4% 不回退）· **G6 WTW 哨兵 PASS（本机 no-op 判分 300 fixtures,`wtw_metrics.csv` sha256 == `e44d5e6d…b770968`,与 P-002 对照件及 pin 值三路逐位相等;判分器 `extract_predictions` 只读 rows/cols/html/bbox/polygon,与 P-028 改动面正交,故 no-op 判分即充分）**。已知回退读数（非 P-028 引入,已定责）:G4 symbol 2/4（基线 4）—— 逐格 dump 定责:云端 OCR 将 `✓` 误识为汉字 `一`(U+4E00)、`○` 误识为字母 `O`(U+004F),两者均不在钉死符号集 `SYMBOL_CHARS` ⇒ `is_candidate_cell` 候选闸未命中 ⇒ 漏斗未进、保持 `vision`（非判红,`sum==candidates` 成立;`一` 因 `_CODE_RE` 为 ASCII 集不匹配,`O` 虽匹配但无 digit）;`is_ocr_confusion` 钉死集亦无 `一↔✓`/`O↔○`,故即便进候选也只会落 `sanity_reject` 诚实红而不改值 ⇒ 瓶颈在 rec 层识别精度、非 backfill 层。**归属 = P-018 P3 符号 GT（该条已于 2026-10-02 由 Ying 裁决暂停,待 A（符号嵌入文档语境,联动 D2/R9）/ B（类集缩减）/ C（det 调参解禁）再裁决;本读数沿 A1 修订后的行级语境口径复现,登记为该条待启素材,不另开流程）**。读数只登记 local 不进 git。读数只登记 local 不进 git。
+- **`docs/R&D/runs/P027/` 保留理由（2026-10-07 登记）**：该目录 5 件（`R2-执行记录` · `R3-执行包` · `R3-执行记录` · `R4-执行包` · `R4-执行记录`）**尚不可删**——按 `docs/R&D/README.md` 的 runs 政策（"temporary, deletable once the project lands"，来源 commit `b3dcfa2`），删除前提是**本条 land**；现 status = `decided`，在途义务未清（R3 缺口 1 IE 语义层产品侧修复 / D8 Confidence 产品源 / BR 葡语解锁触发 / 分岔 C 优先级重排 / R1 taxonomy 转用例）。三条引用使其成为不可断的判据出处：①CHANGELOG `[1.11.0]` P-027 R2/R3/R4 三段以 `runs/P027/R3-执行记录.md`、`R4-执行记录.md` 为 execution record；②本仓 P-002 条目（follow-up 触发证据段）把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；③R4 记录 §6「保留判据与明细」是隔离区 `test_data/derived/**` 证据链的唯一盘存表。**触发**：本条转 `landed`/`retained` 时，同批删除本目录并同步 `docs/R&D/README.md` 的 runs 索引（对照：P-030/P-031/P-032 的 local-only 执行包已按「提炼后删除」清理）。
 
-### P-029 · evidence 校验层:证据接地抽取三闸移植(sciextract 方法资产产品化,2026-10-05 执行包 draft-v1 + 设计稿 draft-v2,本会话执行)
-> status: landed · since: 2026-10-05
-- 来源:战略层 2026-10-04 校准最高优先(sciextract RCT 报告 v2 实证三闸方法 = 多单复用件);交接输入 = 6 文件 sha256[:12] pin + `out/verified.jsonl` 金样 + 页级接地材料(设计稿/执行包/执行记录 local-only `docs/R&D/runs/P029/`)。
-- 范围(C1-C4,分支 `feat/p029-evidence-layer`,基线 main `d9ee9f7`):`services/evidence/`(findings_schema 195 行契约 + closed_lists.json 闭表单一真源 + normalize 34 行 verbatim 移植 + verifier 231 行 V0-V6 梯 + gate 335 行 fail-closed 门禁) + `kie_configs/pico.yaml`(prompt v3 冻结版,registry 注册) + `EVIDENCE_ENABLED` 旗标(默认关)+ orchestrator `evidence_step` hook(旗标关=零行为) + 金样棘轮哨兵(`tests/evidence/golden/` 45 条 + 18 页 OA 接地文本,`test_golden_baseline.py` 6 断言) + QA 工具入仓(`scripts/qa/` 三件 + archive/RUNBOOK)。
-- **裁决登记**:X2-1 router 二选一 = **不加**(2026-10-05 Ying;55 端点守恒不变,module-map §2 不动);X2-2 棘轮 = orchestrator 1248→**1268**(2026-10-05 Ying 授权,净增 20 行 hook);金样接地材料 = `grounding_pages.jsonl` 页级(2026-10-05 Ying 指认,粒度偏差 X1-1 已登记)。
-- **执行期裁定(已登记执行记录)**:X1-2 闭表 ZH 12 词/因果三档无交接种子 ⇒ 空骨架入库随首个中文域数据 PR 补种;X1-3 `.gitignore` 增 `scripts/qa/**` 与 `closed_lists.json` 白名单例外(全局 `scripts/*`/`*.json` 拦下入仓件);X1-4 `quote_span` Optional(10 条不可定位记录);X1-5 pico 模板落 `kie_configs/` 根(KieManager 仅按根加载,templates/ 注册会落空);X1-6 不改 `KIE_SUPPORTED_DOC_TYPES`(管线 doc-type 接线待 Ying 决策);X1-7 verifier 判据修正(V6=V5+剥连字符、前缀 V4 quote 对 V6 haystack,金样 45 条零失配后钉死);X1-8 门禁语义(缺页/不可信页⇒unsupported 拒收;槽不完整/schema 不合法⇒HITL 不导出;export_allowed=零拒收)。
-- **门禁读数(2026-10-05 本机)**:金样校准 **35 verbatim_exact / 3 near_match / 7 unsupported 零失配**、fidelity 45/45 faithful(38/38 口径复现)、hedge_set 与 groundtruth 0 分歧、statement_type 28/13/4/0;全量 pytest **531 passed / 19 skipped / 5 errors**(= 开工基线 451/19/5 + 80 evidence 测试,skip/error 签名逐数一致);audit 0/0;selftest 63 不变;lint_file_size OK(含 X2-2 授权数)/lint_routes OK;`convert_golden.py` 双跑逐字节一致。连带审计:`compute_fill_confidence` = 填充率启发式非模型自报 ⇒ 无偏差证据(只审不改)。
-- **待办(Ying)**:①拉最新代码落地比对审计,过审后本条置 landed;②能力卡片 v1.11 §2 行 12 原文未随仓(C4 裁决:C4 时回报补原文,由本侧合入 v1.12 行 13);③闭表 ZH 12 词 + 因果动词三档种子(或确认随首个中文域数据 PR);④PICO 域接入 analyze 管线的 doc-type 接线是否开(X1-6)。
-- **follow-up（2026-10-06,P-031 首跑实测;页号契约缺口）**:P-031 首次真跑 `evidence_step`（pico + `DOCUVISION_EVIDENCE_ENABLED=true`,分支 `feat/p031-pico-doctype`）暴露**页号缺口**——`export_allowed=false`、ledger 2/2 均 `axis A / unsupported / "grounding unavailable (missing or untrusted page)"`、**`page: null`**。**根因**＝`gate.py:169-172` 要求 `candidate["page"]`(int) 以定位接地页,而 pico.yaml schema/KIE 产出仅有 `quote_block`(块 id)、管线不注入页号 ⇒ `page_no=None` ⇒ 恒 fail-closed(`export_allowed` = 零拒收,`EvidenceReport.export_allowed`)。**次级风险**:view 正文(OCR) 与 KIE 引用存在**数字标点差**(`7,660` vs `7.660`、`placebo,11,328` vs `placebo, 11,328`),V0-V6 梯治空白/破折号/连字符但**不治数字标点** ⇒ 补页号后仍可能不命中。**归属**＝本层契约缺口(P-029 X1-6 当时刻意不接管线;金样校准用手工 `verified.jsonl`(带 `source.page_num`),故为**首次真跑暴露**);**P-031 接线无责**。**修复选项**:①`evidence_step` 侧由 kie 选中页/`kie_fields_by_page` 注入 `page`(不动冻结 prompt,推荐);②`quote_block→page` 映射(fused 块 id→页);③pico.yaml 增 `page`(prompt v3 冻结,需裁决)。**现状**:补页号前 evidence 管线对 KIE findings **实质不可用**(恒 fail-closed)。**修复落地（2026-10-07,#68）**:#67（2026-10-06）先采 ②`quote_block→page`，**Cloud 真跑否证**——`KieManager._build_prompt` 只注入 `schema_json`（无块 id/无页文本，`KieManager.py:57`），故模型 `quote_block` 是**臆造索引**，映射不到 fused `block_id`；且单页跑 `kie_fields_by_page` **不落**（`orchestrator:743-747` 仅 multipage 写）⇒ ②＋旧兜底全程失效，`page` 仍 `null`。改采**①`kie_meta.kie_pages_processed` 单页注入**（默认 1 页即权威）+ 多页按 fused 逐页归一文本**扫引文所在页**，`quote_block` 降为末位弱提示；并保留 `page_texts_from_fused` 读 `page_num` 修正。运行期自诊断入 `evidence.stats`（`page_injected`/`page_texts_pages`/`trusted_pages`）。本机复现：`page=1` 注入成功、ledger detail 从「grounding unavailable」变为「`10/14w prefix`」——**页号归因已通**；**残余 fail-closed 由数字标点差致**（`10,349` vs `10349`），归下表ⓐ另立项。**触发**:evidence 层硬化立项时以本行为入口（**→ 已立项为 `P-032`，text-first 硬化;三裁决点 2026-10-07 定稿**）。**代码落地（2026-10-07,分支 `feat/p032-text-first`）**:M5→M4→M1→M2→M3+C4 七 commit（`eeb9d1a`…`8c09afc`）,开关 `DOCUVISION_EVIDENCE_TEXT_FIRST`;本机 mock 全绿(全量 591/9/5 对账基线 558/9/5 签名逐数一致,+33=新增测试数;audit 0/0;lint OK;棘轮 1297→1292 只减不增);**Cloud 复验全绿(2026-10-07,#69 merge `21983d0`):E1 3/3 逐字命中(页 5)/E2 True/E3 [5]/E4 含页 1/E5 10=10/E6 legacy/E7 620 passed·0 fail;本行清账**。
-- **次级项ⓐ（数字标点差,待裁决；→ 大部分被 `P-032` 消解）**:V0-V6 梯（`verifier._ladder_variants`）与共享 `normalize`（`normalize.py`）均**不治数字组分隔符**（`,`/`.`/空格），故 OCR 正文 `10349` 与 KIE 引文 `10,349` 不命中 ⇒ 补页号后仍 `unsupported`（`export_allowed=false`）。**须裁决**:是否新增「数字标点等价」梯变体；风险＝`1,234` 与 `1.234` 语义可不同（区域差异），属**语义级匹配**改动，非机械修复，故不并入 #68。**括注**:`P-032` 走 text-first（模型从原生文本层逐字引用,接地同源）后,该 OCR↔引文 标点漂移源被移除 ⇒ ⓐ 仅余「图片通道 + 扫描件」场景的兜底价值,随 `P-032` 落地复核是否仍需单独立项。**复核挂起**:P-032 代码已落地（本机）——text-first 下模型引文与接地同源,数字标点漂移源已消;残余仅「图片通道 + 扫描件」场景,Cloud 复验通过后复核是否立项。**复核结论（2026-10-07,Cloud 已过）**:text-first Run1 3/3 逐字命中、零漂移（对照 legacy Run3 出现一条 `9/40w prefix` 图↔OCR 漂移）⇒ ⓐ 对 text-first 路径**已消解**;仅余「图片通道 + 扫描件」兜底,**维持挂起、不单独立项**。
-
-### P-030 · 投标驱动资产沉淀（PII mask + COI/ACORD 25）执行包审核（2026-10-06）
-> status: landed · since: 2026-10-06
-- 来源:执行包 `docs/R&D/runs/P030_P031/P-030-执行包-v1.md`（local-only,2026-10-06 按「提炼后删除」清理;Agent D 出包 2026-10-06，执行者 AgentE；3 天硬顶 2026-10-09 12:26）。
-- 审核结论:**有条件通过 → 语义偏差点已全部修正，无 P1 遗留**（锚点 A1-A14 逐条重锚，代码基线 `main ea9f0dc` 实测命中）。
-- 修正清单（消歧，避免执行端语义偏差）:
-  1. **A1**:`enable_pii_mask` 独立新增到 `AnalyzeOptions`（不参照 enable_seal 款式）；删 `ProcessingOptions` 死代码（`api_models.py:182`，全库零引用）；enable_seal 极小众——**仅注记、代码暂不动**（移除另议，用户 2026-10-06 裁决）。
-  2. **A10/A11**:kie_configs 路径由「（根）」修正为 `backend/app/services/kie/kie_configs/`。
-  3. **X8 一致性哨兵**:降为 coi 阶段内断言——`_KEYWORDS` keys == `KIE_SUPPORTED_DOC_TYPES` 且 frozenset ⊆ `_registry.yaml` keys（`pico` 已注册、属 P-031 接入范围，本包不纳入全等断言）。
-  4. **A13**:+coi 唯一改动点 = A12（`kie-config.js:19`），`options-dialog.js` 零改动；**X2** 措辞改「非三变体形态不掩」；**§4.1** 补 mask 字段级作用范围（禁触 evidence verbatim quote / document_info）；「六触面」口径明确为 A7/A8/A9/A11/A12/A13（A10 新建、A14 目录非触面）。
-- 执行记录（2026-10-06,分支 `feat/p030-pii-coi`,基线 main `4ef3fc1`）:P-030a 全链落地（A1 `enable_pii_mask` 独立新增 + 删 `ProcessingOptions` 死代码;A2/A3 六处声明;A4 `pii_mask_step` 插 evidence 与 finalize 之间;A5 就地改写 + `kie_fields`↔envelope `view.fields` 同对象引用传播,落库前必掩;evidence/document_info 禁触）+ P-030b 六触面（A7 frozenset 6 值;A8/X7 错误消息从 frozenset 派生;A9 `_KEYWORDS` +coi 末位追加;A10 coi.yaml 五字段;A11 registry;A12 前端 Set+radio,label=Certificate of Insurance (COI);A14 fixtures 5 份入库）。enable_seal 未动（移除另议）。
-- 执行期裁定（已登记）:①棘轮 = orchestrator 1268→**1297**（2026-10-06 Ying 授权「沿 P-029 先例」,分两步:步序 +27、X7 派生 +2）;②`route_contract_freeze` 按其自述以 `DOCUVISION_ROUTE_FREEZE=write` 重生成（diff 仅两路由签名各 +`enable_pii_mask`,55 路由不变）;③A12 label 实际落点 = `index.html` KIE radio 组（执行包写 kie-config.js,锚点偏差已申报）;④analyzer/documents 的 auto-KIE 兜底硬编码 3 类集合未动（零 diff 面,coi 自动启用由前端 Set 覆盖,后端兜底扩面另议）;⑤M1 = 用户提供的冻结 pilot 语料包 `SOURCE_DOCUMENTS.pdf`（10 附件 10/10 sha256 核验,替代「两渠道」限定,Ying 2026-10-06 指认）;⑥vitest 用例棘轮 E2 67→68（X9 新增断言）。
-- X5/X6 记录:fixture 脱敏核查 = 5 份入库件（2 合成 + 2 机构公开样本 + 1 负例）模式扫描 + 目检零真实 PII,无需抹除,逐份 sha256 对照进 `test_data/testfiles/coi/README.md`;X6 三步 = 改前基线存档 + 关键词命中矩阵（4 ACORD 件全命中/负例与商务 PDF 零命中）+ 双向回归 PASS（4 ACORD→coi;FL 负例 id_card、cosent receipt、financial/layout/report/金样 auto 0.0 逐字不变）。
-- 门禁读数（2026-10-06 本机）:全量 pytest **548 passed / 19 skipped / 5 errors**（= 开工基线 531/19/5 + 17,skip/error 签名逐文件一致）;audit 0/0;selftest 63 不变;lint_file_size（含授权数 1297）/lint_routes/lint_frontend/check_frontend_baseline OK;vitest 68/68;`test_route_inventory` 55 全绿。
-- **Cloud 验证读数（2026-10-06,Ying Cloud Studio;5/5 全绿,含 ③ 的 X4 关闭对照）**:①五字段 = `coi_acord25_tampa_sample.pdf` 输出 carrier/policy_type/eff_date/exp_date/limits 五键齐全;②suggested = `POST /api/v1/document/profile` → `suggested_document_type=coi`（conf 0.833）;③mask = `coi_acord25_synth_green.pdf`（文本层含 EIN `59-1234567`）加 `enable_pii_mask=1` → 全 result 命中 `[TAX-ID-MASKED]` ×5（**5 处全为同一 EIN 的多副本,无过掩**;同页 `813-555-0102`/`NAIC #00000`/`CG 2O 10 O4 13` 均未掩）,服务日志 `PII mask applied | … | masked_values=5`（只记计数不泄值）;**X4 关闭对照（重启后）:OFF 0 命中 / ON 5 命中**,ON/OFF diff 共 13 行变更、其中 5 行含 `[TAX-ID-MASKED]`（其余 8 行未逐行归因,疑运行间 OCR/KIE 抖动）——「关=零行为」的逐字一致由本机单测 `test_pii_mask_step_disabled_is_zero_behavior` 确定性保证;④evidence = 以 `DOCUVISION_EVIDENCE_ENABLED=true` 重启服务后 `.evidence` 形状与 v1.12 一致（`evidence-findings/1.0` / `v3`,`findings:[]`+note 属 coi 非 PICO 域正常）;⑤openapi baseline = `DOCUVISION_CLOUD_TESTS=1 …_BASELINE=write` → `1 passed, 1 skipped`（REST 路由 54）→ `openapi_baseline.json` 已重生成并**回提交（`1df7686`;diff 仅两请求体 schema +`enable_pii_mask`,`paths` 未变、REST 54）**。
-- **执行期裁定补充 ⑦（curl 契约,已同步 §6/RUNBOOK §3）**:`/api/v1/analyze` 收**逐字段 multipart Form**（非 `options={...}` JSON）且**异步**（提交取 `task_id` → 轮询 `GET /api/v1/tasks/{id}` → `GET …/result`）;`suggested_document_type` 出自 `POST /api/v1/document/profile`（非 analyze）。原 §6/RUNBOOK 的 `options=` 形态会被静默忽略,已更正。
-- **follow-up（coi carrier,已 park;非 P-031 范围）**:`carrier` 在承保人名（INSURER A–F）为空的样本上回落到评级样板句（tampa 实测 `A.M. Best B+ VII or Better Insurance Carrier`）。2026-10-06 两版 prompt 调优经 Cloud 双向复验**均未达标**:v1（负向词表）→ tampa 样板句 ×5、cornell `"NA"`;v2（只取 INSURER A–F + 去重 + 全空 `""`,`prompt_version: v2`）→ **同样 ×5**（已确认 fresh 进程:进程启动 08:20 晚于文件 mtime 07:52,非缓存问题）。**结论**:纯 prompt 无法在扁平化 ACORD 文本上分离评级行/空标签 ⇒ **park**;真修须在输入层给 KIE 结构化区块文本（另立项）。两版改动均未入库。
-- **landed（2026-10-06,#64 merge e85b925）**:本包 DoD 全绿（本地门禁 + Cloud 5/5,含 X4 关闭对照）;carrier 调优已 park（真修须另立「KIE 输入层结构化」项）。local-only 执行包/执行记录已按「提炼后删除」清理（结论见本条目）;可复用 Cloud 验证套路提炼进 `.cursor/rules/006-cloud-testing.mdc`。
-- **触面漏项（第 7 处,coi 侧;P-031 云手测发现,已随 P-031 PR 修）**:`kie_field_metrics._PRODUCTION_KEY_HINTS`（`kie_field_metrics.py:9-15`）未含 `coi` ⇒ `evaluate_kie_production_hit("coi", …)` 落 `unsupported_doc_type:coi`（前端 `result-panels/quality.js:44-45` 显示 ⚠ `kie_production` 假告警）+ `compute_fill_confidence` 恒 0.0（`kie_qwen_service.py:323` → `kie_confidence_avg=0.0`）。本包六触面枚举（§2 A7-A14）漏登记此表——详见 P-031 条目「第 7 触面」行（含修复与规则）。
-
-### P-031 · PICO 域接入 analyze 管线 doc-type 接线执行包审核（2026-10-06）
-> status: landed · since: 2026-10-06
-- 来源:执行包 `docs/R&D/runs/P030_P031/P-031-执行包-v1.md`（local-only,2026-10-06 按「提炼后删除」清理;Agent D 出包 2026-10-06，执行者 AgentE；P-030 merge 后实施，串行 D5）。
-- 审核结论:**有条件通过 → 语义偏差点已全部修正，无 P1 遗留**（锚点 A1-A15 逐条重锚，代码基线 `main ea9f0dc` 实测命中）。
-- 修正清单（消歧，避免执行端语义偏差）:
-  1. **X6 一致性哨兵**:由「若 P-030b 未随带落地」改为**必做**——P-031 落地后最终全等 `_registry.yaml` keys == `KIE_SUPPORTED_DOC_TYPES` == `_KEYWORDS` keys（pico 接入后 7==7==7），承接 P-030 X8 阶段内断言（frozenset ⊆ registry）。
-  2. **A7/A9** 补「零改动」标注:`document_profile.py` suggested 随 A5 `_KEYWORDS` 自动生效、`options-dialog.js` enableKie 随 A8 `KIE_DOC_TYPES` 自动生效，均非独立改动点。
-  3. **P-030 footer 同步**:X2 为条件式（P-030 落地后降为验证项）、X6 为必做。
-- **landed（2026-10-06,#65 merge 54542f8）**:P-030 merge 后实施,P-029 待办 ④（PICO doc-type 接线）「开」裁决已落地;校准三步 + 双向回归已进 PR #65 正文。local-only 执行包/计划/执行记录已按「提炼后删除」清理（结论见本条目）;可复用 Cloud 验证套路提炼进 `.cursor/rules/006-cloud-testing.mdc`。
-- 进度(2026-10-06):实施计划 v1 已出（`runs/P030_P031/P-031-实施计划-v1.md`(local-only,已删),三处修正：A4 已派生→X2 降验证项；GPU 命令改逐字段 Form 形态；registry 零改动）。**可先行前端面已落地** commit `4a0d47e`（分支 `feat/p031-pico-doctype`，叠于 feat/p030-pii-coi）：T4 Set+pico、T5 radio `optPico`（label 逐字 X3 裁决）、kie-config.test.js equality+X9 款扩 pico 断言（扩款不加款，68 pin 不变）；前端四道门禁当天实测全绿（vitest 7 files/68 tests · eslint · lint_frontend F1-F7 · check_frontend_baseline C1-C9）。~~T1/T3 挂起待 M1~~（原记录，见下条）。
-- 进度(2026-10-06 续):**M1 已解决 + 后端面已落地** commit `a554fc7`。M1=5 篇公开渠道 OA RCT（全 CC-BY），Europe PMC 检索→出版方直链下载→就绪验证（首页文本层 3663-4065 字符、RCT 标记词全命中、商务负检 0 命中）；pub_bmc/pub_springer 为 evidence 金样 n-set 源论文（兑现「同源」建议）。落地内容：T1 frozenset +pico、T3 `_KEYWORDS` 5 词（randomized/controlled trial/placebo/double-blind/primary outcome，追加 coi 后保 tie 纪律）、fixtures 入库 `test_data/testfiles/pico/`+README（sha256/provenance）、测试面（X1 正例两款/X6 哨兵升 7==7==7/X2 联动断言/X4 管线+API 双臂）。**校准三步全记录**进 `runs/P030_P031/P-031-PR-BODY.md`(local-only,已删):改前基线 `out/p031_x1_baseline.json`、命中矩阵（consent/informed-consent 命中 cosent 负例被护栏拒收）、改后双向回归 C1 5/5→pico、负例 10/10 逐字不变。门禁当天实测:pytest 551/19s/5e（5e 签名逐文件不变）· audit 0/0 · selftest 63 · lint_file_size/lint_routes OK · test_route_inventory 55 绿 · evidence/kie_configs 零 diff。**余项**:①P-030 merge 后开 PR（描述从 PR-BODY 草稿迁移）；②Ying Cloud GPU 验证 4 条 + 云手测（计划 §7/§8）。域外观察（未动）:id_card 词 license 对 OA 论文首页 CC 声明误命中（4/5 篇改前误判），修则须动 P-030b 钉死 dict，候选未来项。
-- **第 7 触面（新增 KIE doc-type 必登记;2026-10-06 云手测发现,已修）**:`kie_field_metrics._PRODUCTION_KEY_HINTS`（`kie_field_metrics.py:9-15`）是本包六触面枚举（A1-A15）的**漏项**——缺 `pico` ⇒ `evaluate_kie_production_hit` 落 `unsupported_doc_type:pico`（UI ⚠ `kie_production` 假告警）+ `compute_fill_confidence` 恒 0.0。**修复**（本 PR，一处同覆盖 coi+pico）:表补 `"coi": [carrier, policy_type, eff_date, exp_date, limits]` 与 `"pico": [findings]` + `KIE_ACCEPTANCE_CRITERIA.md` §Required key hints 补两行 + `test_kie_field_metrics.py` 新增 3 用例（production_hit / no_hints_filled / fill_confidence）。**规则**：新增 KIE doc-type 的触面 = 原六处 + **本表（第 7 处）**；缺则 UI 假告警且 `kie_confidence_avg` 归零。
-
-### P-032 · evidence 层 text-first 硬化:立项 + 三裁决点定稿（2026-10-07）
-> status: landed · since: 2026-10-07
-- **来源/触发**:`P-029` follow-up 行（页号契约缺口）+ 次级项ⓐ（数字标点差）。#68（页号注入,merge `48ecaa9`）Cloud 真跑后仍 `axis A / unsupported`;**决定性发现**——findings 引文（"There was no difference in peak troponin I concentration after surgery…"）在整份 PDF 文本层**逐字 0 命中**（`no difference` 实际只在第 5 页 Results,而 KIE 默认只读第 1 页）⇒ **跨页臆造引文**,补页号/放宽信任均救不了;并证接地文本源错误:PDF 原生文本层 `11,328`（逗号）vs PP-Structure OCR `11, 328`（空格）。
-- **决策（已裁决 2026-10-07,按 draft-v1 建议值定稿）**:evidence 层由「图片 VL 抽取 + 事后页归属」改为「**文本优先抽取 + 确定性接地**」——pico/evidence 输入改喂**原生文本层 + `[p{绝对页号}_b{块号}]` marker**（Qwen VL 文本分支,不喂图）;模型 `quote_block` 改引 marker;管线用 V0-V6 归一子串在**同一文本**上反查 `(page, block, span)`;evidence 专用信任判据 = 「该页原生文本层存在」（`total_chars>0` 且 `invisible_ratio` 低）,**弃用** `image_coverage`（E1 表格回填判据,**不动其另外 3 个消费者**）。承载开关 `DOCUVISION_EVIDENCE_TEXT_FIRST`（默认 off,独立可回滚）。
-- **三裁决点（定稿）**:①prompt 升 **`v4`**（连带 `findings_schema.PROMPT_VERSION` 重绑 + 金样 `tests/evidence/golden/verified.jsonl` 45 条迁移,C4 校验两处版本号同值）;②页覆盖 = **只喂「正文页」**（layout 定位正文页 + `KIE_MAX_PAGES` 截断;判定规则写死,确界 C1 标定后写成代码常量）;③分块 = **按页分块多次调用**（marker 带绝对页号;超上下文窗按块边界滑窗、窗间重叠 1 块）。
-- **执行包（裁定真源,local-only）**:`docs/R&D/runs/P029/P029-evidence-text-first-执行包.md`（M1-M5 改动面 + C0-C5 DoD + E1-E7 Cloud 复验判据 + 回滚点 + §R 风险停止条件 + §7 不做清单/零触碰声明）;落地后按「提炼后删除」清理。
-- **落地进度（2026-10-07）**:M5 信任谓词 `grounding.py` / M4 确定性接地+gate 分支 / M1 text-first 通道（marker+滑窗+正文页+KieManager 文本分支+service text_payload）/ M2 正文页接线 / M3 findings 累积 / C4 prompt v4+金样 45 条重打戳（迁移前后内容零差异,`--check` ok）——C1a 本机生死锚点过（真实 pub_bmc 第 5 页接地命中 page=5+span 非空+首页受信）;**代码合 main（2026-10-07,#69 merge `21983d0`,含 D1/D2 修复）**;执行记录:`docs/R&D/runs/P029/P032-执行记录.md`(local-only)。
-- **独立审阅（2026-10-07,复核者）**:本机复跑门禁**逐数一致**（全量 `pytest` 591 passed / 9 skipped / 5 errors;`audit_agent_ops` 0/0;`lint_file_size` OK;`tests/evidence/` 113 passed,C1a 真实 BMC 单测过）。发现 3 项:**D1（已修）**`backend/app/services/evidence/grounding.py:24` 缺 `Set` import——`typing.get_type_hints(trusted_grounding_page_set)` 抛 `NameError: name 'Set' is not defined`（被 `from __future__ import annotations` 掩盖,且死代码门禁 `ruff --select F401,F841` **不含 F821** ⇒ 盲区;F821 已并入门禁,见下）;**D2（已修）**`gate` 的 text-first 判定原只看全局旗标,未与 M1 `text_first_enabled(doc_type,is_pdf)` 同源 ⇒ 极端组合（pico 非 PDF）会「图片抽取 + 原生接地」错配;改由 `text_first.text_first_from_ctx` 单源驱动,两侧不可再分叉;**D3（记数订正）**执行记录「evidence 套件 110→118」实测为 **84→113**（`tests/evidence/`;含 `test_kie_field_merge` 共 120）,权威全量数无误。F821 纳入死代码门禁（kernel `testing.md` + 派生副本,独立 commit）亦随 #69 合入。
-- **Cloud 复验读数（2026-10-07,Cloud Studio GPU,`baffc46`;全绿）**:E1 引文逐字命中 = **3/3 `verbatim_exact`**（page 5,`quote_span` 非空,`marker_hint_hits=3`）;E2 `export_allowed=True`、ledger 空;E3 `kie_pages_processed=[5]`;E4 `trusted_pages=[1..10]`（含页 1;旧判据下页 1 缺席）;E5 多页不丢 = **顶层 10 = 各页之和 10**（`processed=[1..5]`,`multipage=True`,`kie_fields_by_page` 5 键,逐页 3+2+2+3）;E6 关开关 = legacy（`trusted_pages=[2,3,4,5,6,8,9,10]`、无 marker 统计键、`page_injected=3` before/after 语义;gate 侧 flag-off 走原封不动旧码,结构上零行为）;E7 回归 = Cloud `pytest` **620 passed / 6 skipped / 0 failed / 0 error** + audit 0/0 + lint OK。**对照收获**:Run1（text-first,同源）3/3 exact vs Run3（legacy,图↔OCR 漂移）2/3 exact + 一条 `9/40w prefix` 被拒 ⇒ 反证 text-first 消除漂移有效。**口径**:prompt v4 全局生效,故 E6「零行为」仅对 gate 代码成立,模型侧输入非与 pre-P-032 逐字相同。
-- **后续项（非阻塞,登记待办）**:①**可观测性**:多页下某页模型输出不可解析时落 `{"raw_output":…}`（`_parse_json`→None）,该页 findings 被 `field_merge._SKIP_MERGE_KEYS` 静默跳过（Cloud E5 实测页 1 即此形态）——属既有契约行为,multipage 放大发生面;建议加 `raw_output` 页计数/WARNING（`kie_qwen_service`/`text_first`）。②**E5 判据盲区**:「顶层=各页之和」在 `raw_output` 页恒成立,测不出丢页;建议补伴随断言「`raw_output` 页数=0」或上报该页数。
-- **回填义务**:已完成——本条目 `landed`;`docs/architecture/evidence-layer.md`、`CHANGELOG.md`、`.cursor/rules/006-cloud-testing.mdc` 已随 #69 更新。
-- Promotion-check: 0 eligible -> deferred（2026-10-07 刚 landed,待晋升审视窗口）。

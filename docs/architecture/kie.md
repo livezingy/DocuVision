@@ -4,7 +4,7 @@
 
 ## 1. 目标与范围
 
-- **目标**：对 `invoice` / `receipt` / `id_card` / `passport` / `bank_card` 等类型，在通用版面与表格流程之后，输出 **结构化字段（当前为 Qwen2.5-VL 按 YAML schema 解析得到的 JSON 字典）**，供 API 与前端 **Content > Fields** 与最终任务 JSON 展示。
+- **目标**：对 `invoice` / `receipt` / `id_card` / `passport` / `bank_card` / `coi` / `pico` 等类型（当前在册七类），在通用版面与表格流程之后，输出 **结构化字段（当前为 Qwen2.5-VL 按 YAML schema 解析得到的 JSON 字典）**，供 API 与前端 **Content > Fields** 与最终任务 JSON 展示。
 - **不在本文**：字段级 bbox 与画布联动（可后续增量）；通用 OCR、表格单元格解析、公式/印章（见总纲）。
 - **依赖与显存**：主流程 KIE 使用 **Hugging Face `transformers` + Qwen2.5-VL**，与 Paddle GPU 栈可共存于同一机，但 **峰值显存叠加**，部署时需预留或分时。
 
@@ -54,7 +54,7 @@ flowchart LR
 
 - VL 的 schema 与 prompt 模板按类型定义于：`backend/app/services/kie/kie_configs/`（`_registry.yaml` 登记类型）。
 
-`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`（单一真源：`KIE_SUPPORTED_DOC_TYPES`，见 [`query_fields.py`](../../backend/app/services/kie/query_fields.py)）。
+`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`、`coi`、`pico`（单一真源：`KIE_SUPPORTED_DOC_TYPES`，见 [`query_fields.py`](../../backend/app/services/kie/query_fields.py)）；`coi`（ACORD 25 五字段）与 `pico`（RCT findings）为 **v1.11 增量**。
 
 - `auto` + `enable_kie=true` 跳过 KIE，`kie_meta.error_code = auto_document_type_requires_explicit_choice`（`stage=skipped_auto_doc_type`）——提示用户选择具体类型，而非笼统的 `unsupported_document_type`。
 - 其他非支持类型跳过 KIE，`kie_meta.error_code = unsupported_document_type`（`stage=skipped_doc_type`）。
@@ -65,6 +65,24 @@ flowchart LR
 - 请求参数：`kie_query_fields`（JSON 数组，最多 20 项，**仅追加**内置 YAML 顶层键）。
 - 实现：[`query_fields.py`](../../backend/app/services/kie/query_fields.py)、设计说明 [kie-custom-fields.md](./kie-custom-fields.md)。
 - **KIE-ACCEPT-002 不检查** query 字段是否填充；观察性指标见 `quality.kie_query_fields_requested` / `kie_query_fields_filled`。
+
+### 4.2 新增 doc-type 的登记触面（七处，v1.11 起）
+
+新增一个 KIE `document_type` 必须**同批**更新七处——缺任一处都是静默不一致（不会红，只会在运行期表现为"跳过"或假告警）：
+
+| # | 落点 | 缺了会怎样 |
+|---|---|---|
+| 1 | `KIE_SUPPORTED_DOC_TYPES`（[`query_fields.py`](../../backend/app/services/kie/query_fields.py)，单一真源） | 请求被判 `unsupported_document_type` 跳过 KIE |
+| 2 | `kie_configs/_registry.yaml` | `KieManager` 找不到模板 |
+| 3 | `kie_configs/<type>.yaml`（prompt + schema） | 无字段契约（coi = carrier/policy_type/eff_date/exp_date/limits） |
+| 4 | `KIE_DOC_TYPES`（前端 [`kie-config.js`](../../frontend/modules/kie-config.js)，`Set`） | 前端不自动开 `enable_kie`（`options-dialog.js` 按它派生） |
+| 5 | KIE 类型 radio（`frontend/index.html`） | 用户选不到该类型 |
+| 6 | `_KEYWORDS`（`document_type_classifier.py`，`auto` 路由） | 上传该类型时 `auto` 判不中（`document/profile` 的 suggested 失真） |
+| 7 | `_PRODUCTION_KEY_HINTS`（[`kie_field_metrics.py`](../../backend/app/services/kie/kie_field_metrics.py)） | **历史漏项**：UI 出 ⚠ `kie_production` 假告警，且 `kie_confidence_avg` 恒 0 |
+
+- **一致性哨兵**：`backend/tests/test_kie_domain_consistency.py` 断言 `_KEYWORDS` == `KIE_SUPPORTED_DOC_TYPES` == `_registry.yaml` keys（三向相等，当前 7==7==7）；`auto` 的错误消息文案也从该 frozenset 派生（防第二份清单漂移）。
+- 第 7 处的人读数据表见 [KIE_ACCEPTANCE_CRITERIA.md](../../backend/tests/KIE_ACCEPTANCE_CRITERIA.md) §Required key hints。
+- **`enable_kie` 的自动启用是前端行为**：后端 `auto` 兜底硬编码集合（invoice/receipt/id_card）自 v1.4 起未扩面，`coi`/`pico` 靠前端 `KIE_DOC_TYPES` 命中后显式传参（扩后端兜底属另行立项）。
 
 ## 5. 对外契约（稳定）
 

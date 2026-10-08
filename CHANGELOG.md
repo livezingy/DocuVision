@@ -24,6 +24,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "From the provided page text" sentence removed) with `findings_schema.PROMPT_VERSION = v4`, now machine-bound to
   the real template header; golden 45 records restamped with a per-record `prompt_version` (harness metadata) via
   `convert_golden.py`, all 45 invariants re-verified green.
+- **P-032 promoted out of PENDING into its living doc** (2026-10-07, docs-only, via the decision log's own
+  "结论确认 → 晋升 `docs/architecture/` → 从本清单移除" path): the text-first evidence contract now lives in
+  `docs/architecture/evidence-layer.md` - the owning living doc for `backend/app/services/evidence/**` -
+  as §2 (module table: `grounding.py` / `text_first.py` / `kie_configs/pico.yaml`) plus §4.1 (text-first
+  branch: flag semantics, extraction input, trust predicate, `evidence.stats` keys), with the Cloud
+  re-verification (`baffc46`: E1 3/3 verbatim hits / E5 10=10 / E7 620 passed) recorded on its 最近对照
+  line. PENDING drops to 19 entries and records P-032 on its history line; the entry had no remaining
+  action left (its two follow-ups were dropped by decision, below).
+- **PENDING hygiene round** (2026-10-07, user decisions; docs-only, zero product change): P-024's
+  "compaction-detectability" re-test obligation was dropped as uncontrollable and unnecessary (the kernel
+  ① clause keeps its original conditional text; the "auto-invalid if unrecognizable" branch is no longer
+  tracked); P-029's remaining 待办 were all closed - ② the RCT report stays a **report-scope asset, not
+  committed**, with `capability-card-v1.12` 行 12 as its **only citation surface**, ③ the ZH-12 hedge words
+  / three-tier causal verbs seeding was **deleted outright** (no seed, no entry, and deliberately **not** a
+  trigger condition; the Chinese-domain Gate B/C blind spot stays covered by the card §3 boundary line);
+  P-032's two follow-ups (`raw_output` page counter, E5 companion assertion) were deleted as not tracked.
+  `docs/R&D/README.md`'s runs index was corrected in the same pass: the two dead links
+  (`P020-…执行包`, `P021-…执行清单`) removed, the P-029/P-030/P-031/P-032 local-only packs recorded as
+  cleaned, and the runs-P027 retention rule stated (kept while P-027 is not `landed`).
+  `Promotion-check: 1 eligible (P-032) -> promoted`.
+- **PENDING clear-out batch** (2026-10-07, docs-only): six entries whose conclusions were already carried by
+  living docs were promoted out and removed via the decision log's own "结论确认 → 晋升 → 移除" path -
+  **P-002** (`provenance-review.md` §4/§5), **P-021** (`docuvision-system-design.md` §3.2–§3.4 +
+  `ocr-quality-harness.md` §5 + `docs/demo/QUALITY_CASE_STUDY.md` + the engine-param contract test),
+  **P-028** (`provenance-review.md` §4.4), **P-029** (`evidence-layer.md` + capability card 行 13), and
+  **P-030 / P-031** - the last two needed their carrier written first: `kie.md` §4 now lists all seven KIE
+  document types and gains **§4.2「新增 doc-type 的登记触面（七处）」** (the seven touch points incl. the
+  historically-missed `_PRODUCTION_KEY_HINTS`, the `test_kie_domain_consistency.py` 7==7==7 sentinel, and the
+  "auto-enable is frontend-side" boundary), while `docuvision-system-design.md` §7.1 gains the
+  `enable_pii_mask` Form row and §7.1/§7.8 list `coi` + `pico`. `provenance-review.md`'s code-ownership line
+  was refreshed for the P-028 F1 split (`table_layout.py` / `table_cell_geo.py` / `table_band_range.py`).
+  P-021's F1 lesson (an allowlist-pinned file has a tighter cap than the 500 budget - check the allowlist
+  first) moved into `DEVELOPMENT.md` rule 1 so the judgement survives the entry. PENDING drops to 13
+  entries; the removals are recorded on its history line.
+- **Three `landed` entries reclassified as `retained`** (2026-10-07, docs-only): **P-015** (kernel carries the
+  rule; the entry keeps the Git-LFS rejection rationale and the revisit trigger), **P-020** (spec promoted
+  2026-09-26; the entry is the harness evidence annex - cloud readings and the 1958 vs 1205 deviation) and
+  **P-023** (rule + gate `check_stub_scope` / T2 shipped; the entry keeps the two failure-mode precedents).
+  Each states its reason in the entry, so DOC-3 no longer clocks them.
+  `Promotion-check: 6 eligible (P-002 P-021 P-028 P-029 P-030 P-031) -> promoted; 3 landed -> retained (P-015 P-020 P-023)`.
 
 ### Removed
 

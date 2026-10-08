@@ -11,6 +11,8 @@
 1. **文件行数预算 500**：backend/app 与 scripts 下新文件超 500 行 CI 即红；
    存量超标文件在 scripts/file_size_allowlist.json 里棘轮管理（只减不增，
    缩小后跑 `python scripts/lint_file_size.py --update` 下调记录）。
+   **allowlist 内的文件按记录值钉死**——上限就是那个数（不是 500），`+1` 行即 FAIL；
+   动这些文件前先查 allowlist，必要时把新增行与既有注释压成净零（P-021 实测教训）。
 
 2. **路由只进域 router**：新路由写进 backend/app/routers/ 对应域文件
    （必要时新建域），main.py 出现路由装饰器 = CI 红。main.py 只是装配层。

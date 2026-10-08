@@ -44,8 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   action left (its two follow-ups were dropped by decision, below).
 - **PENDING hygiene round** (2026-10-07, user decisions; docs-only, zero product change): P-024's
   "compaction-detectability" re-test obligation was dropped as uncontrollable and unnecessary (the kernel
-  ① clause keeps its original conditional text; the "auto-invalid if unrecognizable" branch is no longer
-  tracked); P-029's remaining 待办 were all closed - ② the RCT report stays a **report-scope asset, not
+  ① clause kept its original conditional text at that point; the "auto-invalid if unrecognizable" branch is
+  no longer tracked, and the clause itself was rewritten to best-effort wording on 2026-10-08 - see the
+  round-2 entry below); P-029's remaining 待办 were all closed - ② the RCT report stays a **report-scope asset, not
   committed**, with `capability-card-v1.12` 行 12 as its **only citation surface**, ③ the ZH-12 hedge words
   / three-tier causal verbs seeding was **deleted outright** (no seed, no entry, and deliberately **not** a
   trigger condition; the Chinese-domain Gate B/C blind spot stays covered by the card §3 boundary line);

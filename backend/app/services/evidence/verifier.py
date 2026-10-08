@@ -53,8 +53,9 @@ _HEDGE_REJOIN = re.compile(r"(?<=[a-z])- (?=[a-z])")
 _CLOSED_LISTS_PATH = Path(__file__).resolve().parent / "closed_lists.json"
 
 # Closed-list hedge words (single source: closed_lists.json, design L3). The
-# ZH list is empty until the first Chinese-domain data PR; CJK matching will
-# need non-\b tokenization when it is seeded, so hedge_set() must be revisited
+# ZH list is intentionally empty (2026-10-07 decision: no seed, no trigger
+# condition - the Chinese domain is not covered); if it is ever seeded, CJK
+# matching will need non-\b tokenization, so hedge_set() must be revisited
 # together with that data change.
 with _CLOSED_LISTS_PATH.open("r", encoding="utf-8") as _fh:
     _CLOSED = json.load(_fh)

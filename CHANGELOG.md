@@ -179,6 +179,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Promotion-check: 0 eligible -> deferred`.
 
 ### Removed
+- **`pymupdf_table_engine.py` deleted** (2026-10-09): the PyMuPDF `find_tables` fallback engine never
+  had a caller - `git grep` only ever hit its own definition, and `TableService` registers the
+  PP-Structure engine only. `doc-sync-ownership.md` drops it from the no-living-contract roster
+  (23 -> 22) and records why it leaves the list entirely rather than staying as a contract-less module.
 
 ### Fixed
 

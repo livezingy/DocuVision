@@ -127,6 +127,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   values: D8's cell/row aggregation rule (min) and the high/medium/low thresholds, A's exposure surface (internal
   only for now), and D8's exclusion of KIE field-level confidence.
   `Promotion-check: 0 eligible -> deferred`.
+- **F1 split: the OCR-block cluster extracted out of `table_service.py`** (2026-10-09, zero behaviour change).
+  The D8 pre-step. `_reconstruct_table_with_ocr` plus its four bbox/cell helpers (`_parse_cell_bbox` /
+  `_filter_text_blocks_in_bbox` / `_find_text_blocks_in_cell` / `_find_row_for_y`, 278 lines) moved **verbatim**
+  into a new sibling module `backend/app/services/table_ocr_blocks.py` as `TableOcrBlocksMixin`, inherited by
+  `PPStructureTableEngine` through the MRO - so the method surface that the call sites and the two
+  "load `table_service.py` by file path" tests rely on is unchanged. The cluster reads and writes no `self.*`
+  engine state and had no test coverage of its own, which is what made a byte-identical move safe: the moved
+  block was diffed against `HEAD` and is identical line-for-line, and the full suite is unchanged (598 passed /
+  19 skipped / 5 errors). It was required because `table_service.py` was pinned at its 1613-line cap and could
+  not accept the `cell_confidence` work; the ratchet was lowered to the new count (1613 -> 1336, the prescribed
+  "only down" direction - the unrelated 5-line slack `--update` also tightened on
+  `document_pipeline_orchestrator.py` was deliberately reverted to keep this change focused).
+  `provenance-review.md`'s code-ownership line gained the new module. The OCR confidence each block carries is
+  still deliberately unread: the D8 aggregation is the next step, not this one.
+  `Promotion-check: 0 eligible -> deferred`.
 
 ### Removed
 

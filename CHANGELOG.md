@@ -99,6 +99,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of them also pointed at the removed P-029 entry and a deleted local-only record. `docs/R&D/README.md`'s
   `reference/` table lost a dead link (`capability-card-v1.10-v1.0.md`) and gained the corrected
   `reference/azure/` path.
+- **Batch B decision freeze: three product-side gaps registered** (2026-10-09, user rulings; docs-only, zero
+  product change). The three gaps previously parked as "goes to the product side as its own project" are now on
+  the decision log with frozen scopes; PENDING goes to **15** entries (P-034 added, header index and count synced).
+  **P-027 A** (R3 gap 1, IE merged-cell semantics): merged-cell parsing lands in the **layout model's row/column
+  structure output** (`table_layout.LayoutModel` / `build_layout_model`), not in the recognition layer - so
+  P-028's "flag, never fix" stance at the recognition layer is untouched, and this round is explicitly allowed to
+  **really fix** the semantic-structure layer (trigger files are post-P-028 splits and not in the size allowlist;
+  `table_service.py` is pinned at 1613 and must not gain lines). Single source of merge semantics =
+  `html_structure`'s `rowspan`/`colspan` (already persisted on the table dict), with a `data`
+  empty-placeholder fallback for SLANeXt HTML without per-cell bboxes. Verification: merged-cell goldens plus a
+  Cloud re-read of the P-027 R4 semantic scale (IE column binding 0.5278 / merged-cell completeness 0.7917 should
+  rise; the IE 0.2308 line-GT reading stays unfudged). **P-027 D8** (Confidence product source) is defined as
+  **OCR block confidence (`rec_score`) propagated through row/field aggregation** - explicitly not a native model
+  probability (the Qwen path emits no logits) and not the fill-rate heuristic `kie_confidence_avg`; the two must
+  not be mixed. The only existing anchor holding OCR blocks *with* confidence is
+  `table_service._reconstruct_table_with_ocr` (which currently takes only the text), so the first move must be a
+  **net-zero extraction** into a sibling module (raising the ratchet is a red line needing separate authorization).
+  The harness side must change too: gate 3 reads the **GT** rows' `Confidence` column, already marked underivable,
+  so it has to read the **pred** envelope instead - both sides are required. **P-034** (new entry, sub-item C):
+  P-032's text-first channel is generalized from pico-only to include **coi** - the real fix behind P-030's parked
+  `carrier` follow-up (pure prompt tuning failed twice on flattened ACORD text; the block-marked text layer is a
+  different substrate). Single switch at `text_first.py:44`; the KIE step and the evidence gate go through the
+  same predicate, so no orchestrator-side branch, and no new doc-type registration is needed (coi is already in
+  all seven touch points). Prerequisites: recalibrate `BODY_PAGE_MIN_*` (calibrated on the 5 pico corpora) and
+  inventory which coi fixtures are born-digital. Four sub-points are recorded as **provisional** with recommended
+  values: D8's cell/row aggregation rule (min) and the high/medium/low thresholds, A's exposure surface (internal
+  only for now), and D8's exclusion of KIE field-level confidence.
+  `Promotion-check: 0 eligible -> deferred`.
 
 ### Removed
 

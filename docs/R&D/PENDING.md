@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **14** 条）
+## 待确认（本区共 **15** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-014` `P-015` `P-017` `P-018` `P-019` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -654,6 +654,26 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **testfiles/others 迁入 assets（2026-10-04，Ying 授权）**：`test_data/testfiles/others/`（此前多个 **无单号** Upwork 需求单附件，4 件：`911_History_Report [1-10].pdf` / `ejemplo1_resultado.jpeg` / `ejemplo2_resultado.jpeg` / `P903454_1.jpg`）迁入新客户命名空间 `test_data/assets/upwork-legacy-202610/`（`raw/` 4 件原样保留 + `manifest.json` 4 件 SHA256 + `README.md`），与 `upwork-022102306242203617428/` 同构。命名 `legacy` 表「历史/无单号」、`202610` 界定「2026-10 前」。**校验/审计泛化**：`test_data/scripts/verify_assets.py` 与 `scripts/assets_manifest_audit.py` 由硬编码单 client 改为**遍历 `assets/*/` 全部命名空间**（新命名空间零改码接入；每个命名空间目录须含 `manifest.json`）。根 `.gitignore` 移除失效的 `test_data/testfiles/others/` 规则；`testfiles/README.md` / `acceptance/README.md` 同步。客户附件仅 `test_data/` 内重组，未出仓库。
 - **R3 D4 边界解释性裁定追认（2026-10-05，Ying）**：R3 §5.2 的实现形态——闸 1 退化为「字段级在场核对」（pred 行结构化投影不做）、「无发明值」取 OCR 输出侧形态（幻影频段计数）——**追认为正式口径（保守形态即为口径），该裁定「Ying 可另裁」口关闭**。语义钉死：`row_correct`（行级 join）与 `presence_rate`（字段在场）为两个**独立强度**判据，各自如实登记、不互相折算；R4 D4′ 的行重建（配对单元 = 频段行 + 跨块端点拼对）属**判分器粒度修正**（X3-4 兑现），不改变本裁定「pred 侧行结构化投影不做」的边界；若未来产品侧 IE 语义层修复（R3 缺口 1）落地后需要行级投影核对，属新立项范围、不回改本口径。
 
+**产品侧立项 A · 合并格语义进 layout 行列结构（2026-10-09，Ying 裁决；本轮允许真修）**
+- **裁决**：①合并格语义解析**落在 layout 模型的行/列结构输出**（`backend/app/services/table_layout.py` 的 `LayoutModel` / `build_layout_model`），不在识别层、也不做后处理糊层；②**本轮允许真修**——P-028 X1=B 的「产品侧只能旗标」立场在**识别层**维持不变（`provenance-review.md` §4.4），本次解锁的只是**语义结构层**。
+- **缺口原文**：R3 执行记录 §6.3 缺口 1（本地 `docs/R&D/runs/P027/R3-执行记录.md`）；R4 承接注记判「1/2/5 = 本包主体」仅限**秤侧**，产品侧修复此前未做。
+- **冻结口径**：①合并格语义**唯一真源** = `html_structure` 的 `rowspan`/`colspan`/`has_merged_cells`/`header_span_map`（`backend/app/services/table_service.py:1207-1224`，已随 table dict 落盘 `:910`）；②**无结构串时 fallback** = 由 `data` 层空串占位反推 covered 集（`table_service.py:1046/1053` 已把合并格填空串；SLANeXt HTML 无 per-cell bbox 系已知情形，`table_cell_geo.py:53`）；③落点三文件 `table_layout.py`(202) / `table_cell_geo.py`(121) / `table_backfill.py`(417) 均为 P-028 拆分后**未固化**文件（`scripts/file_size_allowlist.json` 只固化 10 个文件，三者不在内），**不得改 `table_service.py`（已固化 1613）**。
+- **暴露面（暂定，登记时采用推荐值）**：**只做管线内部**（`LayoutModel` 的 merge band / `derive_cell_bbox` 的 span bbox / backfill 候选格的 anchor-vs-covered 区分），**不写进 result JSON / view 层**——后者须改 `envelope_builder.py`（已固化 620），另行立项。
+- **不改的**：cell 数据原值透传（禁修正小数点、禁猜值）；`row_correct` 与 `presence_rate` 两个判据的独立强度、以及 `:655` 的 D4 边界裁定均不回改。
+- **验收**：①单测 = 合并格金样（`backend/tests/test_golden_backfill.py` G2c + `scripts/trial/generate_trial_samples.py::build_merged_band_table`、`test_table_header_structure.py` 多级表头/rowspan）；②Cloud 复测 = P-027 R4 语义秤的**列绑定 IE 0.5278 / 合并格完整 IE 0.7917** 应回升，且 **R2 的 IE 0.2308 旧读数不回改**；③本机无 GPU ⇒ mock 单测 + 交付文档写 Cloud 验证步骤与验收标准。
+
+**产品侧立项 D8 · Confidence 产品源 = OCR block confidence 传导（2026-10-09，Ying 裁决）**
+- **裁决**：产品侧 confidence **取 OCR block 级 confidence 经行/字段聚合传导**——由此兑现 R4 D8 原文「已裁决 = (b) 归产品侧另立项」（`docs/R&D/runs/P027/R4-执行包.md:53`）。
+- **缺口原文**：R3 执行记录 §6.3 缺口 3 =「管线未产 `Confidence`/`Flag_Reason` 列，闸 3 硬线（≤5%）未测量」；harness 读 `None`（未测量 ≠ 0）。
+- **冻结口径**：confidence 语义 = **PaddleOCR `rec_score` 传导**（`backend/app/services/ocr_service.py:171-189` 的 `text_blocks[].confidence`），**非模型原生概率**——Qwen2.5-VL 路径无 logits/概率输出（`backend/app/services/kie_qwen_service.py:459-472`）；既有 `kie_confidence_avg` 仍是**填充率启发值**（`kie/kie_field_metrics.py:64-70`），两者语义不同、**不得混用或互相折算**。
+- **落点**：①cell 级唯一现成锚点 = `table_service._reconstruct_table_with_ocr`（`table_service.py:512-530`，此处**已持有带 confidence 的 OCR 块却只取 text**）；因该文件已固化 1613，**首个动作必须是「零净增」抽取**（把该段聚合逻辑提到未固化的兄弟模块；`lint_file_size.py` 判据为 `n > cap`，等值安全）——**抬高棘轮属红线，需单独授权**；②confidence 网格随 `table_backfill.py:274-277` 现有四张 grid（`cell_provenance`/`cell_ocr_text`/`cell_word_bbox`/`cell_align_reason`）追加第 5 张 `cell_confidence`，行级值由 cell 值聚合。
+- **暂定口径（登记时采用推荐值；另有裁决则同 commit 修订）**：cell 级取块间 **min**（安全侧：任一低置信块即低置信）；行级取 min；`high`/`medium`/`low` **阈值待定**，且必须写进 harness 说明——阈值直接决定闸读数，属**口径**而非实现。
+- **两侧缺一不可**：harness 闸 3 现读 **GT 行**的 `Confidence` 列（`scripts/measure/rf_gates.py:194-202`），而该列在 `scripts/measure/rf_rows.py:18-22` 已被明确标为「不可推导」⇒ 必须改为**从 pred envelope 读**；harness 属 local-only（`scripts/measure/**`），**不入门禁**，仅在本条登记。
+- **范围（暂定）**：本批只做**表 cell + 行级**；**KIE 字段级 confidence 不做**——证据层现无连接点（`kie/text_first.py:182-221` 的 payload 只到页级，`evidence/grounding.py` 的 `GroundingSource.blocks` 只有文本、无分数）。
+- **契约影响**：若给 result JSON 加键 ⇒ `backend/tests/snapshots/openapi_baseline.json` 须重生成（cloud-only：`DOCUVISION_CLOUD_TESTS=1 DOCUVISION_OPENAPI_BASELINE=write`）并同步前端质量面板（`frontend/tests/unit/quality-panel.test.js`、`e2e/helpers/mock-pro-api.js`）；无路由签名变化，故 `test_route_contract_freeze.py` / `test_route_inventory.py`（55 路由）不受影响。
+- **验收**：mock 单测（确定性，覆盖聚合规则与「缺块 = None」语义）+ Cloud 验证步骤；终局判据 = P-027 闸 3 `flag_rate` 由 `None` 变为**已测量数值**，并说明其与客户硬线 ≤5% 的可比性。
+- **相关**：P-027 R3/R4（秤侧出处）· `docs/architecture/ocr-quality-harness.md` §4 钉死设计点 D8 · P-028（sanity 旗标可作辅助信号，本批不并入）
+
 ### P-033 · 测试夹具可复现哨兵：生成器 `--check` 进 CI（2026-10-08）
 > status: landed · since: 2026-10-08
 - **来源**：2026-10-08 夹具收敛批次（PR #74）实测——`generate_general_testfiles_pure.mjs` 与已提交样例**不幂等**：4 件因早于 ASCII-safe 修复（`b16c83a`）而文本层带 U+2014 三字节乱码（pdfplumber 读作 `(cid:226)(cid:128)(cid:148)`），1 件因列宽默认值变化重生成即并字（`Professional services4 0- Phase 1`），1 个 README 漂移。**漂移此前完全无机检**：只有人重跑才看得见——与 P-008「声明的东西是否真被接上」同类缺口。
@@ -664,5 +684,19 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **触发条件**：改 `generate_general_testfiles_pure.mjs` 或 `test_data/testfiles/**` 样例时（本地先跑 `--check`，CI 兜底）；新增夹具生成器时按上条评估是否纳入。
 - **相关**：PR #74（`--check`/`--only` 与收敛批次）· `test_data/testfiles/README.md` R1/R3 · P-008（"声明但未接线"形态）· P-025（门禁 + 检查点范式）。
 
-- **`docs/R&D/runs/P027/` 保留理由（2026-10-07 登记）**：该目录 5 件（`R2-执行记录` · `R3-执行包` · `R3-执行记录` · `R4-执行包` · `R4-执行记录`）**尚不可删**——按 `docs/R&D/README.md` 的 runs 政策（"temporary, deletable once the project lands"，来源 commit `b3dcfa2`），删除前提是**本条 land**；现 status = `decided`，在途义务未清（R3 缺口 1 IE 语义层产品侧修复 / D8 Confidence 产品源 / BR 葡语解锁触发 / 分岔 C 优先级重排 / R1 taxonomy 转用例）。三条引用使其成为不可断的判据出处：①CHANGELOG `[1.11.0]` P-027 R2/R3/R4 三段以 `runs/P027/R3-执行记录.md`、`R4-执行记录.md` 为 execution record；②本仓 P-002 条目（follow-up 触发证据段）把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；③R4 记录 §6「保留判据与明细」是隔离区 `test_data/derived/**` 证据链的唯一盘存表。**触发**：本条转 `landed`/`retained` 时，同批删除本目录并同步 `docs/R&D/README.md` 的 runs 索引（对照：P-030/P-031/P-032 的 local-only 执行包已按「提炼后删除」清理）。
+### P-034 · KIE text-first 通道泛化到 coi（2026-10-09 立项；兑现原 P-030 `carrier` park 的真修）
+> status: decided · since: 2026-10-09
+- **来源**：原 P-030 的 parked follow-up（已随 P-030 升删，原文见 git `bdbe1ee`）——`carrier` 在承保人名（INSURER A–F）为空的样本上回落到评级样板句（tampa 实测 `A.M. Best B+ VII or Better Insurance Carrier`）；两版 prompt 调优（v1 负向词表 / v2 只取 INSURER A–F + 去重 + 全空）经 Cloud 双向复验**均未达标（tampa 均 ×5，已排除缓存）**，结论 =「纯 prompt 无法在**扁平化 ACORD 文本**上分离评级行/空标签 ⇒ 真修须在**输入层给 KIE 结构化区块文本**（另立项）」。**2026-10-09 Ying 裁决：泛化到 `coi`**。
+- **技术底座（已存在，无需新造）**：P-032 M1/M2 的 text-first 通道（`backend/app/services/kie/text_first.py`，221 行）已把 PDF 原生文本层切块并加全局唯一标记 `[p{page}_b{block}]` 作为 KIE 输入；当前**仅 `pico` + PDF**。
+- **唯一开关**：`text_first.py:44` 的 doc-type 判定 `!= "pico"` → 白名单 `{"pico", "coi"}`。KIE 侧（`backend/app/orchestration/document_pipeline_orchestrator.py:645`）与证据门侧（`backend/app/services/evidence/gate.py:397-411`）**都经同一个判定**，故**不得**在 orchestrator 另起分支；两侧漂移由 `backend/tests/evidence/test_evidence_text_first.py::test_d2_gate_text_first_scope_mirrors_m1` 守护（泛化须同步该文件的新增 coi 正向用例）。
+- **无需新增 doc-type 登记**：coi 已在 `kie.md` §4.2 的**七处触面**全部在册（`KIE_SUPPORTED_DOC_TYPES` / `_registry.yaml` / `coi.yaml` / 前端 `KIE_DOC_TYPES` / index.html radio / `_KEYWORDS` / `_PRODUCTION_KEY_HINTS`），三向哨兵 `backend/tests/test_kie_domain_consistency.py` 为 7==7==7；本次只改**通道判定**，不动 doc-type 集合。
+- **前置（不可跳过）**：①**阈值重校准**——`BODY_PAGE_MIN_TEXT_ELEMENTS = 8` / `BODY_PAGE_MIN_TEXT_CHARS = 500` 的模块 docstring 明写「calibrated on the 5 pico corpora」⇒ 必须在 ACORD/coi 语料上重校准，否则单页表单可能被 `select_body_pages` 判为非正文页而退回 legacy 图像通道；②**语料文本层盘点**——只有 `trusted_grounding_page_set` 放行的页才走 `text_layer`（`text_first.py:201-208`），须先确认 coi 夹具哪些为 born-digital（`coi_acord25_synth_green.pdf` 文本层含 EIN，可用；其余待查）。
+- **prompt 重做（carrier 的真修所在）**：park 时两版 prompt 失败的前提是**扁平化文本**；text-first 换成**带块标记的分块文本**（不同基底），故 prompt 须在新基底上重新设计（让模型引用 `[pN_bM]` 标记而非裸值），**不得**沿用或微调 park 掉的旧改动（两版均未入库）。
+- **same-source 契约（不得破坏）**：`build_text_first_payloads` 直接 import `evidence.grounding` 的 `grounding_source` / `trusted_grounding_page_set`（`text_first.py:196-202`），与证据门接地文本同源；泛化只改 doc-type 白名单，**该共享行不动**。
+- **验收**：同一样本 `EVIDENCE_TEXT_FIRST` **on/off 双跑**，五字段逐一比对——`carrier` 不再回落样板句，且 `policy_type` / `eff_date` / `exp_date` / `limits` **不退化**。**必须实测的风险点**：text-first 分支**只发文本、不发图像**（`backend/app/services/kie/KieManager.py:158-178`），ACORD 的勾选框/评级行/limits 表是否依赖视觉信号须在该对照中证实或证伪。KIE 属 GPU 依赖 ⇒ 本机 mock 单测 + 交付文档写 Cloud 验证步骤与验收标准（**不宣称云端已验证**）。
+- **与 P-027 解耦**：本条属 **kie / evidence 域**（owning doc = `docs/architecture/kie.md` + `evidence-layer.md`），**不**计入 P-027 的在途义务，其落地不解锁 `docs/R&D/runs/P027/` 的删除条件。
+- **相关**：P-032（text-first 通道出处）· `docs/architecture/kie.md`（§3 输入通道 / §4.2 七处触面 / §6 已知局限）· `docs/architecture/evidence-layer.md` · P-030（已删，载体结论在 `kie.md` §4/§4.2）
+- **触发条件**：coi 域任何 carrier / 字段精度批次；改 `text_first.py` 的 doc-type 白名单或 `EVIDENCE_TEXT_FIRST` 语义时同查本条目。
+
+- **`docs/R&D/runs/P027/` 保留理由（2026-10-07 登记）**：该目录 5 件（`R2-执行记录` · `R3-执行包` · `R3-执行记录` · `R4-执行包` · `R4-执行记录`）**尚不可删**——按 `docs/R&D/README.md` 的 runs 政策（"temporary, deletable once the project lands"，来源 commit `b3dcfa2`），删除前提是**本条 land**；现 status = `decided`，在途义务未清（R3 缺口 1 IE 语义层产品侧修复 / D8 Confidence 产品源 ——**两项已于 2026-10-09 立项，见本条「产品侧立项 A / D8」小节** / BR 葡语解锁触发 / 分岔 C 优先级重排 / R1 taxonomy 转用例）。三条引用使其成为不可断的判据出处：①CHANGELOG `[1.11.0]` P-027 R2/R3/R4 三段以 `runs/P027/R3-执行记录.md`、`R4-执行记录.md` 为 execution record；②本仓 P-002 条目（follow-up 触发证据段）把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；③R4 记录 §6「保留判据与明细」是隔离区 `test_data/derived/**` 证据链的唯一盘存表。**触发**：本条转 `landed`/`retained` 时，同批删除本目录并同步 `docs/R&D/README.md` 的 runs 索引（对照：P-030/P-031/P-032 的 local-only 执行包已按「提炼后删除」清理）。
 

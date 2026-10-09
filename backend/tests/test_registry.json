@@ -211,6 +211,10 @@
     "kind": "full",
     "note": "band-range parser + validator case table (P-028 L1; pure logic, no paddle/server)"
   },
+  "test_table_cell_confidence.py": {
+    "kind": "full",
+    "note": "D8 cell-confidence aggregation: grouping + min + per-table frame choice + hit-rate guard (P-027 D8; pure logic, no paddle/server). Kept out of the Phase A list on purpose - registering it phase-a-ci would mean editing .github/workflows/kie-phase-a.yml (red line) for a WARN-free audit."
+  },
   "test_table_header_structure.py": {
     "kind": "full"
   },

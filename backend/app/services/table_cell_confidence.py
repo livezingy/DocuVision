@@ -176,3 +176,78 @@ def aggregate_cell_confidence(
             result["cells"][cell_idx] = round(min(pairs[i][1] for i in entry_ids), 6)
     result["measured"] = True
     return result
+
+
+# ----------------------------------------------------------------- engine adapters
+
+
+def _pick(obj: Any, key: str) -> Any:
+    """Read ``key`` from a dict-or-object payload (PP-StructureV3 results support both)."""
+    if obj is None:
+        return None
+    return obj.get(key) if isinstance(obj, dict) else getattr(obj, key, None)
+
+
+def page_height_of(result_item: Any) -> float:
+    """Page height in the engine's coordinate frame, or ``0.0`` when unavailable.
+
+    Reads the payload's own ``height`` on purpose. ``layout_service._infer_page_bbox`` derives
+    its box from ``item['img']`` and falls back to a synthetic 1000x1400 when that is missing,
+    which would silently pick the wrong frame here; ``0.0`` instead disables the flipped
+    candidate, so an unknown height degrades to "unmeasured" rather than to a wrong answer.
+    """
+    try:
+        return float(_pick(result_item, "height") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def cell_confidence_from_table_item(table_item: Any, page_height: Any) -> Optional[Dict[str, Any]]:
+    """Compact per-cell confidence payload for one ``table_res_list`` entry, or ``None``.
+
+    The payload rides on the layout element, so it carries one float per cell plus scalars -
+    never the raw boxes. ``rec_boxes`` is preferred over ``rec_polys`` (they were identical in
+    every fixture probed); ``cells`` stays aligned with ``cell_box_list``, i.e. with the
+    ``<td>/<th>`` document order of ``pred_html``.
+    """
+    ocr_pred = _pick(table_item, "table_ocr_pred")
+    if ocr_pred is None:
+        return None
+    result = aggregate_cell_confidence(
+        _pick(table_item, "cell_box_list") or [],
+        _pick(ocr_pred, "rec_boxes") or _pick(ocr_pred, "rec_polys") or [],
+        _pick(ocr_pred, "rec_scores") or [],
+        page_height,
+    )
+    if not result["n_cells"]:
+        return None
+    return {
+        "cells": result["cells"],
+        "frame": result["frame"],
+        "measured": result["measured"],
+        "reason": result["reason"],
+        "hits": result["hits"],
+        "n_rec": result["n_rec"],
+        "n_cells": result["n_cells"],
+    }
+
+
+def attach_cell_confidence(tables: Iterable[Any], elements: Iterable[Any]) -> int:
+    """Copy ``element['cell_confidence']`` onto the matching table dicts; returns the count.
+
+    Matched by ``id``: ``table_service`` names each table after the layout element it came from
+    (``element.get('id', ...)``), so the ids line up exactly and no bbox heuristic is needed.
+    Tables without an element, or with an unmeasured payload, are left untouched.
+    """
+    by_id = {
+        _pick(elem, "id"): _pick(elem, "cell_confidence")
+        for elem in (elements or [])
+        if _pick(elem, "cell_confidence")
+    }
+    attached = 0
+    for table in (tables or []):
+        payload = by_id.get(_pick(table, "id"))
+        if payload and isinstance(table, dict):
+            table["cell_confidence"] = payload
+            attached += 1
+    return attached

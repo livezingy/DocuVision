@@ -21,6 +21,7 @@ import cv2
 import numpy as np
 
 from app.services._layout_geometry import _LayoutGeometryMixin
+from app.services.table_cell_confidence import cell_confidence_from_table_item, page_height_of
 
 
 
@@ -653,6 +654,9 @@ class PPStructureEngine(_LayoutGeometryMixin, BaseLayoutEngine):
             return elements
 
         first_item = result[0]
+        # D8: page height in the engine frame, used for the per-table frame choice. 0.0
+        # disables the flipped candidate (see table_cell_confidence.page_height_of).
+        layout_page_height = page_height_of(first_item)
 
         # PaddleOCR 3.3.x / PaddleX 3.3.12 fast-path:
         # LayoutParsingResultV2 supports dict-style keys and provides structured
@@ -673,7 +677,10 @@ class PPStructureEngine(_LayoutGeometryMixin, BaseLayoutEngine):
             # bbox_preprocessed semantically accurate regardless of rotation or unwarping.
 
             # Build stable table html list ordered by table_region_id.
-            table_html_map = {}
+            # D8: the same entry carries the OCR recognition scores needed for per-cell
+            # confidence, so keep the whole item beside its html - a single map keeps the two
+            # derived lists from diverging (same keyset, same sort order).
+            table_payload_map = {}
             for t in table_res_list:
                 if not isinstance(t, dict):
                     continue
@@ -684,11 +691,12 @@ class PPStructureEngine(_LayoutGeometryMixin, BaseLayoutEngine):
                 if '<table' not in table_html.lower():
                     continue
                 try:
-                    table_html_map[int(table_region_id)] = table_html
+                    table_payload_map[int(table_region_id)] = (table_html, t)
                 except Exception:
                     continue
 
-            ordered_table_html = [h for _, h in sorted(table_html_map.items(), key=lambda kv: kv[0])]
+            ordered_table_items = [v for _, v in sorted(table_payload_map.items(), key=lambda kv: kv[0])]
+            ordered_table_html = [h for h, _ in ordered_table_items]
             table_cursor = 0
 
             # Build a (bbox, score) list from layout_det_res.boxes so we can look up
@@ -787,9 +795,15 @@ class PPStructureEngine(_LayoutGeometryMixin, BaseLayoutEngine):
                     element['text'] = self._normalize_text(content)
 
                 if element_type == 'table' and table_cursor < len(ordered_table_html):
-                    table_html = ordered_table_html[table_cursor]
+                    table_html, table_item = ordered_table_items[table_cursor]
                     table_cursor += 1
                     element['html'] = table_html
+                    # D8: per-cell confidence from this table's own OCR recognition scores.
+                    # Compact (one float per cell + scalars) and not part of the view contract;
+                    # the orchestrator copies it onto result["tables"] by id.
+                    cell_confidence = cell_confidence_from_table_item(table_item, layout_page_height)
+                    if cell_confidence:
+                        element['cell_confidence'] = cell_confidence
                     if 'text' not in element:
                         element['text'] = self._extract_table_summary_text(table_html)
 

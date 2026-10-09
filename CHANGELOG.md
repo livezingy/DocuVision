@@ -43,6 +43,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `phase-a-ci` would need a `kie-phase-a.yml` edit, and CI config is a red line. Nothing is wired into the
   pipeline yet: threading `cell_box_list` / `table_ocr_pred` out of `layout_service.py:711-724` (pinned at
   1804) is the next step, along with the open hit-rate threshold and the high/medium/low cut points.
+- **D8 wiring + the `layout_service.py` headroom refactor** (2026-10-09, P-027 产品侧立项 D8): the aggregation
+  above is now wired. `_parse_result` keeps the whole `table_res_list` entry beside its HTML
+  (`table_payload_map`, so the html and OCR-score columns cannot drift apart), takes the page height from the
+  payload's own `height` - deliberately **not** `_infer_page_bbox`, whose synthetic 1000x1400 fallback would
+  silently pick the wrong frame - and attaches a compact `cell_confidence` payload (one float per cell plus
+  scalars, not part of the view contract) to each table element. `document_pipeline_orchestrator` lands it on
+  `result["tables"][i]["cell_confidence"]` via `attach_cell_confidence`, matched by **id**, since
+  `table_service` names each table after the element it came from. To make room in a file pinned at its
+  1804-line cap, two dead methods were deleted (`_reinit_engine`, and `_extract_text_from_parent` whose body was
+  literally `return parent_text`) and the six pure geometry/text helpers moved verbatim into
+  `services/_layout_geometry.py` as `_LayoutGeometryMixin` (reached via the MRO, so call sites and the three
+  path-loading tests are untouched). `PPStructureEngine.analyze` was deliberately **kept**: unreachable in
+  production (the worker dispatches `_analyze_pdf`/`_analyze_image` directly) but it implements the
+  `BaseLayoutEngine` abstractmethod, so deleting it would make the class abstract and break the worker.
+  `layout_service.py` 1804 -> 1614; `document_pipeline_orchestrator.py` now sits exactly at its ratchet cap
+  (1297). The projection into `table_backfill`'s grid is deliberately **not** done: `cell_confidence` is a flat
+  list aligned with `cell_box_list` / `<td>` order, while the 2-D `data` grid has more positions than `<td>`s
+  once cells are merged, so that projection waits for the merged-cell work. Full suite 598 -> 614.
+  `doc-sync-ownership.md` gained both new modules on its no-living-contract roster (23 -> 25 there; 24 once the
+  pymupdf deletion branch merges - the line needs one manual reconciliation).
 
 ### Changed
 - **P-032 C4**: `kie_configs/pico.yaml` prompt v3 → v4 (quote_block cites block markers; the ambiguous

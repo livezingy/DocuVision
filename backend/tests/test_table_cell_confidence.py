@@ -16,6 +16,9 @@ from app.services.table_cell_confidence import (
     DEFAULT_FRAME_OK_RATIO,
     aggregate_cell_confidence,
     as_box,
+    attach_cell_confidence,
+    cell_confidence_from_table_item,
+    page_height_of,
 )
 
 
@@ -140,6 +143,57 @@ def test_scores_shorter_than_boxes_drop_the_tail():
     out = aggregate_cell_confidence(cells, [[10, 10, 40, 40], [210, 10, 240, 40]], [0.7], 200)
     assert out["n_rec"] == 1
     assert out["cells"] == [0.7, None]
+
+
+# --------------------------------------------------------------- engine adapters
+
+def test_page_height_reads_the_payload_height():
+    assert page_height_of({"height": 1584}) == 1584.0
+    assert page_height_of({"height": None}) == 0.0
+    assert page_height_of({"height": "oops"}) == 0.0
+    assert page_height_of({}) == 0.0
+    assert page_height_of(None) == 0.0
+
+
+def test_page_height_never_falls_back_to_a_synthetic_box():
+    """A payload with only an image must NOT borrow _infer_page_bbox's 1400 fallback."""
+    class _Item:
+        img = [[0, 0], [0, 0]]
+
+    assert page_height_of(_Item()) == 0.0
+
+
+def test_cell_confidence_from_table_item_shape():
+    item = {
+        "cell_box_list": [[0.0, 0.0, 100.0, 100.0], [200.0, 0.0, 300.0, 100.0]],
+        "table_ocr_pred": {"rec_boxes": [[10, 10, 40, 40]], "rec_scores": [0.8]},
+    }
+    payload = cell_confidence_from_table_item(item, 500)
+    assert payload == {
+        "cells": [0.8, None],
+        "frame": "raw",
+        "measured": True,
+        "reason": "ok",
+        "hits": 1,
+        "n_rec": 1,
+        "n_cells": 2,
+    }
+
+
+def test_cell_confidence_is_none_without_the_ocr_payload():
+    assert cell_confidence_from_table_item({"cell_box_list": [[0, 0, 1, 1]]}, 100) is None
+    assert cell_confidence_from_table_item({}, 100) is None
+
+
+def test_attach_cell_confidence_matches_by_id_and_leaves_others_alone():
+    elements = [
+        {"id": "p1_table_1", "cell_confidence": {"cells": [0.9], "measured": True}},
+        {"id": "p1_e0", "type": "text"},
+    ]
+    tables = [{"id": "p1_table_1"}, {"id": "p9_table_9"}]
+    assert attach_cell_confidence(tables, elements) == 1
+    assert tables[0]["cell_confidence"]["cells"] == [0.9]
+    assert "cell_confidence" not in tables[1]
 
 
 if __name__ == "__main__":  # pragma: no cover

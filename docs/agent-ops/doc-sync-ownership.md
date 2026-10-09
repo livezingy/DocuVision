@@ -40,13 +40,19 @@
    **「载体」= 该 living 文档在描述本模块自身的契约**（结构 / 签名 / 行为约束），改其契约就必须同步它；
    **仅在别处被引用名字**（表格单元格、示例、他人文档里的调用点）**不计**载体。
    - **有载体（已补入主表）**：`batch_service.py`、`hitl_queue.py` → `v1.5-roadmap.md`。
-   - **无常驻 living 契约（23 个；改其内部实现无须同步任何 living 文档）**：`batch_export_service.py`、
+   - **无常驻 living 契约（25 个；改其内部实现无须同步任何 living 文档）**：`batch_export_service.py`、
      `hitl_policy.py`、`webhook_service.py`、`document_info_utils.py`、`document_profile.py`、
      `document_type_classifier.py`、`file_type_detector.py`、`kie_fields_update.py`、`formula_service.py`、
      `seal_service.py`、`page_type_probe.py`、`pdf_raster.py`、`pdf_tools_service.py`、`pymupdf_table_engine.py`、
-     `single_file_pipeline.py`、`unified_layout_service.py`、`_layout_order.py`；
+     `single_file_pipeline.py`、`unified_layout_service.py`、`_layout_order.py`、
+     `table_cell_confidence.py`、`_layout_geometry.py`；
      `backend/app/core/{aistudio_compat,debug_utils,gpu_lib_path,trial_auth}.py`；
      `backend/app/models/{analyze_options,layout_result}.py`。
+     **2026-10-09 更新（23 → 25）**：P-027 D8 批次新增两个服务模块，均无常驻 living 契约——
+     `table_cell_confidence.py`（逐格置信度聚合 + 引擎适配，纯函数）与 `_layout_geometry.py`
+     （从 `layout_service.py` 抽出的几何/文本纯工具 mixin，经 MRO 挂回 `PPStructureEngine`）。
+     **合并对账提示**：`pymupdf_table_engine.py` 的删除在另一分支（`chore/drop-pymupdf-table-engine`），
+     该分支把同一行改为 **22**；两分支合并后的正确值为 **25 − 1 = 24**（本行需手工对账一次）。
      **触发条件**：任一模块发生契约变更时**先定归属再改**——届时有契约就补入主表。
    - **仅被提及、按规则不计载体（线索留档，供将来复核）**：`hitl_policy` @ `kie.md`；`seal_service` @
      `pp-structurev3-official-findings.md`；`pdf_raster` @ `kie.md`；`layout_result` @

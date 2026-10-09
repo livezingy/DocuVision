@@ -281,6 +281,11 @@ async def table_step(ctx: PipelineContext) -> None:
 
     ctx["result"]["tables"] = table_result if isinstance(table_result, list) else []
 
+    # D8: land the layout engine's per-cell confidence on the tables (matched by id).
+    from app.services.table_cell_confidence import attach_cell_confidence
+
+    attach_cell_confidence(ctx["result"]["tables"], layout_elements)
+
     table_template = str(options.get("table_template") or "").strip().lower()
     if not table_template and str(options.get("document_type") or "").lower() == "custom":
         table_template = str(options.get("kie_template") or options.get("template_id") or "").strip().lower()

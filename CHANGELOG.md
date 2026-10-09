@@ -28,6 +28,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `test_data/**` gate inputs (bypass-only; PRs never filter paths). Scope is that generator's three output
   directories: image fixtures (JPEG/PNG are not byte-reproducible) and the other generators stay out -
   the boundary is written down in the PENDING entry.
+- **D8 cell-confidence aggregation (P-027 产品侧立项 D8, source option A)** (2026-10-09): a new pure module
+  `backend/app/services/table_cell_confidence.py` turns PP-StructureV3's `table_ocr_pred` recognition
+  scores into per-cell confidence. Four Cloud probes on the pinned stack settled the rules: the entries
+  are not one-per-cell (`pdf/sample_report.pdf` put up to 3 line-sized entries in one cell, median entry
+  area 0.24 of the cell's), `rec_boxes` and `rec_polys` are byte-identical, and the coordinate frame
+  cannot be assumed - `GeneralFiles/bank_statement_sample.pdf` needed `page_height - y` for all 19 entries
+  while flipping broke the other two fixtures, with rotation 0 and a standard MediaBox on every page. So
+  the module groups by containing cell and keeps the min, picks the frame per table by containment (ties
+  keep raw) and guards on the hit rate: below 0.8 the whole table is reported unmeasured with a reason
+  rather than silently all-`None` or all-1.0. Cells with no entry are `None` ("unmeasured != 0", the same
+  semantics harness gate 3 already uses). `backend/tests/test_table_cell_confidence.py` (11 cases, pure
+  logic) reproduces all three measured geometries plus the guard boundary, registered `kind: full` - going
+  `phase-a-ci` would need a `kie-phase-a.yml` edit, and CI config is a red line. Nothing is wired into the
+  pipeline yet: threading `cell_box_list` / `table_ocr_pred` out of `layout_service.py:711-724` (pinned at
+  1804) is the next step, along with the open hit-rate threshold and the high/medium/low cut points.
 
 ### Changed
 - **P-032 C4**: `kie_configs/pico.yaml` prompt v3 → v4 (quote_block cites block markers; the ambiguous

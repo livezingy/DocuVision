@@ -3,7 +3,7 @@
 > 本表是 kernel `docs/agent-ops/core/doc-sync.md` 机制 2 的附表：拆出 kernel 是为了让归属表能随
 > 模块增删自由扩展，不挤占 kernel 的 ~60 行软上限（机制 1/3/4/5 与文档生命周期仍在 kernel）。
 > 改代码模块时按表同步 owning doc（`updated <doc> §<节>`）；**表未覆盖的新模块，新增契约时一并补表**。
-> 最近对照：main d9ee9f7（2026-10-05，P-029 批次：新增 `backend/app/services/evidence/**` 归属行）
+> 最近对照：main 4266f07（2026-10-09，D8 批次与其旁支一次归并对账：名册 +2 −1，见脚注 2）
 
 | 代码模块 | owning living doc |
 |---------|-------------------|
@@ -40,25 +40,27 @@
    **「载体」= 该 living 文档在描述本模块自身的契约**（结构 / 签名 / 行为约束），改其契约就必须同步它；
    **仅在别处被引用名字**（表格单元格、示例、他人文档里的调用点）**不计**载体。
    - **有载体（已补入主表）**：`batch_service.py`、`hitl_queue.py` → `v1.5-roadmap.md`。
-   - **无常驻 living 契约（25 个；改其内部实现无须同步任何 living 文档）**：`batch_export_service.py`、
+   - **无常驻 living 契约（24 个；改其内部实现无须同步任何 living 文档）**：`batch_export_service.py`、
      `hitl_policy.py`、`webhook_service.py`、`document_info_utils.py`、`document_profile.py`、
      `document_type_classifier.py`、`file_type_detector.py`、`kie_fields_update.py`、`formula_service.py`、
-     `seal_service.py`、`page_type_probe.py`、`pdf_raster.py`、`pdf_tools_service.py`、`pymupdf_table_engine.py`、
+     `seal_service.py`、`page_type_probe.py`、`pdf_raster.py`、`pdf_tools_service.py`、
      `single_file_pipeline.py`、`unified_layout_service.py`、`_layout_order.py`、
      `table_cell_confidence.py`、`_layout_geometry.py`；
      `backend/app/core/{aistudio_compat,debug_utils,gpu_lib_path,trial_auth}.py`；
      `backend/app/models/{analyze_options,layout_result}.py`。
-     **2026-10-09 更新（23 → 25）**：P-027 D8 批次新增两个服务模块，均无常驻 living 契约——
+     **2026-10-09 更新（23 → 25 → 24；当日两次变动已一次对账完毕）**：①**+2**：P-027 D8 批次新增
      `table_cell_confidence.py`（逐格置信度聚合 + 引擎适配，纯函数）与 `_layout_geometry.py`
-     （从 `layout_service.py` 抽出的几何/文本纯工具 mixin，经 MRO 挂回 `PPStructureEngine`）。
-     **合并对账提示**：`pymupdf_table_engine.py` 的删除在另一分支（`chore/drop-pymupdf-table-engine`），
-     该分支把同一行改为 **22**；两分支合并后的正确值为 **25 − 1 = 24**（本行需手工对账一次）。
+     （从 `layout_service.py` 抽出的几何/文本纯工具 mixin，经 MRO 挂回 `PPStructureEngine`）；
+     ②**−1**：`pymupdf_table_engine.py` **已删除**——它自落地起**无任何调用者**（`git grep` 仅命中其自身定义；
+     `TableService` 只注册 PP-Structure 引擎），属**死代码**，不是"无常驻契约的在册模块"，故不再占位。
+     两变动按 `docs/agent-ops/operations.md`「未合分支台账」的裁决顺序落地（先合 D8、再重放旁支 commit），
+     故本行 **25 − 1 = 24** 为一次算清的终值，**已无待手工对账项**。
      **触发条件**：任一模块发生契约变更时**先定归属再改**——届时有契约就补入主表。
    - **仅被提及、按规则不计载体（线索留档，供将来复核）**：`hitl_policy` @ `kie.md`；`seal_service` @
      `pp-structurev3-official-findings.md`；`pdf_raster` @ `kie.md`；`layout_result` @
      `pp-structurev3-fix-plan.md`；另 `batch_export_service.py` 的实现伙伴 `routers/batch_export.py` 已归属
      `batch-ui-roadmap.md`，但该文档未描述本服务契约。
-   - 证据（2026-09-17）：对上述 25 个模块做**双重**扫描——模块/文件名 与 派生类名（`BatchService` /
+   - 证据（2026-09-17）：对当时在册的 25 个模块做**双重**扫描——模块/文件名 与 派生类名（`BatchService` /
      `HitlReviewQueue` / `FormulaService` / …）——在 living 文档集（`docs/architecture/*.md` +
      `docs/agent-ops/**` + `DEVELOPMENT.md` + `frontend/README_FRONTEND.md`；`docs/release/**` frozen、
      `docs/R&D/**` local-only，均不计）内命中。两条口径结论一致（仅 `batch_service` / `hitl_queue` 命中），

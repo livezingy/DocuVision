@@ -28,6 +28,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `test_data/**` gate inputs (bypass-only; PRs never filter paths). Scope is that generator's three output
   directories: image fixtures (JPEG/PNG are not byte-reproducible) and the other generators stay out -
   the boundary is written down in the PENDING entry.
+- **D8 cell-confidence aggregation (P-027 产品侧立项 D8, source option A)** (2026-10-09): a new pure module
+  `backend/app/services/table_cell_confidence.py` turns PP-StructureV3's `table_ocr_pred` recognition
+  scores into per-cell confidence. Four Cloud probes on the pinned stack settled the rules: the entries
+  are not one-per-cell (`pdf/sample_report.pdf` put up to 3 line-sized entries in one cell, median entry
+  area 0.24 of the cell's), `rec_boxes` and `rec_polys` are byte-identical, and the coordinate frame
+  cannot be assumed - `GeneralFiles/bank_statement_sample.pdf` needed `page_height - y` for all 19 entries
+  while flipping broke the other two fixtures, with rotation 0 and a standard MediaBox on every page. So
+  the module groups by containing cell and keeps the min, picks the frame per table by containment (ties
+  keep raw) and guards on the hit rate: below 0.8 the whole table is reported unmeasured with a reason
+  rather than silently all-`None` or all-1.0. Cells with no entry are `None` ("unmeasured != 0", the same
+  semantics harness gate 3 already uses). `backend/tests/test_table_cell_confidence.py` (11 cases, pure
+  logic) reproduces all three measured geometries plus the guard boundary, registered `kind: full` - going
+  `phase-a-ci` would need a `kie-phase-a.yml` edit, and CI config is a red line. Nothing is wired into the
+  pipeline yet: threading `cell_box_list` / `table_ocr_pred` out of `layout_service.py:711-724` (pinned at
+  1804) is the next step, along with the open hit-rate threshold and the high/medium/low cut points.
+- **D8 wiring + the `layout_service.py` headroom refactor** (2026-10-09, P-027 产品侧立项 D8): the aggregation
+  above is now wired. `_parse_result` keeps the whole `table_res_list` entry beside its HTML
+  (`table_payload_map`, so the html and OCR-score columns cannot drift apart), takes the page height from the
+  payload's own `height` - deliberately **not** `_infer_page_bbox`, whose synthetic 1000x1400 fallback would
+  silently pick the wrong frame - and attaches a compact `cell_confidence` payload (one float per cell plus
+  scalars, not part of the view contract) to each table element. `document_pipeline_orchestrator` lands it on
+  `result["tables"][i]["cell_confidence"]` via `attach_cell_confidence`, matched by **id**, since
+  `table_service` names each table after the element it came from. To make room in a file pinned at its
+  1804-line cap, two dead methods were deleted (`_reinit_engine`, and `_extract_text_from_parent` whose body was
+  literally `return parent_text`) and the six pure geometry/text helpers moved verbatim into
+  `services/_layout_geometry.py` as `_LayoutGeometryMixin` (reached via the MRO, so call sites and the three
+  path-loading tests are untouched). `PPStructureEngine.analyze` was deliberately **kept**: unreachable in
+  production (the worker dispatches `_analyze_pdf`/`_analyze_image` directly) but it implements the
+  `BaseLayoutEngine` abstractmethod, so deleting it would make the class abstract and break the worker.
+  `layout_service.py` 1804 -> 1614; `document_pipeline_orchestrator.py` now sits exactly at its ratchet cap
+  (1297). The projection into `table_backfill`'s grid is deliberately **not** done: `cell_confidence` is a flat
+  list aligned with `cell_box_list` / `<td>` order, while the 2-D `data` grid has more positions than `<td>`s
+  once cells are merged, so that projection waits for the merged-cell work. Full suite 598 -> 614.
+  `doc-sync-ownership.md` gained both new modules on its no-living-contract roster (23 -> 25 there; 24 once the
+  pymupdf deletion branch merges - the line needs one manual reconciliation).
 
 ### Changed
 - **P-032 C4**: `kie_configs/pico.yaml` prompt v3 → v4 (quote_block cites block markers; the ambiguous
@@ -99,6 +134,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of them also pointed at the removed P-029 entry and a deleted local-only record. `docs/R&D/README.md`'s
   `reference/` table lost a dead link (`capability-card-v1.10-v1.0.md`) and gained the corrected
   `reference/azure/` path.
+- **Batch B decision freeze: three product-side gaps registered** (2026-10-09, user rulings; docs-only, zero
+  product change). The three gaps previously parked as "goes to the product side as its own project" are now on
+  the decision log with frozen scopes; PENDING goes to **15** entries (P-034 added, header index and count synced).
+  **P-027 A** (R3 gap 1, IE merged-cell semantics): merged-cell parsing lands in the **layout model's row/column
+  structure output** (`table_layout.LayoutModel` / `build_layout_model`), not in the recognition layer - so
+  P-028's "flag, never fix" stance at the recognition layer is untouched, and this round is explicitly allowed to
+  **really fix** the semantic-structure layer (trigger files are post-P-028 splits and not in the size allowlist;
+  `table_service.py` is pinned at 1613 and must not gain lines). Single source of merge semantics =
+  `html_structure`'s `rowspan`/`colspan` (already persisted on the table dict), with a `data`
+  empty-placeholder fallback for SLANeXt HTML without per-cell bboxes. Verification: merged-cell goldens plus a
+  Cloud re-read of the P-027 R4 semantic scale (IE column binding 0.5278 / merged-cell completeness 0.7917 should
+  rise; the IE 0.2308 line-GT reading stays unfudged). **P-027 D8** (Confidence product source) is defined as
+  **OCR block confidence (`rec_score`) propagated through row/field aggregation** - explicitly not a native model
+  probability (the Qwen path emits no logits) and not the fill-rate heuristic `kie_confidence_avg`; the two must
+  not be mixed. The only existing anchor holding OCR blocks *with* confidence is
+  `table_service._reconstruct_table_with_ocr` (which currently takes only the text), so the first move must be a
+  **net-zero extraction** into a sibling module (raising the ratchet is a red line needing separate authorization).
+  The harness side must change too: gate 3 reads the **GT** rows' `Confidence` column, already marked underivable,
+  so it has to read the **pred** envelope instead - both sides are required. **P-034** (new entry, sub-item C):
+  P-032's text-first channel is generalized from pico-only to include **coi** - the real fix behind P-030's parked
+  `carrier` follow-up (pure prompt tuning failed twice on flattened ACORD text; the block-marked text layer is a
+  different substrate). Single switch at `text_first.py:44`; the KIE step and the evidence gate go through the
+  same predicate, so no orchestrator-side branch, and no new doc-type registration is needed (coi is already in
+  all seven touch points). Prerequisites: recalibrate `BODY_PAGE_MIN_*` (calibrated on the 5 pico corpora) and
+  inventory which coi fixtures are born-digital. Four sub-points are recorded as **provisional** with recommended
+  values: D8's cell/row aggregation rule (min) and the high/medium/low thresholds, A's exposure surface (internal
+  only for now), and D8's exclusion of KIE field-level confidence.
+  `Promotion-check: 0 eligible -> deferred`.
+- **F1 split: the OCR-block cluster extracted out of `table_service.py`** (2026-10-09, zero behaviour change).
+  The D8 pre-step. `_reconstruct_table_with_ocr` plus its four bbox/cell helpers (`_parse_cell_bbox` /
+  `_filter_text_blocks_in_bbox` / `_find_text_blocks_in_cell` / `_find_row_for_y`, 278 lines) moved **verbatim**
+  into a new sibling module `backend/app/services/table_ocr_blocks.py` as `TableOcrBlocksMixin`, inherited by
+  `PPStructureTableEngine` through the MRO - so the method surface that the call sites and the two
+  "load `table_service.py` by file path" tests rely on is unchanged. The cluster reads and writes no `self.*`
+  engine state and had no test coverage of its own, which is what made a byte-identical move safe: the moved
+  block was diffed against `HEAD` and is identical line-for-line, and the full suite is unchanged (598 passed /
+  19 skipped / 5 errors). It was required because `table_service.py` was pinned at its 1613-line cap and could
+  not accept the `cell_confidence` work; the ratchet was lowered to the new count (1613 -> 1336, the prescribed
+  "only down" direction - the unrelated 5-line slack `--update` also tightened on
+  `document_pipeline_orchestrator.py` was deliberately reverted to keep this change focused).
+  `provenance-review.md`'s code-ownership line gained the new module. The OCR confidence each block carries is
+  still deliberately unread: the D8 aggregation is the next step, not this one.
+  `Promotion-check: 0 eligible -> deferred`.
 
 ### Removed
 

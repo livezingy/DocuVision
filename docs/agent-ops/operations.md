@@ -110,3 +110,29 @@ agent-ops-audit.yml、kie-phase-a.yml），把"被动漂移"改成"显式升级"
 检查从**提示**变成**阻塞**，直推 main 被 ruleset 拒绝，一切改动走 feature 分支 + PR。
 因此"让每条 workflow 只在改动能翻转其判决时触发"的旧原则对 **PR** 不再适用（与 required checks 不兼容，
 见上文），对 **push** 仍然成立；每个 PR 的等待成本 = 最慢一条检查（实测 `e2e` 45s 热）。
+
+## 未合分支台账（2026-10-09，一次性对账）
+
+**背景**：2026-10-09 的 P-027 D8 批次及同批衍生的两项清理工作，**全部只存在于本机**——三条分支
+`upstream` 均为空（`git for-each-ref`），**均未合入 main**。基准：main = `63ea47e`。
+
+| 分支 | tip | 内容 | 相对 main |
+|---|---|---|---|
+| `feat/p027-d8-cell-confidence` | `9849359` | D8 链 **12 个 commit**（Cloud 探针读数与键集 → `table_cell_confidence.py` 纯逻辑 → 设计冻结（逐表选帧 + 命中率守卫）→ `_layout_geometry.py` 几何 mixin 抽取 → 接线 → Cloud 验证步骤 → 4 项待裁决真源块） | **+12** |
+| `chore/table-service-split-cleanup` | `15bab27` | `62bcf06`（HTML/伪表簇搬移出 `table_service.py`）+ `15bab27`（删已验证死代码 64 行）⇒ `table_service.py` 1336 → **795** | +2（fork 自 `756b652`） |
+| `chore/drop-pymupdf-table-engine` | `82f2a03` | 删 `pymupdf_table_engine.py`（无调用者；`doc-sync-ownership.md` 名册 23 → 22） | +1（fork 自 `756b652`） |
+
+**已裁决的归并顺序（2026-10-09，用户）**：**先合 D8 分支 → 再在最新基线上重做旁支两支**。
+理由：三支**各自下调过** `scripts/file_size_allowlist.json`（同一 JSON 的相邻行），逐支合并会连续冲突；
+先合 D8、再在合并后的基线上重放旁支的 `62bcf06` / `15bab27` / `82f2a03`，棘轮只对账**一次**。
+**棘轮归并后的真实值**：`table_service.py` = **795**（D8 分支为 1336、清理分支为 795，取后者）。
+**同名计数对账**：`doc-sync-ownership.md` 的「无常驻 living 契约」名册——D8 分支把 23 改为 **25**，
+pymupdf 分支把**同一行**改为 **22** ⇒ 两分支合并后的正确值为 **25 − 1 = 24**（该文件脚注已记此提示，
+本条与其互为指针，**勿在其中任一处单独改数**）。
+
+**执行阻塞（未授权，勿自行跨越）**：main 受 ruleset `main-branch-protection` 保护（见上节末），
+**直推 main 被拒绝**，一切改动走 feature 分支 + PR ⇒ 归并须先 `git push` 分支（**kernel 红线，需用户显式授权**）
+再开 PR。**三支的 push 迄今均未授权、未执行。**
+
+**触发条件**：任一支被推送或合并后，本表须**同 commit** 更新（删已合行、重算上列棘轮值与名册对账值）；
+**本表清空 = 三条分支全部落地**。

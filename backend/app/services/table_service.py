@@ -6,7 +6,6 @@ from typing import Dict, Any, List, Optional, Tuple
 from abc import ABC, abstractmethod
 from loguru import logger
 import os
-import io
 
 from app.services.table_html import TableHtmlMixin
 from app.services.table_ocr_blocks import TableOcrBlocksMixin
@@ -480,16 +479,6 @@ class PPStructureTableEngine(
         logger.info(f"Page {page_num}: Total {len(tables)} table(s) extracted")
         return tables
 
-    def _extract_bbox(self, bbox: List) -> Dict[str, float]:
-        if len(bbox) >= 4:
-            return {
-                "x": float(bbox[0]),
-                "y": float(bbox[1]),
-                "width": float(bbox[2] - bbox[0]),
-                "height": float(bbox[3] - bbox[1])
-            }
-        return {"x": 0, "y": 0, "width": 0, "height": 0}
-
 class TableService:
     """
     Table Extraction Service.
@@ -804,58 +793,3 @@ class TableService:
         )
         return [], meta
 
-    def to_csv(self, table_data: List[List[str]]) -> str:
-        """Convert table data to CSV format"""
-        import csv
-
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerows(table_data)
-        return output.getvalue()
-
-    def to_excel(self, tables: List[Dict], output_path: str) -> str:
-        """Export tables to Excel file"""
-        try:
-            import pandas as pd
-
-            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                for idx, table in enumerate(tables):
-                    if 'data' in table and table['data']:
-                        # Check if first row looks like headers
-                        data = table['data']
-                        if len(data) > 1:
-                            df = pd.DataFrame(data[1:], columns=data[0])
-                        else:
-                            df = pd.DataFrame(data)
-
-                        sheet_name = f"Table_{idx + 1}"
-                        df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-            return output_path
-        except Exception as e:
-            logger.error(f"Excel export failed: {e}")
-            raise
-
-    def to_html(self, table_data: List[List[str]]) -> str:
-        """Convert table data to HTML format"""
-        if not table_data:
-            return ""
-
-        html = "<table border='1'>\n"
-
-        # Header row
-        html += "  <thead>\n    <tr>\n"
-        for cell in table_data[0]:
-            html += f"      <th>{cell}</th>\n"
-        html += "    </tr>\n  </thead>\n"
-
-        # Data rows
-        html += "  <tbody>\n"
-        for row in table_data[1:]:
-            html += "    <tr>\n"
-            for cell in row:
-                html += f"      <td>{cell}</td>\n"
-            html += "    </tr>\n"
-        html += "  </tbody>\n</table>"
-
-        return html

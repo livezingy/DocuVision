@@ -188,6 +188,24 @@ def _pick(obj: Any, key: str) -> Any:
     return obj.get(key) if isinstance(obj, dict) else getattr(obj, key, None)
 
 
+def _as_sequence(value: Any) -> List[Any]:
+    """Coerce an engine payload field to a ``list`` without ever asking its truth value.
+
+    ``value or []`` is a trap here: PP-StructureV3 hands out ``np.ndarray`` for
+    ``rec_boxes`` / ``rec_scores`` (``(N, 4)`` and ``(N,)``), and ``bool(ndarray)`` raises
+    ``ValueError: The truth value of an array with more than one element is ambiguous``.
+    That is exactly the message the D8 worker died with on 2026-10-14 (four fixtures,
+    ``layout_elements_n=0``). Aggregation below only ever iterates, so list-ifying once,
+    here, is enough; strings are refused because they are iterable but not geometry.
+    """
+    if value is None or isinstance(value, (str, bytes)):
+        return []
+    try:
+        return list(value)
+    except TypeError:
+        return []
+
+
 def page_height_of(result_item: Any) -> float:
     """Page height in the engine's coordinate frame, or ``0.0`` when unavailable.
 
@@ -213,10 +231,17 @@ def cell_confidence_from_table_item(table_item: Any, page_height: Any) -> Option
     ocr_pred = _pick(table_item, "table_ocr_pred")
     if ocr_pred is None:
         return None
+    cell_boxes = _as_sequence(_pick(table_item, "cell_box_list"))
+    # Preference order is measured, not incidental: rec_boxes was byte-identical to
+    # rec_polys in every probed fixture, so it is read first and rec_polys is the fallback.
+    # Length (``if not ...``) is asked only after list-ifying - never ``or`` on the raw field.
+    rec_boxes = _as_sequence(_pick(ocr_pred, "rec_boxes"))
+    if not rec_boxes:
+        rec_boxes = _as_sequence(_pick(ocr_pred, "rec_polys"))
     result = aggregate_cell_confidence(
-        _pick(table_item, "cell_box_list") or [],
-        _pick(ocr_pred, "rec_boxes") or _pick(ocr_pred, "rec_polys") or [],
-        _pick(ocr_pred, "rec_scores") or [],
+        cell_boxes,
+        rec_boxes,
+        _as_sequence(_pick(ocr_pred, "rec_scores")),
         page_height,
     )
     if not result["n_cells"]:

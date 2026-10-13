@@ -185,6 +185,57 @@ def test_cell_confidence_is_none_without_the_ocr_payload():
     assert cell_confidence_from_table_item({}, 100) is None
 
 
+def test_cell_confidence_from_table_item_reads_numpy_fields():
+    """2026-10-14 worker crash: ``rec_boxes``/``rec_scores`` arrive as ``np.ndarray``.
+
+    Asking a raw ``(N, 4)`` array for its truth value (``field or []``) raises
+    ``ValueError: The truth value of an array with more than one element is ambiguous``
+    from inside ``_parse_result`` — which runs **in the worker subprocess** for the
+    page-by-page PDF driver, so one table killed the whole page (four fixtures,
+    ``layout_elements_n=0``). The aggregation itself has always been array-safe; only the
+    fallbacks were not.
+    """
+    np = pytest.importorskip("numpy")
+    item = {
+        "cell_box_list": np.array([[0.0, 0.0, 100.0, 100.0], [200.0, 0.0, 300.0, 100.0]]),
+        "table_ocr_pred": {
+            "rec_boxes": np.array([[10.0, 10.0, 40.0, 40.0], [210.0, 10.0, 240.0, 40.0]]),
+            "rec_polys": "never reached: rec_boxes wins",
+            "rec_scores": np.array([0.8, 0.7]),
+        },
+    }
+    payload = cell_confidence_from_table_item(item, 500)
+    assert payload["measured"] is True
+    assert payload["frame"] == "raw"
+    assert payload["cells"] == [0.8, 0.7]
+    assert (payload["hits"], payload["n_rec"], payload["n_cells"]) == (2, 2, 2)
+
+
+def test_cell_confidence_falls_back_to_rec_polys_and_tolerates_scalars():
+    """The rec_polys fallback must survive being an array too; junk stays unmeasured."""
+    np = pytest.importorskip("numpy")
+    item = {
+        "cell_box_list": np.array([[0.0, 0.0, 100.0, 100.0]]),
+        "table_ocr_pred": {
+            "rec_polys": np.array([[10.0, 10.0, 40.0, 10.0, 40.0, 40.0, 10.0, 40.0]]),
+            "rec_scores": np.array([0.6]),
+        },
+    }
+    payload = cell_confidence_from_table_item(item, 500)
+    assert payload["cells"] == [0.6]
+
+    # Non-iterable fields degrade to "no entries" rather than raising mid-page.
+    broken = {"table_ocr_pred": {"rec_boxes": 3.5, "rec_scores": None}}
+    assert cell_confidence_from_table_item(broken, 500) is None
+
+
+def test_page_height_of_a_numpy_field_is_not_a_truth_value_error():
+    np = pytest.importorskip("numpy")
+    assert page_height_of({"height": np.float64(1584.0)}) == 1584.0
+    # An array height cannot be a page height: the flip candidate is dropped, not raised.
+    assert page_height_of({"height": np.array([1584.0, 1000.0])}) == 0.0
+
+
 def test_attach_cell_confidence_matches_by_id_and_leaves_others_alone():
     elements = [
         {"id": "p1_table_1", "cell_confidence": {"cells": [0.9], "measured": True}},

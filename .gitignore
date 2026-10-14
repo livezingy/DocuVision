@@ -295,6 +295,8 @@ scripts/*
 !scripts/aistudio_setup.sh
 !test_data/scripts/
 !test_data/scripts/**
+# ...but never the byte-compiled cache that negation would otherwise re-include
+test_data/scripts/__pycache__/
 # Azure-style reference pack: moved out of test_data on 2026-10-04, then fully untracked by
 # decision (2026-10-04). The whole `docs/R&D/reference/azure/` tree stays local-only via the
 # `docs/R&D/**` ignore above (L182) - deliberately no negation here.

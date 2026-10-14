@@ -187,6 +187,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the list entirely rather than staying as a contract-less module.
 
 ### Fixed
+- **D8 `cell_confidence`: worker crash on `np.ndarray` table fields** (2026-10-14): the aggregation wiring
+  read `table_ocr_pred`'s arrays through truthiness (`field or []`), and `bool(ndarray)` raises
+  `ValueError: The truth value of an array with more than one element is ambiguous` - thrown inside
+  `_parse_result`, which runs in the worker subprocess for the page-by-page PDF driver, so **every
+  table-bearing page died** (four fixtures reported `layout_elements_n=0` and four `[NO_TABLES]`).
+  A new `_as_sequence()` list-ifies the fields instead of testing them (`rec_boxes` still preferred,
+  `rec_polys` fallback unchanged); three numpy regression cases added (array aggregation, `rec_polys`
+  fallback with scalar tolerance, array `height` degrading to `0.0`). Verified end-to-end on the Cloud
+  box: four fixtures x both paddlex builds `[ALL PASS]`, `bank`'s frame now splits by build
+  (`flip` official -> `raw` patched) while `html` / `td_texts` stay byte-equal across builds, the
+  `pico p3` reverse sentinel flips `measured=false -> true`, and `rep` / `inv` are byte-identical
+  (`cells_sha256` unchanged). `DOCUVISION_CLOUD_TESTS=1` suite green (659 passed / 1 skipped).
 
 ## [1.12.0] — 2026-10-05
 
@@ -398,7 +410,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and S-TEDS. Pipeline predictions are captured once into a content-addressed cache and scoring
   only ever reads that cache, so metric revisions cost no GPU time. WTW's ground truth carries
   no cell text, so the content dimension of TEDS is out of scope here and remains covered by the
-  born-digital weak GT and P-028; scores are reported as our own protocol, not an official
+  born-digital weak GT; scores are reported as our own protocol, not an official
   leaderboard. Doubles as the structural acceptance baseline for the table-mapping rework (P-002)
   and a regression sentinel for table capability across engine upgrades.
   Baseline read out on 2026-09-28 from a 300-image stratified subset (seed=42, `language=ch`,

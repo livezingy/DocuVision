@@ -261,8 +261,9 @@
 ### 版本分工
 
 - **本节（入库版）**：结论 + 合成最小复现 + 源码依据，**不含夹具读数与内部语料字段**。
-- **完整实测版（local-only，不入库）**：含夹具读数、逐格读数与可复算通路，保存在本地知识库
-  `docs/R&D/knowledge/pp-structurev3-official-findings-full.md`（该目录被 `.gitignore` 忽略）。
+- **完整实测版（local-only，不入库）**：含夹具读数、逐格读数与可复算通路，保存在本地知识库的
+  引擎子目录 `docs/R&D/knowledge/paddle-ppstructurev3/`（该目录树被 `.gitignore` 忽略；本地知识库
+  按引擎 / 主题分子目录收纳，PDF 旋转通用分类在 `docs/R&D/knowledge/pdf-rotation/`）。
 
 ---
 

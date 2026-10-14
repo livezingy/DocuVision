@@ -257,7 +257,7 @@ class PPStructureTableEngine(
                 "page": page_num,
                 "engine": "PP-Structure-Table",
                 "bbox": element.get('bbox', {}),
-                "confidence": element.get('confidence', 0.0),
+                "confidence": element.get('confidence'),
             }
 
             # Extract table data from element's content/html
@@ -428,7 +428,7 @@ class PPStructureTableEngine(
                 "page": page_num,
                 "engine": "PP-Structure-Table",
                 "bbox": {},  # LayoutParsingResultV2 doesn't provide bbox for individual tables
-                "confidence": 0.0,  # No confidence score available
+                "confidence": None,  # No confidence score available (unmeasured != 0)
                 "table_key": table_key,  # Store the original table identifier
             }
 

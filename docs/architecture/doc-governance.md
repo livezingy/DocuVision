@@ -15,7 +15,7 @@
 |---|---|---|
 | token 清单 | 当前 **17 条**：已退役 CPU 轨的应用目录 / 端口 / 入口脚本 / UI 页面与前端 bundle / 其 API 文档与专属样式 / 其 e2e 脚本名 / core 的 pip extra；以及已删除的 core 子模块族（裸 `extractors` · `engines` · `models` 三个子模块名）与其顶层模块名；另有其 batch API 名、预览 gate 名、UI 清单名 | 脚本内 `RETIRED` 常量。**本文件刻意不逐字抄写清单**——既避免双源，也因为本目录就在扫描域内，逐字抄写会触发本门禁自身 |
 | 退役标记豁免 | 同行含标记词（`RETIREMENT_MARKERS`，17 条：`退役` / `已删除` / `移除` / `不存在` / `已过期` / `不再` / `勿再执行` / `retired` / `removed` …）时视为**公告**而非指令——"…已随 v1.8 退役"是文档，不是过期命令 | 脚本内 `RETIREMENT_MARKERS` |
-| 扫描白名单 | 根 `README.md`、`docs/README.md`、`docs/demo/**/*.md`、`docs/architecture/**/*.md`、`packages/**/README.md`（当前命中 **19 个文件**） | 脚本内 `SCAN_GLOBS` |
+| 扫描白名单 | 根 `README.md`、`docs/README.md`、`docs/demo/**/*.md`、`docs/architecture/**/*.md`、`packages/**/README.md`（当前命中 **23 个文件**） | 脚本内 `SCAN_GLOBS` |
 | 归档豁免（理由随报告打印，**不静默**） | `CHANGELOG.md`、`docs/release/**`、`docs/R&D/**`、`docs/agent-ops/**`、`test_data/acceptance/**`、`docs/architecture/v1.*-roadmap.md`、`docs/architecture/pp-structurev3-fix-plan.md`——引用已删之物是历史的本分 | 脚本内 `EXEMPT` |
 | ALLOWLIST（**棘轮只减不增**） | **2 条**：`docs/architecture/CLOUD_VALIDATION.md` §2 冻结抬头下的 v1.2–v1.4 发版门禁行，按「文件 + 字面子串」豁免；上限 `MAX_ALLOWLIST = 2` 由 selftest 守着 | 脚本内 `ALLOWLIST` |
 

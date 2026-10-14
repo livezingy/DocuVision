@@ -25,7 +25,7 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 7. [architecture/v1.6-roadmap.md](architecture/v1.6-roadmap.md) — v1.6.0 shipped (figure baseline + artifact pack; ZIP contract in system-design §9.1)
 8. [architecture/v1.7-roadmap.md](architecture/v1.7-roadmap.md) — v1.7.0 shipped (Pro single-task result persistence; tag v1.7.0 cut 2026-09-07)
 9. [architecture/main-tracked-issues.md](architecture/main-tracked-issues.md) — lightweight backlog (code wins on conflict)
-10. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph）
+10. [architecture/pp-structurev3-official-findings.md](architecture/pp-structurev3-official-findings.md) — PP-StructureV3/Qwen2.5-VL 官方能力依据（reading order / LAYOUT_TYPES / caption / header / glyph / **§6 表格几何与方向校正（180° 类）+ ISSUE 格式问题点**）
 11. [architecture/pp-structurev3-fix-plan.md](architecture/pp-structurev3-fix-plan.md) — 基于官方依据的 4 个问题点修复规划（F1-F4）
 12. [architecture/module-map.md](architecture/module-map.md) — module map: backend router domains × frontend module domains, dependency laws, gate inventory (P-004)
 13. [architecture/v1.9-roadmap.md](architecture/v1.9-roadmap.md) — v1.9 **立项**（2026-09-20，前端批次：P-007 方案 B / 巨函数切分 / JSDoc+tsc 评估 / 两个孤儿 wire-or-retire）

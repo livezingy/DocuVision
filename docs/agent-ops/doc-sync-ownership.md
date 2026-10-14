@@ -53,7 +53,7 @@
      （从 `layout_service.py` 抽出的几何/文本纯工具 mixin，经 MRO 挂回 `PPStructureEngine`）；
      ②**−1**：`pymupdf_table_engine.py` **已删除**——它自落地起**无任何调用者**（`git grep` 仅命中其自身定义；
      `TableService` 只注册 PP-Structure 引擎），属**死代码**，不是"无常驻契约的在册模块"，故不再占位。
-     两变动按 `docs/agent-ops/operations.md`「未合分支台账」的裁决顺序落地（先合 D8、再重放旁支 commit），
+     两变动按 2026-10-09 的裁决顺序落地（先合 D8、再在合后基线重放旁支 commit；PR #78 与 #79），
      故本行 **25 − 1 = 24** 为一次算清的终值，**已无待手工对账项**。
      **触发条件**：任一模块发生契约变更时**先定归属再改**——届时有契约就补入主表。
    - **仅被提及、按规则不计载体（线索留档，供将来复核）**：`hitl_policy` @ `kie.md`；`seal_service` @

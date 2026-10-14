@@ -110,31 +110,3 @@ agent-ops-audit.yml、kie-phase-a.yml），把"被动漂移"改成"显式升级"
 检查从**提示**变成**阻塞**，直推 main 被 ruleset 拒绝，一切改动走 feature 分支 + PR。
 因此"让每条 workflow 只在改动能翻转其判决时触发"的旧原则对 **PR** 不再适用（与 required checks 不兼容，
 见上文），对 **push** 仍然成立；每个 PR 的等待成本 = 最慢一条检查（实测 `e2e` 45s 热）。
-
-## 未合分支台账（2026-10-09，一次性对账）
-
-**本节已于 2026-10-09 收口**：三条本地未合分支按裁决顺序全部归并完毕。下表保留为**对账记录**
-（含实际取到的棘轮值与名册值）；日后若再现「工作只存在于本机」，按同格式续记。
-
-| 分支 | tip | 处置 | 结果 |
-|---|---|---|---|
-| `feat/p027-d8-cell-confidence` | `8fa357e` | **推送 → PR #78 → 已合入 main** | main `63ea47e` → **`4266f07`** |
-| `chore/table-service-split-cleanup` | `15bab27` | 两 commit **重放**到合后基线（`7344251` / `cfae684`） | `table_service.py` 1336 → **795** |
-| `chore/drop-pymupdf-table-engine` | `82f2a03` | 一 commit **重放**（`90f84bb`） | 名册 25 → **24** |
-
-**裁决顺序（2026-10-09，用户）**：先合 D8 分支 → 再在最新基线上重做旁支两支。**已按此执行**——
-D8 经 PR #78 合入（`4266f07`），随后在合后 main 上建 `chore/post-d8-reconcile` 重放
-`62bcf06` / `15bab27` / `82f2a03` ⇒ **棘轮只对账一次**（这是选择该顺序的全部理由）。
-
-**实际取到的值（供复核）**：
-- **棘轮** `scripts/file_size_allowlist.json`：`table_service.py` = **795**；`layout_service.py` 1614 与
-  `document_pipeline_orchestrator.py` 1297 保持 D8 值（重放未触及）。
-- **名册** `doc-sync-ownership.md`：**25 → 24**（+2 D8 模块、−1 已删的 `pymupdf_table_engine.py`），
-  一次算清、**无遗留待手工对账项**。
-- **重放冲突面**：仅 `doc-sync-ownership.md` 名册段一处（人工解决）；`file_size_allowlist.json` 由 git
-  **自动合并**（两处改动落在不同行）；`CHANGELOG.md` 自动合并。
-- **回归**：`614 passed / 19 skipped / 5 errors`（与合后基线逐项一致）；`lint_file_size` 追踪数
-  113 → **114**（+2 新模块 −1 删除）。
-
-**状态**：`chore/post-d8-reconcile`（上述 3 个重放 commit + 本对账 commit）**待 PR**；
-该 PR 落地后本节即可删除（届时「三支全落地」成立）。

@@ -37,7 +37,7 @@ class FusedBlock(BaseModel):
     polygon_preprocessed: List[float] = []  # [x0,y0,x1,y0,x1,y1,x0,y1] flat in preprocessed coords
     processing_status: str = "succeeded"  # "succeeded", "replaced", "no_match", "low_confidence", "suspicious"
     source: str = "pp_structure_v3"  # "pp_structure_v3", "paddleocr"
-    confidence: float = 0.0
+    confidence: Optional[float] = None  # None = 未测到（P-027 (3) 批 2：未测量 ≠ 0，与「测得 0.0」区分）
     payload: Dict[str, Any] = {}  # Polymorphic by type
     provenance: Optional[Dict[str, Any]] = None  # {"primary_source", "primary_text", "merge_strategy", "merged_at"} or null
 
@@ -143,7 +143,7 @@ class QualityLayer(BaseModel):
     kie_confidence_source: str = ""
     kie_model_load_ms: int = 0
     kie_items_source: str = "n/a"
-    avg_layout_confidence: float = 0.0
+    avg_layout_confidence: Optional[float] = None  # None = 无可测块（P-027 (3) 批 2：未测量 ≠ 0）
     engines_used: List[str] = []  # ["doc_preprocessor", "pp_structure_v3"]
     # v1.8 E2: selective text-layer backfill summary (four-layer funnel counts,
     # per-page verdicts, rates). Optional; omitted for runs without table step.

@@ -785,7 +785,7 @@ class PPStructureEngine(_LayoutGeometryMixin, BaseLayoutEngine):
                     "type_name": self.LAYOUT_TYPES.get(element_type, element_type),
                     "bbox": bbox_dict,
                     "polygon_preprocessed": polygon_prep,
-                    "confidence": float(_block_score) if _block_score is not None else 0.0,
+                    "confidence": float(_block_score) if _block_score is not None else None,  # None = 检测分未匹配（未测量 ≠ 0；P-027 (3) 批 2）
                     # F1: carry official reading order (block_order) downstream.
                     # None when the engine did not assign one (e.g. image/figure_title).
                     "reading_order": int(block_order) if block_order is not None else None,

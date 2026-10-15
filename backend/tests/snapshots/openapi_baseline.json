@@ -597,9 +597,15 @@
             "type": "string"
           },
           "confidence": {
-            "default": 0.0,
-            "title": "Confidence",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
           },
           "payload": {
             "default": {},
@@ -790,7 +796,6 @@
               }
             ],
             "default": {
-              "avg_layout_confidence": 0.0,
               "engines_used": [],
               "figure_blocks_total": 0,
               "figure_count": 0,
@@ -986,9 +991,15 @@
         "description": "Quality metrics layer",
         "properties": {
           "avg_layout_confidence": {
-            "default": 0.0,
-            "title": "Avg Layout Confidence",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Layout Confidence"
           },
           "engines_used": {
             "default": [],

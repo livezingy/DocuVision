@@ -24,8 +24,8 @@ except Exception:  # pragma: no cover - optional in lightweight local test env
 import numpy as np
 
 
-def _as_confidence(value: Any, default: float = 0.0) -> float:
-    """Coerce layout block confidence; None/missing/invalid → default."""
+def _as_confidence(value: Any, default: Optional[float] = None) -> Optional[float]:
+    """Coerce layout block confidence; None/missing/invalid → default (None = 未测量 ≠ 0)."""
     if value is None:
         return default
     try:
@@ -387,8 +387,8 @@ class EnvelopeBuilder:
                     if status in {"no_ocr", "no_ocr_empty"}:
                         text_blocks_no_ocr += 1
 
-                    conf = block.get("confidence", 0.0)
-                    if conf > 0:
+                    conf = block.get("confidence")
+                    if conf is not None and conf > 0:
                         confidences.append(conf)
 
                 elif block_type == "table":
@@ -403,7 +403,7 @@ class EnvelopeBuilder:
                 }:
                     figure_blocks_total += 1
 
-        avg_layout_confidence = np.mean(confidences) if confidences else 0.0
+        avg_layout_confidence = np.mean(confidences) if confidences else None
 
         result = {
             "processing_time_ms": processing_time_ms,
@@ -415,7 +415,7 @@ class EnvelopeBuilder:
             "formula_blocks_recognized": 0,
             "formula_count": formula_count,
             "seal_count": seal_count,
-            "avg_layout_confidence": float(avg_layout_confidence),
+            "avg_layout_confidence": float(avg_layout_confidence) if avg_layout_confidence is not None else None,
             "engines_used": engines_used,
         }
         if table_backfill is not None:

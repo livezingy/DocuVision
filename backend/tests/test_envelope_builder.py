@@ -83,17 +83,18 @@ def _block(bid):
 
 
 # ===========================================================================
-# confidence coercion (layout may emit confidence=None when det score unmatched)
+# confidence passthrough: None = 未测到（layout 检测分未匹配），与「测得 0.0」区分。
+# 2026-10-14 P-027 (3) 批 2「意图变更」：旧意图是把它规范化成 0.0（见 PENDING）。
 # ===========================================================================
 
 class TestNullConfidence:
-    def test_build_fused_layer_accepts_none_confidence(self):
+    def test_build_fused_layer_keeps_none_confidence(self):
         elem = _elem("e_null", "text", text="Tip 5.00", conf=0.9)
         elem["confidence"] = None
         fused = builder.build_fused_layer(_make_layout_result([elem]))
         block = fused["pages"][0]["blocks"][0]
-        assert block["confidence"] == 0.0
-        assert block["payload"]["confidence"] == 0.0
+        assert block["confidence"] is None
+        assert block["payload"]["confidence"] is None
 
 
 # ===========================================================================

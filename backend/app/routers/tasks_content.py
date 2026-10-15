@@ -181,8 +181,8 @@ async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int
                 bbox = [0.0, 0.0, 0.0, 0.0]
             payload = elem.get("payload") or {}
             text = str(payload.get("text") or "")
-            confidence_raw = payload.get("confidence", elem.get("confidence", 0))
-            confidence = float(confidence_raw or 0)
+            confidence_raw = payload.get("confidence", elem.get("confidence"))
+            confidence = float(confidence_raw) if confidence_raw is not None else None
             role = str(elem.get("kind") or "paragraph")
             blocks.append({
                 "id": elem.get("id") or f"block_{len(blocks)}",
@@ -227,7 +227,8 @@ async def get_task_blocks(task_id: str, page_number: int = 1, content_limit: int
             text = str(block.get("text") or block.get("content") or "")
             bbox = _normalize_flat_bbox(block.get("bbox") or block.get("bounding_box"))
             score = block.get("score")
-            confidence = float(block.get("confidence", score if score is not None else 0) or 0)
+            confidence_raw = block.get("confidence", score)
+            confidence = float(confidence_raw) if confidence_raw is not None else None
             role = str(block.get("semantic_role") or block.get("type") or block.get("element_type") or "Paragraph")
             blocks.append({
                 "id": block.get("id") or block.get("block_id") or f"block_{idx}",

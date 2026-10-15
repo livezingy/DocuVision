@@ -65,6 +65,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pymupdf deletion branch merges - the line needs one manual reconciliation).
 
 ### Changed
+- **P-027 D8 open items (0)/(2) closed — harness binding unified + non-frozen readings** (2026-10-14, user
+  rulings; the harness is local-only under `scripts/measure/**`, so this lands in PENDING + this changelog + the
+  harness doc): **(0)** gate 3 keeps a **single** signal - the PRED-side recognition score (`rec_score` carried by
+  the pipeline) - and does **not** run the layout-detection score in parallel; the "localisation vs recognition"
+  contrast moves to the table corpus (the four docs, where `layout.elements[].confidence` and `cell_confidence`
+  share one result JSON), with the grain stated honestly (page-level `avg_layout_confidence` vs cell distribution,
+  not row-vs-row). The two signals stay non-interconvertible. **(2)** gates 1/2/3 now share **one** binding -
+  **D4'** (T1 in-block whole pair + T2 cross-block endpoint stitch), reused from R4 `rf_sem_eval` (row-rebuild
+  1.0000) - because the old in-block scan dropped whole pages (MY-p060's six rows fell into "unmeasured" and left
+  the denominator; D4' recovers 65/65). The cut stays 0.95/0.90 and is explicitly **non-frozen** (a preview
+  constant plus a shipped histogram, so any cut re-computes offline). Readings are registered **side by side,
+  without rewriting R3/R4 history** (X4 rule): D4' v2 `all` row_correct 1.0000 / presence 0.9237 / **flag_rate
+  0.0923 (6/65, over the 5% line)** / coverage 1.0000, with the three denominators reported together (5.77%
+  T1-measured-only · 9.23% D4' · 24.6% old-binding review-inclusive). The crossed 9.23% is an internal regression
+  baseline, not an execution failure, and one flagged row is R4's known taxonomy-#7 failure
+  (`IE-000040700000-000040980000` = p079 `40.7-40.98`). A new `gate3_flagged_rows` column (row ids, cap N,
+  deterministic order) ships in the CSV/report/summary for manual review. Only the口径 (signal choice / binding /
+  aggregation / non-synonymy / unlock trigger) is frozen; the numbers are reproducible, not pinned - and the client
+  ≤5% line is explicitly **not** synonymous with this `rec_score` metric. `scripts/measure/test_rf_gates.py`
+  11 -> 16 passed.
+- **P-027 D8 sister item (3) - `0.0 -> None` for unmeasured confidence** (2026-10-14, batches 1 + 2): an
+  unavailable confidence is no longer collapsed to a fake `0.0`. Batch 1 (internal only) drops the `0.0`
+  fallbacks in `table_service`'s two table dicts. Batch 2 makes the contract face Optional: block-level
+  `confidence` is `Optional[float]` (`None` = detection score not matched), `envelope_builder` keeps `None`
+  (None-safe collection; an empty set yields `None`, no longer `0.0`), `tasks_content` stops collapsing `None`
+  to `0` on both the envelope and legacy paths, and `FusedBlock.confidence` /
+  `QualityLayer.avg_layout_confidence` are `Optional`. **Intent change**: the old public semantics
+  ("confidence is a float, a missing score reads `0.0`" - unmeasured merged with measured-zero) become
+  "`Optional`, a missing score is `None`, rendered as the key disappearing via `response_model_exclude_none`";
+  `tests/test_envelope_builder.py`'s `TestNullConfidence` was rewritten to pin `is None`. One declared spread:
+  `figures[]`'s `confidence` now yields `null` (-> empty string in the pack export) instead of `0.0` when an
+  element is unmatched. **Cloud TODO (PR gate)**: regenerate `openapi_baseline.json` (cloud-only) and run the
+  contract + full suites; the local 617-passed run is not contract-face evidence.
 - **P-032 C4**: `kie_configs/pico.yaml` prompt v3 → v4 (quote_block cites block markers; the ambiguous
   "From the provided page text" sentence removed) with `findings_schema.PROMPT_VERSION = v4`, now machine-bound to
   the real template header; golden 45 records restamped with a per-record `prompt_version` (harness metadata) via

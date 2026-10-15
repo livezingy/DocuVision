@@ -202,9 +202,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `table_service.py` is pinned at 1613 and must not gain lines). Single source of merge semantics =
   `html_structure`'s `rowspan`/`colspan` (already persisted on the table dict), with a `data`
   empty-placeholder fallback for SLANeXt HTML without per-cell bboxes. Verification: merged-cell goldens plus a
-  Cloud re-read of the P-027 R4 semantic scale - **run 2026-10-15 and the reading did not move**: IE column binding
-  `0.5278` / merged-cell completeness `0.7917` are bit-identical to the pre-A run (all 23 per-page CSV rows
-  byte-equal; the returned pack's `sha256` verified 9/9). Root cause: that scale's predicted side reads only
+  Cloud re-read of the P-027 R4 semantic scale - **run 2026-10-15 and the reading did not move**: IE column
+  binding `0.5278` and merged-cell completeness `0.7917` are bit-identical to the pre-A run (all 23 per-page
+  CSV rows byte-equal; the returned pack's `sha256` verified 9/9). Both figures are **page-macro means**; the
+  count ratios, which are the readings to quote, are `7/11 = 0.6364` for column binding and `5/7 = 0.7143` for
+  merged cells (see PENDING P-027 for the three-way macro / micro / coverage presentation). Root cause: that scale's predicted side reads only
   `tables[].data` (`scripts/measure/rf_sem_eval.py`), which this item does not change, and on this corpus the
   merged cells are **rowspan-only** (`colspan` is always 1) - so a span-anchor column rule is an identity. All four
   unbound families share one shape: a footnote token that is also printed in *another* column (a regulation cell

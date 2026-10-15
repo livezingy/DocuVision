@@ -202,8 +202,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `table_service.py` is pinned at 1613 and must not gain lines). Single source of merge semantics =
   `html_structure`'s `rowspan`/`colspan` (already persisted on the table dict), with a `data`
   empty-placeholder fallback for SLANeXt HTML without per-cell bboxes. Verification: merged-cell goldens plus a
-  Cloud re-read of the P-027 R4 semantic scale (IE column binding 0.5278 / merged-cell completeness 0.7917 should
-  rise; the IE 0.2308 line-GT reading stays unfudged). **P-027 D8** (Confidence product source) is defined as
+  Cloud re-read of the P-027 R4 semantic scale - **run 2026-10-15 and the reading did not move**: IE column binding
+  `0.5278` / merged-cell completeness `0.7917` are bit-identical to the pre-A run (all 23 per-page CSV rows
+  byte-equal; the returned pack's `sha256` verified 9/9). Root cause: that scale's predicted side reads only
+  `tables[].data` (`scripts/measure/rf_sem_eval.py`), which this item does not change, and on this corpus the
+  merged cells are **rowspan-only** (`colspan` is always 1) - so a span-anchor column rule is an identity. All four
+  unbound families share one shape: a footnote token that is also printed in *another* column (a regulation cell
+  citing "5.925", the footnote-definition prose column, and a `rowspan` band cell that absorbed a lower row's
+  label). That is a boundary of the D5 injectivity criterion, not of merged-cell semantics - so the earlier
+  "should rise" expectation is **withdrawn**, not met. The IE 0.2308 line-GT reading stays unfudged. **P-027 D8** (Confidence product source) is defined as
   **OCR block confidence (`rec_score`) propagated through row/field aggregation** - explicitly not a native model
   probability (the Qwen path emits no logits) and not the fill-rate heuristic `kie_confidence_avg`; the two must
   not be mixed. The only existing anchor holding OCR blocks *with* confidence is

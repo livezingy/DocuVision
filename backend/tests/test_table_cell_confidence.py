@@ -335,6 +335,62 @@ def test_projection_degrades_when_a_covered_cell_is_not_blank():
     assert "cell_confidence_grid" not in table
 
 
+def _degraded_reason(monkeypatch, table) -> str:
+    """Run the projection expecting a degrade; return the logged reason.
+
+    Pins *which* guard fired (not merely that something failed) and that a failure
+    attaches neither key and logs exactly one warning per table.
+    """
+    import app.services.table_cell_confidence as tcc
+
+    seen: list = []
+    monkeypatch.setattr(tcc.logger, "warning", lambda msg: seen.append(str(msg)))
+    assert _project_cell_confidence(table) is False
+    assert "cell_confidence_grid" not in table
+    assert "cell_td_span" not in table
+    assert len(seen) == 1
+    return seen[0]
+
+
+def test_projection_degrades_on_anchor_that_is_not_a_dict(monkeypatch):
+    """Guard 3a: a span_map entry that is not a dict cannot be validated."""
+    table = _merged_table()
+    table["html_structure"]["span_map"][2] = [1, 0, 1, 1]
+    assert "anchor_2_not_a_dict" in _degraded_reason(monkeypatch, table)
+
+
+def test_projection_degrades_on_non_integer_anchor_position(monkeypatch):
+    """Guard 3b: floats, strings and ``bool`` (an ``int`` subclass) are refused."""
+    for bad in (0.0, True, "0", None):
+        table = _merged_table()
+        table["html_structure"]["span_map"][2]["row"] = bad
+        assert "anchor_2_non_integer_position" in _degraded_reason(monkeypatch, table)
+
+
+def test_projection_degrades_on_non_positive_span(monkeypatch):
+    """Guard 3c: a span below 1 means the two walks drifted apart."""
+    for key in ("rowspan", "colspan"):
+        table = _merged_table()
+        table["html_structure"]["span_map"][0][key] = 0
+        assert "anchor_0_non_positive_span" in _degraded_reason(monkeypatch, table)
+
+
+def test_projection_degrades_when_the_span_extends_past_the_grid(monkeypatch):
+    """Guard 4b: the anchor is inside the grid but its span runs past it."""
+    for key in ("colspan", "rowspan"):
+        table = _merged_table()
+        table["html_structure"]["span_map"][6][key] = 2  # anchor (2, 2) on a 3x3
+        assert "anchor_6_span_out_of_bounds" in _degraded_reason(monkeypatch, table)
+
+
+def test_projection_degrades_on_duplicate_anchor_position(monkeypatch):
+    """Guard 5b: two anchors at one position would silently drop the earlier score."""
+    table = _merged_table()
+    anchor = table["html_structure"]["span_map"][3]
+    anchor["row"], anchor["col"] = 0, 0
+    assert "anchor_3_duplicate_position" in _degraded_reason(monkeypatch, table)
+
+
 def test_projection_is_decoupled_from_the_backfill_trust_gate():
     """A measured=False payload still gets its grid: no page-trust input exists here."""
     table = _merged_table()

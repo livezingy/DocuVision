@@ -262,7 +262,8 @@ def attach_cell_confidence(tables: Iterable[Any], elements: Iterable[Any]) -> in
 
     Matched by ``id``: ``table_service`` names each table after the layout element it came from
     (``element.get('id', ...)``), so the ids line up exactly and no bbox heuristic is needed.
-    Tables without an element, or with an unmeasured payload, are left untouched.
+    Tables without an element are left untouched. An unmeasured payload (``measured=False``,
+    ``cells`` all ``None``) is attached as-is — consumers must check ``measured`` before trusting ``cells``.
     """
     by_id = {
         _pick(elem, "id"): _pick(elem, "cell_confidence")

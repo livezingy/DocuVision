@@ -16,6 +16,191 @@ from typing import Any, Dict, List, Optional, Tuple
 from loguru import logger
 
 
+def _walk_occupancy(table: Any) -> Tuple[List[List[str]], List[Dict[str, int]]]:
+    """One occupancy-aware walk over a parsed ``<table>`` element.
+
+    Returns ``(data, span_map)``:
+
+    * ``data`` -- exactly the grid ``_html_to_data`` has always returned:
+      colspan placeholders and rowspan continuations are ``''``; rows whose
+      cells are all blank are dropped; a table with fewer than 2 columns is
+      rejected (``[]``); rows are truncated to 20 columns.
+    * ``span_map`` -- one entry per ``<td>/<th>`` in document order,
+      ``{"row", "col", "rowspan", "colspan"}`` where ``row``/``col`` are the
+      **output** indices in ``data`` (the cell's anchor position). ``row`` is
+      assigned only after the row is known to be kept, so dropping all-blank
+      rows cannot shift anchors. Anchors past the 20-column truncation are
+      dropped; a rejected table yields ``[]``.
+
+    Single source of truth on purpose: ``_html_to_data`` and
+    ``_extract_html_structure`` both consume this one walk, so their row sets
+    cannot drift (P-027 A).
+    """
+    from bs4 import BeautifulSoup
+
+    rows = table.find_all('tr')
+    if not rows:
+        return [], []
+
+    # First pass: determine maximum columns by checking all rows
+    max_cols = 0
+    for row in rows:
+        cells = row.find_all(['td', 'th'])
+        col_count = 0
+        for cell in cells:
+            colspan = int(cell.get('colspan', 1))
+            col_count += colspan
+        max_cols = max(max_cols, col_count)
+
+    if max_cols == 0:
+        return [], []
+
+    # Initialize data structure with empty strings
+    data: List[List[str]] = []
+    span_map: List[Dict[str, int]] = []
+    row_spans: Dict[Tuple[int, int], int] = {}  # Track rowspan cells: {(row, col): remaining_rows}
+
+    for row_idx, row in enumerate(rows):
+        cells = row.find_all(['td', 'th'])
+        if not cells:
+            continue
+
+        row_data = [''] * max_cols
+        col_idx = 0
+        row_anchors: List[Tuple[int, int, int]] = []
+
+        # Skip columns that are occupied by rowspan from previous rows
+        while col_idx < max_cols and (row_idx, col_idx) in row_spans:
+            col_idx += 1
+
+        for cell in cells:
+            # Skip to next available column
+            while col_idx < max_cols and (row_idx, col_idx) in row_spans:
+                col_idx += 1
+
+            if col_idx >= max_cols:
+                break
+
+            # Get cell content - only text from this cell, not nested tables
+            # Remove any nested table content
+            cell_copy = BeautifulSoup(str(cell), 'html.parser')
+            # Find the actual cell element (td or th)
+            cell_elem = cell_copy.find(['td', 'th'])
+            if not cell_elem:
+                # If no td/th found, use the root
+                cell_elem = cell_copy
+
+            # Remove nested tables first
+            for nested_table in cell_elem.find_all('table'):
+                nested_table.decompose()
+
+            # Remove any other non-cell elements that might contain page text
+            # Only keep text content and basic formatting elements
+            allowed_tags = ['p', 'span', 'div', 'br', 'strong', 'em', 'b', 'i', 'u']
+            for elem in cell_elem.find_all():
+                if elem.name not in allowed_tags:
+                    # Replace with its text content
+                    if elem.string:
+                        elem.replace_with(elem.string)
+                    else:
+                        elem.decompose()
+
+            # Extract text - only from the cell element
+            cell_text = cell_elem.get_text(separator=' ', strip=True)
+            # Normalize whitespace
+            cell_text = ' '.join(cell_text.split())
+
+            # Limit cell text length to prevent extremely long text (likely page content)
+            # Typical table cells should be relatively short
+            if len(cell_text) > 500:
+                logger.warning(
+                    f"Table cell row {row_idx} col {col_idx}: text too long ({len(cell_text)} chars), truncating. May contain non-table content."
+                )
+                # Try to find a reasonable break point (sentence end)
+                truncated = cell_text[:500]
+                last_period = truncated.rfind('.')
+                last_space = truncated.rfind(' ')
+                if last_period > 400:
+                    cell_text = truncated[:last_period + 1]
+                elif last_space > 400:
+                    cell_text = truncated[:last_space] + "..."
+                else:
+                    cell_text = truncated + "..."
+
+            row_data[col_idx] = cell_text
+
+            # Handle colspan
+            colspan = int(cell.get('colspan', 1))
+            rowspan = int(cell.get('rowspan', 1))
+            row_anchors.append((col_idx, rowspan, colspan))
+            for c in range(1, colspan):
+                if col_idx + c < max_cols:
+                    row_data[col_idx + c] = ''  # Mark as merged horizontally
+
+            # Handle rowspan
+            if rowspan > 1:
+                for r in range(1, rowspan):
+                    if row_idx + r < len(rows) + 10:  # Safety check
+                        row_spans[(row_idx + r, col_idx)] = rowspan - r - 1
+                        # Also mark colspan cells in rowspan
+                        for c in range(1, colspan):
+                            if col_idx + c < max_cols:
+                                row_spans[(row_idx + r, col_idx + c)] = rowspan - r - 1
+
+            col_idx += colspan
+
+        # Only add row if it has some content
+        if any(cell.strip() for cell in row_data):
+            out_row = len(data)
+            data.append(row_data)
+            for col, rowspan, colspan in row_anchors:
+                span_map.append({"row": out_row, "col": col, "rowspan": rowspan, "colspan": colspan})
+
+    # Validate table data: ensure it looks like a table
+    # Tables should have at least 2 columns and reasonable row/column counts
+    if data:
+        # Check if data looks like a table (not just a single column of text)
+        max_cols = max(len(row) for row in data) if data else 0
+        if max_cols < 2:
+            logger.warning(f"Table data has only {max_cols} column(s), may not be a valid table")
+            return [], []
+
+        # Check if any row has too many columns (likely contains page text)
+        if max_cols > 20:
+            logger.warning(f"Table data has {max_cols} columns, may contain non-table content. Filtering to 20 columns.")
+            # Filter rows to reasonable column count
+            data = [row[:20] for row in data]
+            # Mirror the truncation on the anchor map: anchors past column 20 no
+            # longer exist in the grid.
+            span_map = [anchor for anchor in span_map if anchor["col"] < 20]
+            max_cols = 20
+
+        # Check if rows have consistent structure (typical of tables).
+        # Unreachable by construction (every row is ``[''] * max_cols`` long, so
+        # the ratio is always 1.0) but kept verbatim so ``data`` stays identical.
+        if len(data) > 1:
+            first_row_cols = len(data[0])
+            consistent_rows = sum(1 for row in data if abs(len(row) - first_row_cols) <= 2)
+            consistency_ratio = consistent_rows / len(data) if data else 0
+            if consistency_ratio < 0.7:  # Less than 70% consistency
+                logger.warning(f"Table rows have inconsistent column counts ({consistency_ratio:.1%} consistency), may contain non-table content")
+                # Filter to only consistent rows
+                data = [row for row in data if abs(len(row) - first_row_cols) <= 2]
+                # If this ever fires, drop the anchors rather than misproject them.
+                span_map = []
+
+        # Additional validation: check if cells contain reasonable text (not entire page text)
+        # If any cell has extremely long text (>500 chars), it might be page content
+        for row_idx, row in enumerate(data):
+            for col_idx, cell in enumerate(row):
+                if isinstance(cell, str) and len(cell) > 500:
+                    logger.warning(f"Table row {row_idx}, col {col_idx} has very long text ({len(cell)} chars), may contain non-table content")
+                    # Truncate to prevent display issues
+                    data[row_idx][col_idx] = cell[:500] + "..."
+
+    return data, span_map
+
+
 class TableHtmlMixin:
     """HTML <table> parsing and serialisation helpers for the PP-Structure table engine."""
 
@@ -84,6 +269,9 @@ class TableHtmlMixin:
         Parse HTML table to extract data structure, preserving merged cells (rowspan/colspan).
         Returns a 2D list with proper handling of merged cells.
         Only extracts content from <table> tags, ignoring any other content.
+
+        The grid is produced by the shared occupancy-aware walk (P-027 A), so its
+        row set cannot drift from the anchor map exposed on ``html_structure``.
         """
         try:
             from bs4 import BeautifulSoup
@@ -98,154 +286,7 @@ class TableHtmlMixin:
                 logger.warning("No <table> tag found in HTML, attempting to parse as raw HTML")
                 return []
 
-            # Extract all rows from the table only
-            rows = table.find_all('tr')
-            if not rows:
-                return []
-
-            # First pass: determine maximum columns by checking all rows
-            max_cols = 0
-            for row in rows:
-                cells = row.find_all(['td', 'th'])
-                col_count = 0
-                for cell in cells:
-                    colspan = int(cell.get('colspan', 1))
-                    col_count += colspan
-                max_cols = max(max_cols, col_count)
-
-            if max_cols == 0:
-                return []
-
-            # Initialize data structure with empty strings
-            data = []
-            row_spans = {}  # Track rowspan cells: {(row, col): remaining_rows}
-
-            for row_idx, row in enumerate(rows):
-                cells = row.find_all(['td', 'th'])
-                if not cells:
-                    continue
-
-                row_data = [''] * max_cols
-                col_idx = 0
-
-                # Skip columns that are occupied by rowspan from previous rows
-                while col_idx < max_cols and (row_idx, col_idx) in row_spans:
-                    col_idx += 1
-
-                for cell in cells:
-                    # Skip to next available column
-                    while col_idx < max_cols and (row_idx, col_idx) in row_spans:
-                        col_idx += 1
-
-                    if col_idx >= max_cols:
-                        break
-
-                    # Get cell content - only text from this cell, not nested tables
-                    # Remove any nested table content
-                    cell_copy = BeautifulSoup(str(cell), 'html.parser')
-                    # Find the actual cell element (td or th)
-                    cell_elem = cell_copy.find(['td', 'th'])
-                    if not cell_elem:
-                        # If no td/th found, use the root
-                        cell_elem = cell_copy
-
-                    # Remove nested tables first
-                    for nested_table in cell_elem.find_all('table'):
-                        nested_table.decompose()
-
-                    # Remove any other non-cell elements that might contain page text
-                    # Only keep text content and basic formatting elements
-                    allowed_tags = ['p', 'span', 'div', 'br', 'strong', 'em', 'b', 'i', 'u']
-                    for elem in cell_elem.find_all():
-                        if elem.name not in allowed_tags:
-                            # Replace with its text content
-                            if elem.string:
-                                elem.replace_with(elem.string)
-                            else:
-                                elem.decompose()
-
-                    # Extract text - only from the cell element
-                    cell_text = cell_elem.get_text(separator=' ', strip=True)
-                    # Normalize whitespace
-                    cell_text = ' '.join(cell_text.split())
-
-                    # Limit cell text length to prevent extremely long text (likely page content)
-                    # Typical table cells should be relatively short
-                    if len(cell_text) > 500:
-                        logger.warning(
-                            f"Table cell row {row_idx} col {col_idx}: text too long ({len(cell_text)} chars), truncating. May contain non-table content."
-                        )
-                        # Try to find a reasonable break point (sentence end)
-                        truncated = cell_text[:500]
-                        last_period = truncated.rfind('.')
-                        last_space = truncated.rfind(' ')
-                        if last_period > 400:
-                            cell_text = truncated[:last_period + 1]
-                        elif last_space > 400:
-                            cell_text = truncated[:last_space] + "..."
-                        else:
-                            cell_text = truncated + "..."
-
-                    row_data[col_idx] = cell_text
-
-                    # Handle colspan
-                    colspan = int(cell.get('colspan', 1))
-                    for c in range(1, colspan):
-                        if col_idx + c < max_cols:
-                            row_data[col_idx + c] = ''  # Mark as merged horizontally
-
-                    # Handle rowspan
-                    rowspan = int(cell.get('rowspan', 1))
-                    if rowspan > 1:
-                        for r in range(1, rowspan):
-                            if row_idx + r < len(rows) + 10:  # Safety check
-                                row_spans[(row_idx + r, col_idx)] = rowspan - r - 1
-                                # Also mark colspan cells in rowspan
-                                for c in range(1, colspan):
-                                    if col_idx + c < max_cols:
-                                        row_spans[(row_idx + r, col_idx + c)] = rowspan - r - 1
-
-                    col_idx += colspan
-
-                # Only add row if it has some content
-                if any(cell.strip() for cell in row_data):
-                    data.append(row_data)
-
-            # Validate table data: ensure it looks like a table
-            # Tables should have at least 2 columns and reasonable row/column counts
-            if data:
-                # Check if data looks like a table (not just a single column of text)
-                max_cols = max(len(row) for row in data) if data else 0
-                if max_cols < 2:
-                    logger.warning(f"Table data has only {max_cols} column(s), may not be a valid table")
-                    return []
-
-                # Check if any row has too many columns (likely contains page text)
-                if max_cols > 20:
-                    logger.warning(f"Table data has {max_cols} columns, may contain non-table content. Filtering to 20 columns.")
-                    # Filter rows to reasonable column count
-                    data = [row[:20] for row in data]
-                    max_cols = 20
-
-                # Check if rows have consistent structure (typical of tables)
-                if len(data) > 1:
-                    first_row_cols = len(data[0])
-                    consistent_rows = sum(1 for row in data if abs(len(row) - first_row_cols) <= 2)
-                    consistency_ratio = consistent_rows / len(data) if data else 0
-                    if consistency_ratio < 0.7:  # Less than 70% consistency
-                        logger.warning(f"Table rows have inconsistent column counts ({consistency_ratio:.1%} consistency), may contain non-table content")
-                        # Filter to only consistent rows
-                        data = [row for row in data if abs(len(row) - first_row_cols) <= 2]
-
-                # Additional validation: check if cells contain reasonable text (not entire page text)
-                # If any cell has extremely long text (>500 chars), it might be page content
-                for row_idx, row in enumerate(data):
-                    for col_idx, cell in enumerate(row):
-                        if isinstance(cell, str) and len(cell) > 500:
-                            logger.warning(f"Table row {row_idx}, col {col_idx} has very long text ({len(cell)} chars), may contain non-table content")
-                            # Truncate to prevent display issues
-                            data[row_idx][col_idx] = cell[:500] + "..."
-
+            data, _ = _walk_occupancy(table)
             return data
         except Exception as e:
             logger.warning(f"HTML table parsing failed: {e}")
@@ -264,6 +305,10 @@ class TableHtmlMixin:
         - Output ``header_rows`` (count) and ``header_span_map`` (per-header-cell
           span tree) so downstream can reconstruct multi-level header hierarchy
           instead of the flat ``data`` array which loses that structure.
+        - P-027 A: also output ``span_map`` (one ``{"row", "col", "rowspan",
+          "colspan"}`` anchor per ``<td>/<th>`` in document order, ``row``/``col``
+          being the anchor's position in the ``data`` grid) from the same
+          occupancy-aware walk ``_html_to_data`` uses.
 
         Official basis: SLANeXt outputs HTML with native <thead>/<th rowspan>/
         <th colspan> for multi-level headers
@@ -284,11 +329,18 @@ class TableHtmlMixin:
                 'has_merged_cells': False,
                 'header_rows': 0,
                 'header_span_map': [],
+                'span_map': [],
             }
 
             rows = table.find_all('tr')
             if not rows:
                 return structure
+
+            # P-027 A: the occupancy-aware anchor map (td document order) from the
+            # same walk that produces ``data``, so a flat per-<td> confidence list
+            # can be projected onto the grid without the two walks drifting.
+            _, span_map = _walk_occupancy(table)
+            structure['span_map'] = span_map
 
             # F4: determine header rows.
             # 1) Explicit <thead>: every row inside thead is a header row.

@@ -36,6 +36,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from loguru import logger
+
 Box = Tuple[float, float, float, float]
 
 #: Minimum share of entries that must land inside a cell for a table to be considered
@@ -43,6 +45,13 @@ Box = Tuple[float, float, float, float]
 #: frame, and 0.00 for the rejected one), so the margin is wide; kept as a named constant so
 #: the adjudication is visible.
 DEFAULT_FRAME_OK_RATIO = 0.8
+
+#: Preview "low confidence" cut for the proof-pack cell-confidence surface (P-027 A).
+#: NOT an adjudicated threshold: the observed ``rec_score`` distribution is narrow
+#: (0.93-0.96 lower edge), so this is a preview value that can be re-cut offline from
+#: the score histogram -- the same treatment as the harness's ``MEDIUM_CUT = 0.95``
+#: (PENDING P-027 (2)).
+LOW_CONFIDENCE_CUT = 0.90
 
 
 def _flatten(value: Any) -> List[float]:
@@ -178,6 +187,126 @@ def aggregate_cell_confidence(
     return result
 
 
+# ---------------------------------------------- P-027 A: merged-cell projection
+
+
+def _project_cell_confidence(table: Dict[str, Any]) -> bool:
+    """Project the flat per-``<td>`` scores onto the ``data`` grid (P-027 A).
+
+    Reads ``table["cell_confidence"]`` (the 7-key payload; ``cells`` in ``<td>``
+    document order) plus ``table["html_structure"]["span_map"]`` (one anchor per
+    ``<td>``, same order) and attaches, on success:
+
+    * ``cell_confidence_grid`` -- same shape as ``data``; an anchor position
+      carries that ``<td>``'s score, every span continuation stays ``None``
+      (never 0, never a copied value).
+    * ``cell_td_span`` -- the anchor list itself (``<td>`` document order), so
+      flat-side consumers can tell merged cells apart without reading the grid.
+
+    Deliberately decoupled from the backfill trust gate: this runs for every
+    table that carries a payload, so an untrusted / rotated / deskewed page
+    keeps its grid. Any guard failure attaches nothing (a missing key reads as
+    "unmeasured" downstream) and logs one warning -- never a fabricated value.
+
+    Guards, in order: fields present and list-typed; ``len(span_map) ==
+    len(cells)``; every anchor a dict of ints with spans >= 1; every anchor and
+    its whole span inside the ``data`` bounds; no duplicate anchor; every
+    covered non-anchor cell blank in ``data`` (the placeholder semantics of the
+    shared walk). Returns ``True`` when both keys were attached.
+    """
+    payload = table.get("cell_confidence")
+    cells = payload.get("cells") if isinstance(payload, dict) else None
+    structure = table.get("html_structure")
+    span_map = structure.get("span_map") if isinstance(structure, dict) else None
+    data = table.get("data")
+
+    reason = ""
+    if not (isinstance(cells, list) and isinstance(span_map, list) and isinstance(data, list)):
+        reason = "missing_or_malformed_fields"
+    elif len(span_map) != len(cells):
+        reason = f"span_map_size_{len(span_map)}_vs_cells_{len(cells)}"
+    elif not all(isinstance(row, list) for row in data):
+        reason = "data_row_not_a_list"
+    if reason:
+        logger.warning(f"cell_confidence projection degraded for table {table.get('id')}: {reason}")
+        return False
+
+    grid: List[List[Optional[float]]] = [[None] * len(row) for row in data]
+    td_span: List[Dict[str, int]] = []
+    seen = set()
+    for idx, anchor in enumerate(span_map):
+        if not isinstance(anchor, dict):
+            reason = f"anchor_{idx}_not_a_dict"
+            break
+        row, col = anchor.get("row"), anchor.get("col")
+        rowspan, colspan = anchor.get("rowspan", 1), anchor.get("colspan", 1)
+        if not all(isinstance(v, int) and not isinstance(v, bool) for v in (row, col, rowspan, colspan)):
+            reason = f"anchor_{idx}_non_integer_position"
+            break
+        if rowspan < 1 or colspan < 1:
+            reason = f"anchor_{idx}_non_positive_span"
+            break
+        if not (0 <= row < len(data) and 0 <= col < len(data[row])):
+            reason = f"anchor_{idx}_out_of_bounds"
+            break
+        if row + rowspan > len(data) or col + colspan > len(data[row]):
+            reason = f"anchor_{idx}_span_out_of_bounds"
+            break
+        if (row, col) in seen:
+            reason = f"anchor_{idx}_duplicate_position"
+            break
+        covered_blank = all(
+            data[rr][cc] == ""
+            for rr in range(row, row + rowspan)
+            for cc in range(col, col + colspan)
+            if (rr, cc) != (row, col)
+        )
+        if not covered_blank:
+            reason = f"anchor_{idx}_covered_cell_not_blank"
+            break
+        td_span.append({"row": row, "col": col, "rowspan": rowspan, "colspan": colspan})
+        seen.add((row, col))
+        grid[row][col] = cells[idx]
+
+    if reason:
+        logger.warning(f"cell_confidence projection degraded for table {table.get('id')}: {reason}")
+        return False
+    table["cell_confidence_grid"] = grid
+    table["cell_td_span"] = td_span
+    return True
+
+
+def summarize_cell_confidence(table: Dict[str, Any]) -> Dict[str, Any]:
+    """Measured / unmeasured / low counts for one table's cells (P-027 A).
+
+    Reads the flat ``cell_confidence`` payload (always attached when a table has
+    one), not the grid, so the numbers survive a degraded projection and cover
+    untrusted pages. ``measured`` is the first gate: an unmeasured payload (or a
+    missing one) yields zero measured cells and every cell unmeasured -- never
+    a fabricated 0 score.
+    """
+    payload = table.get("cell_confidence")
+    cells = payload.get("cells") if isinstance(payload, dict) else None
+    if not isinstance(cells, list):
+        cells = []
+    if not isinstance(payload, dict) or not payload.get("measured"):
+        return {
+            "measured": False,
+            "n_cells": len(cells),
+            "cells_measured": 0,
+            "cells_unmeasured": len(cells),
+            "cells_low": 0,
+        }
+    numeric = [c for c in cells if isinstance(c, (int, float)) and not isinstance(c, bool)]
+    return {
+        "measured": True,
+        "n_cells": len(cells),
+        "cells_measured": len(numeric),
+        "cells_unmeasured": len(cells) - len(numeric),
+        "cells_low": sum(1 for c in numeric if c < LOW_CONFIDENCE_CUT),
+    }
+
+
 # ----------------------------------------------------------------- engine adapters
 
 
@@ -264,6 +393,11 @@ def attach_cell_confidence(tables: Iterable[Any], elements: Iterable[Any]) -> in
     (``element.get('id', ...)``), so the ids line up exactly and no bbox heuristic is needed.
     Tables without an element are left untouched. An unmeasured payload (``measured=False``,
     ``cells`` all ``None``) is attached as-is — consumers must check ``measured`` before trusting ``cells``.
+
+    P-027 A: each attached table also gets the merged-cell projection
+    (``cell_confidence_grid`` + ``cell_td_span``) via :func:`_project_cell_confidence`,
+    which runs right here -- for every table, unconditionally -- so the grid covers
+    untrusted / rotated / deskewed pages too, exactly like the flat payload.
     """
     by_id = {
         _pick(elem, "id"): _pick(elem, "cell_confidence")
@@ -275,5 +409,6 @@ def attach_cell_confidence(tables: Iterable[Any], elements: Iterable[Any]) -> in
         payload = by_id.get(_pick(table, "id"))
         if payload and isinstance(table, dict):
             table["cell_confidence"] = payload
+            _project_cell_confidence(table)
             attached += 1
     return attached

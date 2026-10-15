@@ -9,6 +9,12 @@ Official basis: SLANeXt outputs HTML with native <thead>/<th rowspan>/
 <th colspan> for multi-level headers
 https://paddlepaddle.github.io/PaddleOCR/main/en/version3.x/pipeline_usage/table_recognition_v2.html
 and findings §4.
+
+Also hosts the characterization lock for ``_html_to_data`` (P-027 A 项
+prerequisite): the grid semantics (colspan placeholders, rowspan
+continuations, empty-row dropping, the ``max_cols < 2`` drop and the ``>20``
+column truncation) are pinned so the upcoming shared-walk extraction is
+provably behavior-preserving.
 """
 
 from __future__ import annotations
@@ -122,3 +128,152 @@ class TestHeaderStructure:
     def test_no_table_returns_empty(self) -> None:
         s = _engine()._extract_html_structure("<div>nope</div>")
         assert s == {}
+
+
+class TestHtmlToDataCharacterization:
+    """Characterization lock for ``_html_to_data`` (P-027 A 项 prerequisite).
+
+    Pins the *current* grid semantics byte-for-byte so the upcoming
+    ``_walk_occupancy`` extraction is provably behavior-preserving. Each case
+    maps to one branch of the current method.
+    """
+
+    def test_plain_grid_row_major(self) -> None:
+        html = (
+            "<table><tr><td>A</td><td>B</td><td>C</td></tr>"
+            "<tr><td>1</td><td>2</td><td>3</td></tr></table>"
+        )
+        assert _engine()._html_to_data(html) == [["A", "B", "C"], ["1", "2", "3"]]
+
+    def test_colspan_writes_empty_placeholder(self) -> None:
+        html = "<table><tr><td colspan='2'>A</td><td>B</td></tr></table>"
+        assert _engine()._html_to_data(html) == [["A", "", "B"]]
+
+    def test_rowspan_continuation_is_blank_and_offsets_later_column(self) -> None:
+        html = (
+            "<table><tr><td rowspan='2'>A</td><td>B</td></tr>"
+            "<tr><td>C</td></tr></table>"
+        )
+        # The rowspan continuation at (1, 0) stays blank; C lands at column 1.
+        assert _engine()._html_to_data(html) == [["A", "B"], ["", "C"]]
+
+    def test_all_empty_row_is_dropped(self) -> None:
+        html = (
+            "<table><tr><td>A</td><td>B</td></tr>"
+            "<tr><td></td><td></td></tr>"
+            "<tr><td>C</td><td>D</td></tr></table>"
+        )
+        assert _engine()._html_to_data(html) == [["A", "B"], ["C", "D"]]
+
+    def test_single_column_table_dropped(self) -> None:
+        # max_cols < 2 -> whole table rejected (not a real table).
+        html = "<table><tr><td>A</td></tr><tr><td>B</td></tr></table>"
+        assert _engine()._html_to_data(html) == []
+
+    def test_more_than_20_columns_truncated(self) -> None:
+        row = "".join(f"<td>c{i}</td>" for i in range(21))
+        html = f"<table><tr>{row}</tr><tr>{row}</tr></table>"
+        data = _engine()._html_to_data(html)
+        assert len(data) == 2
+        assert all(len(r) == 20 for r in data)
+        assert data[0][0] == "c0" and data[0][-1] == "c19"
+
+    def test_multi_merge_three_by_three_grid(self) -> None:
+        # 7 <td> -> 9 grid positions: colspan placeholder at (0,1) and the
+        # rowspan continuation of B at (1,2).
+        html = (
+            "<table>"
+            "<tr><td colspan='2'>A</td><td rowspan='2'>B</td></tr>"
+            "<tr><td>C</td><td>D</td></tr>"
+            "<tr><td>E</td><td>F</td><td>G</td></tr>"
+            "</table>"
+        )
+        assert _engine()._html_to_data(html) == [
+            ["A", "", "B"],
+            ["C", "D", ""],
+            ["E", "F", "G"],
+        ]
+
+    def test_no_table_returns_empty(self) -> None:
+        assert _engine()._html_to_data("<div>no table here</div>") == []
+
+    def test_table_without_rows_returns_empty(self) -> None:
+        assert _engine()._html_to_data("<table></table>") == []
+
+
+class TestSpanMap:
+    """``html_structure['span_map']`` anchor map (P-027 A).
+
+    One ``{"row","col","rowspan","colspan"}`` per ``<td>/<th>`` in document
+    order, with ``row``/``col`` the anchor's position in the ``data`` grid, so a
+    flat per-``<td>`` confidence list can be projected onto the grid.
+    """
+
+    _MULTI_MERGE = (
+        "<table>"
+        "<tr><td colspan='2'>A</td><td rowspan='2'>B</td></tr>"
+        "<tr><td>C</td><td>D</td></tr>"
+        "<tr><td>E</td><td>F</td><td>G</td></tr>"
+        "</table>"
+    )
+
+    def test_seven_td_anchor_map_over_nine_positions(self) -> None:
+        s = _engine()._extract_html_structure(self._MULTI_MERGE)
+        assert s["span_map"] == [
+            {"row": 0, "col": 0, "rowspan": 1, "colspan": 2},
+            {"row": 0, "col": 2, "rowspan": 2, "colspan": 1},
+            {"row": 1, "col": 0, "rowspan": 1, "colspan": 1},
+            {"row": 1, "col": 1, "rowspan": 1, "colspan": 1},
+            {"row": 2, "col": 0, "rowspan": 1, "colspan": 1},
+            {"row": 2, "col": 1, "rowspan": 1, "colspan": 1},
+            {"row": 2, "col": 2, "rowspan": 1, "colspan": 1},
+        ]
+
+    def test_no_merge_is_row_major(self) -> None:
+        html = (
+            "<table><tr><td>1</td><td>2</td></tr>"
+            "<tr><td>3</td><td>4</td></tr></table>"
+        )
+        s = _engine()._extract_html_structure(html)
+        assert s["span_map"] == [
+            {"row": 0, "col": 0, "rowspan": 1, "colspan": 1},
+            {"row": 0, "col": 1, "rowspan": 1, "colspan": 1},
+            {"row": 1, "col": 0, "rowspan": 1, "colspan": 1},
+            {"row": 1, "col": 1, "rowspan": 1, "colspan": 1},
+        ]
+
+    def test_rowspan_placeholder_offsets_later_column(self) -> None:
+        # The rowspan continuation at (1, 0) has no anchor; C's anchor is (1, 1).
+        html = (
+            "<table><tr><td rowspan='2'>A</td><td>B</td></tr>"
+            "<tr><td>C</td></tr></table>"
+        )
+        s = _engine()._extract_html_structure(html)
+        assert s["span_map"] == [
+            {"row": 0, "col": 0, "rowspan": 2, "colspan": 1},
+            {"row": 0, "col": 1, "rowspan": 1, "colspan": 1},
+            {"row": 1, "col": 1, "rowspan": 1, "colspan": 1},
+        ]
+
+    def test_span_map_is_present_and_empty_for_emptytable(self) -> None:
+        s = _engine()._extract_html_structure("<table></table>")
+        assert s["span_map"] == []
+
+    def test_no_table_has_no_span_map_key(self) -> None:
+        # Early-return keeps the literal {} pinned by test_no_table_returns_empty.
+        assert _engine()._extract_html_structure("<div>nope</div>") == {}
+
+    def test_anchors_align_with_data_and_continuations_are_blank(self) -> None:
+        s = _engine()._extract_html_structure(self._MULTI_MERGE)
+        data = _engine()._html_to_data(self._MULTI_MERGE)
+        assert len(data) == 3 and all(len(row) == 3 for row in data)
+        for anchor in s["span_map"]:
+            row, col = anchor["row"], anchor["col"]
+            rowspan, colspan = anchor["rowspan"], anchor["colspan"]
+            assert 0 <= row < len(data) and row + rowspan <= len(data)
+            assert 0 <= col < len(data[row]) and col + colspan <= len(data[row])
+            for rr in range(row, row + rowspan):
+                for cc in range(col, col + colspan):
+                    if (rr, cc) != (row, col):
+                        # Covered, non-anchor positions must be blank placeholders.
+                        assert data[rr][cc] == "", (rr, cc)

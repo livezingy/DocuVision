@@ -14,11 +14,14 @@ import pytest
 
 from app.services.table_cell_confidence import (
     DEFAULT_FRAME_OK_RATIO,
+    LOW_CONFIDENCE_CUT,
+    _project_cell_confidence,
     aggregate_cell_confidence,
     as_box,
     attach_cell_confidence,
     cell_confidence_from_table_item,
     page_height_of,
+    summarize_cell_confidence,
 )
 
 
@@ -245,6 +248,146 @@ def test_attach_cell_confidence_matches_by_id_and_leaves_others_alone():
     assert attach_cell_confidence(tables, elements) == 1
     assert tables[0]["cell_confidence"]["cells"] == [0.9]
     assert "cell_confidence" not in tables[1]
+
+
+# ------------------------------------------------- P-027 A: merged-cell projection
+
+def _merged_table():
+    """3x3 grid from 7 <td>: colspan placeholder + rowspan continuation.
+
+    Same fixture as the span_map characterization in test_table_header_structure.py:
+    ``data == [['A', '', 'B'], ['C', 'D', ''], ['E', 'F', 'G']]``.
+    """
+    return {
+        "id": "p1_table_1",
+        "data": [["A", "", "B"], ["C", "D", ""], ["E", "F", "G"]],
+        "html_structure": {"span_map": [
+            {"row": 0, "col": 0, "rowspan": 1, "colspan": 2},
+            {"row": 0, "col": 2, "rowspan": 2, "colspan": 1},
+            {"row": 1, "col": 0, "rowspan": 1, "colspan": 1},
+            {"row": 1, "col": 1, "rowspan": 1, "colspan": 1},
+            {"row": 2, "col": 0, "rowspan": 1, "colspan": 1},
+            {"row": 2, "col": 1, "rowspan": 1, "colspan": 1},
+            {"row": 2, "col": 2, "rowspan": 1, "colspan": 1},
+        ]},
+        "cell_confidence": {
+            "cells": [0.91, 0.95, 0.88, 0.97, 0.93, 0.99, 0.89],
+            "frame": "raw", "measured": True, "reason": "ok",
+            "hits": 7, "n_rec": 7, "n_cells": 7,
+        },
+    }
+
+
+def test_projection_writes_scores_at_anchors_and_none_at_continuations():
+    table = _merged_table()
+    assert _project_cell_confidence(table) is True
+    # 9 grid positions from 7 values: anchors carry the score, continuations None.
+    assert table["cell_confidence_grid"] == [
+        [0.91, None, 0.95],
+        [0.88, 0.97, None],
+        [0.93, 0.99, 0.89],
+    ]
+    assert table["cell_td_span"] == _merged_table()["html_structure"]["span_map"]
+
+
+def test_projection_without_merge_is_row_major_equivalent():
+    table = {
+        "id": "t",
+        "data": [["1", "2"], ["3", "4"]],
+        "html_structure": {"span_map": [
+            {"row": 0, "col": 0, "rowspan": 1, "colspan": 1},
+            {"row": 0, "col": 1, "rowspan": 1, "colspan": 1},
+            {"row": 1, "col": 0, "rowspan": 1, "colspan": 1},
+            {"row": 1, "col": 1, "rowspan": 1, "colspan": 1},
+        ]},
+        "cell_confidence": {"cells": [0.9, 0.8, 0.7, 0.6], "measured": True},
+    }
+    assert _project_cell_confidence(table) is True
+    assert table["cell_confidence_grid"] == [[0.9, 0.8], [0.7, 0.6]]
+
+
+def test_projection_degrades_without_span_map_and_attaches_nothing():
+    table = {"id": "t", "data": [["A"]], "cell_confidence": {"cells": [0.9], "measured": True}}
+    assert _project_cell_confidence(table) is False
+    assert "cell_confidence_grid" not in table
+    assert "cell_td_span" not in table
+
+
+def test_projection_degrades_on_length_mismatch():
+    table = _merged_table()
+    table["html_structure"]["span_map"] = table["html_structure"]["span_map"][:6]
+    assert _project_cell_confidence(table) is False
+    assert "cell_confidence_grid" not in table
+
+
+def test_projection_degrades_on_out_of_bounds_anchor():
+    table = _merged_table()
+    table["html_structure"]["span_map"][3]["row"] = 9
+    assert _project_cell_confidence(table) is False
+    assert "cell_confidence_grid" not in table
+
+
+def test_projection_degrades_when_a_covered_cell_is_not_blank():
+    """Guard 5: text inside a 'continuation' means the walks drifted -- degrade."""
+    table = _merged_table()
+    table["data"][0][1] = "drifted text"  # colspan continuation of the A anchor
+    assert _project_cell_confidence(table) is False
+    assert "cell_confidence_grid" not in table
+
+
+def test_projection_is_decoupled_from_the_backfill_trust_gate():
+    """A measured=False payload still gets its grid: no page-trust input exists here."""
+    table = _merged_table()
+    table["cell_confidence"] = {
+        "cells": [None] * 7, "frame": None, "measured": False,
+        "reason": "frame_unresolved", "hits": 0, "n_rec": 7, "n_cells": 7,
+    }
+    assert _project_cell_confidence(table) is True
+    assert table["cell_confidence_grid"] == [[None] * 3 for _ in range(3)]
+
+
+def test_attach_cell_confidence_projects_the_grid_too():
+    element = {"id": "p1_table_1", "cell_confidence": _merged_table()["cell_confidence"]}
+    table = _merged_table()
+    table.pop("cell_confidence")
+    assert attach_cell_confidence([table], [element]) == 1
+    assert table["cell_confidence_grid"][0][0] == 0.91
+    assert len(table["cell_td_span"]) == 7
+
+
+def test_summarize_counts_measured_unmeasured_and_low():
+    assert LOW_CONFIDENCE_CUT == 0.90
+    summary = summarize_cell_confidence(_merged_table())
+    assert summary == {
+        "measured": True, "n_cells": 7,
+        "cells_measured": 7, "cells_unmeasured": 0, "cells_low": 2,  # 0.88, 0.89
+    }
+
+
+def test_summarize_mixed_cells_counts_none_as_unmeasured():
+    table = {"cell_confidence": {"cells": [0.95, None, 0.85], "measured": True}}
+    summary = summarize_cell_confidence(table)
+    assert (summary["cells_measured"], summary["cells_unmeasured"], summary["cells_low"]) == (2, 1, 1)
+
+
+def test_summarize_low_cut_is_exclusive_at_the_boundary():
+    table = {"cell_confidence": {"cells": [0.90, 0.899], "measured": True}}
+    assert summarize_cell_confidence(table)["cells_low"] == 1  # 0.90 itself is not low
+
+
+def test_summarize_unmeasured_table_reports_every_cell_unmeasured():
+    table = {"cell_confidence": {"cells": [None, None, None], "measured": False}}
+    assert summarize_cell_confidence(table) == {
+        "measured": False, "n_cells": 3, "cells_measured": 0,
+        "cells_unmeasured": 3, "cells_low": 0,
+    }
+
+
+def test_summarize_missing_payload_is_all_zero():
+    assert summarize_cell_confidence({}) == {
+        "measured": False, "n_cells": 0, "cells_measured": 0,
+        "cells_unmeasured": 0, "cells_low": 0,
+    }
 
 
 if __name__ == "__main__":  # pragma: no cover

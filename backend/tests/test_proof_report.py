@@ -145,3 +145,29 @@ def test_counts_mismatch_sets_warning(tmp_path):
     assert report["annotation_summary"]["counts_match_quality"] is False
     html = render_report_html(report, lang="en")
     assert "differ from document totals" in html
+
+
+def test_cell_confidence_surface_in_tables_card_and_html(tmp_path):
+    result = _result()
+    result["tables"][0]["cell_confidence"] = {
+        "cells": [0.85, 0.89, None], "measured": True, "frame": "raw",
+        "reason": "ok", "hits": 2, "n_rec": 3, "n_cells": 3,
+    }
+    report = build_report_data(result, _ANNOTATION, _meta())
+
+    entry = report["tables_summary"][0]
+    assert (entry["cells_measured"], entry["cells_unmeasured"], entry["cells_low"]) == (2, 1, 2)
+    assert entry["confidence_measured"] is True
+    # Table 2 carries no payload: honest zeros, not fabricated ones.
+    empty = report["tables_summary"][1]
+    assert (empty["cells_measured"], empty["cells_unmeasured"], empty["cells_low"], empty["confidence_measured"]) == (0, 0, 0, False)
+    assert report["metric_cards"]["cell_confidence"] == {"low": 2, "unmeasured": 1}
+
+    html = render_report_html(report, lang="en")
+    assert "Low-conf / unmeasured cells (preview cut 0.9)" in html
+    assert "Low / unmeasured" in html
+    assert "2/1" in html  # document card and the table-0 cell
+    assert "0.9" in html
+
+    zh = render_report_html(report, lang="zh", out_path=str(tmp_path / "zh.html"))
+    assert "低置信 / 未测量格（预览切点 0.9）" in zh

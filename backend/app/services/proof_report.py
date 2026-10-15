@@ -19,6 +19,8 @@ import html as _html
 import json
 from typing import Any, Dict, List, Optional
 
+from app.services.table_cell_confidence import LOW_CONFIDENCE_CUT, summarize_cell_confidence
+
 _PROVENANCE_CONFIRMED = "text_confirmed"
 _PROVENANCE_BACKFILLED = "text_backfilled"
 _PROVENANCE_MISMATCH = "text_mismatch"
@@ -40,6 +42,7 @@ _LITERALS: Dict[str, Dict[str, str]] = {
         "card_backfilled": "Corrected cells",
         "card_mismatch": "Needs your review",
         "card_text_layer": "Text-layer trusted pages",
+        "card_cell_conf": "Low-conf / unmeasured cells (preview cut {cut})",
         "tables_title": "Tables",
         "col_page": "Page",
         "col_table": "Table",
@@ -48,6 +51,7 @@ _LITERALS: Dict[str, Dict[str, str]] = {
         "col_backfilled": "Corrected",
         "col_mismatch": "Review",
         "col_coverage": "Verified coverage",
+        "col_cell_conf": "Low / unmeasured",
         "review_title": "Cells we recommend you review",
         "review_note": "The two layers disagree; the OCR value was kept.",
         "demo_title": "Sample of corrected values (OCR → text layer)",
@@ -77,6 +81,7 @@ _LITERALS: Dict[str, Dict[str, str]] = {
         "card_backfilled": "已修正格",
         "card_mismatch": "建议人工复核",
         "card_text_layer": "文本层可信页",
+        "card_cell_conf": "低置信 / 未测量格（预览切点 {cut}）",
         "tables_title": "表格",
         "col_page": "页码",
         "col_table": "表",
@@ -85,6 +90,7 @@ _LITERALS: Dict[str, Dict[str, str]] = {
         "col_backfilled": "已修正",
         "col_mismatch": "待复核",
         "col_coverage": "核对覆盖率",
+        "col_cell_conf": "低置信 / 未测量",
         "review_title": "建议人工复核的单元格",
         "review_note": "两个层不一致，已保留 OCR 原值。",
         "demo_title": "修正值抽样（OCR → 文本层）",
@@ -146,6 +152,7 @@ def build_report_data(
         rows = len(data)
         cols = max((len(r) for r in data if isinstance(r, list)), default=0)
         denom = c + b + m
+        conf = summarize_cell_confidence(table)
         tables_summary.append(
             {
                 "page": table.get("page"),
@@ -156,11 +163,18 @@ def build_report_data(
                 "backfilled": b,
                 "mismatch": m,
                 "coverage": round(c / denom, 3) if denom else None,
+                "cells_measured": conf["cells_measured"],
+                "cells_unmeasured": conf["cells_unmeasured"],
+                "cells_low": conf["cells_low"],
+                "confidence_measured": conf["measured"],
             }
         )
         grid_confirmed += c
         grid_backfilled += b
         grid_mismatch += m
+
+    conf_low = sum(entry["cells_low"] for entry in tables_summary)
+    conf_unmeasured = sum(entry["cells_unmeasured"] for entry in tables_summary)
 
     counts_match = (grid_confirmed, grid_backfilled, grid_mismatch) == (confirmed, backfilled, mismatch)
 
@@ -227,6 +241,7 @@ def build_report_data(
                 "trusted": int(backfill.get("pages_text_layer_trusted") or 0),
                 "judged": int(backfill.get("pages_judged") or 0),
             },
+            "cell_confidence": {"low": conf_low, "unmeasured": conf_unmeasured},
         },
         "page_verdicts": verdicts,
         "tables_summary": tables_summary,
@@ -282,8 +297,10 @@ def _tables_table(summary: List[Dict[str, Any]], t: Dict[str, str]) -> str:
     rows = []
     for entry in summary:
         coverage = entry["coverage"]
+        conf_total = entry["cells_measured"] + entry["cells_unmeasured"]
+        conf_cell = "{}/{}".format(entry["cells_low"], entry["cells_unmeasured"]) if conf_total else _esc(t["coverage_none"])
         rows.append(
-            "<tr><td>{page}</td><td>#{idx}</td><td>{rows} × {cols}</td><td>{c}</td><td>{b}</td><td>{m}</td><td>{cov}</td></tr>".format(
+            "<tr><td>{page}</td><td>#{idx}</td><td>{rows} × {cols}</td><td>{c}</td><td>{b}</td><td>{m}</td><td>{cov}</td><td>{cf}</td></tr>".format(
                 page=_esc(entry["page"]),
                 idx=_esc(entry["table_index"]),
                 rows=entry["rows"],
@@ -292,11 +309,12 @@ def _tables_table(summary: List[Dict[str, Any]], t: Dict[str, str]) -> str:
                 b=entry["backfilled"],
                 m=entry["mismatch"],
                 cov=coverage if coverage is not None else _esc(t["coverage_none"]),
+                cf=conf_cell,
             )
         )
     return (
-        "<table><tr><th>{h0}</th><th>{h1}</th><th>{h2}</th><th>{h3}</th><th>{h4}</th><th>{h5}</th><th>{h6}</th></tr>{rows}</table>"
-    ).format(h0=t["col_page"], h1=t["col_table"], h2=t["col_size"], h3=t["col_confirmed"], h4=t["col_backfilled"], h5=t["col_mismatch"], h6=t["col_coverage"], rows="".join(rows))
+        "<table><tr><th>{h0}</th><th>{h1}</th><th>{h2}</th><th>{h3}</th><th>{h4}</th><th>{h5}</th><th>{h6}</th><th>{h7}</th></tr>{rows}</table>"
+    ).format(h0=t["col_page"], h1=t["col_table"], h2=t["col_size"], h3=t["col_confirmed"], h4=t["col_backfilled"], h5=t["col_mismatch"], h6=t["col_coverage"], h7=t["col_cell_conf"], rows="".join(rows))
 
 
 def _review_table(review_list: List[Dict[str, Any]], t: Dict[str, str]) -> str:
@@ -388,11 +406,14 @@ def render_report_html(
         "<div class='card backfilled'><div class='num'>{}</div>{}</div>"
         "<div class='card mismatch'><div class='num'>{}</div>{}</div>"
         "<div class='card neutral'><div class='num'>{}/{}</div>{}</div>"
+        "<div class='card neutral'><div class='num'>{}/{}</div>{}</div>"
         "</div>".format(
             cards["cells_confirmed"], _esc(t["card_confirmed"]),
             cards["cells_backfilled"], _esc(t["card_backfilled"]),
             cards["cells_mismatch"], _esc(t["card_mismatch"]),
             tl["trusted"], tl["judged"], _esc(t["card_text_layer"]),
+            cards["cell_confidence"]["low"], cards["cell_confidence"]["unmeasured"],
+            _esc(t["card_cell_conf"].format(cut=LOW_CONFIDENCE_CUT)),
         ),
         "<h2>{}</h2>".format(_esc(t["tables_title"])),
         _tables_table(report_data["tables_summary"], t),

@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-027 A — merged-cell confidence projection** (2026-10-15): the flat per-`<td>` confidence
+  payload (`cell_confidence`, D8) is now projected onto the table's 2-D grid. `table_html.py`
+  gained a single occupancy-aware walk (`_walk_occupancy`) shared by `_html_to_data` and
+  `_extract_html_structure`, so the new `html_structure.span_map` (one `{row, col, rowspan,
+  colspan}` anchor per `<td>` in document order, rows indexed like `data`) cannot drift from the
+  grid. `attach_cell_confidence` — which runs for every table, unconditionally, decoupled from the
+  backfill trust gate — projects the payload into `cell_confidence_grid` (same shape as `data`;
+  anchors carry the score, span continuations stay `None`, never 0 or a copied value) plus
+  `cell_td_span` for flat-side consumers. Five guards (field shapes, size equality, integer
+  anchors, bounds incl. span extent, blank-continuation semantics) degrade to "keys not attached"
+  with one warning instead of a fabricated value. The proof pack gains a low-confidence /
+  unmeasured-cells metric card and per-table column; `summarize_cell_confidence` reads the flat
+  payload with `measured` as the first gate, and `LOW_CONFIDENCE_CUT = 0.90` is a preview constant
+  that can be re-cut offline from the score histogram.
 - **P-032 — evidence text-first hardening** (2026-10-07): pico KIE gains a text-first extraction channel gated by
   `DOCUVISION_EVIDENCE_TEXT_FIRST` (default off; zero behavior when off): the pico input becomes the PDF's native
   text layer segmented into blocks with globally-unique `[p{page}_b{block}]` markers (per-page calls; pages longer

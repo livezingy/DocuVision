@@ -49,6 +49,14 @@ table_step（orchestrator）
 **契约产物**：
 - 表级：`cell_provenance`（标签矩阵）、`cell_ocr_text`（回填格 OCR 原文）、
   `cell_word_bbox`（绿/琥珀格的印刷字符外接框，v1.8.1）
+- 格级置信度（P-027 A，2026-10-15）：`cell_confidence`（D8 载荷，`<td>` 文档序 7 键）由
+  `table_cell_confidence.attach_cell_confidence` 挂载——**对全部表无条件执行、与 backfill 信任
+  门控解耦**（orchestrator `:287`，非 `backfill_table_cells`）——并投影出 `cell_confidence_grid`
+  （与 `data` 同形，锚位写分/续位 `None`）与 `cell_td_span`（`<td>` 序锚位表）；锚位真源 =
+  `html_structure.span_map`（`table_html._walk_occupancy` 与 `data` **同一走查**产出，row/col =
+  输出行索引）。五条守卫（含"覆盖矩形非锚位格须为 `''`"的语义位校验）失败 ⇒ 两键都不挂
+  （诚实缺键）；已知降级触发：`max_cols<2` 单列表、`>20` 列宽表、嵌套 `<table>` 致 td 计数
+  漂移、PaddleOCR 版本漂移致 `len(cell_box_list) != td` 数。
 - 质量级：`quality.table_backfill`：`enabled` / `pages_judged` / `pages_text_layer_trusted` /
   `pages_skipped_preprocessed` / `cells_candidates|confirmed|backfilled|mismatch` /
   `backfill_rate` / `mismatch_rate` / `mismatch_details[]`（封顶 50）/
@@ -159,6 +167,7 @@ sanity 上界改观察口径——设计稿裁决 X5：T1/T3 使旧红格新对�
 | 层 | 产物 | 消费方 |
 |---|---|---|
 | 表格 | `cell_provenance` / `cell_ocr_text` / `cell_word_bbox` | 证明包渲染、机读客户 |
+| 格级置信度 | `cell_confidence`（扁平载荷）→ `cell_confidence_grid` + `cell_td_span`（P-027 A 投影，与 backfill 解耦） | 证明包指标卡/逐表列、report.json、机读客户 |
 | 质量 | `quality.table_backfill.*`（含 `mismatch_details[]`、`page_verdicts[]`） | 报告指标卡、review list |
 | 报告 | `report.json`（review_list 全量、backfill_demo、annotation_summary）+ `annotated.pdf`（绿/琥珀锚定框 + 蓝表框） | 客户 / 程序核验 |
 | 调试 | `debug/backfill_alignment.json`（DEBUG_MODE 时逐候选对齐证据，P-002 起含 reason） | 排障 |

@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-027 A — merged-cell confidence projection** (2026-10-15): the flat per-`<td>` confidence
+  payload (`cell_confidence`, D8) is now projected onto the table's 2-D grid. `table_html.py`
+  gained a single occupancy-aware walk (`_walk_occupancy`) shared by `_html_to_data` and
+  `_extract_html_structure`, so the new `html_structure.span_map` (one `{row, col, rowspan,
+  colspan}` anchor per `<td>` in document order, rows indexed like `data`) cannot drift from the
+  grid. `attach_cell_confidence` — which runs for every table, unconditionally, decoupled from the
+  backfill trust gate — projects the payload into `cell_confidence_grid` (same shape as `data`;
+  anchors carry the score, span continuations stay `None`, never 0 or a copied value) plus
+  `cell_td_span` for flat-side consumers. Five guards (field shapes, size equality, integer
+  anchors, bounds incl. span extent, blank-continuation semantics) degrade to "keys not attached"
+  with one warning instead of a fabricated value. The proof pack gains a low-confidence /
+  unmeasured-cells metric card and per-table column; `summarize_cell_confidence` reads the flat
+  payload with `measured` as the first gate, and `LOW_CONFIDENCE_CUT = 0.90` is a preview constant
+  that can be re-cut offline from the score histogram.
 - **P-032 — evidence text-first hardening** (2026-10-07): pico KIE gains a text-first extraction channel gated by
   `DOCUVISION_EVIDENCE_TEXT_FIRST` (default off; zero behavior when off): the pico input becomes the PDF's native
   text layer segmented into blocks with globally-unique `[p{page}_b{block}]` markers (per-page calls; pages longer
@@ -63,6 +77,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once cells are merged, so that projection waits for the merged-cell work. Full suite 598 -> 614.
   `doc-sync-ownership.md` gained both new modules on its no-living-contract roster (23 -> 25 there; 24 once the
   pymupdf deletion branch merges - the line needs one manual reconciliation).
+- **P-034 Cloud validation delivery doc** (2026-10-15): the coi text-first generalization's GPU-dependent
+  acceptance is now pre-registered in its PENDING entry (clearing the outstanding-delivery debt, per the
+  red line that GPU-dependent changes ship mock tests + written Cloud steps). It fixes the run protocol
+  before anything executes: two prerequisites gate the run (re-calibrate `BODY_PAGE_MIN_TEXT_ELEMENTS/
+  CHARS` on ACORD/coi corpora - they are pico-calibrated and a single-page form is the likeliest
+  false-negative; inventory which coi fixtures are born-digital, only text-backed pages may enter the
+  comparison), then copy verification (whitelist `{"pico","coi"}` on the shared gate + the new
+  prompt), an on/off `EVIDENCE_TEXT_FIRST` double run on the same sample (tampa mandatory), the
+  five-field pass criteria (`carrier` no boilerplate fallback, the other four non-degrading) with the
+  text-only-input risk made an explicit measured obligation, and the return-artifacts list. Not yet
+  executed - the entry still says so.
 
 ### Changed
 - **P-027 D8 open items (0)/(2) closed — harness binding unified + non-frozen readings** (2026-10-14, user
@@ -177,8 +202,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `table_service.py` is pinned at 1613 and must not gain lines). Single source of merge semantics =
   `html_structure`'s `rowspan`/`colspan` (already persisted on the table dict), with a `data`
   empty-placeholder fallback for SLANeXt HTML without per-cell bboxes. Verification: merged-cell goldens plus a
-  Cloud re-read of the P-027 R4 semantic scale (IE column binding 0.5278 / merged-cell completeness 0.7917 should
-  rise; the IE 0.2308 line-GT reading stays unfudged). **P-027 D8** (Confidence product source) is defined as
+  Cloud re-read of the P-027 R4 semantic scale - **run 2026-10-15 and the reading did not move**: IE column
+  binding `0.5278` and merged-cell completeness `0.7917` are bit-identical to the pre-A run (all 23 per-page
+  CSV rows byte-equal; the returned pack's `sha256` verified 9/9). Both figures are **page-macro means**; the
+  count ratios, which are the readings to quote, are `7/11 = 0.6364` for column binding and `5/7 = 0.7143` for
+  merged cells (see PENDING P-027 for the three-way macro / micro / coverage presentation). Root cause: that scale's predicted side reads only
+  `tables[].data` (`scripts/measure/rf_sem_eval.py`), which this item does not change, and on this corpus the
+  merged cells are **rowspan-only** (`colspan` is always 1) - so a span-anchor column rule is an identity. All four
+  unbound families share one shape: a footnote token that is also printed in *another* column (a regulation cell
+  citing "5.925", the footnote-definition prose column, and a `rowspan` band cell that absorbed a lower row's
+  label). That is a boundary of the D5 injectivity criterion, not of merged-cell semantics - so the earlier
+  "should rise" expectation is **withdrawn**, not met. The IE 0.2308 line-GT reading stays unfudged. **P-027 D8** (Confidence product source) is defined as
   **OCR block confidence (`rec_score`) propagated through row/field aggregation** - explicitly not a native model
   probability (the Qwen path emits no logits) and not the fill-rate heuristic `kie_confidence_avg`; the two must
   not be mixed. The only existing anchor holding OCR blocks *with* confidence is
@@ -220,6 +254,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the list entirely rather than staying as a contract-less module.
 
 ### Fixed
+- **D8 `attach_cell_confidence` docstring vs implementation mismatch** (2026-10-15): the docstring claimed
+  tables with an unmeasured payload are "left untouched", but a `measured=False` payload is a non-empty
+  (truthy) dict and IS attached - verified locally (`measured=False` + `cells=[None,None]` -> `attached=1`)
+  and in the E2E records (`pico measured=false` was reported). Reworded to the settled semantics: attach
+  as-is, consumers must check `measured` before trusting `cells`. Documentation-only; zero behavior change.
 - **D8 `cell_confidence`: worker crash on `np.ndarray` table fields** (2026-10-14): the aggregation wiring
   read `table_ocr_pred`'s arrays through truthiness (`field or []`), and `bool(ndarray)` raises
   `ValueError: The truth value of an array with more than one element is ambiguous` - thrown inside

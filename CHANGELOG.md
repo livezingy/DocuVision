@@ -63,6 +63,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once cells are merged, so that projection waits for the merged-cell work. Full suite 598 -> 614.
   `doc-sync-ownership.md` gained both new modules on its no-living-contract roster (23 -> 25 there; 24 once the
   pymupdf deletion branch merges - the line needs one manual reconciliation).
+- **P-034 Cloud validation delivery doc** (2026-10-15): the coi text-first generalization's GPU-dependent
+  acceptance is now pre-registered in its PENDING entry (clearing the outstanding-delivery debt, per the
+  red line that GPU-dependent changes ship mock tests + written Cloud steps). It fixes the run protocol
+  before anything executes: two prerequisites gate the run (re-calibrate `BODY_PAGE_MIN_TEXT_ELEMENTS/
+  CHARS` on ACORD/coi corpora - they are pico-calibrated and a single-page form is the likeliest
+  false-negative; inventory which coi fixtures are born-digital, only text-backed pages may enter the
+  comparison), then copy verification (whitelist `{"pico","coi"}` on the shared gate + the new
+  prompt), an on/off `EVIDENCE_TEXT_FIRST` double run on the same sample (tampa mandatory), the
+  five-field pass criteria (`carrier` no boilerplate fallback, the other four non-degrading) with the
+  text-only-input risk made an explicit measured obligation, and the return-artifacts list. Not yet
+  executed - the entry still says so.
 
 ### Changed
 - **P-027 D8 open items (0)/(2) closed — harness binding unified + non-frozen readings** (2026-10-14, user
@@ -220,6 +231,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the list entirely rather than staying as a contract-less module.
 
 ### Fixed
+- **D8 `attach_cell_confidence` docstring vs implementation mismatch** (2026-10-15): the docstring claimed
+  tables with an unmeasured payload are "left untouched", but a `measured=False` payload is a non-empty
+  (truthy) dict and IS attached - verified locally (`measured=False` + `cells=[None,None]` -> `attached=1`)
+  and in the E2E records (`pico measured=false` was reported). Reworded to the settled semantics: attach
+  as-is, consumers must check `measured` before trusting `cells`. Documentation-only; zero behavior change.
 - **D8 `cell_confidence`: worker crash on `np.ndarray` table fields** (2026-10-14): the aggregation wiring
   read `table_ocr_pred`'s arrays through truthiness (`field or []`), and `bool(ndarray)` raises
   `ValueError: The truth value of an array with more than one element is ambiguous` - thrown inside

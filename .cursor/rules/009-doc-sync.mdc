@@ -6,7 +6,7 @@ globs: docs/**/*.md,backend/app/**/*.py,packages/docuvision-core/**/*.py,fronten
 # 文档同步（强制，防漂移）
 
 > 生成自 kernel `docs/agent-ops/core/`（doc-sync）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: doc-sync.md:0d3ef578a22c091f -->
+<!-- kernel-ref: doc-sync.md:8dee12ab961cc038 -->
 
 ## 根因
 文档滞后源于：无强制触发 / 无归属 / 文档远离代码 / 无漂移检测 / 文档与测试脱节。以下机制对症。
@@ -62,8 +62,10 @@ globs: docs/**/*.md,backend/app/**/*.py,packages/docuvision-core/**/*.py,fronten
   未来日期/索引与 `### P-xxx` 标题不一致 = ERROR（fail-closed），`landed`/`decided` 超 90 天 = WARN
   （landed 促晋升 living doc 或改列 `retained` 写明理由；decided 促收口或拆出在途义务）。
 - `local only` 行的「不得提交」由 `.gitignore` 兜底：CI checkout 不含这些文件，**结构性无机检**（勿假设有门禁）。
-- **PENDING 单写者**：`docs/R&D/PENDING.md` 只有**清账批次会话**编辑（程序见 `operations.md` §清账批次）；其它会话 /
-  Agent 只读——跟踪职责（如 Codebuddy）= 读 + 上报待办至下一轮清账批次，**不直接编辑**。
+- **PENDING 单写入通道**：`docs/R&D/PENDING.md` 只有**按清账批次程序走的会话**可编辑（程序见 `operations.md`
+  §清账批次；**任何 Agent 均可充当**该会话，但必须满足触发条件与清单）；其它会话 / Agent 只读——跟踪职责
+  （如 Codebuddy）= 读 + 上报待办至下一轮清账批次，**不直接编辑**。该纪律无写锁 / 无机检（CI 浅克隆读不到
+  PR 正文与编辑会话），防线 = PR review 按 §清账批次的判据事后驳回。
 - **清账批次（触发式正式动作）**：触发 = 版本收口 + 累计 ≥2 条 eligible（eligible = 有结论可晋升 living doc ／ 已结
   可移除 ／ 正文埋有应迁出的触发式残留 ／ 正文该压缩，命中任一）；刻意**不设周期**（"每 N 天"无据，且会产生无米之炊
   的空批次）。清单见 `operations.md` §清账批次。

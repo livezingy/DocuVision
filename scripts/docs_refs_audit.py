@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Doc-reference audit: retired-reference (tombstone) gate + living-doc path drift + PENDING log.
 
-Split out of ``audit_agent_ops.py`` and imported by it (which must stay inside its own line
-budget), following the existing ``frontend_coupling.py`` / ``test_registry_audit.py`` pattern:
-the audit stays the orchestrator, the checks live here.
+Split out of ``audit_agent_ops.py`` and imported by it (line budget), following the
+``frontend_coupling.py`` pattern: the audit stays the orchestrator, the checks live here.
 
 Three checks:
 
@@ -33,15 +32,16 @@ Three checks:
 
 3. ``check_pending_staleness()`` - **new** doc-lifecycle gate (DOC-3, P-025): the decision log
    ``docs/R&D/PENDING.md`` is the only part of the R&D folder CI can see (everything else is
-   gitignored), so it is also the only half that can be machine-checked. Each entry must carry
-   one ``> status: <open|decided|landed|retained> · since: YYYY-MM-DD`` line (single source of
-   truth - the header keeps an id index and no hand-written counts, the P-019 lesson), and a
-   ``landed`` entry older than ``PENDING_STALE_DAYS`` raises a WARN asking to promote it into
-   ``docs/architecture/`` or to reclassify it as ``retained`` with a stated reason. Missing /
-   malformed / future-dated metadata and a header index that disagrees with the ``### P-xxx``
-   headings are ERRORs (fail-closed, same shape as A6 orphan staleness).
+   gitignored). Each entry carries one ``> status: ... · since: ...`` metadata line (single
+   source of truth, the P-019 lesson); a ``landed``/``decided`` entry older than
+   ``PENDING_STALE_DAYS`` WARNs (promote/reclassify, resp. close out/split duties); malformed /
+   future-dated metadata and an index mismatch with ``### P-xxx`` headings are ERRORs (A6-like).
 
-Exit code 0 = clean, 1 = violations. Standalone: ``python scripts/docs_refs_audit.py [--selftest]``.
+4. ``check_rnd_index_drift()`` - local-only runs-index gate (``--check-rnd-index``): runs links in
+   ``docs/R&D/README.md`` must resolve on disk; **not** in the default run (``runs/**`` is
+   gitignored, CI would flag every link) -- run it in the same batch as any runs add/delete.
+
+Exit code 0 = clean, 1 = violations. Standalone: ``python scripts/docs_refs_audit.py [--selftest] [--check-rnd-index]``.
 """
 
 from __future__ import annotations
@@ -294,10 +294,12 @@ def check_pending_staleness(text: str | None = None, today: date | None = None) 
             continue
         if decided_on > today:
             issues.append(_pending_issue("ERROR", f"{where} since {since} is in the future"))
-        elif status == "landed" and (today - decided_on).days > PENDING_STALE_DAYS:
+        elif status in ("landed", "decided") and (today - decided_on).days > PENDING_STALE_DAYS:
+            ask = ("promote it into docs/architecture or reclassify as `retained` and state why"
+                   if status == "landed" else
+                   "close it out (reclassify `landed`/`retained`) or split its open obligations")
             issues.append(_pending_issue(
-                "WARN", f"{where} landed {since} ({(today - decided_on).days} days ago) - promote it "
-                        "into docs/architecture or reclassify as `retained` and state why it stays"))
+                "WARN", f"{where} {status} {since} ({(today - decided_on).days} days ago) - {ask}"))
 
     ids = [entry["id"] for entry in entries]
     if len(set(ids)) != len(ids):
@@ -321,6 +323,50 @@ def check_pending_staleness(text: str | None = None, today: date | None = None) 
     if int(count_m.group(1)) != len(ids):
         issues.append(_pending_issue(
             "ERROR", f"header says {count_m.group(1)} entries, found {len(ids)} heading(s)"))
+    return issues
+
+
+# --- 4. runs index drift (local-only gate, --check-rnd-index) ---------------------------------
+
+RND_INDEX_REL = "docs/R&D/README.md"
+# Markdown link targets pointing into runs/ (backticked history mentions are not links).
+RND_RUNS_LINK_RE = re.compile(r"\((runs/[^)#\s]+)\)")
+
+
+def check_rnd_index_drift(readme_text: str | None = None, exists=None) -> list[dict]:
+    """WARN on runs-index links that do not resolve on disk. Local-only, never in CI.
+
+    ``docs/R&D/runs/**`` is gitignored, so a CI checkout never contains these files and any
+    existence check there would flag every link; hence the dedicated ``--check-rnd-index``
+    flag instead of joining the default run. Run it in the same batch as any runs add or
+    delete — a dead index link here is invisible to CI (kernel doc-sync: R&D 索引同批).
+    """
+    if readme_text is None:
+        path = REPO_ROOT / RND_INDEX_REL
+        if not path.exists():
+            return []
+        readme_text = path.read_text(encoding="utf-8")
+    if exists is None:
+        base = REPO_ROOT / "docs/R&D"
+
+        def _disk_has(link: str) -> bool:
+            return (base / link).exists()
+
+        exists = _disk_has
+
+    issues: list[dict] = []
+    seen: set[str] = set()
+    for m in RND_RUNS_LINK_RE.finditer(readme_text):
+        link = m.group(1)
+        if link in seen:
+            continue
+        seen.add(link)
+        if not exists(link):
+            issues.append({
+                "check": "rnd-index", "level": "WARN", "path": RND_INDEX_REL,
+                "msg": (f"runs index links to a missing local file: {link} "
+                        "(update the index in the same batch as any runs add/delete)"),
+            })
     return issues
 
 
@@ -390,6 +436,10 @@ def selftest_cases() -> list[tuple[str, bool]]:
        pend_levels(pend_log(1, ["P-001"], pend_entry("P-001", "landed", "2026-06-01"))) == ["WARN"])
     ok("pending: landed inside the window is clean",
        pend_issues(pend_log(1, ["P-001"], pend_entry("P-001", "landed", "2026-06-29"))) == [])
+    ok("pending: decided > 90 days is a WARN (no ERROR)",
+       pend_levels(pend_log(1, ["P-001"], pend_entry("P-001", "decided", "2026-06-01"))) == ["WARN"])
+    ok("pending: decided inside the window is clean",
+       pend_issues(pend_log(1, ["P-001"], pend_entry("P-001", "decided", "2026-06-29"))) == [])
     ok("pending: retained is exempt from the clock",
        pend_issues(pend_log(1, ["P-001"], pend_entry("P-001", "retained", "2025-01-01"))) == [])
     ok("pending: open is exempt from the clock",
@@ -405,6 +455,18 @@ def selftest_cases() -> list[tuple[str, bool]]:
            pend_issues(pend_log(1, ["P-001"], pend_entry("P-001", "open") + pend_entry("P-001", "open")))))
     ok("pending: a missing header index fails closed",
        pend_levels(pend_entry("P-001", "open")) == ["ERROR"])
+
+    # --- runs index drift (local gate, --check-rnd-index) ---------------------------------------
+    ok("rnd-index: healthy index is clean",
+       check_rnd_index_drift("[x](runs/a.md)", exists=lambda link: True) == [])
+    ok("rnd-index: dead link is a WARN",
+       [i["level"] for i in
+        check_rnd_index_drift("[x](runs/gone.md)", exists=lambda link: False)] == ["WARN"])
+    ok("rnd-index: duplicate link reported once",
+       len(check_rnd_index_drift("[a](runs/g.md) [b](runs/g.md)",
+                                 exists=lambda link: False)) == 1)
+    ok("rnd-index: backticked history mentions are not links",
+       check_rnd_index_drift("`runs/P020-x.md` deleted", exists=lambda link: False) == [])
     return cases
 
 
@@ -417,10 +479,14 @@ def main(argv: list[str]) -> int:
         print(f"selftest: {len(cases) - len(failed)}/{len(cases)} passed")
         return 1 if failed else 0
     issues = check_doc_drift() + check_retired_refs() + check_pending_staleness()
+    if "--check-rnd-index" in argv:
+        issues += check_rnd_index_drift()
     for issue in issues:
         print(f"[{issue['level']}] {issue['path']}: {issue['msg']}")
     errors = sum(1 for issue in issues if issue["level"] == "ERROR")
     print(f"docs_refs_audit: {errors} error(s), {len(issues) - errors} warning(s)")
+    if eligible := sum(1 for i in issues if i["check"] == "pending" and i["level"] == "WARN"):
+        print(f"[INFO] eligible clearing candidates: {eligible} (>=2 at close-out -> clearing batch)")
     scanned = len([p for p in _scanned_files() if _exempt_reason(
         p.relative_to(REPO_ROOT).as_posix()) is None])
     print(f"docs_refs_audit: scanned {scanned} outward-facing file(s); "

@@ -7,7 +7,7 @@
 Use this folder for exploratory write-ups that are **not** authoritative for the codebase:
 
 Files are organised into `reference/` (long-lived, updated irregularly) and `runs/` (per-project
-execution packs & records — temporary, deletable once the project lands).
+execution packs & records — temporary, deletable once no tracked document still references them).
 
 ### Root (always tracked)
 | File | Purpose |
@@ -25,7 +25,7 @@ execution packs & records — temporary, deletable once the project lands).
 
 ### runs/ (per-project execution packs/records — temporary, local-only)
 
-Deletion rule: a pack/record is deletable once its project lands (PENDING status `landed`/`retained`); while it is still `open`/`decided` the record stays, because it is cited as the evidence source.
+Deletion rule: a pack/record is deletable once **no tracked document still references any file in it** — check PENDING entries and this index first. CHANGELOG / release-note history citations do **not** block deletion (they are archives by design). Any add/delete under `runs/` must update the index below **in the same batch**: runs files are gitignored, so a dead index link is invisible to CI — verify locally with `python scripts/docs_refs_audit.py --check-rnd-index`.
 
 | File | Purpose |
 |------|---------|
@@ -35,12 +35,16 @@ Deletion rule: a pack/record is deletable once its project lands (PENDING status
 | [P027/R4-执行包.md](runs/P027/R4-执行包.md) | P-027 R4 IE 语义层专项执行包 |
 | [P027/R4-执行记录.md](runs/P027/R4-执行记录.md) | P-027 R4 IE 语义层专项执行记录 |
 
-**保留依据**：`runs/P027/` 是唯一在册子目录，保留理由写在 PENDING **P-027** 条目（该条 status = `decided`，未到删除条件）。
+**保留依据**：`runs/P027/` 是当前唯一在册的 runs 内容，保留理由写在 PENDING **P-027** 条目（该条 status = `decided`，在途义务未清，未到删除条件）。
 
 **已清理（2026-10-07 索引校正；本目录为 local-only，git 无历史可回溯，故清理批次未逐件留痕）**：
 `runs/P020-ocr-harness-M1M2-执行包.md`（实质结论已由 living doc [../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) + CHANGELOG 承载）·
 `runs/P021-云端对照-执行清单与记录模板.md`（结论已由 PENDING P-021 round3 段 + CHANGELOG 承载）·
 P-029 / P-030 / P-031 / P-032 的 local-only 执行包与记录（各自 landed 后按「提炼后删除」清理）。
+
+**已清理（2026-10-16，同批纪律首批适用）**：`runs/PENDING-维护建议-审核纪要-2026-10-16.md`（一次性议题纪要，
+结论已落进 kernel `doc-sync.md` + `operations.md` §清账批次 + `scripts/docs_refs_audit.py` 的 `--check-rnd-index`，
+按「落地即删、同批更新本索引」删除，上文死链行已随本批移除）。
 
 **Authoritative docs** live in [../architecture/](../architecture/) and [../README.md](../README.md).
 

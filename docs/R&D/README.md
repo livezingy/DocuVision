@@ -34,8 +34,9 @@ Deletion rule: a pack/record is deletable once its project lands (PENDING status
 | [P027/R3-执行记录.md](runs/P027/R3-执行记录.md) | P-027 R3 验收三闸 harness 化执行记录 |
 | [P027/R4-执行包.md](runs/P027/R4-执行包.md) | P-027 R4 IE 语义层专项执行包 |
 | [P027/R4-执行记录.md](runs/P027/R4-执行记录.md) | P-027 R4 IE 语义层专项执行记录 |
+| [PENDING-维护建议-审核纪要-2026-10-16.md](runs/PENDING-维护建议-审核纪要-2026-10-16.md) | PENDING 现状盘点的维护建议 + 自审（撤回/改形/纠正/新增）与实测证据；**一次性议题纪要**，结论落进 kernel `doc-sync.md` + `scripts/docs_refs_audit.py` 后按 runs 政策删除（删除条件见该文 §7） |
 
-**保留依据**：`runs/P027/` 是唯一在册子目录，保留理由写在 PENDING **P-027** 条目（该条 status = `decided`，未到删除条件）。
+**保留依据**：`runs/P027/` 是唯一在册子目录，保留理由写在 PENDING **P-027** 条目（该条 status = `decided`，未到删除条件）；另有一个 runs 根下的议题纪要文件（上表末行），其存续条件写在该文 §7。
 
 **已清理（2026-10-07 索引校正；本目录为 local-only，git 无历史可回溯，故清理批次未逐件留痕）**：
 `runs/P020-ocr-harness-M1M2-执行包.md`（实质结论已由 living doc [../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) + CHANGELOG 承载）·

@@ -74,3 +74,4 @@
 - R&D 结论：稳定后晋升 `docs/architecture/`；待确认结论登记到 `docs/R&D/PENDING.md`（每次会话可见"有 N 条待确认"）。
 - 仅一次性任务无新约定则跳过。
 - 收尾须产出**下次会话必读清单**（`PENDING.md` + kernel 五文件 + `CHANGELOG.md` + `DEVELOPMENT.md`）；设计稿类 local-only 草稿**用完即删**（结论已晋升则无损失，git tag/PR 即归档）。
+- **plan 存档清理**：`.codebuddy/plans/` 的会话 plan 落地并合入后，对应存档**可删**（结论已由代码 / 文档 / git 历史承载）；plans 目录 gitignored，删后无回溯——标「未完成」或尚有争议的先保留。

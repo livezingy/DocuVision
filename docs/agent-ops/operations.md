@@ -28,14 +28,39 @@
 3. ERROR `module-map`（check 3）→ 按 module-map §6 断言定位：路径缺失改文档 / 计数漂移同步 §2-§3 的端点数与文件数 / 门禁符号缺失修 §5 行 / 登记缺失补 `docs/README.md` 或 owning 附表 `docs/agent-ops/doc-sync-ownership.md`。
 4. ERROR `test-registry`（check 4）→ 按输出补登记 `backend/tests/test_registry.json`（或删幽灵条目）；WARN 表示 Phase A CI 列表与登记不一致，需人工裁决（实现 `scripts/test_registry_audit.py`）。
 5. WARN `doc-drift` → 修文档引用或登记 `docs/R&D/PENDING.md`；WARN `module-map`（A5 新鲜度）→ 发版后刷新 module-map 头部「最近对照」。
-6. 检查 `PENDING.md` 待决项（状态见各条 `> status:` 元数据；`landed` 超 90 天会以 **DOC-3 WARN** 列出）→ 确认后晋升
-   `architecture/`、改列 `retained`（写明理由）或移除；并按规定在 commit / PR 留一行 `Promotion-check: …`（P-025）。
+6. 检查 `PENDING.md` 待决项（状态见各条 `> status:` 元数据；`landed`/`decided` 超 90 天会以 **DOC-3 WARN** 列出）→
+   `landed` 晋升 `architecture/` 或改列 `retained`（写明理由）；`decided` 收口（转 `landed`/`retained` 或拆出在途
+   义务）；已结移除；并按规定在 commit / PR 留一行 `Promotion-check: …`（P-025）。
 7. e2e 门禁回归（改 e2e / 白名单 / 前端渲染时）：`python scripts/check_e2e_allowlist.py --selftest` +
    `python scripts/check_e2e_allowlist.py`（module-map §5 的 **E1**）；白名单条目超 90 天会 WARN，
    棘轮上限可用 `--update` 只降不升地收紧。
 8. 单测门禁回归（增删 `frontend/tests/unit/**` 时）：`python scripts/unit_suite_pin.py --selftest` +
    `python scripts/unit_suite_pin.py`（module-map §5 的 **E2**）；有意的用例增减须**同 commit** 更新
    `scripts/unit_suite_pin.json`，删除文件或用例跳过会被拦下（vitest 本身在 `lint` job 内跑，这两类都不会让它变红）。
+
+## 清账批次（正式动作，触发式而非周期式）
+
+> 巡检动作第 6 步是「看告警处置单条」；**清账批次是批量的状态收口**，且是唯一允许编辑 `docs/R&D/PENDING.md`
+> 的会话形态（**单写者纪律**，kernel `doc-sync.md`）。纪要类 local-only 文件的删除同样适用（见该文件 §R&D 索引同批）。
+
+- **触发（两个条件同时满足，缺一跳过）**：
+  ① **版本收口**（一次收口 PR / tag）；② **累计 ≥2 条 eligible**。
+  eligible = 有结论可晋升 living doc ／ 已结可移除 ／ 正文埋有应迁出的触发式残留 ／ 正文该压缩（retained/decided
+  流水账），命中任一即算。其中可机检自动计数的是 DOC-3 滞留 WARN（`landed`/`decided` 超 90 天，audit 输出
+  `[INFO] eligible clearing candidates: N`）；其余三类属语义判断，由清账会话按本清单人工识别。刻意**不设周期**
+  （"每 N 天"无据，且会产生无米之炊的空批次）。
+- **清单（批次内逐项执行）**：
+  1. **状态迁移**：`landed` → 晋升 `docs/architecture/` 或改列 `retained`（写明理由）；已结条目移除并在抬头历史行留去向。
+  2. **保留理由核查**：`retained` 条目的理由是否仍成立；埋在正文里的触发式残留迁出为独立 `open` 条目（真实工作项
+     不得藏在保留理由段——P-025 禁止的形态）。
+  3. **压缩**：retained / decided 长流水账正文裁到「保留理由 + 判例 + 指针（git 历史 / CHANGELOG / living doc）」；
+     decided 条目压缩前必须先迁出在途义务，不丢真实工作项。
+  4. **同批更新 runs 索引**：删除了 `docs/R&D/runs/` 文件就同步删 `docs/R&D/README.md` 索引行，并本地跑
+     `python scripts/docs_refs_audit.py --check-rnd-index` 复核（runs 被 gitignore，死链 CI 看不见）。
+  5. **留痕**：commit / PR 正文写一行 `Promotion-check: <n> eligible (P-xxx…) -> promoted|deferred`（零条也写，P-025）。
+  6. **历史段上限**：PENDING 抬头「历史」段只保留**最近 5 批**清账的结案记录（N 由当轮清账会话按需自定），
+     更早的结案明细进 git 历史——历史行同为 append-only 膨胀面，不设上限会缓慢累积。
+- **PR 纪律**：清账 PR 保持**单一目的**（只动 PENDING / README / runs 索引），先 rebase 再合。
 
 ## CI 挂载（已落地）
 `.github/workflows/agent-ops-audit.yml`（2026-09-16 起）：pull_request + push(main) 触发；

@@ -6,7 +6,7 @@ globs: docs/**/*.md,backend/app/**/*.py,packages/docuvision-core/**/*.py,fronten
 # 文档同步（强制，防漂移）
 
 > 生成自 kernel `docs/agent-ops/core/`（doc-sync）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: doc-sync.md:94bfc9e7db7472bf -->
+<!-- kernel-ref: doc-sync.md:0d3ef578a22c091f -->
 
 ## 根因
 文档滞后源于：无强制触发 / 无归属 / 文档远离代码 / 无漂移检测 / 文档与测试脱节。以下机制对症。
@@ -59,8 +59,24 @@ globs: docs/**/*.md,backend/app/**/*.py,packages/docuvision-core/**/*.py,fronten
   `Promotion-check: 0 eligible`；跳过会留空白，reviewer 可抽查——与 `Session-check` 同形，不设 CI 机检）。
 - **PENDING 条目元数据**：每条标题下首行必须是 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`
   （状态单一事实源）；抬头只留 ID 索引 + 语义说明、**不写统计副本**。机检 **DOC-3**：缺元数据/状态未知/日期非 ISO/
-  未来日期/索引与 `### P-xxx` 标题不一致 = ERROR（fail-closed），`landed` 超 90 天 = WARN（晋升或改列 `retained` 写明理由）。
+  未来日期/索引与 `### P-xxx` 标题不一致 = ERROR（fail-closed），`landed`/`decided` 超 90 天 = WARN
+  （landed 促晋升 living doc 或改列 `retained` 写明理由；decided 促收口或拆出在途义务）。
 - `local only` 行的「不得提交」由 `.gitignore` 兜底：CI checkout 不含这些文件，**结构性无机检**（勿假设有门禁）。
+- **PENDING 单写者**：`docs/R&D/PENDING.md` 只有**清账批次会话**编辑（程序见 `operations.md` §清账批次）；其它会话 /
+  Agent 只读——跟踪职责（如 Codebuddy）= 读 + 上报待办至下一轮清账批次，**不直接编辑**。
+- **清账批次（触发式正式动作）**：触发 = 版本收口 + 累计 ≥2 条 eligible（eligible = 有结论可晋升 living doc ／ 已结
+  可移除 ／ 正文埋有应迁出的触发式残留 ／ 正文该压缩，命中任一）；刻意**不设周期**（"每 N 天"无据，且会产生无米之炊
+  的空批次）。清单见 `operations.md` §清账批次。
+- **R&D 索引同批**：删除 / 新增 `docs/R&D/runs/` 下 local-only 文件时，必须**同批**更新 `docs/R&D/README.md` 的
+  runs 索引——runs 文件被 gitignore，死链对 CI 不可见（同上「结构性无机检」）；本地复核
+  `python scripts/docs_refs_audit.py --check-rnd-index`。
+- **PENDING 登记门槛（两问）**：新条目登记前先答——①能否**归入已有条目**（同主题 / 同触发）？②能否**直接晋升**
+  living doc？两问皆否才登记；登记动作本身按 P-025 留 `Promotion-check:` 行（登记与清除由同一义务反向平衡）。
+- **PENDING 条目正文规范**：`open` 只写「待决问题 + 候选路线 + 触发条件」，**不写执行流水**（流水只属
+  `decided`/`retained` 或 `runs/` 执行记录）；`decided`/`retained` 正文裁到「在途义务清单（decided）／保留理由
+  （retained）+ 判例 + 指针」，执行细节下沉 `runs/`。
+- **指针白名单**：条目内的去向指针只允许三类稳定目标——living doc §节 ｜ CHANGELOG 版本段 ｜ `runs/` 执行记录
+  （有 README 索引维护）；**禁裸 commit hash**（可随精简/重写失效，须经上述载体间接引用）。
 
 ## README / CHANGELOG 格式
 - README 须含：项目简介、安装说明、使用方法、许可证（贡献指南按需，不强制）。

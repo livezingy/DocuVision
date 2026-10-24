@@ -3,7 +3,9 @@
 > Status: living — 结构变化时同步（owning 行见 `docs/agent-ops/core/doc-sync.md`）
 > 最近对照：v1.12.0 / main 06d6e7c（2026-10-24，S1 落地批 0：新增 §2b services 15 域表 + §5 S1a/S1b/S1c/A2b 门禁行 +
 > §1 后端依赖律改写——orchestration 定位为 services 的同级消费方；同日批 1：共享叶首登 pdf_raster（消解 2 边）+
-> single_file_pipeline 上移 orchestration/（#13 消解，services→编排零例外），棘轮 15→12 条目；§2/§3 路由/前端域结构不变，55 守恒）
+> single_file_pipeline 上移 orchestration/（#13 消解，services→编排零例外），棘轮 15→12 条目；同日批 2：双共享叶
+> `text_first_contract`/`kie_default_rules` 破两组域环（域间图无环），棘轮 12→9（`kie->evidence` 留单向冻结，随批 3 消解）；
+> §2/§3 路由/前端域结构不变，55 守恒）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `scripts/service_domain_map.json`（services 15 域，§2b）· `scripts/service_dependency_allowlist.json`（冻结跨域边，只减不增）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
@@ -78,19 +80,21 @@ core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 | formula | backend/app/services/formula_service.py | 公式区域提取 | — | — |
 | ocr | backend/app/services/ocr_service.py | OCR 引擎封装 | docuvision-system-design.md §3.2–3.4 | — |
 | seal | backend/app/services/seal_service.py | 印章区域提取 | — | — |
-| kie | backend/app/services/kie/{KieManager,__init__,azure_schema,field_merge,field_validation,kie_field_metrics,kie_pages,query_fields,schema_templates,text_first,value_typer}.py（11 文件） + backend/app/services/{kie_fields_update,kie_qwen_service}.py（2 文件） | KIE 字段抽取/合并/校验/模板/指标 | kie.md、kie-custom-fields.md | kie->evidence、kie->hitl |
-| evidence | backend/app/services/evidence/{__init__,findings_schema,gate,grounding,normalize,verifier}.py（6 文件） | 证据门禁与 grounding（三闸 / V0-V6 梯 / text-first） | evidence-layer.md | evidence->kie、evidence->hitl、evidence->document |
-| hitl | backend/app/services/{hitl_policy,hitl_queue}.py（2 文件） | 人工复核策略与队列 | v1.5-roadmap.md（hitl_queue） | hitl->kie |
+| kie | backend/app/services/kie/{KieManager,__init__,azure_schema,field_merge,field_validation,kie_field_metrics,kie_pages,query_fields,schema_templates,text_first,value_typer}.py（11 文件） + backend/app/services/{kie_fields_update,kie_qwen_service}.py（2 文件） | KIE 字段抽取/合并/校验/模板/指标 | kie.md、kie-custom-fields.md | kie->evidence |
+| evidence | backend/app/services/evidence/{__init__,findings_schema,gate,grounding,normalize,verifier}.py（6 文件） | 证据门禁与 grounding（三闸 / V0-V6 梯 / text-first） | evidence-layer.md | evidence->hitl、evidence->document |
+| hitl | backend/app/services/{hitl_policy,hitl_queue}.py（2 文件） | 人工复核策略与队列 | v1.5-roadmap.md（hitl_queue） | — |
 | batch | backend/app/services/{batch_service,batch_export_service}.py（2 文件） | 批量任务管理与导出打包 | v1.5-roadmap.md | batch->infra |
 | report | backend/app/services/{export_service,pack_export_service,proof_pack,proof_render,proof_report}.py（5 文件） | 导出与证明包（export/pack + proof_* 三件） | docuvision-system-design.md §9.1 · provenance-review.md（proof_*） | report->table |
 | document | backend/app/services/{document_info_utils,document_profile,document_type_classifier,file_type_detector,page_text_trust,page_type_probe}.py（6 文件） | 文档画像/类型分类/文件探测 + 页面文本信任与页型探测（裁决：page 并入） | provenance-review.md（page_text_trust） | — |
-| infra | backend/app/services/{pdf_raster,pdf_tools_service,webhook_service}.py（3 文件） + backend/app/services/persistence/{__init__,analyze_job_store,queue_store}.py（3 文件） | 基础设施：PDF 光栅与工具、webhook、持久化 | v1.5-roadmap.md、v1.7-roadmap.md（persistence） | — |
+| infra | backend/app/services/{kie_default_rules,pdf_raster,pdf_tools_service,text_first_contract,webhook_service}.py（5 文件） + backend/app/services/persistence/{__init__,analyze_job_store,queue_store}.py（3 文件） | 基础设施：PDF 光栅与工具、webhook、持久化、共享契约叶 | v1.5-roadmap.md、v1.7-roadmap.md（persistence）· evidence-layer.md §4.1（text_first_contract 契约） | — |
 | pipeline | backend/app/services/pii_mask.py | PII 掩码（分析前敏感信息遮蔽；原管线入口 `single_file_pipeline` 已于 2026-10-24 批 1 上移 `orchestration/`，#13 反向边就此消解） | — | — |
 | trial | backend/app/services/trial/{__init__,gt_diff}.py（2 文件） | GLM trial 真值比对 | — | — |
 
 共享壳（非域）：`backend/app/services/__init__.py` 为空壳（无 eager import），域归属 = shared，A2b 三向对账含它。
-共享叶（1）：`pdf_raster`（I-1/P-038 首登：L1 零出向机检 + L2/L3 人审证据见 `service_domain_map.json` 的
-`shared_leaf_modules`；任何域可 import，前端 F5 `leaf_services` 的后端对应物；名单与本行 A2b 双向对账）。
+共享叶（3）：`pdf_raster`、`text_first_contract`、`kie_default_rules`（I-1/P-038：L1 零出向机检 + L2/L3 人审
+证据见 `service_domain_map.json` 的 `shared_leaf_modules`；任何域可 import，前端 F5 `leaf_services` 的后端对应物；
+名单与本行 A2b 双向对账。批 2 起两组域环 evidence⇄kie、hitl⇄kie 已破除——共享谓词上提叶 + 经枢纽注入，
+**域间图已无环**；残留 `kie->evidence` 为单向冻结边，随批 3 orchestrator 拆分消解）。
 边列登记的是 allowlist **域对键**（双向对账：表内键 ⊆ allowlist 且 allowlist 键 ⊆ 表内）；条目粒度 = 具体边
 （src_file + dst_module），见 `scripts/service_dependency_allowlist.json`。
 

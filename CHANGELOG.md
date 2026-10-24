@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **S1 batch 2 — both domain cycles broken, graph now acyclic** (2026-10-25, P-037): the frozen-edge
+  ratchet moves **12 -> 9 entries** and the services domain graph loses both cycles
+  (evidence⇄kie, hitl⇄kie). Two new shared leaves (I-1/P-038, L1 strength A):
+  `text_first_contract.py` — the pinned P-032 constants, marker/payload format and the pure
+  decision predicates, promoted verbatim from `kie/text_first.py` with ONE tier-B change: the
+  `EVIDENCE_TEXT_FIRST` settings read is parameterized out (`flag` argument; `kie.text_first`
+  keeps thin settings-reading wrappers with the original signatures), so the evidence gate and
+  the KIE channel consume the SAME predicate without any cross-domain edge — dissolves
+  `evidence->kie`; `kie_default_rules.py` — the document-type -> default validation rules
+  mapping promoted verbatim from `kie/field_validation.py` (which re-exports it), consumed by
+  both `field_validation` and `hitl_policy` — dissolves `hitl->kie`. The `kie->hitl` edge is
+  inverted through the runtime hub: `apply_kie_fields_to_task` now receives `policy_resolver`
+  by injection (the hub may import any service). `kie->evidence` stays as a ONE-WAY frozen
+  edge: its dissolution needs orchestrator wiring, and the orchestrator sits exactly at its
+  1297 ratchet cap — per the anti-gaming discipline (no pin raise, no line squeezing) it lands
+  with the batch-3 orchestrator split instead. New mock test file
+  `test_service_shared_leaves.py` (registered, kind: full) pins the flag-parameterized truth
+  table, the marker format, the single-source-of-truth identity of the rules mapping
+  (`leaf is re-export`), and the payload branches with the grounding layer faked. Cloud steps
+  (GPU red line, delivered with this batch): full `DOCUVISION_CLOUD_TESTS=1 pytest tests/ -q
+  --ignore=tests/test_live_api.py` plus one live pico text-first run via `POST /api/v1/analyze`
+  with `DOCUVISION_EVIDENCE_TEXT_FIRST=1` (acceptance: `kie_fields` + `evidence.stats`
+  present, same-source markers align, no new runtime errors).
 - **S1 batch 1 — shared-leaf channel + #13 inversion** (2026-10-24, P-037/P-038): the frozen-edge
   ratchet moves **15 -> 12 entries**. (1) `pdf_raster` passes L2/L3 review and is registered as the
   first **shared leaf** (`shared_leaf_modules` in `service_domain_map.json`, front-end F5

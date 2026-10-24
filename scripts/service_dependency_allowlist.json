@@ -1,0 +1,157 @@
+{
+  "comment": "Frozen services-layer dependency edges - S1 initial baseline (runs/split ruling 2 of 2026-10-16; all 14 import statements re-verified line-by-line against the worktree at landing, 2026-10-24). Entries enumerate concrete edges src_file+dst_module (A-3 granularity); 'line' is provenance from the 2026-10-16 AST snapshot, matching is by src_file+dst_module so line drift never false-alarms. domain_pair is the grouping view used by module-map section 2b edge column (I-3, bidirectional reconciliation). kind: cross-domain = S1b exemption; layer = S1a exemption (only #13, the reverse dependency). Ratchet: only-shrink - adding an entry is a RED LINE (constraints.md, ask first), removing is free and expected (KPI: count -> 0). A cycle whose edges are all in this list = WARN on the per-entry 90-day clock (A-9 / A6 paradigm); an edge present in code but absent here = ERROR.",
+  "stale_days": 90,
+  "edges": [
+    {
+      "src_file": "backend/app/services/layout_service.py",
+      "dst_module": "app.services.table_cell_confidence",
+      "domain_pair": "layout->table",
+      "line": 24,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "table_cell_confidence 归 table 域后二选一：移模块或倒置依赖（runs/split 04 §6.3）"
+    },
+    {
+      "src_file": "backend/app/services/table_pseudo_filter.py",
+      "dst_module": "app.services.figure_service",
+      "domain_pair": "table->figure",
+      "line": 81,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "import 的是私有几何符号 _bbox_tuple/_h_overlap_ratio/_v_gap——几何三件套升共享叶（P-038）或倒置（A-12）"
+    },
+    {
+      "src_file": "backend/app/services/table_backfill.py",
+      "dst_module": "app.services.page_text_trust",
+      "domain_pair": "table->document",
+      "line": 15,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "page_text_trust 若过 P-038 的 L2 人审可升共享叶消解"
+    },
+    {
+      "src_file": "backend/app/services/evidence/gate.py",
+      "dst_module": "app.services.kie.text_first",
+      "domain_pair": "evidence->kie",
+      "line": 397,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "evidence⇄kie 环：上提公共谓词到共享叶（批 2，碰 GPU 路径须 mock+云测）"
+    },
+    {
+      "src_file": "backend/app/services/kie/text_first.py",
+      "dst_module": "app.services.evidence.grounding",
+      "domain_pair": "kie->evidence",
+      "line": 196,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "同 evidence⇄kie 环整改（批 2）"
+    },
+    {
+      "src_file": "backend/app/services/evidence/gate.py",
+      "dst_module": "app.services.hitl_queue",
+      "domain_pair": "evidence->hitl",
+      "line": 440,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "事件队列经注入或上提，消解跨域"
+    },
+    {
+      "src_file": "backend/app/services/evidence/gate.py",
+      "dst_module": "app.services.page_text_trust",
+      "domain_pair": "evidence->document",
+      "line": 212,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "page_text_trust 升共享叶（P-038）可消解 #7 两条"
+    },
+    {
+      "src_file": "backend/app/services/evidence/grounding.py",
+      "dst_module": "app.services.page_text_trust",
+      "domain_pair": "evidence->document",
+      "line": 54,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "同 evidence->document（#7 第二条）"
+    },
+    {
+      "src_file": "backend/app/services/hitl_policy.py",
+      "dst_module": "app.services.kie.field_validation",
+      "domain_pair": "hitl->kie",
+      "line": 8,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "hitl⇄kie 环：上提公共谓词到共享叶（批 2）"
+    },
+    {
+      "src_file": "backend/app/services/kie_fields_update.py",
+      "dst_module": "app.services.hitl_policy",
+      "domain_pair": "kie->hitl",
+      "line": 7,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "同 hitl⇄kie 环整改（批 2）"
+    },
+    {
+      "src_file": "backend/app/services/kie_qwen_service.py",
+      "dst_module": "app.services.pdf_raster",
+      "domain_pair": "kie->infra",
+      "line": 17,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "I-1 首登 pdf_raster 共享叶即消解（批 1，P-038）"
+    },
+    {
+      "src_file": "backend/app/services/document_info_utils.py",
+      "dst_module": "app.services.pdf_raster",
+      "domain_pair": "document->infra",
+      "line": 8,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "同 I-1 首登 pdf_raster 即消解（批 1）"
+    },
+    {
+      "src_file": "backend/app/services/batch_service.py",
+      "dst_module": "app.services.webhook_service",
+      "domain_pair": "batch->infra",
+      "line": 464,
+      "kind": "cross-domain",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "webhook 有状态+域语义，不过共享叶判据——留冻结边+倒置目标"
+    },
+    {
+      "src_file": "backend/app/services/proof_report.py",
+      "dst_module": "app.services.table_cell_confidence",
+      "domain_pair": "report->table",
+      "line": 22,
+      "kind": "cross-domain",
+      "added": "2026-10-24",
+      "status": "frozen",
+      "target": "proof_report 逐表置信度指标卡消费 table 域聚合器（P-027 A，commit 188c391）；上提 summarize_cell_confidence 到共享叶（P-038）或经注入消解",
+      "note": "预存在边，lint_services 首跑发现——runs/split 01 审核「零漏边」结论的勘误（该边早于审核一天合入，14 条初始边而非 13）"
+    },
+    {
+      "src_file": "backend/app/services/single_file_pipeline.py",
+      "dst_module": "app.orchestration.document_pipeline_orchestrator",
+      "domain_pair": "pipeline->L2",
+      "line": 10,
+      "kind": "layer",
+      "added": "2026-10-16",
+      "status": "frozen",
+      "target": "唯一反向依赖（S1a）：倒置——编排入口下沉或 pipeline 上移（裁决 2：不作落地前置）"
+    }
+  ]
+}

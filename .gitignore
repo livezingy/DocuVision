@@ -288,6 +288,7 @@ scripts/*
 !scripts/unit_suite_pin.json
 # S1 services structure gates (runs/split batch 0, P-037): lint + data files
 !scripts/lint_services.py
+!scripts/lint_services_selftest.py
 !scripts/service_domain_map.json
 !scripts/service_dependency_allowlist.json
 !scripts/trial/

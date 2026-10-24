@@ -34,8 +34,10 @@ Deletion rule: a pack/record is deletable once **no tracked document still refer
 | [P027/R3-执行记录.md](runs/P027/R3-执行记录.md) | P-027 R3 验收三闸 harness 化执行记录 |
 | [P027/R4-执行包.md](runs/P027/R4-执行包.md) | P-027 R4 IE 语义层专项执行包 |
 | [P027/R4-执行记录.md](runs/P027/R4-执行记录.md) | P-027 R4 IE 语义层专项执行记录 |
+| [split/README.md](runs/split/README.md) | L0-L4 分层与 S1 门禁三案对抗审核目录索引（00-05 规划稿；批 0 已于 2026-10-24 落地，基线勘误见 PENDING P-037） |
+| [split/06-批次执行计划.md](runs/split/06-批次执行计划.md) | P-037 批 1+ 操作规范：批次序列 / 批前基线四样 / 执行纪律 / 等价性证据档位 A/B/C |
 
-**保留依据**：`runs/P027/` 是当前唯一在册的 runs 内容。保留理由写在 PENDING **P-027** 条目——**2026-10-16 更新**：P-027 已由 `decided` 转 **`retained`**，保留依据不再是「在途义务未清」，而是**被 tracked 文档反引**（PENDING 的 P-002 条目把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；[../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) 的 R2/R3/R4 行；R4 记录 §6 是隔离区 `test_data/derived/**` 证据链的唯一盘存表）⇒ 仍**未到删除条件**。
+**保留依据**：`runs/P027/` 的保留理由写在 PENDING **P-027** 条目——**2026-10-16 更新**：P-027 已由 `decided` 转 **`retained`**，保留依据不再是「在途义务未清」，而是**被 tracked 文档反引**（PENDING 的 P-002 条目把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；[../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) 的 R2/R3/R4 行；R4 记录 §6 是隔离区 `test_data/derived/**` 证据链的唯一盘存表）⇒ 仍**未到删除条件**。`runs/split/` 的保留依据 = PENDING **P-037**（还债批次在途）/ **P-038**（I-1 待决）以**目录级**引用本目录，06 是批 1+ 的操作规范载体；全部批次收口、P-037/P-038 结案后按删除规则处置（00-05 规划稿的结论已晋升 kernel/module-map）。
 
 **已清理（2026-10-07 索引校正；本目录为 local-only，git 无历史可回溯，故清理批次未逐件留痕）**：
 `runs/P020-ocr-harness-M1M2-执行包.md`（实质结论已由 living doc [../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) + CHANGELOG 承载）·

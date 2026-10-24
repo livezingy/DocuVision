@@ -3,12 +3,13 @@
 > 本表是 kernel `docs/agent-ops/core/doc-sync.md` 机制 2 的附表：拆出 kernel 是为了让归属表能随
 > 模块增删自由扩展，不挤占 kernel 的 ~60 行软上限（机制 1/3/4/5 与文档生命周期仍在 kernel）。
 > 改代码模块时按表同步 owning doc（`updated <doc> §<节>`）；**表未覆盖的新模块，新增契约时一并补表**。
-> 最近对照：main 4266f07（2026-10-09，D8 批次与其旁支一次归并对账：名册 +2 −1，见脚注 2）
+> 最近对照：main 06d6e7c（2026-10-24，S1 落地：+ `backend/app/services/**` 委托行（域粒度归属单一来源 = module-map §2b）+ `lint_services.py` 入 scripts 行）
 
 | 代码模块 | owning living doc |
 |---------|-------------------|
 | `backend/app/main.py` | `routing.md`（R1 装配层唯一 / R2 无 prefix）、`module-map.md` §1 |
 | `backend/app/routers/**` | `routing.md`（域归属 / 无 prefix / 禁 `import app.main`）、`module-map.md` §2（域清单 / 端点数 / 对照行；逐域 owning doc 见该表「owning doc」列） |
+| `backend/app/services/**` | `module-map.md` §2b（**services 域粒度归属的单一来源**：域清单 / 职责 / 逐域 owning doc / 冻结跨域边）；结构规则 kernel `routing.md`（S1a/S1b/S1c）；下述文件级归属行继续有效，冲突时以 §2b 为准 |
 | `backend/app/routers/batch.py`、`batch_export.py` | `batch-ui-roadmap.md` |
 | `backend/app/routers/pdftools.py` | `shared-ui-shell.md` |
 | `backend/app/routers/kie.py` | `kie.md`、`kie-custom-fields.md` |
@@ -28,7 +29,7 @@
 | `backend/app/services/batch_service.py`、`hitl_queue.py` | `v1.5-roadmap.md`（Epic Queue persistence：`batches` / `_items` 结构、`load_from_db()` 语义、模块级单例签名不变）；批处理消费方另见 `batch-ui-roadmap.md` |
 | `packages/docuvision-core/**` | `docs/README.md` §core + 相关 living doc |
 | `frontend/**` | `frontend/README_FRONTEND.md`、`module-map.md` §3（域清单 / 文件数 / 白名单 / 对照行） |
-| `scripts/lint_file_size.py`、`lint_routes.py`、`lint_frontend.py`、`check_frontend_baseline.py`、`audit_agent_ops.py`、`test_registry_audit.py`、`check_e2e_allowlist.py`、`unit_suite_pin.py` | **`DEVELOPMENT.md`（规范型 owning doc，非派生视图）**：规则文本在第 1-6 条；`module-map.md` §5 只登记「门禁与其实现」（E1 = e2e 白名单+套件 pin / **E2** = 单测 pin）；kernel `routing.md` / `frontend.md` 是同源规则（面向 Agent 的可执行措辞） |
+| `scripts/lint_file_size.py`、`lint_routes.py`、`lint_services.py`、`lint_frontend.py`、`check_frontend_baseline.py`、`audit_agent_ops.py`、`test_registry_audit.py`、`check_e2e_allowlist.py`、`unit_suite_pin.py` | **`DEVELOPMENT.md`（规范型 owning doc，非派生视图）**：规则文本在第 1-7 条；`module-map.md` §5 只登记「门禁与其实现」（E1 = e2e 白名单+套件 pin / **E2** = 单测 pin / **S1a/S1b/S1c** = services 结构）；kernel `routing.md` / `frontend.md` 是同源规则（面向 Agent 的可执行措辞） |
 | `scripts/docs_refs_audit.py` | `docs/architecture/doc-governance.md`（该文即规则文本；白名单/豁免/ALLOWLIST 的机器可读真源留脚本内常量；晋升自 PENDING P-022，2026-09-25） |
 | `scripts/measure/**`（**local-only，源码与产物均不入 git**） | `docs/architecture/ocr-quality-harness.md`（该文即测量规格与指标口径的 living 载体，2026-09-26 自 PENDING P-020 / P-018 晋升）：**改规格同步此文，改实现无须**——实现不进库，故本行不承载"改代码必同步"的义务 |
 

@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **15** 条）
+## 待确认（本区共 **17** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -528,5 +528,23 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **候选路线**：① **维持现状**（现状实测公开仓 ~1 min/PR 且分钟数免费）；② **回到 2026-09-17 的「路线 B 粗粒度」清单并按输入逐条精确化**（清单原文在 CHANGELOG `[Unreleased]` 与 git 历史；须覆盖 audit 的全部判决相关输入——漏一个输入是**静默失效**）；③ **让 audit 自检「我的输入 ⊆ workflow 的 paths」**，把这类漂移变成红灯（代价 = 改 audit 实现必须同 commit 改 workflow 红线文件，需豁免机制，**须单独授权**）。
 - **触发条件**：仓库转私有（计费）或 audit 明显变慢（两者之一出现即重开）。
 - **指针**：`docs/architecture/v1.9-roadmap.md`（branch protection / required checks 决策行）｜ CHANGELOG `[Unreleased]`（paths 翻转判决与清单原文）｜ `.github/workflows/{lint,agent-ops-audit,kie-phase-a}.yml`。
+
+### P-037 · services 结构门禁 S1 落地与冻结边还债（2026-10-24，runs/split 批 0 启动时登记）
+> status: decided · since: 2026-10-24
+- **登记门槛（两问）**：①**不归入已有条目**——P-017 只管行数预算、P-019 已结（单源化教训），本条是**结构落点**维度，无在册承载体；②**不可直接晋升**——S1 机制本身已晋升（kernel `routing.md`/`testing.md` + `module-map.md` §2b/§5），但**14 条冻结边的还债批次是在途义务**，需跟踪轨迹至棘轮收口。
+- **已落地（批 0，2026-10-24，本 PR）**：`lint_services.py`（S1a/S1b/S1c，499 行，经 audit 接线零 CI 改动）+ `service_domain_map.json`（15 域 63 文件 fail-closed）+ `service_dependency_allowlist.json`（冻结棘轮）+ module-map §2b/A2b + kernel 三文件 + Placement footer 第 6 项 + DEVELOPMENT 第 7 条 + operations KPI。落地复算逐行核对了 2026-10-16 快照的 13 边（全命中）。
+- **基线勘误（重要）**：lint 首跑发现第 14 条**预存在**跨域边 `proof_report.py:22 → table_cell_confidence`（report→table，2026-10-15 随 P-027 A 合入）——runs/split 01 审核「零漏边」结论**不成立**，已按冻结语义登记（added 2026-10-24 + erratum note）。初始基线 = **14 边 / 15 条目**，非 13。
+- **在途义务（还债批次，序列与操作规范见 `docs/R&D/runs/split/` 批次执行计划）**：批 1 机制消解（I-1 首登 `pdf_raster` 共享叶 → `kie->infra`/`document->infra` 消解；`pipeline->L2` 倒置）→ 批 2 两组环整改（evidence⇄kie、hitl⇄kie，上提公共谓词；**碰 GPU 路径须 mock+云测**）→ 批 3+ 巨型文件拆分（table_service → layout_service → 单域文件 → orchestrator/envelope_builder 殿后，L2 动管线入口需端到端）。每批：改码前基线四样快照 + 等价性证据档 A/B/C + `file_size_allowlist` 棘轮同步收紧 + Placement 判据。
+- **触发条件**：本 PR 合入后按批次序列推进；冻结边 90 天时钟（最早 2027-01-14 起）到期未动 = lint WARN，巡检可见。
+- **指针**：`docs/architecture/module-map.md` §2b/§5/§6（A2b）｜ kernel `routing.md`（S1 三规则 + services 黄金样例）与 `testing.md`（Placement）｜ CHANGELOG `[Unreleased]`（S1 条目含勘误）｜ `docs/R&D/runs/split/`（目录级：批次执行计划与后续执行记录）。
+
+### P-038 · I-1 共享叶登记制 `shared_leaf_modules`（S1+1 增量；L1 强度已裁决 A）（2026-10-24，自 runs/split 03 §4 立项登记）
+> status: open · since: 2026-10-24
+- **登记门槛（两问）**：①**不归入 P-037**——那是还债轨迹，本条是**新增登记机制**的待决范围（机制面独立：判据 + 登记表 + 对账，runs/split 01 Adversarial check 已警告其成本）；②**不可直接晋升**——L2/L3 人审未做，无定稿可载。
+- **待决问题**：34 个零出向候选逐个过 **L2（无域语义）/ L3（无域状态）人审**后范围定稿。首登 `pdf_raster`（纯光栅化工具，判据清晰）即消解 P-037 批 1 的两条 `->infra` 边；`page_text_trust` 是「事实共享叶」（被 table/evidence/document 三域跨域消费）但 L2 存疑（「页面文本信任」可能带域语义），待人审——通过可再消解 `table->document` 与 `evidence->document` 两条。
+- **已裁决（2026-10-19，runs/split 03 §4.3）**：L1 判据强度 **A（零出向谓词）**——一条谓词、零白名单、零漂移面；强度 B（允许基础层出向的白名单）保留为升级路径，非废弃。
+- **候选路线**：S1+1 批次两步走（34 候选逐个 L2/L3 → 范围定稿后在 `service_domain_map.json` 增 `shared_leaf_modules` 登记面 + S1b 识别为合法通道 + §2b 基建行）。
+- **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
+- **指针**：`docs/R&D/runs/split/`（03 §4 候选池实证与 L1 强度裁决表，目录级）｜ P-037（还债批次序列与消解目标）。
 
 

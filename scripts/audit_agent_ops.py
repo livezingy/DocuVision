@@ -3,7 +3,9 @@
 
 check 4 = registry reconciliation; check 5 = test stub scope (P-023, no module-level
 ``sys.modules[...]`` write in ``backend/tests/**``); E2 = unit-suite pin (``scripts/unit_suite_pin.py``,
-so deleting a vitest spec or adding ``it.todo`` cannot shrink protection silently).
+so deleting a vitest spec or adding ``it.todo`` cannot shrink protection silently);
+S1 = services-layer structure (``scripts/lint_services.py``: layer direction / domain
+placement fail-closed / acyclicity + module-map §2b three-way reconciliation, runs/split).
 
 1. agent-rules drift: a generated copy must match the kernel (`sync_agent_rules.py --check`) -> ERROR.
 2. doc references (`scripts/docs_refs_audit.py`, own module = this file keeps its budget):
@@ -31,6 +33,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 import docs_refs_audit as docs_refs  # noqa: E402
 import frontend_coupling as frontend_map  # noqa: E402
 import assets_manifest_audit as assets_manifest  # noqa: E402
+import lint_services as services_lint  # noqa: E402
 import sync_agent_rules as sync_mod  # noqa: E402
 import test_registry_audit as test_registry  # noqa: E402
 import unit_suite_pin as unit_pin  # noqa: E402
@@ -376,6 +379,7 @@ def run_selftest() -> int:
     cases += list(docs_refs.selftest_cases())
     cases += list(unit_pin.selftest_cases())
     cases += list(assets_manifest.selftest_cases())
+    cases += list(services_lint.selftest_cases())
 
     def ok(name: str, cond: bool) -> None:
         cases.append((name, bool(cond)))
@@ -451,7 +455,8 @@ def main() -> int:
               + docs_refs.check_pending_staleness()
               + check_module_map() + test_registry.check_test_registry()
               + test_registry.check_stub_scope() + unit_pin.check_unit_pin()
-              + assets_manifest.check_assets_manifest())
+              + assets_manifest.check_assets_manifest()
+              + services_lint.check_services())
     errors = [i for i in issues if i["level"] == "ERROR"]
     warnings = [i for i in issues if i["level"] == "WARN"]
     if "--json" in argv:

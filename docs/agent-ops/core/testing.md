@@ -65,5 +65,14 @@
 4. 发版/合 main 提醒最小手工集。
 
 ## 交付 footer
-diff 触及应用逻辑/UI/API 时并列五项：
-**Adversarial check** | **Dead code check** | **Test placement** | **Manual test scope** | **Doc sync**
+diff 触及应用逻辑/UI/API 时并列六项：
+**Adversarial check** | **Dead code check** | **Test placement** | **Manual test scope** | **Doc sync** | **Placement**
+
+- **Placement**（应用代码落点声明，独立于 Test placement——后者只管测试落点）：触发 = 新增文件或新增模块级
+  `def`/`class`/常量；其余场景写 `Placement: n/a`（可见空白即 reviewer 可查产物，跳过留空白不允许）。
+  内层模板（`·` 分隔）：`Placement: <符号/文件> -> <落点> · 判据=<R|D|N|X> · 理由 · 复用之源`：
+  - **R** 复用既有宿主——宿主已达行数预算（500/allowlist 记录值）⇒ 降级 D（拆分宿主），理由须引用预算数字；
+  - **D** 域内新文件（同域已有文件放不下的合法归宿）；
+  - **N** 新领域——同 PR 登记 `service_domain_map.json` 新键 + module-map §2b 行 + owning doc；
+  - **X** 跨域调用——同 PR 登记 `service_dependency_allowlist.json`（**新增条目 = 红线，先问**），
+    理由须引用登记键（如 `X · 登记=table->figure`），reviewer 可三方对 diff footer ↔ allowlist ↔ lint 输出。

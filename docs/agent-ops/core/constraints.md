@@ -47,6 +47,7 @@
 - 公开发布（npm publish、部署生产、发文章等）。
 - 抬高棘轮上限（`scripts/file_size_allowlist.json` / `scripts/frontend_size_allowlist.json` 的既有计数只减不增）。
 - 扩大前端白名单（`scripts/frontend_domain_map.json` 的 `module_import_whitelist` / `leaf_services` / `shared_state_modules` 新增条目）。
+- 扩大 services 依赖豁免（`scripts/service_dependency_allowlist.json` 新增跨域/反向边条目——冻结棘轮只减不增，下调/移除免费）。
 - 改 `frontend/index.html` 的入口脚本或加载顺序。
 
 ## 通用工程纪律

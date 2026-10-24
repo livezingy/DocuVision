@@ -1,5 +1,5 @@
 {
-  "comment": "Frozen services-layer dependency edges - S1 initial baseline (runs/split ruling 2 of 2026-10-16; all 14 import statements re-verified line-by-line against the worktree at landing, 2026-10-24). Entries enumerate concrete edges src_file+dst_module (A-3 granularity); 'line' is provenance from the 2026-10-16 AST snapshot, matching is by src_file+dst_module so line drift never false-alarms. domain_pair is the grouping view used by module-map section 2b edge column (I-3, bidirectional reconciliation). kind: cross-domain = S1b exemption; layer = S1a exemption (only #13, the reverse dependency). Ratchet: only-shrink - adding an entry is a RED LINE (constraints.md, ask first), removing is free and expected (KPI: count -> 0). A cycle whose edges are all in this list = WARN on the per-entry 90-day clock (A-9 / A6 paradigm); an edge present in code but absent here = ERROR.",
+  "comment": "Frozen services-layer dependency edges - S1 initial baseline (runs/split ruling 2 of 2026-10-16; all 14 import statements re-verified line-by-line against the worktree at landing, 2026-10-24). Entries enumerate concrete edges src_file+dst_module (A-3 granularity); 'line' is provenance from the 2026-10-16 AST snapshot, matching is by src_file+dst_module so line drift never false-alarms. domain_pair is the grouping view used by module-map section 2b edge column (I-3, bidirectional reconciliation). kind: cross-domain = S1b exemption; layer = S1a exemption (only #13, the reverse dependency). Ratchet: only-shrink - adding an entry is a RED LINE (constraints.md, ask first), removing is free and expected (KPI: count -> 0). A cycle whose edges are all in this list = WARN on the per-entry 90-day clock (A-9 / A6 paradigm); an edge present in code but absent here = ERROR. Batch 1 (2026-10-24, P-037): 15 -> 12 entries - pdf_raster registered as the first shared leaf (P-038) dissolved kie->infra and document->infra; single_file_pipeline moved up into orchestration/ (ruling-2 'pipeline up' inversion) dissolved pipeline->L2.",
   "stale_days": 90,
   "edges": [
     {
@@ -103,26 +103,6 @@
       "target": "同 hitl⇄kie 环整改（批 2）"
     },
     {
-      "src_file": "backend/app/services/kie_qwen_service.py",
-      "dst_module": "app.services.pdf_raster",
-      "domain_pair": "kie->infra",
-      "line": 17,
-      "kind": "cross-domain",
-      "added": "2026-10-16",
-      "status": "frozen",
-      "target": "I-1 首登 pdf_raster 共享叶即消解（批 1，P-038）"
-    },
-    {
-      "src_file": "backend/app/services/document_info_utils.py",
-      "dst_module": "app.services.pdf_raster",
-      "domain_pair": "document->infra",
-      "line": 8,
-      "kind": "cross-domain",
-      "added": "2026-10-16",
-      "status": "frozen",
-      "target": "同 I-1 首登 pdf_raster 即消解（批 1）"
-    },
-    {
       "src_file": "backend/app/services/batch_service.py",
       "dst_module": "app.services.webhook_service",
       "domain_pair": "batch->infra",
@@ -142,16 +122,6 @@
       "status": "frozen",
       "target": "proof_report 逐表置信度指标卡消费 table 域聚合器（P-027 A，commit 188c391）；上提 summarize_cell_confidence 到共享叶（P-038）或经注入消解",
       "note": "预存在边，lint_services 首跑发现——runs/split 01 审核「零漏边」结论的勘误（该边早于审核一天合入，14 条初始边而非 13）"
-    },
-    {
-      "src_file": "backend/app/services/single_file_pipeline.py",
-      "dst_module": "app.orchestration.document_pipeline_orchestrator",
-      "domain_pair": "pipeline->L2",
-      "line": 10,
-      "kind": "layer",
-      "added": "2026-10-16",
-      "status": "frozen",
-      "target": "唯一反向依赖（S1a）：倒置——编排入口下沉或 pipeline 上移（裁决 2：不作落地前置）"
     }
   ]
 }

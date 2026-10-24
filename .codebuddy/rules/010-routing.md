@@ -1,7 +1,7 @@
 # 后端路由架构规范
 
 > 生成自 kernel `docs/agent-ops/core/`（routing）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
-<!-- kernel-ref: routing.md:783c2154ae41e4ac -->
+<!-- kernel-ref: routing.md:567e26998a8063b3 -->
 
 ## 目标
 把 2644 行的 `main.py` 收敛为 268 行装配层；路由全部进 `backend/app/routers/`，用机器可判规则锁死风格，使不同 Agent 后续新增路由时产出同构代码。S1 把同构纪律延伸到 `services/**` 的**落点**：新函数放哪个域、跨域调用怎么登记，不再靠 Agent 自觉。
@@ -18,7 +18,7 @@
 
 ## services 层硬规则（S1，`lint_services.py` 机器判，经 `audit_agent_ops.py` 接线）
 - **S1a 层方向**：`services/**` 禁 import `orchestration/**`、`routers/**`、`core.runtime`；`orchestration/**` 禁 import `routers/**`、`core.runtime`；routers 禁互引；`core`（除 runtime）与 `models/**` 禁 import 上三层；`packages/docuvision-core` 禁 import `app.*`。依赖律：`main → routers → services → core/models/packages`，orchestration 是 services 的**同级消费方**（DI 组装）。
-- **S1b 域归属 fail-closed**：`services/**` 每个文件必须登记在 `scripts/service_domain_map.json`（15 域，文档真源 = `module-map.md` §2b）——新文件未映射即红；**跨域 import 必须在 `scripts/service_dependency_allowlist.json` 有登记条目**（冻结棘轮只减不增，**新增条目 = 红线先问**，移除免费）。新文件落域 / 跨域决策在交付 footer 写 **Placement** 判据 N/X（kernel `testing.md`）。
+- **S1b 域归属 fail-closed**：`services/**` 每个文件必须登记在 `scripts/service_domain_map.json`（15 域，文档真源 = `module-map.md` §2b）——新文件未映射即红；**跨域 import 必须在 `scripts/service_dependency_allowlist.json` 有登记条目**（冻结棘轮只减不增，**新增条目 = 红线先问**，移除免费），**或目标为已登记共享叶**（`shared_leaf_modules`：L1 零出向机检 + L2/L3 人审证据，任何域可 import——I-1，前端 F5 `leaf_services` 的后端对应物）。新文件落域 / 跨域决策在交付 footer 写 **Placement** 判据 N/X（kernel `testing.md`）。
 - **S1c 无环**：域间依赖图非豁免边成环 = ERROR；环上边全在册 = 90 天时钟到期 WARN——整改方向是上提公共谓词到共享叶或倒置依赖，不是互相 import。
 - **S1 管什么/不管什么**（防误读）：管六层 import 方向、services 域归属、域间边与环；**不管**行数（S-a/b/c）、路由与契约（R1-R3/INV）、测试登记（T 系）、前端结构（F 系）、**域内文件职责划分**（归行数门禁 + 黄金样例 + Placement 人审）。
 

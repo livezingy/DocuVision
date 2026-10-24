@@ -26,7 +26,8 @@
    `scripts/service_domain_map.json` 登记域归属（fail-closed：新文件未映射 = audit 红，
    15 域清单见 `docs/architecture/module-map.md` §2b）；跨域 import 必须在
    `scripts/service_dependency_allowlist.json` 有登记条目（冻结棘轮只减不增，
-   **新增条目 = 红线，先问**）。层方向（services 禁→orchestration/routers/core.runtime
+   **新增条目 = 红线，先问**）**或目标为已登记共享叶**（`shared_leaf_modules`，
+   L1 零出向机检 + L2/L3 人审）。层方向（services 禁→orchestration/routers/core.runtime
    等）由 S1a 机检。落点决策随交付 footer 写 **Placement** 项（判据 R/D/N/X，
    见 kernel `testing.md`）。（机检：lint_services S1a/S1b/S1c，经 audit 接线）
 

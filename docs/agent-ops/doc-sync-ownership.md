@@ -41,14 +41,17 @@
    **「载体」= 该 living 文档在描述本模块自身的契约**（结构 / 签名 / 行为约束），改其契约就必须同步它；
    **仅在别处被引用名字**（表格单元格、示例、他人文档里的调用点）**不计**载体。
    - **有载体（已补入主表）**：`batch_service.py`、`hitl_queue.py` → `v1.5-roadmap.md`。
-   - **无常驻 living 契约（24 个；改其内部实现无须同步任何 living 文档）**：`batch_export_service.py`、
+   - **无常驻 living 契约（23 个；改其内部实现无须同步任何 living 文档）**：`batch_export_service.py`、
      `hitl_policy.py`、`webhook_service.py`、`document_info_utils.py`、`document_profile.py`、
      `document_type_classifier.py`、`file_type_detector.py`、`kie_fields_update.py`、`formula_service.py`、
-     `seal_service.py`、`page_type_probe.py`、`pdf_raster.py`、`pdf_tools_service.py`、
-     `single_file_pipeline.py`、`unified_layout_service.py`、`_layout_order.py`、
+     `seal_service.py`、`page_type_probe.py`、`pdf_raster.py`（2026-10-24 批 1 起兼为共享叶：登记与
+     L1/L2/L3 证据在 `scripts/service_domain_map.json` 的 `shared_leaf_modules`，见 module-map §2b）、
+     `pdf_tools_service.py`、`pii_mask.py`、`unified_layout_service.py`、`_layout_order.py`、
      `table_cell_confidence.py`、`_layout_geometry.py`；
      `backend/app/core/{aistudio_compat,debug_utils,gpu_lib_path,trial_auth}.py`；
      `backend/app/models/{analyze_options,layout_result}.py`。
+     **2026-10-24 更新（24 → 23，S1 批 1）**：`single_file_pipeline.py` **上移 `backend/app/orchestration/`**
+     （#13 倒置，裁决 2「pipeline 上移」方向），自此归主表 orchestration 行承载，不再是 services 层在册模块。
      **2026-10-09 更新（23 → 25 → 24；当日两次变动已一次对账完毕）**：①**+2**：P-027 D8 批次新增
      `table_cell_confidence.py`（逐格置信度聚合 + 引擎适配，纯函数）与 `_layout_geometry.py`
      （从 `layout_service.py` 抽出的几何/文本纯工具 mixin，经 MRO 挂回 `PPStructureEngine`）；

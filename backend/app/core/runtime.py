@@ -431,6 +431,9 @@ async def process_document(task_id: str):
 
 
 def _apply_kie_fields_to_task(task: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
+    from app.services.hitl_policy import resolve_hitl_policy
     from app.services.kie_fields_update import apply_kie_fields_to_task
 
-    return apply_kie_fields_to_task(task, fields)
+    # The hub may import any service; kie_fields_update receives the policy
+    # resolver by injection (runs/split batch 2, no kie->hitl reverse edge).
+    return apply_kie_fields_to_task(task, fields, policy_resolver=resolve_hitl_policy)

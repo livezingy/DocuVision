@@ -6,6 +6,8 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from app.services.kie_default_rules import default_rules_for_document_type  # noqa: F401 (re-export: the mapping moved to the shared leaf in runs/split batch 2)
+
 
 _DATE_PATTERNS = [
     r"^\d{4}-\d{2}-\d{2}$",
@@ -79,41 +81,3 @@ def validate_kie_fields(
         "validation_fields_failed": failed,
         "validation_field_results": field_results,
     }
-
-
-def default_rules_for_document_type(document_type: str) -> Dict[str, Dict[str, str]]:
-    doc = (document_type or "").strip().lower()
-    if doc == "invoice":
-        return {
-            "invoice_date": {"type": "date"},
-            "date": {"type": "date"},
-            "total": {"type": "currency"},
-            "total_amount": {"type": "currency"},
-            "subtotal": {"type": "currency"},
-            "tax": {"type": "currency"},
-        }
-    if doc == "receipt":
-        return {
-            "date": {"type": "date"},
-            "total": {"type": "currency"},
-            "subtotal": {"type": "currency"},
-            "tax": {"type": "currency"},
-        }
-    if doc == "id_card":
-        return {"id_number": {"type": "regex", "pattern": r"^\d{18}$"}}
-    if doc == "passport":
-        return {"passport_number": {"type": "regex", "pattern": r"^[A-Za-z0-9]{6,12}$"}}
-    if doc == "bank_card":
-        return {
-            "card_number": {"type": "regex", "pattern": r"^[\d\s-]{13,19}$"},
-            "expiry_date": {"type": "date"},
-        }
-    if doc == "custom":
-        return {
-            "transaction_date": {"type": "date"},
-            "amount": {"type": "currency"},
-            "unit_price": {"type": "currency"},
-            "line_total": {"type": "currency"},
-            "balance": {"type": "currency"},
-        }
-    return {}

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Tuple
 
-from app.services.kie.field_validation import default_rules_for_document_type
+from app.services.kie_default_rules import default_rules_for_document_type
 
 FULL_DOC_TYPES = frozenset({"invoice", "receipt", "id_card", "passport", "bank_card"})
 LITE_TEMPLATES = frozenset({"bank_statement", "invoice_line_items"})

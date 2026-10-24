@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **S1 services structure gates** (2026-10-24, runs/split batch 0, P-037): the services layer gets the
+  same data-driven placement governance the frontend has had since v1.8.3. New `scripts/lint_services.py`
+  (stdlib AST, 499 lines, wired through `audit_agent_ops.py` — zero CI-workflow changes) enforces
+  **S1a** layer direction (services must not import orchestration/routers/core.runtime; orchestration
+  not routers/runtime; core-except-runtime and models stay leaf; packages/docuvision-core keeps zero
+  `app.*` imports; app.main stays with R3), **S1b** fail-closed domain placement (every
+  `backend/app/services/**` file must be mapped in new `scripts/service_domain_map.json` — 15 domains,
+  ruling 1: page_* merged into document), and **S1c** acyclicity (non-exempt cycle = ERROR;
+  fully-frozen cycle WARNs once the 90-day clock expires). All measured cross-domain/reverse edges are
+  frozen in new `scripts/service_dependency_allowlist.json` — only-shrink ratchet, adding an entry is a
+  red line (constraints.md). Baseline correction at landing: the lint's first full run found a 14th
+  pre-existing edge (`proof_report.py:22 → table_cell_confidence`, landed with P-027 A on 2026-10-15,
+  missed by the runs/split "zero missed edges" audit) — registered as frozen with an erratum note.
+  module-map.md gains §2b (services 15-domain table, three-way reconciliation: table vs map vs disk)
+  and §5/§6 gate rows (S1a/S1b/S1c/A2b); its §1 dependency law is rewritten to
+  `main → routers → services → core` with orchestration as a same-level DI consumer (fixes the S1a-§1
+  conflict, runs/split A-6). The delivery footer gains a sixth item **Placement** (R/D/N/X placement
+  decision; kernel testing.md), and kernel routing.md gains the S-rules plus services golden samples
+  (table_* family / evidence/ / _layout_geometry). DEVELOPMENT.md becomes seven rules (+ services
+  placement); operations.md KPI gains the frozen-edge count (derived, no hand-written numbers).
+  Verification: `lint_services` 0 error/0 warning, 17 negative probes (P1-P10b incl. fail-closed P4)
+  green; `audit_agent_ops` 0/0, `--selftest` 86 checks green; `lint_file_size`/`lint_routes` OK;
+  all 14 frozen edges re-verified line-by-line against the worktree before freezing.
 - **P-027 A — merged-cell confidence projection** (2026-10-15): the flat per-`<td>` confidence
   payload (`cell_confidence`, D8) is now projected onto the table's 2-D grid. `table_html.py`
   gained a single occupancy-aware walk (`_walk_occupancy`) shared by `_html_to_data` and

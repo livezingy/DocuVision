@@ -15,6 +15,7 @@
 | audit 通过率 | PR→main 中 audit 全绿占比 | 100% |
 | 漂移检出率 | kernel-ref 漂移被 CI 检出的占比 | 100% |
 | 待决决策滞留 | `docs/R&D/PENDING.md` 中 `status: open` / `status: decided` 的条目数（由 DOC-3 校验的元数据推导，**非手写统计**） | 趋向 0 |
+| services 冻结边计数 | `scripts/service_dependency_allowlist.json` 在册条目数（由 `python scripts/lint_services.py` 输出与 JSON 推导，**本表不留数字副本**；只减不增，新增条目 = 红线先问） | 趋向 0 |
 | 结论到晋升时长 | `status: landed` 的条目自 `since` 起 **90 天**内晋升 `docs/architecture/`，或改列 `retained` 并写明保留理由（阈值与 DOC-3 的 WARN 同源，超期即未达标） | 100% |
 
 > 口径更正（2026-09-26，P-025）：原「记忆回流及时率」引用 `MEMORY.md`——**该文件全仓不存在**，指标无从测量；原「待决决策滞留」亦无测量方式。
@@ -37,6 +38,10 @@
 8. 单测门禁回归（增删 `frontend/tests/unit/**` 时）：`python scripts/unit_suite_pin.py --selftest` +
    `python scripts/unit_suite_pin.py`（module-map §5 的 **E2**）；有意的用例增减须**同 commit** 更新
    `scripts/unit_suite_pin.json`，删除文件或用例跳过会被拦下（vitest 本身在 `lint` job 内跑，这两类都不会让它变红）。
+9. services 结构门禁（增删/搬移 `backend/app/services/**` 或改 import 时）：`python scripts/lint_services.py --selftest` +
+   `python scripts/lint_services.py`（module-map §5 的 **S1a/S1b/S1c/A2b**，经 audit 接线）。ERROR → 按输出定位：
+   层/域误置改代码，真需跨域边走 Placement X 判据（登记 = **红线先问**）；WARN 冻结边逾期/已消解 →
+   整改批次（P-037）或移除条目收棘轮。
 
 ## 清账批次（正式动作，触发式而非周期式）
 

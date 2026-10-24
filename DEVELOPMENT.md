@@ -1,12 +1,13 @@
-# DEVELOPMENT.md — 六条硬规范
+# DEVELOPMENT.md — 七条硬规范
 
 > 每条都有对应的机检脚本，本地与 CI 同一实现，违反即红。
-> 后端三条由 `lint_file_size.py` / `lint_routes.py` 把关；前端三条由
+> 后端四条由 `lint_file_size.py` / `lint_routes.py` / `lint_services.py`（S1，经
+> `audit_agent_ops.py` 接线）把关；前端三条由
 > `lint_frontend.py`（F1-F7）、`check_frontend_baseline.py`（C1-C8 + C9 注入保真）、
 > `check_e2e_allowlist.py`（E1：e2e 白名单与套件钉死）与
 > ESLint（`cd frontend && npm run lint`，已接 CI）把关。
 
-## 后端（三条）
+## 后端（四条）
 
 1. **文件行数预算 500**：backend/app 与 scripts 下新文件超 500 行 CI 即红；
    存量超标文件在 scripts/file_size_allowlist.json 里棘轮管理（只减不增，
@@ -20,6 +21,14 @@
 3. **叶子模块禁止 import app.main**：可独立测试的模块（渲染器、纯计算、
    后处理器）不得依赖 FastAPI 应用对象；需要共享状态的走 core/runtime.py。
    新服务模块的单测必须能在不启动 app 的情况下 import 通过。
+
+7. **services 结构：先落域、跨域要登记**：`backend/app/services/**` 每个文件必须在
+   `scripts/service_domain_map.json` 登记域归属（fail-closed：新文件未映射 = audit 红，
+   15 域清单见 `docs/architecture/module-map.md` §2b）；跨域 import 必须在
+   `scripts/service_dependency_allowlist.json` 有登记条目（冻结棘轮只减不增，
+   **新增条目 = 红线，先问**）。层方向（services 禁→orchestration/routers/core.runtime
+   等）由 S1a 机检。落点决策随交付 footer 写 **Placement** 项（判据 R/D/N/X，
+   见 kernel `testing.md`）。（机检：lint_services S1a/S1b/S1c，经 audit 接线）
 
 ## 前端（三条，v1.8.3 起）
 

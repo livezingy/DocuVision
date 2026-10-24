@@ -1,10 +1,12 @@
 # DocuVision Module Map（当前态模块地图）
 
 > Status: living — 结构变化时同步（owning 行见 `docs/agent-ops/core/doc-sync.md`）
-> 最近对照：v1.12.0 / commit ad4b7e8（2026-10-05，v1.12 收口：P-029 evidence 校验层（`services/evidence/` + `tests/evidence/` 新增）；无 §2/§3 路由/域结构变化，55 守恒）
+> 最近对照：v1.12.0 / main 06d6e7c（2026-10-24，S1 落地批 0：新增 §2b services 15 域表 + §5 S1a/S1b/S1c/A2b 门禁行 +
+> §1 后端依赖律改写——orchestration 定位为 services 的同级消费方；§2/§3 路由/前端域结构不变，55 守恒）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
+> `scripts/service_domain_map.json`（services 15 域，§2b）· `scripts/service_dependency_allowlist.json`（冻结跨域边，只减不增）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
-> 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F7 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-6 条——
+> 规则真源：`docs/agent-ops/core/frontend.md`（前端 F1-F7 语义 / 落点义务）与 `DEVELOPMENT.md` 第 1-7 条——
 > 本图 §5 只登记「门禁与其实现」，不复述规则文本。
 > 本图回答「模块怎么摆、依赖往哪走、跨模块怎么对接、哪些门禁在守」。语义/契约向设计见
 > `docuvision-system-design.md`，两者互补不重叠。§2/§3/§5 由 `scripts/audit_agent_ops.py` 对账（§6）。
@@ -12,28 +14,33 @@
 ## §1 分层与依赖律（手写·慢变，audit 不对账本节）
 
 ```
-后端栈                                前端栈
-main.py（装配：include_router）        app.js（装配：imports + initXxx({deps})）
-  ↓ import 只许向下                      ↓ import 只许向下（F3）
-routers/ 13 域                          modules/ 14 域（D1-D15，D11 已退役）
-  ↓                                      ↓（域内兄弟 | utils/* | F5 白名单叶服务）
-services/（业务）                        shared/* · preview-state · api-state（共享状态）
-  ↓                                      （D4 shell / D5 preview-paging / D8 pipeline / D9 result-panels 为目录域）
-orchestration/（编排）
-  ↓
-core/runtime.py（共享状态枢纽）
+后端栈                                    前端栈
+main.py（装配：include_router）            app.js（装配：imports + initXxx({deps}))
+  ↓ import 只许向下（S1a）                  ↓ import 只许向下（F3）
+routers/ 13 域（→runtime 枢纽通道 ✓）       modules/ 14 域（D1-D15，D11 已退役）
+  ↓ 薄委托                                   ↓（域内兄弟 | utils/* | F5 白名单叶服务）
+services/ 15 域（业务，§2b；域内互引 ✓，    shared/* · preview-state · api-state（共享状态）
+  跨域须登记 S1b，禁→编排/路由/runtime）     （D4 shell / D5 preview-paging / D8 pipeline
+orchestration/（编排 = services 的同级        / D9 result-panels 为目录域）
+  消费方：DI 注入不建服务；services→编排
+  唯一例外 #13 冻结，见 §2b 边列）
+core/runtime.py（共享状态枢纽，双身份）
+core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 ```
 
-依赖律（两栈同构，五条）：
+依赖律（两栈同构，六条）：
 - **L1 装配层唯一**：后端 `main.py` / 前端 `app.js` 只装配不放域逻辑（R1 背景 / F2 棘轮）。
-- **L2 import 只许向下**：后端 routers→services→orchestration→core，禁环（R3：禁 import app.main）；
+- **L2 import 只许向下**：后端 `main → routers → services → core/models/packages`（S1a 机检）；
+  **orchestration 是 services 的同级消费方**（构造期 DI 组装，不位于 services 之下）——services 禁→
+  orchestration/routers/core.runtime，唯一冻结例外 #13 见 §2b 边列；禁环（R3：禁 import app.main）；
   前端 域→（域内兄弟|utils|shared|白名单叶服务），**禁 import `../app.js`、禁跨域 import 兄弟域**（F3）。
 - **L3 跨域调用经装配注入**：后端 include_router 挂载；前端 `initXxx({deps})` 装配期一次性注入（F6），
   **禁 `window.*` 桥**。
 - **L4 共享状态走指定枢纽**：后端 `core/runtime.py`；前端 `preview-state` / `api-state`
   （唯一允许双向 live binding 的例外）。
-- **L5 例外必须注册制**：前端 import 白名单 = `frontend_domain_map.json`（F5）；新增例外 = 数据编辑
-  （criterion L1+L2+L3 + evidence），不开代码口子。
+- **L5 例外必须注册制**：前端 import 白名单 = `frontend_domain_map.json`（F5）；后端跨域边豁免 =
+  `service_dependency_allowlist.json`（S1b，只减不增，新增条目 = 红线先问）；新增例外 = 数据编辑
+  （前端 criterion L1+L2+L3 + evidence），不开代码口子。
 
 ## §2 后端段：routers/ 13 域（逐行守恒：每行端点数 == 该文件 AST 实测；合计 55 == 冻结清单）
 
@@ -57,6 +64,30 @@ core/runtime.py（共享状态枢纽）
 - **router → service**：域内 import，路由函数显式 `response_model` 声明后编排调用（黄金样例 `routers/system.py`）。
 - **service → orchestration / core**：业务模块经编排层进管线；共享状态唯一枢纽 `core/runtime.py`（禁 import app.main）。
 - **装配**：`main.py` 逐域 `include_router`（无 prefix，路径全量——R2）。
+
+## §2b 后端段：services/ 15 域（三向守恒：本表文件列展开 ↔ `service_domain_map.json` ↔ 磁盘；fail-closed——新文件未映射 = ERROR）
+
+<!-- audit:backend-service-domains -->
+| 域 | 文件 | 职责 | owning doc | 出向跨域边 |
+| layout | backend/app/services/{layout_service,_layout_geometry,_layout_order,unified_layout_service}.py（4 文件） | 版面结构与阅读顺序（主入口 + 几何/顺序私有叶 + unified 融合） | pp-structurev3-official-findings.md | layout->table |
+| table | backend/app/services/{table_service,table_alignment,table_backfill,table_band_range,table_cell_confidence,table_cell_geo,table_html,table_layout,table_ocr_blocks,table_pseudo_filter}.py（10 文件） | 表格识别全家族：检测/伪表过滤/对齐/回填/HTML/逐格置信 | pp-structurev3-official-findings.md（table_service）· provenance-review.md（backfill/alignment） | table->figure、table->document |
+| figure | backend/app/services/figure_service.py | 图像区域提取 | pp-structurev3-official-findings.md | — |
+| formula | backend/app/services/formula_service.py | 公式区域提取 | — | — |
+| ocr | backend/app/services/ocr_service.py | OCR 引擎封装 | docuvision-system-design.md §3.2–3.4 | — |
+| seal | backend/app/services/seal_service.py | 印章区域提取 | — | — |
+| kie | backend/app/services/kie/{KieManager,__init__,azure_schema,field_merge,field_validation,kie_field_metrics,kie_pages,query_fields,schema_templates,text_first,value_typer}.py（11 文件） + backend/app/services/{kie_fields_update,kie_qwen_service}.py（2 文件） | KIE 字段抽取/合并/校验/模板/指标 | kie.md、kie-custom-fields.md | kie->evidence、kie->hitl、kie->infra |
+| evidence | backend/app/services/evidence/{__init__,findings_schema,gate,grounding,normalize,verifier}.py（6 文件） | 证据门禁与 grounding（三闸 / V0-V6 梯 / text-first） | evidence-layer.md | evidence->kie、evidence->hitl、evidence->document |
+| hitl | backend/app/services/{hitl_policy,hitl_queue}.py（2 文件） | 人工复核策略与队列 | v1.5-roadmap.md（hitl_queue） | hitl->kie |
+| batch | backend/app/services/{batch_service,batch_export_service}.py（2 文件） | 批量任务管理与导出打包 | v1.5-roadmap.md | batch->infra |
+| report | backend/app/services/{export_service,pack_export_service,proof_pack,proof_render,proof_report}.py（5 文件） | 导出与证明包（export/pack + proof_* 三件） | docuvision-system-design.md §9.1 · provenance-review.md（proof_*） | report->table |
+| document | backend/app/services/{document_info_utils,document_profile,document_type_classifier,file_type_detector,page_text_trust,page_type_probe}.py（6 文件） | 文档画像/类型分类/文件探测 + 页面文本信任与页型探测（裁决：page 并入） | provenance-review.md（page_text_trust） | document->infra |
+| infra | backend/app/services/{pdf_raster,pdf_tools_service,webhook_service}.py（3 文件） + backend/app/services/persistence/{__init__,analyze_job_store,queue_store}.py（3 文件） | 基础设施：PDF 光栅与工具、webhook、持久化 | v1.5-roadmap.md、v1.7-roadmap.md（persistence） | — |
+| pipeline | backend/app/services/{single_file_pipeline,pii_mask}.py（2 文件） | 单文件分析管线入口 + PII 掩码 | — | pipeline->L2 |
+| trial | backend/app/services/trial/{__init__,gt_diff}.py（2 文件） | GLM trial 真值比对 | — | — |
+
+共享壳（非域）：`backend/app/services/__init__.py` 为空壳（无 eager import），域归属 = shared，A2b 三向对账含它。
+边列登记的是 allowlist **域对键**（双向对账：表内键 ⊆ allowlist 且 allowlist 键 ⊆ 表内）；条目粒度 = 具体边
+（src_file + dst_module），见 `scripts/service_dependency_allowlist.json`——`pipeline->L2` 即 #13 反向边（S1a 层例外）。
 
 ## §3 前端段：modules/ 14 域（集合守恒：本表第一列 == domain_map.json domains 键集）
 
@@ -116,6 +147,9 @@ core/runtime.py（共享状态枢纽）
 | R1 | 路由装饰器只进 routers/ | scripts/lint_routes.py（`_check_file`） | 第 2 条 | active |
 | R2 | APIRouter 无 prefix、路径全量 | scripts/lint_routes.py（`_apirouter_has_prefix`） | 第 2 条 | active |
 | R3 | 禁 import app.main | scripts/lint_routes.py（`_check_file`） | 第 3 条 | active |
+| S1a | 层方向（02 表 1 ✗ 格 + A-2）：services 禁→orchestration/routers/runtime；orchestration 禁→routers/runtime；routers 禁互引；core(除 runtime)/models 禁→上三层；packages 禁→app.*（app.main 归 R3，A-5） | scripts/lint_services.py（`check_services`） | 第 7 条 | active |
+| S1b | services 域归属 fail-closed（新文件必须落域，未映射/幽灵 = ERROR）+ 跨域 import 须在 allowlist 登记（冻结棘轮只减不增，新增条目 = 红线先问） | scripts/lint_services.py（`check_services`） | 第 7 条 | active |
+| S1c | 域间依赖图无环：非豁免边成环 = ERROR；环上边全在册 = 90 天时钟到期后 WARN（A-9/A6 范式） | scripts/lint_services.py（`check_services`） | 第 7 条 | active |
 | INV-1 | (method,path) 集合 == 冻结清单 55 | backend/tests/test_route_inventory.py（`test_route_inventory_matches_frozen_set`） | 第 2 条 | active |
 | INV-2 | 路由四要素 AST 冻结（name/signature/docstring/decorator kwargs） | backend/tests/test_route_contract_freeze.py（`test_route_contract_matches_frozen_baseline`） | 第 2 条 | active |
 | S-a/b/c | 行数预算 500 + 棘轮只减不增；main.py 禁 @app. 路由（脚本内编号 R-a/R-b/R-c） | scripts/lint_file_size.py（`DEFAULT_BUDGET`） | 第 1 条 | active |
@@ -147,9 +181,10 @@ OpenAPI 全量快照：云端 pytest（上云前本机自查用 INV-2 契约冻�
 ## §6 对账协议（audit_agent_ops.py check 3，A0-A6）
 
 | 断言 | 内容 | 级别 |
-| A0 解析守卫 | 3 个锚各**恰好出现一次**（缺失/重复 = ERROR）；锚块数据行非空；数据行列数 == 表头列数；列按表头名定位（缺列 = ERROR）；§5 状态列 ∈ {active, retired, 时点工具}；「机检实现」单元格符合语法 `<path>` 或 `<path>（\`symbol\`）`：全大写 symbol → 该文件须有 `<symbol> =` 赋值；**其余一律按 `def <symbol>` 查找，查不到 = ERROR（fail-closed；未知 symbol 形态同样落到此错）**；无 symbol → 只断言 path 存在；状态列必须是裸枚举值，备注一律写进断言列 | ERROR |
+| A0 解析守卫 | 4 个锚各**恰好出现一次**（缺失/重复 = ERROR）；锚块数据行非空；数据行列数 == 表头列数；列按表头名定位（缺列 = ERROR）；§5 状态列 ∈ {active, retired, 时点工具}；「机检实现」单元格符合语法 `<path>` 或 `<path>（\`symbol\`）`：全大写 symbol → 该文件须有 `<symbol> =` 赋值；**其余一律按 `def <symbol>` 查找，查不到 = ERROR（fail-closed；未知 symbol 形态同样落到此错）**；无 symbol → 只断言 path 存在；状态列必须是裸枚举值，备注一律写进断言列 | ERROR |
 | A1 路径存在 | 全文抽 `backend/ frontend/ scripts/ docs/ packages/` 前缀路径（含行号剥离、glob 字符拒绝）+ §2/§3 单元格 `{a,b}.js` 花括号展开，逐个须存在于 worktree；无豁免前缀（出现运行时产物路径 = ERROR，届时带证据再加豁免） | ERROR |
 | A2 计数守恒 | §2 行数 == routers/*.py（除 __init__）数；**逐行**：端点数列 == 该文件 AST 实测（复用 `test_route_inventory._route_from_decorator`，import 失败 = ERROR）；**三条腿**：§2 端点数合计 == AST 合计 == `EXPECTED_COUNT`（55）；§3 第一列**集合** == `domains.keys()`；§3 `（N 文件）`单元格 == 展开后实际存在的文件数 | ERROR |
+| A2b services 域对账 | §2b（锚 `backend-service-domains`）三向守恒：文件列花括号展开 ↔ `service_domain_map.json` 键（shared 壳走散文行登记）↔ 磁盘 `services/**/*.py`；未映射新文件 / 幽灵条目 / 行集不符 / 域集漂移 = ERROR（fail-closed，B-2）；边列域对键 ↔ allowlist `domain_pair` **双向**对账（I-3）；S1a/S1b/S1c 判据、冻结边棘轮与 90 天时钟由 `lint_services.py` 承载（§5 S 行，经 audit 接线） | ERROR / WARN |
 | A3 基建对账 | §3 基建 5 个登记数字与名单（utils · shared · `leaf_services`（名单与 json 键 basename 一致）· `shared_state_modules`（同前）· `boot_sequence`（数量））；**登记文本以 §3 为单一源，本格不留数字副本** | ERROR |
 | A4 登记完备 | 本文件出现在 docs/README.md Architecture 节；doc-sync owning 表（`docs/agent-ops/doc-sync-ownership.md`）含 module-map.md 行；该附表本身被 docs/README.md 索引 | ERROR |
 | A5 新鲜度 | 头部「最近对照」版本 vs CHANGELOG 第一个 `## [x.y.z]` 头：两侧各取前 3 段数字成元组比较，**doc < latest → WARN（含双方版本号）**；CHANGELOG 无匹配 → WARN skip；禁止字符串 rstrip 归一化 | WARN |

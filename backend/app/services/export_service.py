@@ -9,7 +9,6 @@ live in ``export_table_format.py`` and are re-exported here.
 from __future__ import annotations
 
 import csv
-import io
 import json
 import os
 from typing import Any, Dict, List

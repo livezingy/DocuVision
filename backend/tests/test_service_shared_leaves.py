@@ -69,24 +69,19 @@ def test_default_rules_single_source_of_truth():
     assert default_rules_for_document_type("unknown-type") == {}
 
 
-def test_build_payloads_grounding_contract(monkeypatch, tmp_path):
-    """The one-way kie->evidence edge stays inside build_text_first_payloads
-    (frozen, dissolves with the batch-3 orchestrator split); the payload
-    branches themselves are verified here with the grounding layer faked."""
-    from types import SimpleNamespace
-
-    import app.services.evidence.grounding as grounding_mod
-
-    pdf = str(tmp_path / "doc.pdf")
+def test_build_payloads_injected_grounding_contract():
+    """The grounding layer is injected by the orchestrator's KIE step (batch 3):
+    kie.text_first carries no evidence import at all — the one-way frozen edge
+    is gone; the payload branches are verified here with plain dict inputs."""
     layout = {"elements": [
         {"page": 2, "type": "text", "text": "ocr text for page two"},
     ]}
-    monkeypatch.setattr(
-        grounding_mod, "grounding_source",
-        lambda _p: SimpleNamespace(blocks={1: ["born digital body text for page one"]}),
+    payloads = tf.build_text_first_payloads(
+        layout,
+        [1, 2, 3],
+        blocks_by_page={1: ["born digital body text for page one"]},
+        trusted_pages={1},
     )
-    monkeypatch.setattr(grounding_mod, "trusted_grounding_page_set", lambda _p: {1})
-    payloads = tf.build_text_first_payloads(pdf, layout, [1, 2, 3])
     assert payloads[1]["source"] == tf.SOURCE_TEXT_LAYER
     assert "[p1_b0]" in payloads[1]["windows"][0]
     assert payloads[2]["source"] == tf.SOURCE_FUSED_OCR  # declared fallback (R3)

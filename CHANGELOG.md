@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **S1 batch 3 — orchestrator & envelope_builder split; kie->evidence dissolved** (2026-10-25, P-037):
+  the two pinned L2 giants are split and both size ratchet entries removed. The 1297-line
+  `document_pipeline_orchestrator.py` becomes a 142-line sequencing core plus
+  `orchestration/steps/` (perception / extraction / kie / governance / envelope, 115-335 lines
+  each, step bodies moved verbatim by line-range script — tier A by construction; per-module
+  import headers generated from actual usage, orchestrator class referenced TYPE_CHECKING-only
+  to avoid the parent<->steps cycle; the parent re-exports all step names so the test import
+  paths and `run()` sequence stay byte-stable — `test_orchestrator_order` passes unchanged).
+  `envelope_builder.py` (620) splits its four pure helpers into
+  `envelope_builder_helpers.py` (168) and keeps the class at 486 lines with staticmethod
+  aliases preserving the `builder._x(...)` surface — envelope tests pass with zero edits.
+  The freed room lands the batch-2 deferral: the KIE step now injects
+  `evidence.grounding` at the composition point, `kie.text_first` drops its evidence import,
+  and the one-way frozen edge `kie->evidence` dissolves — the frozen-edge ratchet moves
+  **9 -> 8** and `file_size_allowlist` **10 -> 8** (both giants' pins removed). Full local
+  sweep: 657 passed / 19 skipped / 5 pre-existing paddle collection errors (= baseline);
+  gates all green. Cloud steps (L2 pipeline face, same template as batch 2, hard gate):
+  full `DOCUVISION_CLOUD_TESTS=1` suite, live suite incl. the batch two-file flow, and the
+  pico text-first smoke with both flags — acceptance: `text-first engaged: True` via the
+  `marker_hint_hits`/`scan_hits` keys (the injected-grounding contract, live end-to-end).
 - **S1 batch 2 — both domain cycles broken, graph now acyclic** (2026-10-25, P-037): the frozen-edge
   ratchet moves **12 -> 9 entries** and the services domain graph loses both cycles
   (evidence⇄kie, hitl⇄kie). Two new shared leaves (I-1/P-038, L1 strength A):

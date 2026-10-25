@@ -5,7 +5,7 @@
 
 ## 待确认（本区共 **18** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-039`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-039` `P-040`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -530,12 +530,13 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **指针**：`docs/architecture/v1.9-roadmap.md`（branch protection / required checks 决策行）｜ CHANGELOG `[Unreleased]`（paths 翻转判决与清单原文）｜ `.github/workflows/{lint,agent-ops-audit,kie-phase-a}.yml`。
 
 ### P-037 · services 结构门禁 S1 落地与冻结边还债（2026-10-24，runs/split 批 0 启动时登记）
-> status: decided · since: 2026-10-24
+> status: retained · since: 2026-10-24 · **收口 2026-10-25**（云测集中轮全绿 + ④ 归因落定）
 - **登记门槛（两问）**：①**不归入已有条目**——P-017 只管行数预算、P-019 已结（单源化教训），本条是**结构落点**维度，无在册承载体；②**不可直接晋升**——S1 机制本身已晋升（kernel `routing.md`/`testing.md` + `module-map.md` §2b/§5），但**14 条冻结边的还债批次是在途义务**，需跟踪轨迹至棘轮收口。
 - **已落地（批 0，2026-10-24，本 PR）**：`lint_services.py`（S1a/S1b/S1c，499 行，经 audit 接线零 CI 改动）+ `service_domain_map.json`（15 域 63 文件 fail-closed）+ `service_dependency_allowlist.json`（冻结棘轮）+ module-map §2b/A2b + kernel 三文件 + Placement footer 第 6 项 + DEVELOPMENT 第 7 条 + operations KPI。落地复算逐行核对了 2026-10-16 快照的 13 边（全命中）。
 - **基线勘误（重要）**：lint 首跑发现第 14 条**预存在**跨域边 `proof_report.py:22 → table_cell_confidence`（report→table，2026-10-15 随 P-027 A 合入）——runs/split 01 审核「零漏边」结论**不成立**，已按冻结语义登记（added 2026-10-24 + erratum note）。初始基线 = **14 边 / 15 条目**，非 13。
 - **在途义务（还债批次，序列与操作规范见 `docs/R&D/runs/split/` 批次执行计划）**：批 1 机制消解（I-1 首登 `pdf_raster` 共享叶 → `kie->infra`/`document->infra` 消解；`pipeline->L2` 倒置）→ 批 2 两组环整改（evidence⇄kie、hitl⇄kie，上提公共谓词；**碰 GPU 路径须 mock+云测**）→ 批 3+ 巨型文件拆分（table_service → layout_service → 单域文件 → orchestrator/envelope_builder 殿后，L2 动管线入口需端到端）。每批：改码前基线四样快照 + 等价性证据档 A/B/C + `file_size_allowlist` 棘轮同步收紧 + Placement 判据。
-- **进展（2026-10-25，批 11 时点，代码面全部完成）**：批 7 formula（钉死 6→5）→ 批 8 batch 拆三 + `batch->infra` 消解（边 2→1）→ 批 9 figure 拆二（钉死 4→3）→ 批 10 export 拆四件家族（钉死 3→2，**>500 巨户清零**）→ **批 11 `evidence->hitl` 倒置（边 1→0）**——`run_evidence_gate` 改数据出口（`hitl_payloads` 由调用步 pop），enqueue 上移 `steps/governance.py:evidence_step`（与 kie_step 同构）；**冻结边棘轮 14→0**。批 6.5-10（PR #99-103）CI 绿待授权合并。**P-037 正式收口 = 云测集中一轮全绿后**（runs/split 14 号计划 §三：全量 689+5 对照 / live 10 / pico 冒烟 / formula 定向冒烟）。
+- **进展（2026-10-25，批 11 时点，代码面全部完成）**：批 7 formula（钉死 6→5）→ 批 8 batch 拆三 + `batch->infra` 消解（边 2→1）→ 批 9 figure 拆二（钉死 4→3）→ 批 10 export 拆四件家族（钉死 3→2，**>500 巨户清零**）→ **批 11 `evidence->hitl` 倒置（边 1→0）**——`run_evidence_gate` 改数据出口（`hitl_payloads` 由调用步 pop），enqueue 上移 `steps/governance.py:evidence_step`（与 kie_step 同构）；**冻结边棘轮 14→0**。批 6.5-11（PR #99-104）经用户授权合并（main = 9438458）。
+- **收口（2026-10-25，云测集中轮读数，main = 9438458）**：① 全量 **691 passed / 1 skipped / 0 failed**（= 689 云面基线 + 批 11 锚 2，逐数符合预期）；② live **10 passed**；③ pico text-first 冒烟**八键逐键一致 + engaged True + trusted_pages [1..10]**（marker 13 vs 批 6 的 15 = KIE 模型非确定性波动，硬判定不受影响）；④ formula 冒烟 FAIL 经 **093f7cb 基线对照裁定为预存在缺陷、非批 7 回归**（同错误同位置复现于拆分前版本；根因 = `cv2.imread` 读不了 PDF + `steps/extraction.py:174` PDF 输入回退原始路径，登记 **P-040**；同轮读数反证拆分后引擎链健康：device=gpu / PP-FormulaNet_plus-M 初始化成功 / rebuild 重试 / 错误分级全部按设计工作）。**棘轮终态：pins 15→2**（>500 巨户清零，余 ocr 457 / main 257 看管线待批 12 裁定）**、冻结边 14→0**（allowlist 空，90 天环时钟机制随最后一条边移除自然失效）。保留理由：结构治理常态化由 S1 门禁承载（lint_services fail-closed + audit 三向对账），后续巨户零容忍；runs/split 目录按删除规则处置（批 12 收尾批）。
 - **触发条件**：本 PR 合入后按批次序列推进；冻结边 90 天时钟（最早 2027-01-14 起）到期未动 = lint WARN，巡检可见。
 - **指针**：`docs/architecture/module-map.md` §2b/§5/§6（A2b）｜ kernel `routing.md`（S1 三规则 + services 黄金样例）与 `testing.md`（Placement）｜ CHANGELOG `[Unreleased]`（S1 条目含勘误）｜ `docs/R&D/runs/split/`（目录级：批次执行计划与后续执行记录）。
 
@@ -556,5 +557,13 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **已落地（2026-10-25，分支 feat/p039-lazy-paddle-imports，候选①+②合并）**：runtime 的服务闭包决定只做 main/runtime 不够——layout_service/ocr_service 的顶层 `import paddle`（两处均为**零使用的死 import**）会把墙原样砌回。四处全部惰性化：main.py 横幅块（paddle 版本 print + paddlex home 验证）迁入 runtime 的 `_log_paddle_stack_banner()`；runtime GPU 探测包进 `_detect_use_gpu()`（无 paddle 时 use_gpu=False 降级）；**初始化顺序语义逐字保持**（横幅 → GPU 自检 → 单例构造）。本机验收：`import app.main` 可行且 paddle 不入 sys.modules；全量 681 passed / 0 收集错误（批 3 基线 657 + 5 错）；门禁五件套全绿，棘轮 main.py 268→257。**云测一轮全过（档 B 证据闭合，同日）**：/health healthy + engines 非空、全量 689 passed 1 skipped（与 09 批 3 复跑读数同数）、live 10 passed（GPU 管线真跑）。环境侧：fastapi==0.109.0 + python-multipart + matplotlib 3.11.2（py3.11 适配）经用户确认安装；httpx 需 <0.28（requirements 既有钉版，starlette 0.35 TestClient 与 httpx 0.28 不兼容）。
 - **遗留（已裁决并落地，批 6.5，2026-10-25）**：用户裁决 openapi 快照 ×2 **转本机面**（`DOCUVISION_CLOUD_TESTS` skipif 移除；`app.main` 自 P-039 本机可 import 且路由装配为静态清单，本机 schema 与云端一致——5 测试本机全过、与 GPU 盒生成的 baseline 逐字节一致）；`test_table_template_analyze` 保留 `importorskip("paddle")` full-env 标记（真需要 paddle）。本机全量 681/19 → **686 passed / 14 skipped**。
 - **指针**：`docs/R&D/runs/split/12-P039-lazy-paddle-imports.md`（执行记录：逐点使用形态评估表、档 B 逐 hunk 分类、读数对账；local-only）｜ `docs/R&D/runs/split/09-批3-执行记录.md` §七（盲区归因教训）｜ kernel `testing.md`（本机/Cloud 判据，经本轮实证仍自洽）｜ CHANGELOG `[Unreleased]`。
+
+### P-040 · formula ROI 模式对 PDF 输入失效（cv2.imread 读不了 PDF）（2026-10-25，云测集中轮 ④ 归因产出）
+> status: open · since: 2026-10-25
+- **登记门槛（两问）**：①**不归入 P-037**——那是结构还债轨迹（已收口），本条是**功能缺陷**且经 093f7cb 基线对照证实**预存在**（批 7 拆分前的版本同样失败，同错误同位置）；②**不可直接晋升**——修复属行为性改动（档 C），修复方向需用户裁决，无 living doc 可承载。
+- **事实（2026-10-25 云测，main 9438458 与 093f7cb 双版本同样复现）**：PDF 上传 + `enable_formula=true` + layout 检出公式框 → ROI 模式 → `_crop_formula_rois`（批 7 后在 formula_engine.py）的 `cv2.imread(<上传的 PDF>)` 返回 None → `RuntimeError: could not read image for ROI crop` → rebuild 重试再失败 → 软级 `runtime_error`、recognized 0。根因：cv2 无法解码 PDF；`steps/extraction.py:174` 的 `roi_source_image_path = preprocessed_image_path or file_path` 在 PDF 输入时（无 preprocessed 产物）回退原始 PDF 路径。**从未暴露的原因**：`enable_formula` 默认关 + 历轮云测/live 均未开启该面。同轮读数反证引擎链本身健康：device=gpu、PP-FormulaNet_plus-M 缓存命中并初始化成功、rebuild 重试链与错误分级（runtime_error/soft）全部按设计工作。
+- **候选修复路线（留裁决）**：① step 层对 PDF 传页光栅（复用 figure_service 的 fitz 2x 渲染，与 layout 坐标空间对齐最稳）；② `_crop_formula_rois` 内支持 PDF（fitz 渲染后再裁剪）；③ ROI 失败时回退整页模式（paddlex.predict 可直接吃 PDF，但坐标/框映射语义需评估）。任一路线 = 行为性改动（档 C）+ 本机 mock 锚 + 云测复验。
+- **触发条件**：用户裁决修复路线时（默认不阻塞批 12 收尾批——收尾批不含行为性代码改动）。
+- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单 §七 ④ 归因记录、16 号批 7 记录）｜ backend/app/services/formula_engine.py `_crop_formula_rois` ｜ backend/app/orchestration/steps/extraction.py:174。
 
 

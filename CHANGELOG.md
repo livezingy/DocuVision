@@ -257,6 +257,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **S1 closing — P-037 closed: consolidated cloud round green on main 9438458** (2026-10-25,
+  P-037/PENDING): full suite **691 passed / 1 skipped / 0 failed** (= 689 cloud baseline + the
+  two batch-11 anchors), live suite **10 passed**, pico text-first smoke **eight stats keys
+  identical + engaged True + trusted_pages [1..10]** (marker 13 vs batch-6's 15 = KIE model
+  non-determinism; hard criteria unaffected). The formula-targeted smoke FAILED and the
+  093f7cb baseline comparison attributed it to a **pre-existing defect, not a batch-7
+  regression** (identical failure on the pre-split monolith; root cause = cv2.imread cannot
+  decode PDFs while extraction.py falls back to the raw upload path for PDF inputs —
+  registered as **P-040**; the same round proves the post-split engine chain healthy:
+  device=gpu, PP-FormulaNet_plus-M init from cache, rebuild retry and error grading all
+  working as designed). Final ratchets: **pins 15 -> 2** (zero files over the 500 budget
+  remain; sub-budget watch pins ocr 457 / main 257 left for the batch-12 ruling) and
+  **frozen edges 14 -> 0** (allowlist empty; the 90-day cycle clock dies with the last edge).
+  Structural governance continues via the S1 gates (lint_services fail-closed + audit
+  three-way reconciliation).
 - **S1 batch 11 — evidence->hitl inverted; the frozen-edge ratchet reaches zero**
   (2026-10-25, P-037): `run_evidence_gate` no longer imports `hitl_queue` — HITL candidates
   leave the gate as data (`block["hitl_payloads"]`, built from `report.hitl_payloads` which

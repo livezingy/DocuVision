@@ -8,6 +8,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **S1 batch 6 — layout_service split five ways** (2026-10-25, P-037): the 1614-line pinned
+  `layout_service.py` splits along the batch-5 mixin seam into the service facade
+  (`layout_service.py`, 115 lines — `LayoutService` verbatim + compat re-exports so the
+  three file-path-loading tests keep taking `PPStructureEngine` / the worker helpers from
+  here), the engine core (`layout_engine_ppstructure.py`, 423 — `BaseLayoutEngine` +
+  `PPStructureEngine` with the parse and visualization mixins composed into its base list),
+  `layout_pp_parse.py` (497 — `LayoutPPParseMixin`: `_parse_result` (374) +
+  `_deduplicate_elements` (110), the parse/sort/dedup tail), `layout_pp_visualization.py`
+  (237 — `LayoutPPVisualizationMixin`: rotation rebuild/inverse helpers + block-box
+  visualization) and `layout_engine_subprocess.py` (412 — worker entry + dispatch/result
+  helpers + `PPStructureSubprocessEngine`; the worker entry stays module-level for spawn
+  pickling). All moved bodies byte-identical (AST source-segment equality vs git HEAD
+  including decorators; engine class docstring identical; retained-method set = old minus
+  moved; call-site counts reconciled — the only textual deltas are the declared re-export
+  import lines and docstring mentions). Usage-vs-import hard audit clean on all five
+  modules (symtable undefined-name check, checker self-validated against the old monolith
+  and a cv2-removed mutant; batch-3 lesson applied BEFORE push). Size ratchet pin removed
+  (**7 -> 6 entries**); layout domain 4 -> 8 files. The 497-line parse mixin is flagged
+  against the P-017 line-growth discipline: `_parse_result` is a single 374-line method
+  that cannot be split without a tier-C method-level rewrite; the documented growth seam
+  is its html/preds fallback branches. The `__file__`-relative visualization output path
+  is invariant (same directory, same three-level-up project root). Local suite
+  681 passed / 19 skipped / 0 errors — identical to the pre-split baseline.
+- **S1 batch 6 — `table_cell_confidence` registered as the sixth shared leaf** (2026-10-25,
+  P-037/P-038): both remaining `table_cell_confidence`-pointing frozen edges (`layout->table`
+  via layout_service.py:24 and `report->table` via proof_report.py:22) dissolve in one move.
+  The allowlist target's "move module or invert" adjudication resolves as **move**: inversion
+  is structurally impossible — the raw `table_res_list` engine payload only exists at layout's
+  `_parse_result` call site, so inverting would change the element data contract (tier C +
+  GPU surface) — and relocating the module into the layout domain would create a new
+  `report->layout` edge (allowlist-addition red line). Evidence: the module is pure (typing +
+  loguru only, zero app-internal imports — cleaner than pdf_raster/page_text_trust which keep
+  a deferred fitz), is consumed by layout (producer adapters) / report (summary card) /
+  orchestration L2 (attach), and has ZERO table-domain consumers — its table placement was
+  historical naming from the P-027 D8 work. Governance-only change: registered in
+  `service_domain_map.json` `shared_leaf_modules` + reclassified table -> infra (table domain
+  12 -> 11 files, infra 6 -> 7); dependency ratchet **4 -> 2** (remaining: `evidence->hitl`,
+  `batch->infra`). No file move, no code change.
 - **P-038 ruling A+ — box-geometry family extracted as the 5th shared leaf** (2026-10-25, revised
   from ruling B the same session): all seven pure geometry helpers (`_bbox_tuple`, `_clamp_box`,
   `_h_overlap_ratio`, `_v_overlap_ratio`, `_merged_box`, `_containment_ratio`, `_v_gap`) move

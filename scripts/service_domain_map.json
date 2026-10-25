@@ -11,7 +11,7 @@
     "evidence": "证据门禁与 grounding（三闸语义 / V0-V6 梯 / text-first）",
     "hitl": "人工复核策略与队列",
     "batch": "批量任务管理与导出打包：数据模型（batch_models：枚举/dataclass/序列化 round-trip）+ 运行控制 Mixin（batch_runner：_process_batch 处理循环 + pause/resume/cancel + 完成回调注入点）+ 服务门面（batch_service：store 接线/CRUD/查询/start 入口，webhook 派发经 routers/batch.py on_complete 注入——批 8 消解 batch->infra 冻结边）+ 导出打包纯函数（batch_export_service）",
-    "report": "导出与证明包（export/pack + proof_* 三件）",
+    "report": "导出与证明包：export 家族（服务门面 export_service：JSON/CSV/Excel/结构化 JSON + output_dir 装配；Markdown/DOCX 渲染 Mixin 两件 + 纯表格格式 helper 叶 export_table_format，批 10 拆出）+ pack 导出（pack_export_service）+ proof_* 三件",
     "document": "文档画像/类型分类/文件探测 + 页面文本信任与页型探测（裁决 1：page 并入）",
     "infra": "基础设施：PDF 光栅与工具、webhook、持久化、共享契约/度量叶（text_first_contract / kie_default_rules / bbox_geometry / table_cell_confidence）",
     "pipeline": "PII 掩码（分析前的敏感信息遮蔽；single_file_pipeline 已上移 orchestration/，批 1 #13 倒置）",
@@ -137,6 +137,9 @@
     "backend/app/services/formula_adapt.py": "formula",
     "backend/app/services/batch_models.py": "batch",
     "backend/app/services/batch_runner.py": "batch",
-    "backend/app/services/figure_split_detect.py": "figure"
+    "backend/app/services/figure_split_detect.py": "figure",
+    "backend/app/services/export_table_format.py": "report",
+    "backend/app/services/export_render_docx.py": "report",
+    "backend/app/services/export_render_markdown.py": "report"
   }
 }

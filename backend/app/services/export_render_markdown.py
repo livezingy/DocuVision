@@ -1,0 +1,146 @@
+"""Markdown render mixin for the export service.
+
+Split from the former export_service.py monolith (S1 batch 10):
+``to_markdown`` (document structure / text / tables / keywords) and
+``to_markdown_file``; composes into ``ExportService`` whose ``__init__``
+owns ``self.output_dir``.
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Any, Dict
+
+from loguru import logger
+
+from app.services.export_table_format import format_table_export_title
+
+
+class MarkdownRenderMixin:
+    """Markdown document renderer (string + file)."""
+
+    async def to_markdown(self, result: Dict[str, Any]) -> str:
+        """
+        Export result to Markdown format
+        
+        Args:
+            result: Processing result dictionary
+        
+        Returns:
+            Markdown formatted string
+        """
+        doc_info = result.get('document_info', {})
+        layout = result.get('layout', {})
+        text_blocks = result.get('text_blocks', [])
+        tables = result.get('tables', [])
+        keywords = result.get('keywords', [])
+        
+        md_lines = []
+        
+        # Document Title
+        md_lines.append(f"# {doc_info.get('file_name', 'Document Analysis Result')}")
+        md_lines.append("")
+        
+        # Metadata
+        md_lines.append("## 📋 Document Information")
+        md_lines.append("")
+        md_lines.append(f"| Property | Value |")
+        md_lines.append(f"| --- | --- |")
+        md_lines.append(f"| **File Name** | {doc_info.get('file_name', 'N/A')} |")
+        md_lines.append(f"| **Processed At** | {doc_info.get('processed_at', 'N/A')} |")
+        md_lines.append(f"| **Total Pages** | {doc_info.get('pages', 'N/A')} |")
+        
+        if 'engine_used' in result:
+            md_lines.append(f"| **OCR Engine** | {result.get('engine_used', 'N/A')} |")
+        
+        md_lines.append("")
+        
+        # Document Structure Summary
+        if layout:
+            summary = layout.get('summary', {})
+            type_counts = summary.get('type_counts', {})
+            
+            md_lines.append("## 📊 Document Structure")
+            md_lines.append("")
+            md_lines.append(f"Total Elements: **{summary.get('total_elements', 0)}**")
+            md_lines.append("")
+            
+            if type_counts:
+                md_lines.append("| Element Type | Count |")
+                md_lines.append("| --- | --- |")
+                for elem_type, count in type_counts.items():
+                    md_lines.append(f"| {elem_type.title()} | {count} |")
+                md_lines.append("")
+        
+        # Extracted Text
+        if text_blocks:
+            md_lines.append("## 📝 Extracted Text")
+            md_lines.append("")
+            
+            current_page = 0
+            for block in text_blocks:
+                page = block.get('page', 1)
+                if page != current_page:
+                    md_lines.append(f"### Page {page}")
+                    md_lines.append("")
+                    current_page = page
+                
+                text = block.get('text', '')
+                confidence = block.get('confidence', 0)
+                
+                # Format based on confidence
+                if confidence >= 0.95:
+                    md_lines.append(f"{text}")
+                else:
+                    md_lines.append(f"{text} _(confidence: {confidence:.1%})_")
+                md_lines.append("")
+        
+        # Tables
+        if tables:
+            md_lines.append("## 📋 Extracted Tables")
+            md_lines.append("")
+            
+            for idx, table in enumerate(tables):
+                md_lines.append(f"### {format_table_export_title(idx + 1, table)}")
+                md_lines.append(f"_{table.get('rows', '?')} rows × {table.get('columns', '?')} columns_")
+                md_lines.append("")
+                
+                data = table.get('data', [])
+                if data:
+                    # Markdown table header
+                    header = data[0]
+                    md_lines.append("| " + " | ".join(str(cell) for cell in header) + " |")
+                    md_lines.append("| " + " | ".join(["---"] * len(header)) + " |")
+                    
+                    # Data rows
+                    for row in data[1:]:
+                        # Ensure row has same number of columns as header
+                        padded_row = row + [''] * (len(header) - len(row)) if len(row) < len(header) else row[:len(header)]
+                        md_lines.append("| " + " | ".join(str(cell) for cell in padded_row) + " |")
+                    
+                    md_lines.append("")
+        
+        # Keywords
+        if keywords:
+            md_lines.append("## 🏷️ Keywords")
+            md_lines.append("")
+            md_lines.append(", ".join(f"`{kw}`" for kw in keywords))
+            md_lines.append("")
+        
+        # Footer
+        md_lines.append("---")
+        md_lines.append("_Generated by DocuVision - Intelligent Document Processing System_")
+        
+        return "\n".join(md_lines)
+
+    async def to_markdown_file(self, result: Dict[str, Any], task_id: str) -> str:
+        """Export to Markdown file"""
+        output_path = os.path.join(self.output_dir, f"{task_id}_result.md")
+        
+        md_content = await self.to_markdown(result)
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(md_content)
+        
+        logger.info(f"Exported Markdown to {output_path}")
+        return output_path

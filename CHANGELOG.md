@@ -257,6 +257,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **S1 batch 10 — export_service split into a four-file family** (2026-10-25, P-037): the
+  544-line pinned `export_service.py` splits vertically by format into the facade
+  (`export_service.py`, 233 — `__init__` owning `output_dir` + to_json/to_csv/to_excel/
+  to_structured_json/_convert_table_cells, composes both render mixins, re-exports the four
+  table-format helpers for pack_export_service and the tests), `export_render_markdown.py`
+  (146 — `MarkdownRenderMixin`: to_markdown + to_markdown_file), `export_render_docx.py`
+  (154 — `DocxRenderMixin`: to_docx with the lazy python-docx import) and
+  `export_table_format.py` (76 — the pure helper leaf: confidence percenting, export
+  titles/banners, Excel formula-injection guard). Evidence tier A: 4 helpers + 9 methods
+  byte-identical vs HEAD; MRO `[ExportService, MarkdownRenderMixin, DocxRenderMixin, object]`.
+  Known pre-existing dead `import io` kept verbatim (dead-code candidate for a future commit).
+  Local 686 passed / 14 skipped / 0 errors (31 targeted export/pack tests green); gates green.
+  `file_size_allowlist` pins 3 -> 2 — **no file over the 500 budget remains pinned** (only the
+  sub-budget watch pins ocr 457 / main 257 are left); report domain 5 -> 8 files.
 - **S1 batch 9 — figure_service split two ways** (2026-10-25, P-037): the 632-line pinned
   `figure_service.py` splits along the file's own `# Cropping` section boundary into
   `figure_split_detect.py` (315 — the pure heuristics leaf: label constants, caption binding,

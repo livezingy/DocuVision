@@ -34,15 +34,10 @@ Deletion rule: a pack/record is deletable once **no tracked document still refer
 | [P027/R3-执行记录.md](runs/P027/R3-执行记录.md) | P-027 R3 验收三闸 harness 化执行记录 |
 | [P027/R4-执行包.md](runs/P027/R4-执行包.md) | P-027 R4 IE 语义层专项执行包 |
 | [P027/R4-执行记录.md](runs/P027/R4-执行记录.md) | P-027 R4 IE 语义层专项执行记录 |
-| [split/README.md](runs/split/README.md) | L0-L4 分层与 S1 门禁三案对抗审核目录索引（00-05 规划稿；批 0 已于 2026-10-24 落地，基线勘误见 PENDING P-037） |
-| [split/06-批次执行计划.md](runs/split/06-批次执行计划.md) | P-037 批 1+ 操作规范：批次序列 / 批前基线四样 / 执行纪律 / 等价性证据档位 A/B/C |
-| [split/07-批1-执行记录.md](runs/split/07-批1-执行记录.md) | P-037 批 1 执行记录：共享叶首登 pdf_raster + #13 上移倒置，棘轮 15→12（基线四样与证据表） |
-| [split/08-批2-执行记录.md](runs/split/08-批2-执行记录.md) | P-037 批 2 执行记录：双共享叶破两组域环（图无环），棘轮 12→9；orchestrator 顶格判例与 Cloud 验证步骤 |
-| [split/09-批3-执行记录.md](runs/split/09-批3-执行记录.md) | P-037 批 3 执行记录：orchestrator/envelope_builder 拆分（钉死 −2），kie->evidence 注入消解（棘轮 9→8）；Cloud 步骤 |
-| [split/10-批4-P038裁决-pagetrust.md](runs/split/10-批4-P038裁决-pagetrust.md) | P-038 裁决 D 执行记录：page_text_trust 登记第 4 共享叶，棘轮 8→5；0 上云 |
-| [split/11-批5-table-split.md](runs/split/11-批5-table-split.md) | P-037 批 5 执行记录：table_service 拆三（钉死 8→7）；table->figure 三件套 P-038 候选评估 |
 
-**保留依据**：`runs/P027/` 的保留理由写在 PENDING **P-027** 条目——**2026-10-16 更新**：P-027 已由 `decided` 转 **`retained`**，保留依据不再是「在途义务未清」，而是**被 tracked 文档反引**（PENDING 的 P-002 条目把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；[../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) 的 R2/R3/R4 行；R4 记录 §6 是隔离区 `test_data/derived/**` 证据链的唯一盘存表）⇒ 仍**未到删除条件**。`runs/split/` 的保留依据 = PENDING **P-037**（还债批次在途）/ **P-038**（I-1 待决）以**目录级**引用本目录，06 是批 1+ 的操作规范载体；全部批次收口、P-037/P-038 结案后按删除规则处置（00-05 规划稿的结论已晋升 kernel/module-map）。
+**保留依据**：`runs/P027/` 的保留理由写在 PENDING **P-027** 条目——**2026-10-16 更新**：P-027 已由 `decided` 转 **`retained`**，保留依据不再是「在途义务未清」，而是**被 tracked 文档反引**（PENDING 的 P-002 条目把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；[../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) 的 R2/R3/R4 行；R4 记录 §6 是隔离区 `test_data/derived/**` 证据链的唯一盘存表）⇒ 仍**未到删除条件**。
+
+**已清理（2026-10-25 收尾批，PR #108）**：`runs/split/` 全目录（24 文件，00-22 号 + README）——删除前提达成：P-037 已收口（`retained`，机制由 S1 门禁承载）、P-038 已定稿（6 叶封册，候选池真源在其条目内）、P-039/P-040/P-041 已结并自 PENDING 移除；21 号清单 §八 webhook 命令模板与 §四 formula 判据已先行内联迁移进 P-041/P-040 条目正文（随结案记录进 git 历史），06 批次操作规范的结论已由 kernel `routing.md`/`testing.md` + module-map §2b 承载。目录内容明细见 git 历史（本批删除 commit）与 CHANGELOG `[Unreleased]`。
 
 **已清理（2026-10-07 索引校正；本目录为 local-only，git 无历史可回溯，故清理批次未逐件留痕）**：
 `runs/P020-ocr-harness-M1M2-执行包.md`（实质结论已由 living doc [../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) + CHANGELOG 承载）·

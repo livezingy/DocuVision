@@ -237,8 +237,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as a bonus. Ratchet: main.py pin 268 -> 257; layout/ocr stay pinned (dead import swapped for a
   one-line P-039 marker). Fact correction recorded in PENDING: the five collection errors were
   **4 fastapi + 1 paddle**, not the previously logged 3 + 2. Evidence tier B (assembly-timing change
-  on the behaviour face) — cloud round (startup smoke + `DOCUVISION_CLOUD_TESTS=1` full suite + live
-  suite) is the hard gate for this PR; execution record in `docs/R&D/runs/split/12` (local-only).
+  on the behaviour face) — cloud round **green same day** (startup `/health` healthy with engines
+  populated; full suite 689 passed 1 skipped, matching the batch-3 rerun reading; live suite 10
+  passed incl. the batch double-file GPU flow); execution record in `docs/R&D/runs/split/12`
+  (local-only).
 - **P-027 D8 open items (0)/(2) closed — harness binding unified + non-frozen readings** (2026-10-14, user
   rulings; the harness is local-only under `scripts/measure/**`, so this lands in PENDING + this changelog + the
   harness doc): **(0)** gate 3 keeps a **single** signal - the PRED-side recognition score (`rec_score` carried by

@@ -257,6 +257,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **S1 batch 9 — figure_service split two ways** (2026-10-25, P-037): the 632-line pinned
+  `figure_service.py` splits along the file's own `# Cropping` section boundary into
+  `figure_split_detect.py` (315 — the pure heuristics leaf: label constants, caption binding,
+  split/bbox-space warning detection; geometry primitives from the bbox_geometry shared leaf;
+  zero IO) and the facade (336 — `FigureService` crop/IO side verbatim: raster rendering,
+  per-figure crop isolation, merged re-crops, never-raises contract; re-exports the heuristics
+  names plus the existing bbox_geometry re-export block so both test files' import surface and
+  perception.py stay unchanged). Evidence tier A: 8 functions + 4 methods + 6 constants
+  byte-identical vs HEAD (AST segments); inventory conserved. Local 686 passed / 14 skipped /
+  0 errors (51 targeted figure tests green); gates green. `file_size_allowlist` pins 4 -> 3;
+  figure domain 1 -> 2 files. Cloud steps deferred to the consolidated round (figure_step runs
+  inside the live analyze flow).
 - **S1 batch 8 — batch_service split three ways + batch->infra frozen edge dissolved**
   (2026-10-25, P-037): the 686-line pinned `batch_service.py` splits into `batch_models.py`
   (185 — `_StoreLike`/`BatchStatus`/`TaskStatus`/`BatchTask`/`BatchJob` verbatim, pure data),

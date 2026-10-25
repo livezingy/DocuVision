@@ -3,7 +3,7 @@
   "domains": {
     "layout": "版面结构与阅读顺序：layout_service 门面 + PP-Structure 引擎家族（engine_ppstructure 核心 + pp_parse/pp_visualization Mixin + engine_subprocess，批 6 拆出）+ 几何/顺序私有叶 + unified 融合",
     "table": "表格识别全家族：检测/伪表过滤/对齐/回填/HTML（table_* 11 模块互引；逐格置信 table_cell_confidence 已登第 6 共享叶迁 infra，批 6）",
-    "figure": "图像区域提取",
+    "figure": "图像区域提取：纯启发式叶（figure_split_detect：标签常量 + caption 绑定 + split/bbox 空间告警，几何原语来自 bbox_geometry 共享叶）+ 裁剪门面（figure_service：光栅渲染 + 逐图裁剪隔离 + merged 再裁剪，best-effort never-raises 契约），批 9 拆出",
     "formula": "公式区域提取：服务门面（formula_service：__init__/status/recognize 两级阈值编排）+ 引擎 Mixin（formula_engine：PaddleX formula_recognition 惰性生命周期 + 整页/ROI 推理链，paddle/paddlex 全惰性落此）+ 纯适配叶（formula_adapt：view/fused/quality_patch 字典整形，零重依赖），批 7 拆出",
     "ocr": "OCR 引擎封装",
     "seal": "印章区域提取",
@@ -136,6 +136,7 @@
     "backend/app/services/formula_engine.py": "formula",
     "backend/app/services/formula_adapt.py": "formula",
     "backend/app/services/batch_models.py": "batch",
-    "backend/app/services/batch_runner.py": "batch"
+    "backend/app/services/batch_runner.py": "batch",
+    "backend/app/services/figure_split_detect.py": "figure"
   }
 }

@@ -87,7 +87,7 @@ core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 | 域 | 文件 | 职责 | owning doc | 出向跨域边 |
 | layout | backend/app/services/{layout_service,layout_engine_ppstructure,layout_engine_subprocess,layout_pp_parse,layout_pp_visualization,_layout_geometry,_layout_order,unified_layout_service}.py（8 文件） | 版面结构与阅读顺序：服务门面（layout_service）+ PP-Structure 引擎家族（引擎核心 + 解析 Mixin + 可视化 Mixin + 子进程隔离，批 6 拆出）+ 几何/顺序私有叶 + unified 融合 | pp-structurev3-official-findings.md | — |
 | table | backend/app/services/{table_alignment,table_backfill,table_band_range,table_cell_geo,table_engine_ppstructure,table_html,table_layout,table_ocr_blocks,table_pp_parse,table_pseudo_filter,table_service}.py（11 文件） | 表格识别全家族：服务门面（table_service）/ PP-Structure 引擎（table_engine_ppstructure + table_pp_parse 解析 Mixin，批 5 拆出）/ 对齐/回填/HTML（逐格置信 table_cell_confidence 已登第 6 共享叶迁 infra，批 6） | pp-structurev3-official-findings.md（table_service）· provenance-review.md（backfill/alignment） | — |
-| figure | backend/app/services/figure_service.py | 图像区域提取 | pp-structurev3-official-findings.md | — |
+| figure | backend/app/services/{figure_service,figure_split_detect}.py（2 文件） | 图像区域提取：纯启发式叶（figure_split_detect：caption 绑定 + split/bbox 空间告警，批 9 拆出）+ 裁剪门面（figure_service） | pp-structurev3-official-findings.md | — |
 | formula | backend/app/services/{formula_service,formula_engine,formula_adapt}.py（3 文件） | 公式区域提取：服务门面（formula_service：recognize 两级阈值编排）/ 引擎 Mixin（formula_engine：PaddleX formula_recognition 惰性生命周期 + 整页/ROI 推理链）/ 纯适配叶（formula_adapt），批 7 拆出 | — | — |
 | ocr | backend/app/services/ocr_service.py | OCR 引擎封装 | docuvision-system-design.md §3.2–3.4 | — |
 | seal | backend/app/services/seal_service.py | 印章区域提取 | — | — |

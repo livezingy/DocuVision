@@ -569,13 +569,15 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **指针**：`docs/R&D/runs/split/`（目录级：21 号清单 §七 ④ 归因记录、16 号批 7 记录）｜ backend/app/services/formula_engine.py `_crop_formula_rois` ｜ backend/app/orchestration/steps/extraction.py:174。
 
 ### P-041 · webhook 派发链路云测确认缺口（批 8 消解面的端到端实收未执行）（2026-10-25，云测集中轮 ⑤ 改专项）
-> status: open · since: 2026-10-25
+> status: landed · since: 2026-10-25
 - **登记门槛（两问）**：①**不归入 P-040**——那是 formula 功能缺陷，本条是**验证缺口**（批 8 `on_complete` 注入链的真实 webhook 派发端到端读数从未执行）；②**不可直接晋升**——需云环境执行（公网接收端 + WEBHOOK 旗标服务），结论待读数。
 - **已覆盖面（本条缺口的边界）**：本机 spy 锚（test_queue_persistence：enqueue 恰一次 + payload 断言 + resume finalize 档 C 锚）；live test 7（batch 双文件流走注入链，派发失败仅 debug 日志不阻断终态——吞异常语义）。**缺口** = 真实 `WEBHOOK_ENABLED` 服务上的注册 → 派发 → 公网接收端实收（含 HMAC 签名/重试路径）。
 - **事实**：云测集中轮 ⑤ 列为可选项未完成（一轮命令因终端复制损坏报 SyntaxError，分行版重发后用户裁决改专项处理）。
-- **待办（专项，命令模板要点）**：四旗标起服（`DOCUVISION_WEBHOOK_ENABLED=1 DOCUVISION_WEBHOOK_ADMIN_TOKEN=<自选口令>`，注册 header 名 **`X-DocuVision-Admin-Token`**，启用时空 token fail-closed）→ webhook.site 公网接收端注册 `batch.completed`（SSRF 守卫拒私网地址，接收端须公网）→ 双文件 batch 流 → 接收端 POST 实收断言；回退方式 = 服务端控制台 grep `Webhook delivered event=batch.completed`。完整命令模板见 runs/split 21 号清单 §八（**目录删除前须内联迁移至本条**）。
-- **触发条件**：专项处理时（不阻塞批 12 收尾批——收尾批不含行为性代码改动）。
-- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单）｜ backend/app/routers/batch.py `_dispatch_batch_completed_webhook` ｜ backend/tests/test_queue_persistence.py（spy 锚）。
+- **✅ 云测专项实收（2026-10-25 执行，读数经用户回传登记本条；判定 = SMOKE-5 WEBHOOK: PASS）**：四旗标起服 + webhook.site 公网接收端注册 + 双文件 batch 流 + 接收端实收断言全链走通——①**注册**：`POST /api/v1/webhooks`（header `X-DocuVision-Admin-Token`）→ **200**，`subscription_id 956ddc18-b6d9-4c24-b989-c0b031a07449`、events `["batch.completed"]`、url = webhook.site 公网接收端（公网地址 ⇒ SSRF 守卫放行）；②**batch**：completed **2 / 2**（name `webhook-smoke`，batch_id `9103a605-0435-4d80-96f2-62d6a6601796`）；③**实收**：接收端 **POSTs = 1**，首包 body = `{"event": "batch.completed", "payload": {"batch_id": …, "name": "webhook-smoke", "status": "completed", "completed_tasks": 2, "failed_tasks": 0}, "timestamp": …}`——事件名、终态、计数字段全部正确。**批 8 注入链的端到端实收缺口就此闭合**。
+- **如实登记的未触发子路径（不构成缺口重开）**：缺口定义中「含 HMAC 签名/重试路径」两子路径本轮未走到——①**签名**：`X-DocuVision-Signature`（sha256(body)）仅在订阅带 `secret` 时挂（`webhook_service.py` `dispatch_event_async`），本轮按无 secret 注册 ⇒ 头部未产生、接收端未核验；②**重试**：`max_retries=2` 仅投递失败/异常时走，本轮首投即 2xx。两者后续可在本机单测构造带 secret 订阅/失败端点覆盖（纯 httpx/mock 面，不涉 GPU），无须重开本条。
+- **待办（命令要点，已随本轮执行）**：四旗标起服（`DOCUVISION_WEBHOOK_ENABLED=1 DOCUVISION_WEBHOOK_ADMIN_TOKEN=<自选口令>`，注册 header 名 **`X-DocuVision-Admin-Token`**，启用时空 token fail-closed）→ webhook.site 公网接收端注册 `batch.completed`（SSRF 守卫拒私网地址，接收端须公网）→ 双文件 batch 流 → 接收端 POST 实收断言；回退方式 = 服务端控制台 grep `Webhook delivered event=batch.completed`。完整命令模板原文在 runs/split 21 号清单 §八——**其要点与读数已随本条落档，目录删除前的内联迁移义务就此清偿**（runs/split 删除闸门现仅剩 P-040）。
+- **触发条件**：已执行收口（2026-10-25）；后续改 `_dispatch_batch_completed_webhook` / `webhook_service` 派发语义（签名/重试/事件面）时同查本条。
+- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单 §八 模板原文）｜ backend/app/routers/batch.py `_dispatch_batch_completed_webhook` ｜ backend/app/routers/webhooks.py（注册路由）｜ backend/app/services/webhook_service.py `dispatch_event_async`（签名/重试实现位）｜ backend/tests/test_queue_persistence.py（spy 锚）。
 
 
 

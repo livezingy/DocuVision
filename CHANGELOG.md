@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-041 webhook end-to-end cloud verification PASS** (2026-10-25, P-041): the batch-8 `on_complete`
+  injection chain now has its missing end-to-end receipt reading, executed as the dedicated cloud round
+  the batch-12 closing deferred. Full chain exercised on a real `WEBHOOK_ENABLED` service:
+  registration via `POST /api/v1/webhooks` (header `X-DocuVision-Admin-Token`) returned 200 with a
+  `batch.completed` subscription at a public webhook.site receiver (public address, so the SSRF guard
+  admits it); a two-file batch (`webhook-smoke`) completed **2/2**; the receiver captured **exactly 1
+  POST** whose body carries the correct event name, terminal status and counters
+  (`completed_tasks: 2 / failed_tasks: 0`). Verdict **SMOKE-5 WEBHOOK: PASS** per the user's reading.
+  Two sub-paths of the gap definition were honestly NOT exercised (registered without a secret, so no
+  `X-DocuVision-Signature` header was produced or checked; first delivery succeeded, so the
+  `max_retries=2` failure path never ran) - both are unit-testable locally against
+  `webhook_service.dispatch_event_async` without GPU, recorded in the PENDING entry rather than
+  reopened. Readings and the migrated command essentials now live in the P-041 entry itself, which
+  discharges the "inline the runs/split #21 template before directory deletion" precondition - the
+  `runs/split` deletion gate is now down to P-040 only. PENDING status `open -> landed`.
 - **S1 batch 6 — layout_service split five ways** (2026-10-25, P-037): the 1614-line pinned
   `layout_service.py` splits along the batch-5 mixin seam into the service facade
   (`layout_service.py`, 115 lines — `LayoutService` verbatim + compat re-exports so the

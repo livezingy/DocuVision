@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-038 ruling A+ — box-geometry family extracted as the 5th shared leaf** (2026-10-25, revised
+  from ruling B the same session): all seven pure geometry helpers (`_bbox_tuple`, `_clamp_box`,
+  `_h_overlap_ratio`, `_v_overlap_ratio`, `_merged_box`, `_containment_ratio`, `_v_gap`) move
+  verbatim from `figure_service.py` into `bbox_geometry.py` (74 lines, L1 zero-outbound / L2 pure
+  primitives — the only contextual coupling is the layout bbox dict key shape, recorded honestly /
+  L3 stateless). `figure_service` re-exports the family so its 7+ internal call sites are unchanged
+  (681 -> 632 lines, pin lowered in the same batch); `table_pseudo_filter` imports the leaf
+  directly — the frozen `table->figure` edge dissolves (ratchet **5 -> 4**), clearing the A-12
+  worst form (cross-domain import of private symbols). The same-day B-then-A+ trajectory and the
+  archived dissent (figure keeps its private geometry home) are recorded in the leaf's L2 evidence
+  and runs/split/11 §3. Zero behaviour change on the GPU surface — pure-arithmetic functions only.
 - **S1 batch 5 — table_service split three ways** (2026-10-25, P-037): the 795-line pinned
   `table_service.py` splits along the family's established mixin seam into the service facade
   (`table_service.py`, 325 lines — `TableService` verbatim + engine re-export so test import

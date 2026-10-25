@@ -4,7 +4,7 @@
     "backend/app/main.py": 268,
     "backend/app/services/batch_service.py": 686,
     "backend/app/services/export_service.py": 544,
-    "backend/app/services/figure_service.py": 681,
+    "backend/app/services/figure_service.py": 632,
     "backend/app/services/formula_service.py": 734,
     "backend/app/services/layout_service.py": 1614,
     "backend/app/services/ocr_service.py": 457

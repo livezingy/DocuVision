@@ -30,6 +30,15 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
+from app.services.bbox_geometry import (  # noqa: F401 (re-export; moved verbatim, batch P-038 A+)
+    _bbox_tuple,
+    _clamp_box,
+    _containment_ratio,
+    _h_overlap_ratio,
+    _merged_box,
+    _v_gap,
+    _v_overlap_ratio,
+)
 
 # Region labels treated as croppable figures. Mirrors envelope_builder
 # _VISION_BLOCK_LABELS plus the flowchart label produced by the layout
@@ -87,64 +96,6 @@ def _caption_elements(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return out
 
 
-def _bbox_tuple(elem: Dict[str, Any]) -> Tuple[float, float, float, float]:
-    b = elem.get("bbox") or {}
-    x = float(b.get("x", 0) or 0)
-    y = float(b.get("y", 0) or 0)
-    w = float(b.get("width", 0) or 0)
-    h = float(b.get("height", 0) or 0)
-    return x, y, x + w, y + h
-
-
-def _clamp_box(
-    box: Tuple[float, float, float, float],
-    width: int,
-    height: int,
-) -> Tuple[float, float, float, float]:
-    x1, y1, x2, y2 = box
-    x1 = max(0.0, min(x1, width))
-    y1 = max(0.0, min(y1, height))
-    x2 = max(0.0, min(x2, width))
-    y2 = max(0.0, min(y2, height))
-    return x1, y1, x2, y2
-
-
-# ---------------------------------------------------------------------------
-# Integrity checks — pure geometry, unit-testable without any image I/O.
-# ---------------------------------------------------------------------------
-
-def _h_overlap_ratio(a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]) -> float:
-    overlap = min(a[2], b[2]) - max(a[0], b[0])
-    if overlap <= 0:
-        return 0.0
-    ref = min(a[2] - a[0], b[2] - b[0])
-    return overlap / ref if ref > 0 else 0.0
-
-
-def _v_overlap_ratio(a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]) -> float:
-    overlap = min(a[3], b[3]) - max(a[1], b[1])
-    if overlap <= 0:
-        return 0.0
-    ref = min(a[3] - a[1], b[3] - b[1])
-    return overlap / ref if ref > 0 else 0.0
-
-
-def _merged_box(a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
-    return min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3])
-
-
-def _containment_ratio(a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]) -> float:
-    """Fraction of b's area covered by a (1.0 = b fully inside a)."""
-    ix = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
-    iy = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
-    inter = ix * iy
-    area_b = max(0.0, (b[2] - b[0]) * (b[3] - b[1]))
-    return inter / area_b if area_b > 0 else 0.0
-
-
-def _v_gap(a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]) -> float:
-    """Absolute vertical gap between two boxes (0 if overlapping, positive if apart)."""
-    return max(0.0, max(a[1], b[1]) - min(a[3], b[3]))
 
 
 def _bind_captions(

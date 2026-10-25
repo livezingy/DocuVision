@@ -257,6 +257,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **S1 batch 6.5 — OpenAPI snapshot tests move to the local face** (2026-10-25, P-039 follow-up
+  ruling): `test_openapi_snapshot.py` / `test_openapi_snapshot_full.py` drop the
+  `DOCUVISION_CLOUD_TESTS` skipif — since P-039 `app.main` imports without the paddle stack and
+  router assembly is a static list, so the local schema equals the cloud one (verified: all 5
+  tests pass locally against the GPU-box-generated `openapi_baseline.json`, byte-identical).
+  `DOCUVISION_OPENAPI_BASELINE=write` regeneration flow unchanged; `test_table_template_analyze`
+  keeps its `importorskip("paddle")` full-env marker (genuinely needs paddle). Local suite grows
+  681/19 skipped -> **686 passed / 14 skipped / 0 errors**; gates all green (lint_services 0/0,
+  audit 0/0, lint_file_size, lint_routes). Cloud-exclusive set shrinks accordingly.
 - **P-039 — top-level paddle imports made lazy across main/runtime/layout/ocr, unlocking the local
   TestClient face** (2026-10-25, candidates ①+② merged): `import app.main` no longer requires the
   paddle stack. The startup banner (paddle version print + PaddleX home verification) moves verbatim

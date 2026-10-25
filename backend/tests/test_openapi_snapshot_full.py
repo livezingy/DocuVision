@@ -1,16 +1,16 @@
-"""Full OpenAPI snapshot (cloud-only) — locks the route contract across the
+"""Full OpenAPI snapshot — locks the route contract across the
 v1.8.2 main.py split (SPLIT-U1).
 
-Cloud-face policy test (``DOCUVISION_CLOUD_TESTS=1``; since P-039 ``app.main``
-imports without the paddle stack, the gate is policy rather than necessity).
-Generate the baseline once on the GPU box::
+Local-face test (since the P-039 follow-up ruling, batch 6.5): the former
+``DOCUVISION_CLOUD_TESTS`` gate was policy, not necessity — ``app.main``
+imports without the paddle stack since P-039, and router assembly is static.
+Regenerate the baseline only for deliberate additive changes::
 
     cd backend
-    DOCUVISION_CLOUD_TESTS=1 DOCUVISION_OPENAPI_BASELINE=write \
-        pytest tests/test_openapi_snapshot_full.py -q
+    DOCUVISION_OPENAPI_BASELINE=write pytest tests/test_openapi_snapshot_full.py -q
 
 After the baseline exists, any route/schema change turns this red unless the
-baseline is regenerated (only for deliberate additive changes).
+baseline is regenerated.
 
 Baseline: ``backend/tests/snapshots/openapi_baseline.json``. ``info.version`` is
 excluded because it is bumped per release and is not part of the routing
@@ -25,18 +25,12 @@ from pathlib import Path
 
 import pytest
 
-_CLOUD = os.environ.get("DOCUVISION_CLOUD_TESTS", "").strip().lower() in {"1", "true", "yes"}
 _WRITE = os.environ.get("DOCUVISION_OPENAPI_BASELINE", "").strip().lower() in {
     "1",
     "true",
     "yes",
     "write",
 }
-
-pytestmark = pytest.mark.skipif(
-    not _CLOUD,
-    reason="Full OpenAPI snapshot is cloud-face policy; set DOCUVISION_CLOUD_TESTS=1 (app.main import no longer needs the paddle stack since P-039)",
-)
 
 BASELINE = Path(__file__).resolve().parent / "snapshots" / "openapi_baseline.json"
 

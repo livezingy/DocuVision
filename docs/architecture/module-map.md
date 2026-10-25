@@ -9,6 +9,7 @@
 > 消解 `kie->evidence`（棘轮 9→8）；P-038 裁决 D（2026-10-25）：`page_text_trust` 登记第 4 共享叶，消解 `table->document` 与
 > `evidence->document`×2（棘轮 8→**5** 条目）；§2/§3 路由/前端域结构不变，55 守恒）
 > 批 5（2026-10-25）：table_service 795 拆三（服务门面/引擎/解析 Mixin，钉死条目 −1，8→7）；
+> 同日 P-038 裁决 A+（B→A+ 改判）：bbox_geometry 第 5 共享叶（figure 钉死 681→632 同批下调），消解 table->figure（棘轮 5→4）；
 > §2/§3 路由/前端域结构不变，55 守恒）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `scripts/service_domain_map.json`（services 15 域，§2b）· `scripts/service_dependency_allowlist.json`（冻结跨域边，只减不增）·
@@ -81,7 +82,7 @@ core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 <!-- audit:backend-service-domains -->
 | 域 | 文件 | 职责 | owning doc | 出向跨域边 |
 | layout | backend/app/services/{layout_service,_layout_geometry,_layout_order,unified_layout_service}.py（4 文件） | 版面结构与阅读顺序（主入口 + 几何/顺序私有叶 + unified 融合） | pp-structurev3-official-findings.md | layout->table |
-| table | backend/app/services/{table_alignment,table_backfill,table_band_range,table_cell_confidence,table_cell_geo,table_engine_ppstructure,table_html,table_layout,table_ocr_blocks,table_pp_parse,table_pseudo_filter,table_service}.py（12 文件） | 表格识别全家族：服务门面（table_service）/ PP-Structure 引擎（table_engine_ppstructure + table_pp_parse 解析 Mixin，批 5 拆出）/ 对齐/回填/HTML/逐格置信 | pp-structurev3-official-findings.md（table_service）· provenance-review.md（backfill/alignment） | table->figure |
+| table | backend/app/services/{table_alignment,table_backfill,table_band_range,table_cell_confidence,table_cell_geo,table_engine_ppstructure,table_html,table_layout,table_ocr_blocks,table_pp_parse,table_pseudo_filter,table_service}.py（12 文件） | 表格识别全家族：服务门面（table_service）/ PP-Structure 引擎（table_engine_ppstructure + table_pp_parse 解析 Mixin，批 5 拆出）/ 对齐/回填/HTML/逐格置信 | pp-structurev3-official-findings.md（table_service）· provenance-review.md（backfill/alignment） | — |
 | figure | backend/app/services/figure_service.py | 图像区域提取 | pp-structurev3-official-findings.md | — |
 | formula | backend/app/services/formula_service.py | 公式区域提取 | — | — |
 | ocr | backend/app/services/ocr_service.py | OCR 引擎封装 | docuvision-system-design.md §3.2–3.4 | — |
@@ -92,12 +93,12 @@ core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 | batch | backend/app/services/{batch_service,batch_export_service}.py（2 文件） | 批量任务管理与导出打包 | v1.5-roadmap.md | batch->infra |
 | report | backend/app/services/{export_service,pack_export_service,proof_pack,proof_render,proof_report}.py（5 文件） | 导出与证明包（export/pack + proof_* 三件） | docuvision-system-design.md §9.1 · provenance-review.md（proof_*） | report->table |
 | document | backend/app/services/{document_info_utils,document_profile,document_type_classifier,file_type_detector,page_text_trust,page_type_probe}.py（6 文件） | 文档画像/类型分类/文件探测 + 页面文本信任与页型探测（裁决：page 并入） | provenance-review.md（page_text_trust） | — |
-| infra | backend/app/services/{kie_default_rules,pdf_raster,pdf_tools_service,text_first_contract,webhook_service}.py（5 文件） + backend/app/services/persistence/{__init__,analyze_job_store,queue_store}.py（3 文件） | 基础设施：PDF 光栅与工具、webhook、持久化、共享契约叶 | v1.5-roadmap.md、v1.7-roadmap.md（persistence）· evidence-layer.md §4.1（text_first_contract 契约） | — |
+| infra | backend/app/services/{bbox_geometry,kie_default_rules,pdf_raster,pdf_tools_service,text_first_contract,webhook_service}.py（6 文件） + backend/app/services/persistence/{__init__,analyze_job_store,queue_store}.py（3 文件） | 基础设施：PDF 光栅与工具、webhook、持久化、共享契约叶 | v1.5-roadmap.md、v1.7-roadmap.md（persistence）· evidence-layer.md §4.1（text_first_contract 契约） | — |
 | pipeline | backend/app/services/pii_mask.py | PII 掩码（分析前敏感信息遮蔽；原管线入口 `single_file_pipeline` 已于 2026-10-24 批 1 上移 `orchestration/`，#13 反向边就此消解） | — | — |
 | trial | backend/app/services/trial/{__init__,gt_diff}.py（2 文件） | GLM trial 真值比对 | — | — |
 
 共享壳（非域）：`backend/app/services/__init__.py` 为空壳（无 eager import），域归属 = shared，A2b 三向对账含它。
-共享叶（4）：`pdf_raster`、`text_first_contract`、`kie_default_rules`、`page_text_trust`（I-1/P-038：L1 零出向机检 +
+共享叶（5）：`pdf_raster`、`text_first_contract`、`kie_default_rules`、`page_text_trust`、`bbox_geometry`（I-1/P-038：L1 零出向机检 +
 L2/L3 人审证据见 `service_domain_map.json` 的 `shared_leaf_modules`；任何域可 import，前端 F5 `leaf_services` 的后端
 对应物；名单与本行 A2b 双向对账。批 2 破两组域环、批 3 消解 `kie->evidence`；**P-038 裁决 D（2026-10-25）**：
 `page_text_trust` 以"多域文本层度量契约"登记（E1/backfill 校准叙事归 provenance-review.md），消解

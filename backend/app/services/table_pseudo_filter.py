@@ -7,7 +7,7 @@ byte-identical to their previous definitions, moved under
 tests are unchanged.
 
 They are pure logic (no ``self.*`` engine state). The only external dependency is
-``figure_service._bbox_tuple`` / ``_h_overlap_ratio`` / ``_v_gap``, imported lazily inside
+``bbox_geometry._bbox_tuple`` / ``_h_overlap_ratio`` / ``_v_gap`` (shared leaf, P-038 A+), imported lazily inside
 ``_bind_table_captions`` exactly as before.
 """
 
@@ -78,7 +78,7 @@ class TablePseudoFilterMixin:
         table on the same page with sufficient horizontal overlap and
         small vertical gap.
         """
-        from app.services.figure_service import _bbox_tuple, _h_overlap_ratio, _v_gap
+        from app.services.bbox_geometry import _bbox_tuple, _h_overlap_ratio, _v_gap
 
         caption_labels = {"table_caption", "figure_table_chart_title"}
         captions = [

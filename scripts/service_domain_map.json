@@ -13,11 +13,18 @@
     "batch": "批量任务管理与导出打包",
     "report": "导出与证明包（export/pack + proof_* 三件）",
     "document": "文档画像/类型分类/文件探测 + 页面文本信任与页型探测（裁决 1：page 并入）",
-    "infra": "基础设施：PDF 光栅与工具、webhook、持久化、共享契约叶（text_first_contract / kie_default_rules）",
+    "infra": "基础设施：PDF 光栅与工具、webhook、持久化、共享契约叶（text_first_contract / kie_default_rules / bbox_geometry）",
     "pipeline": "PII 掩码（分析前的敏感信息遮蔽；single_file_pipeline 已上移 orchestration/，批 1 #13 倒置）",
     "trial": "GLM trial 真值比对"
   },
   "shared_leaf_modules": {
+    "backend/app/services/bbox_geometry.py": {
+      "added": "2026-10-25",
+      "l1": "零出向（强度 A）：仅 typing import——七个纯几何函数，零 app/第三方依赖",
+      "l2": "纯盒几何原语（bbox dict 元组化/夹紧/水平垂直重叠率/合并/包含率/垂直间距）——无业务域语义；唯一语境耦合是 layout bbox dict 的 {x,y,width,height} 键形（如实登记）。裁决轨迹：2026-10-25 同日 B→A+ 改判（B 理由\"figure 保留私有几何属地、避免第 5 登记面\"存档于 runs/11 §三；A+ 采纳理由=家族整建制搬迁避免分裂 + 消解 A-12 定性的跨域私有符号 import 最坏形态）",
+      "l3": "纯函数，无状态",
+      "consumers": "跨域 = table(table_pseudo_filter)；figure 全域内消费（re-export 保 7+ 调用点零改动）"
+    },
     "backend/app/services/kie_default_rules.py": {
       "added": "2026-10-25",
       "l1": "零出向（强度 A）：仅 typing import 的纯静态映射",
@@ -53,6 +60,7 @@
     "backend/app/services/_layout_order.py": "layout",
     "backend/app/services/batch_export_service.py": "batch",
     "backend/app/services/batch_service.py": "batch",
+    "backend/app/services/bbox_geometry.py": "infra",
     "backend/app/services/document_info_utils.py": "document",
     "backend/app/services/document_profile.py": "document",
     "backend/app/services/document_type_classifier.py": "document",

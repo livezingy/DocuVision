@@ -31,27 +31,15 @@ install_aistudio_snapshot_shim_for_paddlex()
 import matplotlib
 matplotlib.use('Agg')
 
-# Ensure PaddleX is imported only once
-#import paddlex  # 显式导入并初始化
+# PADDLEX_HOME echo: must be in place before any model load takes effect.
+# P-039: the paddle/paddlex stack is no longer imported here — app.core.runtime
+# imports it lazily in its startup probes (stack banner + GPU self-test), so
+# `import app.main` works on machines without the paddle stack. The version
+# banner and PaddleX home verification moved with it (same relative order:
+# banner -> GPU self-test -> service singletons).
 paddlex_home = os.environ.get('PADDLEX_HOME', '')
 if paddlex_home:
     os.environ['PADDLEX_HOME'] = paddlex_home    # 必须放在这里，确保模型加载前生效
-# === Import paddle and paddlex BEFORE any patches ===
-import paddle
-print(f"[Paddle] Version: {paddle.__version__}, Compiled with CUDA: {paddle.is_compiled_with_cuda()}")
-
-import paddlex
-
-# 验证 PaddleX 实际使用�?home 目录
-try:
-    # PaddleX 3.x 中可能有 get_home_dir() 方法，如果没有则跳过
-    if hasattr(paddlex.utils, 'get_home_dir'):
-        actual_home = paddlex.utils.get_home_dir()
-        print(f"[PaddleX Home] {actual_home}")
-    else:
-        print("[PaddleX Home] 无法直接获取，请检查模型下载路径")
-except Exception as e:
-    print(f"[PaddleX Home] 验证失败: {e}")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,8 +57,9 @@ import asyncio
 from app.core.config import settings
 
 # Shared runtime (services / state / helpers) extracted for the v1.8.2 main.py
-# split (C1a). Imported here — after env/paddle setup — so the heavy service
-# singletons are still built once, at the same point in startup.
+# split (C1a). Imported here — after env/shim setup (P-039: paddle stack import
+# now happens inside runtime, still before any service singleton is built) — so
+# the heavy service singletons are still built once, at the same point in startup.
 from app.core.runtime import (  # noqa: E402
     API_VERSION,
     _DEP_VERSIONS,

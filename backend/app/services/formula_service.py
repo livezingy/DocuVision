@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from app.services.formula_adapt import adapt_formula_results_for_backend  # noqa: F401 (re-export; steps/envelope.py lazy-imports it from here)
+from app.services.formula_adapt import build_formula_replacements  # noqa: F401 (re-export; steps/envelope.py lazy-imports it from here)
 from app.services.formula_engine import FormulaEngineMixin
 
 

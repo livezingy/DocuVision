@@ -16,6 +16,41 @@ if TYPE_CHECKING:
 PipelineContext = Dict[str, Any]
 
 
+def apply_formula_replacements(fused: Dict[str, Any], replacements: Dict[str, Dict[str, Any]]) -> None:
+    """P-040 ③: swap skip_formula placeholders in place, across ALL fused pages.
+
+    The placeholder's original position IS the correct one — block_id, bbox,
+    polygon and the official reading_order stay untouched; only payload /
+    status / source / provenance swap. Recognized regions carry ``$$LaTeX$$``
+    in payload.text so formulas flow with the body text; unrecognized regions
+    degrade to ``formula_unrecognized`` instead of vanishing. Regions the
+    engine never reported (off / failed) keep their skip_formula placeholder.
+    """
+    for page in fused.get("pages", []):
+        for block in page.get("blocks", []):
+            if str(block.get("processing_status", "")).lower() != "skip_formula":
+                continue
+            hit = replacements.get(str(block.get("block_id", "")))
+            if hit is None:
+                continue
+            latex = hit.get("latex")
+            if latex:
+                block["payload"] = {"text": f"$${latex}$$", "latex": latex, "mathml": None}
+                block["processing_status"] = "recognized"
+                block["source"] = "formula_recognition"
+                block["provenance"] = {
+                    "primary_source": "formula_recognition",
+                    "primary_text": latex,
+                    "merge_strategy": "recognized_by_optional_engine",
+                    "merged_at": None,
+                    "status": "recognized",
+                    "block_type": str(block.get("type", "formula")),
+                    "formula_region_id": hit.get("formula_region_id"),
+                }
+            else:
+                block["processing_status"] = "formula_unrecognized"
+
+
 # ============================================
 # Phase 1 Pipeline Steps - Envelope Building
 # ============================================
@@ -62,29 +97,17 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
         formula_adapted = None
         seal_adapted = None
         if formula_unwrapped_results:
-            from app.services.formula_service import adapt_formula_results_for_backend
+            # P-040 ③: in-place swap on every page (see apply_formula_replacements);
+            # the view layer's own kind aggregation then produces view["formulas"]
+            # with the correct per-page reading order — no tail append, no overwrite.
+            from app.services.formula_adapt import build_formula_replacements, formula_replacement_stats
 
-            first_page_blocks = fused.get("pages", [{}])[0].get("blocks", []) if fused.get("pages") else []
-            max_reading_order = len(first_page_blocks)
-
-            formula_adapted = adapt_formula_results_for_backend(
+            replacements = build_formula_replacements(
                 formula_unwrapped_results,
-                page_number=1,
-                reading_order_start=max_reading_order + 1,
+                ctx["result"].get("formula_layout_boxes", []) or [],
             )
-
-            if fused.get("pages"):
-                page0 = fused["pages"][0]
-                existing_blocks = page0.get("blocks", [])
-                filtered_blocks = [
-                    b for b in existing_blocks
-                    if not (
-                        str(b.get("type", "")).lower() in EnvelopeBuilder.SKIP_FORMULA_TYPES
-                        and str(b.get("processing_status", "")).lower() == "skip_formula"
-                    )
-                ]
-                filtered_blocks.extend(formula_adapted.get("fused_formula_blocks", []))
-                page0["blocks"] = filtered_blocks
+            apply_formula_replacements(fused, replacements)
+            formula_adapted = {"quality_patch": formula_replacement_stats(replacements)}
 
         if seal_unwrapped_results:
             from app.services.seal_service import adapt_seal_results_for_backend
@@ -119,8 +142,9 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
             preprocessed_image_path=preprocessed_image_path,
         )
 
-        if formula_adapted is not None:
-            view["formulas"] = formula_adapted.get("view_formulas", [])
+        # P-040 ③: view["formulas"] is now produced by the view builder's own
+        # kind aggregation over the in-place-swapped blocks (per page, official
+        # reading order) — no adapter overwrite anymore.
         if seal_adapted is not None:
             view["seals"] = seal_adapted.get("view_seals", [])
 

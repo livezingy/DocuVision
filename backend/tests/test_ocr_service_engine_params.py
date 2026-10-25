@@ -61,9 +61,11 @@ def _load_ocr_service():
 def engine_init_kwargs(monkeypatch) -> Callable[..., Dict[str, Any]]:
     """Run ``_init_engine()`` against a fake PaddleOCR and return the kwargs it saw.
 
-    ``monkeypatch.setitem`` scopes the stubs to the test that asks for them, so the
-    engine can still be imported here (``ocr_service`` does ``import paddle``) without
-    leaking a fake Paddle into the rest of the session.
+    ``monkeypatch.setitem`` scopes the stubs to the test that asks for them, so
+    the module can still be imported here without leaking a fake Paddle into
+    the rest of the session. Since P-039 ``ocr_service`` has no top-level
+    ``import paddle``; the ``paddle`` stub is kept as a guard in case a
+    top-level import ever returns.
     """
     fake_paddle = types.ModuleType("paddle")
     fake_paddleocr = types.ModuleType("paddleocr")

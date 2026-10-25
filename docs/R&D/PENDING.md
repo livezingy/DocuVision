@@ -548,12 +548,11 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **指针**：`docs/R&D/runs/split/`（03 §4 候选池实证与 L1 强度裁决表，目录级）｜ P-037（还债批次序列与消解目标）。
 
 ### P-039 · main/runtime 顶层 paddle import 惰性化（解锁本机 TestClient 测试面）（2026-10-25，批 3 云测判红教训产出）
-> status: open · since: 2026-10-25
+> status: landed · since: 2026-10-25
 - **登记门槛（两问）**：①**不归入已有条目**——P-036 管 CI 触发范围、P-037 管 services 还债，本条是**本机开发面**的依赖装配问题；②**无可晋升载体**（工程改动项，无 living doc 可承载）。
-- **事实（2026-10-25 实测）**：本机 5 个测试收集错误归因为 **3 个 fastapi 缺失 + 2 个 paddle 缺失**（此前误记"纯 paddle"，批 3 教训勘误）；但装 fastapi（~5MB，httpx 本机已有）**不解决问题**——`app/main.py` 与 `app/core/runtime.py` 顶层 `import paddle` 才是 `import app.main` 的墙，装了 fastapi 错误只会从 `No module named 'fastapi'` 变成 `No module named 'paddle'`。装 paddlepaddle CPU（1.5-2.5GB）被否决（巨型依赖 + 本机无 GPU 红线仍约束结论表述）。
-- **待决问题**：把 main.py / runtime.py 的顶层 paddle import 延迟到引擎 init 路径的落点与验收——目标 = 本机 `import app.main` 可行 → 装 fastapi 后 TestClient 面测试（`test_analyze_kie_options` 等 3 文件）本机可跑；须确认惰性化不改变引擎初始化时序契约（GPU 自检后构造单例的既有顺序）。
-- **候选路线**：① main/runtime 顶层改函数内延迟 import（最小改动，装配链行为面须云测一次）；② 服务层引擎模块（layout_service/ocr_service 顶层 paddle）一并惰性化（彻底但面大）；③ 维持现状靠云测兜底（c 路线，零成本但本机反馈晚一轮）。
-- **触发条件**：下次需要本机迭代 TestClient 面功能时；或随批 4+ services 拆分顺带（拆 layout_service 时必然触及其顶层 paddle import）。
-- **指针**：`docs/R&D/runs/split/`（09 §七盲区归因勘误；目录级）｜ kernel `testing.md`（本机/Cloud 判据）。
+- **事实（2026-10-25 实测；同日三次归因修正，最终以逐文件错误文本为准）**：本机 5 个测试收集错误实测为 **4 个 fastapi 缺失 + 1 个 paddle 缺失**（勘误链：误记"纯 paddle"→ 勘为"3 fastapi + 2 paddle"→ 终测 4+1：analyze_kie_options / blocks_reading_order / phase1_analyze_form 为 fastapi 缺失且装完会继续撞 paddle 墙，trial_auth 纯 fastapi，layout_page_id 纯 paddle——连续误差印证 09 教训：归因必须精确到逐文件错误文本）。装 paddlepaddle CPU（1.5-2.5GB）被否决（巨型依赖 + 本机无 GPU 红线仍约束结论表述）。
+- **已落地（2026-10-25，分支 feat/p039-lazy-paddle-imports，候选①+②合并）**：runtime 的服务闭包决定只做 main/runtime 不够——layout_service/ocr_service 的顶层 `import paddle`（两处均为**零使用的死 import**）会把墙原样砌回。四处全部惰性化：main.py 横幅块（paddle 版本 print + paddlex home 验证）迁入 runtime 的 `_log_paddle_stack_banner()`；runtime GPU 探测包进 `_detect_use_gpu()`（无 paddle 时 use_gpu=False 降级）；**初始化顺序语义逐字保持**（横幅 → GPU 自检 → 单例构造）。本机验收：`import app.main` 可行且 paddle 不入 sys.modules；全量 681 passed / 0 收集错误（批 3 基线 657 + 5 错）；门禁五件套全绿，棘轮 main.py 268→257。云测一轮（档 B 硬门槛）随 PR 执行。环境侧：fastapi==0.109.0 + python-multipart + matplotlib 3.11.2（py3.11 适配）经用户确认安装；httpx 需 <0.28（requirements 既有钉版，starlette 0.35 TestClient 与 httpx 0.28 不兼容）。
+- **遗留（留用户裁决）**：test_openapi_snapshot*.py 与 test_table_template_analyze 的云面门控（DOCUVISION_CLOUD_TESTS / importorskip("paddle")）在 P-039 后从"必需"变"政策选择"，本轮保守保留门控仅修正注释——是否转本机面另议。
+- **指针**：`docs/R&D/runs/split/12-P039-lazy-paddle-imports.md`（执行记录：逐点使用形态评估表、档 B 逐 hunk 分类、读数对账；local-only）｜ `docs/R&D/runs/split/09-批3-执行记录.md` §七（盲区归因教训）｜ kernel `testing.md`（本机/Cloud 判据，经本轮实证仍自洽）｜ CHANGELOG `[Unreleased]`。
 
 

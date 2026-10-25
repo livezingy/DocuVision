@@ -92,22 +92,64 @@ def _short_public_model_id(model_id: str) -> str:
 # ---------------------------------------------------------------------------
 # GPU auto-detect + service singletons.
 # ---------------------------------------------------------------------------
-import paddle  # noqa: E402  (heavy import kept at runtime level by design)
+# P-039: the paddle stack is imported lazily inside these two probes so that
+# ``import app.core.runtime`` (and therefore ``import app.main``) works on
+# machines without the paddle stack. On paddle machines the previous order is
+# preserved exactly: stack banner -> GPU self-test -> service singletons.
+def _log_paddle_stack_banner() -> None:
+    """Log paddle/paddlex versions and the PaddleX home (moved from main.py).
 
-use_gpu = paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0
-logger.info(f"GPU available: {use_gpu}")
-
-# Test GPU functionality to avoid segmentation faults
-if use_gpu:
+    main.py used to do this inline at import time (before runtime existed);
+    the banner runs at the same point relative to GPU detection and service
+    construction as before, just from the runtime module.
+    """
     try:
-        # Quick test to see if GPU can be used without crashing
-        import paddle.base.libpaddle as libpaddle
-        config = libpaddle.AnalysisConfig()
-        # If we get here without crashing, GPU should be usable
-        logger.info("GPU initialization test passed")
-    except Exception as e:
-        logger.warning(f"GPU initialization test failed: {e}, falling back to CPU mode")
-        use_gpu = False
+        import paddle
+
+        print(f"[Paddle] Version: {paddle.__version__}, Compiled with CUDA: {paddle.is_compiled_with_cuda()}")
+
+        import paddlex
+
+        try:
+            # PaddleX 3.x 中可能有 get_home_dir() 方法，如果没有则跳过
+            if hasattr(paddlex.utils, 'get_home_dir'):
+                actual_home = paddlex.utils.get_home_dir()
+                print(f"[PaddleX Home] {actual_home}")
+            else:
+                print("[PaddleX Home] 无法直接获取，请检查模型下载路径")
+        except Exception as e:
+            print(f"[PaddleX Home] 验证失败: {e}")
+    except ImportError as e:
+        logger.warning(f"Paddle stack not installed (local dev machine), skipping stack banner: {e}")
+
+
+def _detect_use_gpu() -> bool:
+    """GPU auto-detect with a libpaddle probe; False when paddle is absent."""
+    try:
+        import paddle  # noqa: E402  (heavy import kept at runtime level by design)
+    except ImportError as e:
+        logger.warning(f"Paddle not installed, GPU detection skipped (CPU mode): {e}")
+        return False
+
+    use_gpu = paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0
+    logger.info(f"GPU available: {use_gpu}")
+
+    # Test GPU functionality to avoid segmentation faults
+    if use_gpu:
+        try:
+            # Quick test to see if GPU can be used without crashing
+            import paddle.base.libpaddle as libpaddle
+            config = libpaddle.AnalysisConfig()
+            # If we get here without crashing, GPU should be usable
+            logger.info("GPU initialization test passed")
+        except Exception as e:
+            logger.warning(f"GPU initialization test failed: {e}, falling back to CPU mode")
+            use_gpu = False
+    return use_gpu
+
+
+_log_paddle_stack_banner()
+use_gpu = _detect_use_gpu()
 
 # Initialize Services
 ocr_service = OCRService(use_gpu=use_gpu, lang=settings.OCR_LANG)

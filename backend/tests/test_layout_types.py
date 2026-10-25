@@ -1,7 +1,9 @@
 """F2 LAYOUT_TYPES coverage test.
 
-``layout_service.py`` imports ``paddle`` / ``cv2`` at module top, which are not
-available in the local Python env. We stub them in ``sys.modules`` **for the duration of
+``layout_service.py`` imports ``cv2`` at module top, which is not available in
+the Phase A CI env (its top-level ``paddle`` import was removed in P-039; the
+paddle stub below is kept as a no-op guard in case a top-level import ever
+returns). We stub in ``sys.modules`` **for the duration of
 the module load only** (``unittest.mock.patch.dict``) so the class-level ``LAYOUT_TYPES``
 dict can be inspected without loading any model - and without leaking a fake ``paddle``
 into the rest of the pytest session (P-023; ``check_stub_scope``).
@@ -19,9 +21,8 @@ import types
 import unittest.mock
 from pathlib import Path
 
-# paddle needs a few attributes referenced at import time? layout_service only
-# does `import paddle` (no attribute use at top). cv2 is used inside methods.
-# numpy is available locally.
+# cv2 is used inside methods but imported at module top. numpy is available
+# locally. paddle has no module-scope use since P-039 (stub kept as guard).
 _STUBS = {_mod: types.ModuleType(_mod) for _mod in ("paddle", "cv2")}
 
 _LAYOUT_PATH = Path(__file__).resolve().parents[1] / "app" / "services" / "layout_service.py"

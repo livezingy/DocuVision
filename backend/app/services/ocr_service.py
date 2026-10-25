@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional
 from abc import ABC, abstractmethod
 from loguru import logger
 import os
-import paddle
+# P-039: top-level `import paddle` removed (never used at module scope; engine imports paddleocr in _init_engine).
 
 
 

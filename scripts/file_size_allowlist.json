@@ -1,7 +1,7 @@
 {
   "budget": 500,
   "files": {
-    "backend/app/main.py": 268,
+    "backend/app/main.py": 257,
     "backend/app/services/batch_service.py": 686,
     "backend/app/services/export_service.py": 544,
     "backend/app/services/figure_service.py": 632,

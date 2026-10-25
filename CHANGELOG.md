@@ -219,6 +219,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **P-039 — top-level paddle imports made lazy across main/runtime/layout/ocr, unlocking the local
+  TestClient face** (2026-10-25, candidates ①+② merged): `import app.main` no longer requires the
+  paddle stack. The startup banner (paddle version print + PaddleX home verification) moves verbatim
+  from `main.py` into `app.core.runtime._log_paddle_stack_banner()`, and the GPU self-test is wrapped
+  in `_detect_use_gpu()` (ImportError degrades to `use_gpu=False` with a warning) — the assembly order
+  on paddle machines is preserved exactly (banner -> GPU self-test -> service singletons).
+  `layout_service.py` / `ocr_service.py` drop their top-level `import paddle`, both confirmed **dead
+  imports** (zero module-scope use; engines already import paddleocr inside `_init_engine`) — without
+  this, the wall simply re-formed one hop upstream of runtime. Test-side changes are comment/guard-
+  reason corrections only (no gating behaviour touched): `test_ocr_service_engine_params`,
+  `test_layout_types`, `test_table_template_analyze`, `test_openapi_snapshot{,_full}`. Local results
+  (with fastapi 0.109.0 + python-multipart + matplotlib 3.11.2 + httpx<0.28 per requirements pin,
+  user-approved installs): full suite **681 passed / 19 skipped / 0 collection errors** (batch-3
+  baseline: 657 passed + 5 errors); the three target TestClient files pass (11 tests), and
+  `test_layout_page_id` (previously a pure-paddle collection error) plus `test_trial_auth` turn green
+  as a bonus. Ratchet: main.py pin 268 -> 257; layout/ocr stay pinned (dead import swapped for a
+  one-line P-039 marker). Fact correction recorded in PENDING: the five collection errors were
+  **4 fastapi + 1 paddle**, not the previously logged 3 + 2. Evidence tier B (assembly-timing change
+  on the behaviour face) — cloud round (startup smoke + `DOCUVISION_CLOUD_TESTS=1` full suite + live
+  suite) is the hard gate for this PR; execution record in `docs/R&D/runs/split/12` (local-only).
 - **P-027 D8 open items (0)/(2) closed — harness binding unified + non-frozen readings** (2026-10-14, user
   rulings; the harness is local-only under `scripts/measure/**`, so this lands in PENDING + this changelog + the
   harness doc): **(0)** gate 3 keeps a **single** signal - the PRED-side recognition score (`rec_score` carried by

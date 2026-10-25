@@ -1,8 +1,9 @@
 """Full OpenAPI snapshot (cloud-only) — locks the route contract across the
 v1.8.2 main.py split (SPLIT-U1).
 
-Importing ``app.main`` pulls the full paddle stack, so this test is cloud-only
-(``DOCUVISION_CLOUD_TESTS=1``). Generate the baseline once on the GPU box::
+Cloud-face policy test (``DOCUVISION_CLOUD_TESTS=1``; since P-039 ``app.main``
+imports without the paddle stack, the gate is policy rather than necessity).
+Generate the baseline once on the GPU box::
 
     cd backend
     DOCUVISION_CLOUD_TESTS=1 DOCUVISION_OPENAPI_BASELINE=write \
@@ -34,7 +35,7 @@ _WRITE = os.environ.get("DOCUVISION_OPENAPI_BASELINE", "").strip().lower() in {
 
 pytestmark = pytest.mark.skipif(
     not _CLOUD,
-    reason="Full OpenAPI snapshot needs app.main (paddle stack); set DOCUVISION_CLOUD_TESTS=1",
+    reason="Full OpenAPI snapshot is cloud-face policy; set DOCUVISION_CLOUD_TESTS=1 (app.main import no longer needs the paddle stack since P-039)",
 )
 
 BASELINE = Path(__file__).resolve().parent / "snapshots" / "openapi_baseline.json"

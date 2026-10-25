@@ -16,7 +16,7 @@ import inspect
 import asyncio
 import multiprocessing
 import queue as _queue_module
-import paddle
+# P-039: top-level `import paddle` removed (never used at module scope; engine imports paddleocr in _init_engine).
 import cv2
 import numpy as np
 
@@ -157,9 +157,9 @@ class PPStructureEngine(_LayoutGeometryMixin, BaseLayoutEngine):
             logger.warning(f"PaddleOCR/PPStructure not installed: {e}")
             self._ready = False
         except RuntimeError as e:
-            # Handle PDX already initialized error - PaddleX should only be initialized once in main.py
+            # Handle PDX already initialized error - PaddleX should only be initialized once (app.core.runtime banner, P-039)
             if "PDX has already been initialized" in str(e):
-                logger.debug(f"PPStructureV3 PDX initialization already done by main.py")
+                logger.debug(f"PPStructureV3 PDX initialization already done by app.core.runtime")
                 # Still mark as ready since models are already loaded
                 self._ready = True
             else:

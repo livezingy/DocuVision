@@ -1,13 +1,29 @@
-"""Page-level text layer trust judgement (E1 gatekeeper).
+"""Page-level text-layer trust measurement (shared leaf; multi-domain contract).
 
-Determines, per PDF page, whether the text layer is trustworthy for
-selective cell backfill. Two primary signals:
+Measures the physical properties of a PDF page's native text layer —
+invisible rendered character ratio (Tr3 via ``Page.get_texttrace()``),
+full-page image coverage (``Page.get_image_info()``), font signatures and
+``(cid:N)`` placeholder rate — and turns them into a conservative verdict
+plus raw signals. Each consumer brings its own question to the same public
+result:
 
-  * invisible rendered character ratio (Tr3 via ``Page.get_texttrace()``)
-  * full-page image coverage (``Page.get_image_info()``)
+  * table backfill (``table_backfill``): is this layer safe to overwrite
+    table cells from? — the E1 gatekeeper question; the thresholds and the
+    never-trust-when-unsure bias are calibrated for it, and the E1 narrative
+    lives in ``provenance-review.md`` (the owning doc);
+  * evidence grounding (``evidence.gate`` / ``evidence.grounding``): does the
+    page carry a usable native text layer? — the M5 predicate reads the same
+    signals and applies its OWN, deliberately different thresholds;
+  * document probing (``file_type_detector`` / ``page_type_probe``): which
+    text-layer class does the page belong to? — ``VERDICT_*`` are the shared
+    vocabulary (single source of truth).
 
-Conservative thresholds bias toward false negatives (never backfill when
-unsure) because the only catastrophic error is trusting an untrusted layer.
+The module itself is domain-neutral: no service state, stdlib plus deferred
+PyMuPDF only. Registered as a shared leaf in ``service_domain_map.json``
+(P-038 ruling D, 2026-10-25). Behaviour is untouched — the previous
+docstring framed the module solely as the E1 backfill gatekeeper; P-032's
+zero-touch covers behaviour, and the wording change is recorded with the
+ruling.
 
 Per v1.8-design §3.1:
     trusted = (invisible_ratio < 0.2) AND (image_coverage < 0.5)

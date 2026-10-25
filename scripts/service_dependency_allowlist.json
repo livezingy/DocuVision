@@ -1,5 +1,5 @@
 {
-  "comment": "Frozen services-layer dependency edges - S1 initial baseline (runs/split ruling 2 of 2026-10-16; all 14 import statements re-verified line-by-line against the worktree at landing, 2026-10-24). Entries enumerate concrete edges src_file+dst_module (A-3 granularity); 'line' is provenance from the 2026-10-16 AST snapshot, matching is by src_file+dst_module so line drift never false-alarms. domain_pair is the grouping view used by module-map section 2b edge column (I-3, bidirectional reconciliation). kind: cross-domain = S1b exemption; layer = S1a exemption (only #13, the reverse dependency). Ratchet: only-shrink - adding an entry is a RED LINE (constraints.md, ask first), removing is free and expected (KPI: count -> 0). A cycle whose edges are all in this list = WARN on the per-entry 90-day clock (A-9 / A6 paradigm); an edge present in code but absent here = ERROR. Batch 1 (2026-10-24, P-037): 15 -> 12 entries - pdf_raster registered as the first shared leaf (P-038) dissolved kie->infra and document->infra; single_file_pipeline moved up into orchestration/ (ruling-2 'pipeline up' inversion) dissolved pipeline->L2. Batch 2 (2026-10-25, P-037): 12 -> 9 entries - both cycles broken (the graph is now acyclic): shared predicates promoted to leaves (text_first_contract + kie_default_rules) dissolved evidence->kie / hitl->kie / kie->hitl; kie->evidence stays as a ONE-WAY frozen edge (its dissolution needs orchestrator wiring, which sits at its 1297 ratchet cap - lands with the batch-3 orchestrator split instead of raising the pin). Batch 3 (2026-10-25, P-037): 9 -> 8 entries - kie->evidence dissolved: the orchestrator split gave the KIE step room to inject the grounding layer at the composition point, so kie.text_first no longer imports evidence at all.",
+  "comment": "Frozen services-layer dependency edges - S1 initial baseline (runs/split ruling 2 of 2026-10-16; all 14 import statements re-verified line-by-line against the worktree at landing, 2026-10-24). Entries enumerate concrete edges src_file+dst_module (A-3 granularity); 'line' is provenance from the 2026-10-16 AST snapshot, matching is by src_file+dst_module so line drift never false-alarms. domain_pair is the grouping view used by module-map section 2b edge column (I-3, bidirectional reconciliation). kind: cross-domain = S1b exemption; layer = S1a exemption (only #13, the reverse dependency). Ratchet: only-shrink - adding an entry is a RED LINE (constraints.md, ask first), removing is free and expected (KPI: count -> 0). A cycle whose edges are all in this list = WARN on the per-entry 90-day clock (A-9 / A6 paradigm); an edge present in code but absent here = ERROR. Batch 1 (2026-10-24, P-037): 15 -> 12 entries - pdf_raster registered as the first shared leaf (P-038) dissolved kie->infra and document->infra; single_file_pipeline moved up into orchestration/ (ruling-2 'pipeline up' inversion) dissolved pipeline->L2. Batch 2 (2026-10-25, P-037): 12 -> 9 entries - both cycles broken (the graph is now acyclic): shared predicates promoted to leaves (text_first_contract + kie_default_rules) dissolved evidence->kie / hitl->kie / kie->hitl; kie->evidence stays as a ONE-WAY frozen edge (its dissolution needs orchestrator wiring, which sits at its 1297 ratchet cap - lands with the batch-3 orchestrator split instead of raising the pin). Batch 3 (2026-10-25, P-037): 9 -> 8 entries - kie->evidence dissolved: the orchestrator split gave the KIE step room to inject the grounding layer at the composition point, so kie.text_first no longer imports evidence at all. P-038 ruling D (2026-10-25): 8 -> 5 entries - page_text_trust registered as the fourth shared leaf (multi-domain text-layer measurement; E1 narrative stays with provenance-review.md), dissolving table->document and evidence->document (x2).",
   "stale_days": 90,
   "edges": [
     {
@@ -23,16 +23,6 @@
       "target": "import 的是私有几何符号 _bbox_tuple/_h_overlap_ratio/_v_gap——几何三件套升共享叶（P-038）或倒置（A-12）"
     },
     {
-      "src_file": "backend/app/services/table_backfill.py",
-      "dst_module": "app.services.page_text_trust",
-      "domain_pair": "table->document",
-      "line": 15,
-      "kind": "cross-domain",
-      "added": "2026-10-16",
-      "status": "frozen",
-      "target": "page_text_trust 若过 P-038 的 L2 人审可升共享叶消解"
-    },
-    {
       "src_file": "backend/app/services/evidence/gate.py",
       "dst_module": "app.services.hitl_queue",
       "domain_pair": "evidence->hitl",
@@ -41,26 +31,6 @@
       "added": "2026-10-16",
       "status": "frozen",
       "target": "事件队列经注入或上提，消解跨域"
-    },
-    {
-      "src_file": "backend/app/services/evidence/gate.py",
-      "dst_module": "app.services.page_text_trust",
-      "domain_pair": "evidence->document",
-      "line": 212,
-      "kind": "cross-domain",
-      "added": "2026-10-16",
-      "status": "frozen",
-      "target": "page_text_trust 升共享叶（P-038）可消解 #7 两条"
-    },
-    {
-      "src_file": "backend/app/services/evidence/grounding.py",
-      "dst_module": "app.services.page_text_trust",
-      "domain_pair": "evidence->document",
-      "line": 54,
-      "kind": "cross-domain",
-      "added": "2026-10-16",
-      "status": "frozen",
-      "target": "同 evidence->document（#7 第二条）"
     },
     {
       "src_file": "backend/app/services/batch_service.py",

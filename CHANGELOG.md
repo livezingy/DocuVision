@@ -33,8 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A/B is a cloud-readings-only item (defaults unchanged). Local: full suite
   **715 passed / 14 skipped / 0 failed** (+29 new cases across three new test files and
   `test_envelope_builder.py`), `lint_frontend OK`, `lint_file_size OK`, `audit_agent_ops 0/0`.
-  Cloud verification steps and pass criteria are registered in the PENDING entry — GPU surface,
-  **not yet executed, cloud-verified is not claimed**.
+  **Cloud verification PASS (2026-10-25, HEAD 94a73c8)**: SMOKE-F1 single-page/two-formula PDF
+  `attempted True / error_level none / 2 latex / rate 1.0 / body contains $$` (before the fix the
+  same input died softly with `runtime_error / recognized 0`); SMOKE-F2 two-page PDF one formula
+  per page with distinct latex (page-aware sourcing holds); SMOKE-F3 rotated page (set_rotation
+  90) yields a non-empty latex (frame alignment holds). ④ batch A/B: size 1 -> 2/2 in 656 ms,
+  size 8 -> 2/2 in 614 ms — noise-level on a two-formula sample, **default stays 1**. Honest
+  quality note: plus-M recognition on small matplotlib crops is weak (e.g. `=\frac{\sqrt{\pi}}{2}`
+  read as `=1`, `∇·B=0` read as an arrow array) — a model-capability surface, not a pipeline
+  defect; the plus-L comparison is left as a future observation, not a new entry.
 - **P-041 webhook end-to-end cloud verification PASS** (2026-10-25, P-041): the batch-8 `on_complete`
   injection chain now has its missing end-to-end receipt reading, executed as the dedicated cloud round
   the batch-12 closing deferred. Full chain exercised on a real `WEBHOOK_ENABLED` service:

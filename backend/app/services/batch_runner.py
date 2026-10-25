@@ -195,6 +195,11 @@ webhook block had before the batch 8 dissolution).
                 batch.status = BatchStatus.COMPLETED
             batch.completed_at = datetime.now()
             await self._persist_async(batch)
+            # Batch 8 asymmetry fix (declared behavior change): this finalize
+            # path now fires the same completion callback the normal
+            # _process_batch tail does — resumed-to-completed batches used to
+            # skip the batch.completed notification silently.
+            self._notify_batch_complete(batch_id, on_complete)
             logger.info(
                 f"Resumed batch {batch_id} with no pending tasks; finalized as {batch.status.value}"
             )

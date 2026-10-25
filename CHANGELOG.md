@@ -257,6 +257,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **S1 batch 7 — formula_service split three ways** (2026-10-25, P-037): the 734-line pinned
+  `formula_service.py` splits into the service facade (`formula_service.py`, 208 lines —
+  `FormulaService.__init__/is_ready/get_status/recognize` verbatim, base list composed with the
+  engine mixin so the path-loading grading test's monkeypatch points `_ensure_pipeline` /
+  `_run_once_with_rebuild` stay on the class MRO; re-exports `adapt_formula_results_for_backend`
+  for `steps/envelope.py`), `formula_engine.py` (458 — `FormulaEngineMixin`: lazy
+  `_detect_device`/`_init_pipeline` lifecycle + whole-page and ROI inference chains; **all
+  paddle/paddlex lazy imports land here**, cv2 is the only top-level heavy import) and
+  `formula_adapt.py` (118 — pure view/fused/quality_patch dict shaping, zero heavy imports).
+  Evidence tier A: 19 moved symbols byte-identical vs `git show HEAD` (AST source segments incl.
+  decorators); symtable undefined-name check clean (self-tested: old monolith 0 false positives,
+  cv2-deletion mutant caught — it also caught a real missing `logger` import in the facade,
+  fixed before commit); MRO `[FormulaService, FormulaEngineMixin, object]`; import smoke keeps
+  paddle out of sys.modules. Local suite 686 passed / 14 skipped / 0 errors; gates all green.
+  `file_size_allowlist` pins 6 -> 5. Cloud steps deferred to the consolidated round
+  (runs/split 14 plan section 3: full suite + live 10 + new formula-targeted smoke).
 - **S1 batch 6.5 — OpenAPI snapshot tests move to the local face** (2026-10-25, P-039 follow-up
   ruling): `test_openapi_snapshot.py` / `test_openapi_snapshot_full.py` drop the
   `DOCUVISION_CLOUD_TESTS` skipif — since P-039 `app.main` imports without the paddle stack and

@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **17** 条）
+## 待确认（本区共 **18** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-039`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -546,5 +546,14 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **候选路线**：S1+1 批次两步走（34 候选逐个 L2/L3 → 范围定稿后在 `service_domain_map.json` 增 `shared_leaf_modules` 登记面 + S1b 识别为合法通道 + §2b 基建行）。
 - **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
 - **指针**：`docs/R&D/runs/split/`（03 §4 候选池实证与 L1 强度裁决表，目录级）｜ P-037（还债批次序列与消解目标）。
+
+### P-039 · main/runtime 顶层 paddle import 惰性化（解锁本机 TestClient 测试面）（2026-10-25，批 3 云测判红教训产出）
+> status: open · since: 2026-10-25
+- **登记门槛（两问）**：①**不归入已有条目**——P-036 管 CI 触发范围、P-037 管 services 还债，本条是**本机开发面**的依赖装配问题；②**无可晋升载体**（工程改动项，无 living doc 可承载）。
+- **事实（2026-10-25 实测）**：本机 5 个测试收集错误归因为 **3 个 fastapi 缺失 + 2 个 paddle 缺失**（此前误记"纯 paddle"，批 3 教训勘误）；但装 fastapi（~5MB，httpx 本机已有）**不解决问题**——`app/main.py` 与 `app/core/runtime.py` 顶层 `import paddle` 才是 `import app.main` 的墙，装了 fastapi 错误只会从 `No module named 'fastapi'` 变成 `No module named 'paddle'`。装 paddlepaddle CPU（1.5-2.5GB）被否决（巨型依赖 + 本机无 GPU 红线仍约束结论表述）。
+- **待决问题**：把 main.py / runtime.py 的顶层 paddle import 延迟到引擎 init 路径的落点与验收——目标 = 本机 `import app.main` 可行 → 装 fastapi 后 TestClient 面测试（`test_analyze_kie_options` 等 3 文件）本机可跑；须确认惰性化不改变引擎初始化时序契约（GPU 自检后构造单例的既有顺序）。
+- **候选路线**：① main/runtime 顶层改函数内延迟 import（最小改动，装配链行为面须云测一次）；② 服务层引擎模块（layout_service/ocr_service 顶层 paddle）一并惰性化（彻底但面大）；③ 维持现状靠云测兜底（c 路线，零成本但本机反馈晚一轮）。
+- **触发条件**：下次需要本机迭代 TestClient 面功能时；或随批 4+ services 拆分顺带（拆 layout_service 时必然触及其顶层 paddle import）。
+- **指针**：`docs/R&D/runs/split/`（09 §七盲区归因勘误；目录级）｜ kernel `testing.md`（本机/Cloud 判据）。
 
 

@@ -44,9 +44,9 @@
    - **无常驻 living 契约（23 个；改其内部实现无须同步任何 living 文档）**：`batch_export_service.py`、
      `hitl_policy.py`、`webhook_service.py`、`document_info_utils.py`、`document_profile.py`、
      `document_type_classifier.py`、`file_type_detector.py`、`kie_fields_update.py`、`formula_service.py`、
-     `seal_service.py`、`page_type_probe.py`、`pdf_raster.py`（2026-10-24 批 1 起兼为共享叶：登记与
-     L1/L2/L3 证据在 `scripts/service_domain_map.json` 的 `shared_leaf_modules`，见 module-map §2b）、
-     `pdf_tools_service.py`、`pii_mask.py`、`unified_layout_service.py`、`_layout_order.py`、
+     `seal_service.py`、`page_type_probe.py`、`pdf_raster.py`（2026-10-24 批 1 起兼为共享叶，
+     登记证据在 `service_domain_map.json` 的 `shared_leaf_modules`，见 module-map §2b）、`pdf_tools_service.py`、
+     `pii_mask.py`、`unified_layout_service.py`、`_layout_order.py`、
      `table_cell_confidence.py`、`_layout_geometry.py`；
      `backend/app/core/{aistudio_compat,debug_utils,gpu_lib_path,trial_auth}.py`；
      `backend/app/models/{analyze_options,layout_result}.py`。

@@ -3,7 +3,7 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **18** 条）
+## 待确认（本区共 **19** 条）
 
 - **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-039` `P-040`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
@@ -530,7 +530,7 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **指针**：`docs/architecture/v1.9-roadmap.md`（branch protection / required checks 决策行）｜ CHANGELOG `[Unreleased]`（paths 翻转判决与清单原文）｜ `.github/workflows/{lint,agent-ops-audit,kie-phase-a}.yml`。
 
 ### P-037 · services 结构门禁 S1 落地与冻结边还债（2026-10-24，runs/split 批 0 启动时登记）
-> status: retained · since: 2026-10-24 · **收口 2026-10-25**（云测集中轮全绿 + ④ 归因落定）
+> status: retained · since: 2026-10-24
 - **登记门槛（两问）**：①**不归入已有条目**——P-017 只管行数预算、P-019 已结（单源化教训），本条是**结构落点**维度，无在册承载体；②**不可直接晋升**——S1 机制本身已晋升（kernel `routing.md`/`testing.md` + `module-map.md` §2b/§5），但**14 条冻结边的还债批次是在途义务**，需跟踪轨迹至棘轮收口。
 - **已落地（批 0，2026-10-24，本 PR）**：`lint_services.py`（S1a/S1b/S1c，499 行，经 audit 接线零 CI 改动）+ `service_domain_map.json`（15 域 63 文件 fail-closed）+ `service_dependency_allowlist.json`（冻结棘轮）+ module-map §2b/A2b + kernel 三文件 + Placement footer 第 6 项 + DEVELOPMENT 第 7 条 + operations KPI。落地复算逐行核对了 2026-10-16 快照的 13 边（全命中）。
 - **基线勘误（重要）**：lint 首跑发现第 14 条**预存在**跨域边 `proof_report.py:22 → table_cell_confidence`（report→table，2026-10-15 随 P-027 A 合入）——runs/split 01 审核「零漏边」结论**不成立**，已按冻结语义登记（added 2026-10-24 + erratum note）。初始基线 = **14 边 / 15 条目**，非 13。

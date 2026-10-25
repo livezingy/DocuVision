@@ -25,6 +25,13 @@
       "l3": "纯静态映射，无状态",
       "consumers": "跨域 = hitl(hitl_policy) / kie(field_validation re-export)；批 2 上提自 kie/field_validation.py（消解 #8/#9 环）"
     },
+    "backend/app/services/page_text_trust.py": {
+      "added": "2026-10-25",
+      "l1": "零出向（强度 A）：仅 stdlib + 函数内延迟 fitz（docstring 明言 Dependency: PyMuPDF only）",
+      "l2": "度量页面文本层物理属性（不可见字符率/图像覆盖/字体签名/cid 率）→ 四档 verdict + 原始信号；三域消费方各带各的问题（table 问回填安全[E1]、evidence 问 grounding 可用性[M5 自带阈值只取信号]、document 问文件类型[VERDICT 词表]）——度量面中立；E1/backfill 校准叙事归 owning doc provenance-review.md（裁决 D，2026-10-25：登记 + docstring 去域化改写，行为零改动）",
+      "l3": "纯函数 + dataclass；模块级仅正则与 verdict 常量，无状态",
+      "consumers": "跨域 = table(table_backfill) / evidence(gate:212, grounding:54)；document 域内 = file_type_detector / page_type_probe"
+    },
     "backend/app/services/pdf_raster.py": {
       "added": "2026-10-24",
       "l1": "零出向（强度 A；复算 2026-10-24：仅 stdlib + 函数内延迟 fitz/PIL，零 app.*/docuvision_core.*）",

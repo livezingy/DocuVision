@@ -20,8 +20,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   push (batch-3 lesson applied; all five flags were function-level deferred imports).
   `table->figure` stays frozen pending a P-038 ruling on the geometry trio — figure_service
   itself uses the three functions at 7+ sites, so a consumer-side move would only flip the
-  edge; shared-leaf candidate assessment delivered in the batch record. Based on pre-#93 main:
-  three trivial overlaps (module-map table row, domain-map JSON, CHANGELOG) rebase after #93.
+  edge; shared-leaf candidate assessment delivered in the batch record. Merged post-#93 main
+  (conflict resolution: table row / contrast line / index rows combined).
+- **P-038 ruling D — `page_text_trust` registered as the fourth shared leaf** (2026-10-25): the
+  disputed L2 candidate is resolved the "register + de-domain the docstring" way. Evidence: the
+  module measures page-level text-layer physical properties (invisible-char ratio, image coverage,
+  font signatures, cid rate) that three domains each query with their own question — table backfill
+  (the E1 gatekeeper question), evidence grounding (M5 reads the same signals with its OWN
+  thresholds), document probing (`VERDICT_*` as shared vocabulary); the E1/backfill-calibrated
+  threshold narrative stays with its owning doc `provenance-review.md`. The docstring is rewritten
+  from the single-purpose "E1 gatekeeper" framing to the multi-domain contract framing — behaviour
+  untouched (P-032 zero-touch covers behaviour; the wording exemption is recorded with the ruling).
+  Frozen-edge ratchet **8 -> 5 entries**: `table->document` and `evidence->document` (x2 physical
+  edges) dissolve; remaining five one-way edges: layout->table, table->figure, evidence->hitl,
+  report->table, batch->infra. Correction recorded: the earlier recommendation said 8->6, miscounting
+  evidence->document's two physical entries as one.
+- **P-039 registered — lazy paddle imports in main/runtime (unlock the local TestClient face)**
+  (2026-10-25): fact-finding showed the local blind spot (fastapi-absent collection errors) is
+  actually walled by module-level `paddle` imports in `app/main.py` and `app/core/runtime.py` —
+  installing fastapi (~5MB incl. TestClient deps; httpx already present locally) alone would only
+  change the error message. Registered as an open work item: defer those imports to engine init so
+  `import app.main` works locally; then the TestClient-face tests run locally. Local blind-spot
+  attribution also corrected: the 5 collection errors split 3 fastapi + 2 paddle. Interim (zero
+  cost): cloud verification stays the gate, as proven by batch 3's caught regression.
 - **S1 batch 3 — orchestrator & envelope_builder split; kie->evidence dissolved** (2026-10-25, P-037):
   the two pinned L2 giants are split and both size ratchet entries removed. The 1297-line
   `document_pipeline_orchestrator.py` becomes a 142-line sequencing core plus

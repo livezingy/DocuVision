@@ -39,6 +39,7 @@ Deletion rule: a pack/record is deletable once **no tracked document still refer
 | [split/07-批1-执行记录.md](runs/split/07-批1-执行记录.md) | P-037 批 1 执行记录：共享叶首登 pdf_raster + #13 上移倒置，棘轮 15→12（基线四样与证据表） |
 | [split/08-批2-执行记录.md](runs/split/08-批2-执行记录.md) | P-037 批 2 执行记录：双共享叶破两组域环（图无环），棘轮 12→9；orchestrator 顶格判例与 Cloud 验证步骤 |
 | [split/09-批3-执行记录.md](runs/split/09-批3-执行记录.md) | P-037 批 3 执行记录：orchestrator/envelope_builder 拆分（钉死 −2），kie->evidence 注入消解（棘轮 9→8）；Cloud 步骤 |
+| [split/10-批4-P038裁决-pagetrust.md](runs/split/10-批4-P038裁决-pagetrust.md) | P-038 裁决 D 执行记录：page_text_trust 登记第 4 共享叶，棘轮 8→5；0 上云 |
 | [split/11-批5-table-split.md](runs/split/11-批5-table-split.md) | P-037 批 5 执行记录：table_service 拆三（钉死 8→7）；table->figure 三件套 P-038 候选评估 |
 
 **保留依据**：`runs/P027/` 的保留理由写在 PENDING **P-027** 条目——**2026-10-16 更新**：P-027 已由 `decided` 转 **`retained`**，保留依据不再是「在途义务未清」，而是**被 tracked 文档反引**（PENDING 的 P-002 条目把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；[../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) 的 R2/R3/R4 行；R4 记录 §6 是隔离区 `test_data/derived/**` 证据链的唯一盘存表）⇒ 仍**未到删除条件**。`runs/split/` 的保留依据 = PENDING **P-037**（还债批次在途）/ **P-038**（I-1 待决）以**目录级**引用本目录，06 是批 1+ 的操作规范载体；全部批次收口、P-037/P-038 结案后按删除规则处置（00-05 规划稿的结论已晋升 kernel/module-map）。

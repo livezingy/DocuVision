@@ -10,7 +10,7 @@
     "kie": "KIE 字段抽取/合并/校验/模板/指标（kie/ 子包 + 顶层 kie_qwen/kie_fields_update）",
     "evidence": "证据门禁与 grounding（三闸语义 / V0-V6 梯 / text-first）",
     "hitl": "人工复核策略与队列",
-    "batch": "批量任务管理与导出打包",
+    "batch": "批量任务管理与导出打包：数据模型（batch_models：枚举/dataclass/序列化 round-trip）+ 运行控制 Mixin（batch_runner：_process_batch 处理循环 + pause/resume/cancel + 完成回调注入点）+ 服务门面（batch_service：store 接线/CRUD/查询/start 入口，webhook 派发经 routers/batch.py on_complete 注入——批 8 消解 batch->infra 冻结边）+ 导出打包纯函数（batch_export_service）",
     "report": "导出与证明包（export/pack + proof_* 三件）",
     "document": "文档画像/类型分类/文件探测 + 页面文本信任与页型探测（裁决 1：page 并入）",
     "infra": "基础设施：PDF 光栅与工具、webhook、持久化、共享契约/度量叶（text_first_contract / kie_default_rules / bbox_geometry / table_cell_confidence）",
@@ -134,6 +134,8 @@
     "backend/app/services/unified_layout_service.py": "layout",
     "backend/app/services/webhook_service.py": "infra",
     "backend/app/services/formula_engine.py": "formula",
-    "backend/app/services/formula_adapt.py": "formula"
+    "backend/app/services/formula_adapt.py": "formula",
+    "backend/app/services/batch_models.py": "batch",
+    "backend/app/services/batch_runner.py": "batch"
   }
 }

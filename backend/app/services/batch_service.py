@@ -1,191 +1,32 @@
-"""
-Batch Processing Service - Queue Management and Parallel Processing
-Supports batch document processing with progress tracking
+"""Batch Processing Service facade - queue management and parallel processing.
+
+Keeps ``BatchService`` (store wiring, CRUD, queries, ``start_batch`` entry)
+and composes the run-control mixin; the data models live in
+``batch_models.py`` and the processing loop in ``batch_runner.py`` (S1 batch 8
+split of the former monolith). The webhook completion dispatch is injected as
+an ``on_complete`` callback by ``routers/batch.py``.
 """
 
-from typing import Dict, Any, List, Optional, Callable, Awaitable, Protocol
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
+from __future__ import annotations
+
 import asyncio
 import uuid
-import os
+from datetime import datetime
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+
 from loguru import logger
 
-
-class _StoreLike(Protocol):
-    def save(self, table: str, key: str, document: dict) -> None: ...
-    def load_all(self, table: str) -> List[dict]: ...
-    def delete(self, table: str, key: str) -> None: ...
-
-
-class BatchStatus(str, Enum):
-    """Batch job status"""
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-    PAUSED = "paused"
+from app.services.batch_models import (  # noqa: F401 (re-export; consumers import the type names from here)
+    BatchJob,
+    BatchStatus,
+    BatchTask,
+    TaskStatus,
+    _StoreLike,
+)
+from app.services.batch_runner import BatchRunnerMixin
 
 
-class TaskStatus(str, Enum):
-    """Individual task status"""
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    SKIPPED = "skipped"
-
-
-@dataclass
-class BatchTask:
-    """Individual task in a batch"""
-    task_id: str
-    file_path: str
-    file_name: str
-    status: TaskStatus = TaskStatus.PENDING
-    progress: float = 0.0
-    message: str = ""
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "task_id": self.task_id,
-            "file_path": self.file_path,
-            "file_name": self.file_name,
-            "status": self.status.value if isinstance(self.status, TaskStatus) else str(self.status),
-            "progress": self.progress,
-            "message": self.message,
-            "result": self.result,
-            "error": self.error,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None
-        }
-
-    @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "BatchTask":
-        def _parse_dt(v: Any) -> Optional[datetime]:
-            if not v:
-                return None
-            if isinstance(v, datetime):
-                return v
-            try:
-                return datetime.fromisoformat(str(v))
-            except (ValueError, TypeError):
-                return None
-
-        raw_status = d.get("status", TaskStatus.PENDING.value)
-        try:
-            status = TaskStatus(raw_status) if isinstance(raw_status, str) else raw_status
-        except ValueError:
-            status = TaskStatus.PENDING
-        return cls(
-            task_id=str(d["task_id"]),
-            file_path=str(d.get("file_path", "")),
-            file_name=str(d.get("file_name", "")),
-            status=status,
-            progress=float(d.get("progress", 0.0) or 0.0),
-            message=str(d.get("message", "")),
-            result=d.get("result"),
-            error=d.get("error"),
-            started_at=_parse_dt(d.get("started_at")),
-            completed_at=_parse_dt(d.get("completed_at")),
-        )
-
-
-@dataclass
-class BatchJob:
-    """Batch processing job"""
-    batch_id: str
-    name: str
-    status: BatchStatus = BatchStatus.PENDING
-    tasks: List[BatchTask] = field(default_factory=list)
-    options: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.now)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    total_tasks: int = 0
-    completed_tasks: int = 0
-    failed_tasks: int = 0
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "batch_id": self.batch_id,
-            "name": self.name,
-            "status": self.status.value,
-            "tasks": [t.to_dict() for t in self.tasks],
-            "options": self.options,
-            "created_at": self.created_at.isoformat(),
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
-            "total_tasks": self.total_tasks,
-            "completed_tasks": self.completed_tasks,
-            "failed_tasks": self.failed_tasks,
-            "progress": self.get_progress()
-        }
-    
-    def get_progress(self) -> float:
-        if self.total_tasks == 0:
-            return 0.0
-        return round((self.completed_tasks + self.failed_tasks) / self.total_tasks * 100, 2)
-
-    @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "BatchJob":
-        def _parse_dt(v: Any) -> Optional[datetime]:
-            if not v:
-                return None
-            if isinstance(v, datetime):
-                return v
-            try:
-                return datetime.fromisoformat(str(v))
-            except (ValueError, TypeError):
-                return None
-
-        raw_status = d.get("status", BatchStatus.PENDING.value)
-        try:
-            status = BatchStatus(raw_status) if isinstance(raw_status, str) else raw_status
-        except ValueError:
-            status = BatchStatus.PENDING
-
-        raw_tasks = d.get("tasks", [])
-        if isinstance(raw_tasks, str):
-            import json as _json
-            try:
-                raw_tasks = _json.loads(raw_tasks)
-            except (ValueError, TypeError):
-                raw_tasks = []
-        tasks = [BatchTask.from_dict(t) for t in raw_tasks if isinstance(t, dict)]
-
-        raw_options = d.get("options", {})
-        if isinstance(raw_options, str):
-            import json as _json
-            try:
-                raw_options = _json.loads(raw_options)
-            except (ValueError, TypeError):
-                raw_options = {}
-        if not isinstance(raw_options, dict):
-            raw_options = {}
-
-        return cls(
-            batch_id=str(d["batch_id"]),
-            name=str(d.get("name", "")),
-            status=status,
-            tasks=tasks,
-            options=raw_options,
-            created_at=_parse_dt(d.get("created_at")) or datetime.now(),
-            started_at=_parse_dt(d.get("started_at")),
-            completed_at=_parse_dt(d.get("completed_at")),
-            total_tasks=int(d.get("total_tasks", 0) or 0),
-            completed_tasks=int(d.get("completed_tasks", 0) or 0),
-            failed_tasks=int(d.get("failed_tasks", 0) or 0),
-        )
-
-
-class BatchService:
+class BatchService(BatchRunnerMixin):
     """
     Batch Processing Service
     
@@ -196,7 +37,6 @@ class BatchService:
     - Pause/Resume/Cancel operations
     - Result aggregation
     """
-    
     def __init__(self, max_concurrent: int = 3):
         self.batches: Dict[str, BatchJob] = {}
         self.max_concurrent = max_concurrent
@@ -259,7 +99,7 @@ class BatchService:
         if self._store is None:
             return
         await asyncio.to_thread(self._persist, batch)
-    
+
     def create_batch(
         self,
         name: str,
@@ -301,11 +141,11 @@ class BatchService:
         logger.info(f"Created batch job: {batch_id} with {len(tasks)} tasks")
 
         return batch
-    
+
     def get_batch(self, batch_id: str) -> Optional[BatchJob]:
         """Get batch job by ID"""
         return self.batches.get(batch_id)
-    
+
     def list_batches(
         self,
         status: BatchStatus = None,
@@ -325,7 +165,7 @@ class BatchService:
         batches = batches[offset:offset + limit]
         
         return [b.to_dict() for b in batches]
-    
+
     def _effective_concurrency(self, batch: BatchJob) -> int:
         if batch.options.get("enable_kie"):
             from app.core.config import settings
@@ -336,7 +176,8 @@ class BatchService:
         self,
         batch_id: str,
         process_func: Callable[[str, Dict[str, Any]], Awaitable[Dict[str, Any]]],
-        on_progress: Callable[[str, str, float, str], None] = None
+        on_progress: Callable[[str, str, float, str], None] = None,
+        on_complete: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None
     ) -> bool:
         """
         Start processing a batch job
@@ -370,212 +211,13 @@ class BatchService:
 
         max_conc = self._effective_concurrency(batch)
         task = asyncio.create_task(
-            self._process_batch(batch_id, process_func, on_progress, max_concurrent=max_conc)
+            self._process_batch(batch_id, process_func, on_progress, max_concurrent=max_conc, on_complete=on_complete)
         )
         self._active_batches[batch_id] = task
 
         logger.info(f"Started batch processing: {batch_id}")
         return True
-    
-    async def _process_batch(
-        self,
-        batch_id: str,
-        process_func: Callable[[str, Dict[str, Any]], Awaitable[Dict[str, Any]]],
-        on_progress: Callable[[str, str, float, str], None] = None,
-        max_concurrent: Optional[int] = None,
-    ):
-        """Internal batch processing logic"""
-        batch = self.batches.get(batch_id)
-        if not batch:
-            return
-        
-        try:
-            limit = max_concurrent if max_concurrent is not None else self.max_concurrent
-            semaphore = asyncio.Semaphore(max(1, limit))
-            
-            async def process_task(task: BatchTask):
-                # Check for cancellation or pause
-                if batch_id in self._cancelled_batches:
-                    task.status = TaskStatus.SKIPPED
-                    return
-                
-                while batch_id in self._paused_batches:
-                    await asyncio.sleep(1)
-                    if batch_id in self._cancelled_batches:
-                        task.status = TaskStatus.SKIPPED
-                        return
-                
-                async with semaphore:
-                    task.status = TaskStatus.PROCESSING
-                    task.started_at = datetime.now()
-                    task.message = "Processing..."
-                    
-                    if on_progress:
-                        on_progress(batch_id, task.task_id, 0, "Processing...")
-                    
-                    try:
-                        # Process the file
-                        result = await process_func(task.file_path, batch.options)
 
-                        task.status = TaskStatus.COMPLETED
-                        task.progress = 100.0
-                        task.result = result
-                        task.message = "Completed"
-                        task.completed_at = datetime.now()
-
-                        batch.completed_tasks += 1
-                        await self._persist_async(batch)
-
-                        if on_progress:
-                            on_progress(batch_id, task.task_id, 100, "Completed")
-
-                    except Exception as e:
-                        task.status = TaskStatus.FAILED
-                        task.error = str(e)
-                        task.message = f"Failed: {str(e)}"
-                        task.completed_at = datetime.now()
-
-                        batch.failed_tasks += 1
-                        await self._persist_async(batch)
-
-                        if on_progress:
-                            on_progress(batch_id, task.task_id, 0, f"Failed: {str(e)}")
-
-                        logger.error(f"Task {task.task_id} failed: {e}")
-            
-            # Process all tasks concurrently
-            pending_tasks = [t for t in batch.tasks if t.status == TaskStatus.PENDING]
-            await asyncio.gather(*[process_task(task) for task in pending_tasks])
-            
-            # Check final status
-            if batch_id in self._cancelled_batches:
-                batch.status = BatchStatus.CANCELLED
-            elif batch.failed_tasks == batch.total_tasks:
-                batch.status = BatchStatus.FAILED
-            else:
-                batch.status = BatchStatus.COMPLETED
-
-            batch.completed_at = datetime.now()
-            await self._persist_async(batch)
-
-            logger.info(f"Batch {batch_id} finished: {batch.completed_tasks}/{batch.total_tasks} completed, {batch.failed_tasks} failed")
-
-            try:
-                from app.services.webhook_service import webhook_registry
-
-                asyncio.create_task(
-                    webhook_registry.dispatch_event_async(
-                        "batch.completed",
-                        {
-                            "batch_id": batch_id,
-                            "name": batch.name,
-                            "status": batch.status.value,
-                            "completed_tasks": batch.completed_tasks,
-                            "failed_tasks": batch.failed_tasks,
-                        },
-                    )
-                )
-            except Exception as hook_exc:
-                logger.debug(f"Batch webhook dispatch skipped: {hook_exc}")
-            
-        except Exception as e:
-            batch.status = BatchStatus.FAILED
-            batch.completed_at = datetime.now()
-            await self._persist_async(batch)
-            logger.error(f"Batch {batch_id} failed: {e}")
-        
-        finally:
-            # Clean up
-            self._active_batches.pop(batch_id, None)
-    
-    async def pause_batch(self, batch_id: str) -> bool:
-        """Pause a running batch"""
-        batch = self.batches.get(batch_id)
-        if not batch:
-            raise ValueError(f"Batch not found: {batch_id}")
-        
-        if batch.status != BatchStatus.PROCESSING:
-            return False
-        
-        self._paused_batches.add(batch_id)
-        batch.status = BatchStatus.PAUSED
-        await self._persist_async(batch)
-        logger.info(f"Paused batch: {batch_id}")
-        return True
-    
-    async def resume_batch(
-        self,
-        batch_id: str,
-        process_func: Callable[[str, Dict[str, Any]], Awaitable[Dict[str, Any]]] = None,
-        on_progress: Callable[[str, str, float, str], None] = None
-    ) -> bool:
-        """Resume a paused batch"""
-        batch = self.batches.get(batch_id)
-        if not batch:
-            raise ValueError(f"Batch not found: {batch_id}")
-        
-        if batch.status != BatchStatus.PAUSED:
-            return False
-        
-        self._paused_batches.discard(batch_id)
-        pending = [t for t in batch.tasks if t.status == TaskStatus.PENDING]
-        if not pending:
-            # Nothing to resume (e.g. crash happened after all tasks finished
-            # but before the batch-level final status flip). Finalize now
-            # instead of leaving the batch stuck in PROCESSING.
-            if batch_id in self._cancelled_batches:
-                batch.status = BatchStatus.CANCELLED
-            elif batch.failed_tasks == batch.total_tasks:
-                batch.status = BatchStatus.FAILED
-            else:
-                batch.status = BatchStatus.COMPLETED
-            batch.completed_at = datetime.now()
-            await self._persist_async(batch)
-            logger.info(
-                f"Resumed batch {batch_id} with no pending tasks; finalized as {batch.status.value}"
-            )
-            return True
-        batch.status = BatchStatus.PROCESSING
-        await self._persist_async(batch)
-        if process_func is not None and batch_id not in self._active_batches:
-            max_conc = self._effective_concurrency(batch)
-            task = asyncio.create_task(
-                self._process_batch(batch_id, process_func, on_progress, max_concurrent=max_conc)
-            )
-            self._active_batches[batch_id] = task
-        logger.info(f"Resumed batch: {batch_id}")
-        return True
-    
-    async def cancel_batch(self, batch_id: str) -> bool:
-        """Cancel a batch job"""
-        batch = self.batches.get(batch_id)
-        if not batch:
-            raise ValueError(f"Batch not found: {batch_id}")
-        
-        if batch.status in [BatchStatus.COMPLETED, BatchStatus.CANCELLED]:
-            return False
-        
-        self._cancelled_batches.add(batch_id)
-        self._paused_batches.discard(batch_id)
-        
-        # Wait for active task to finish
-        if batch_id in self._active_batches:
-            task = self._active_batches[batch_id]
-            # Give it some time to gracefully finish
-            await asyncio.sleep(0.5)
-        
-        batch.status = BatchStatus.CANCELLED
-        batch.completed_at = datetime.now()
-
-        # Mark remaining pending tasks as skipped
-        for task in batch.tasks:
-            if task.status == TaskStatus.PENDING:
-                task.status = TaskStatus.SKIPPED
-
-        await self._persist_async(batch)
-        logger.info(f"Cancelled batch: {batch_id}")
-        return True
-    
     def delete_batch(self, batch_id: str) -> bool:
         """Delete a batch job"""
         if batch_id not in self.batches:
@@ -599,7 +241,7 @@ class BatchService:
 
         logger.info(f"Deleted batch: {batch_id}")
         return True
-    
+
     def get_batch_summary(self, batch_id: str) -> Dict[str, Any]:
         """Get summary statistics for a batch"""
         batch = self.batches.get(batch_id)
@@ -635,7 +277,7 @@ class BatchService:
             "started_at": batch.started_at.isoformat() if batch.started_at else None,
             "completed_at": batch.completed_at.isoformat() if batch.completed_at else None
         }
-    
+
     def get_batch_results(self, batch_id: str) -> List[Dict[str, Any]]:
         """Get all results from a batch"""
         batch = self.batches.get(batch_id)
@@ -653,7 +295,7 @@ class BatchService:
             })
         
         return results
-    
+
     def retry_failed_tasks(self, batch_id: str) -> int:
         """Reset failed tasks to pending for retry"""
         batch = self.batches.get(batch_id)

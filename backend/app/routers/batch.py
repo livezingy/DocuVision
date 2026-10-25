@@ -13,6 +13,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from loguru import logger
 
 from app.core.config import settings
 from app.core.debug_utils import save_debug_overlay_image
@@ -70,6 +71,23 @@ async def _batch_process_file(file_path: str, options: Dict[str, Any]) -> Dict[s
         build_page_image_meta=_build_page_image_meta,
         save_debug_overlay=save_debug_overlay_image if settings.ENABLE_DEBUG_OVERLAYS else None,
     )
+
+
+async def _dispatch_batch_completed_webhook(payload: Dict[str, Any]) -> None:
+    """Notify ``batch.completed`` subscribers.
+
+    Injected as ``BatchService.on_complete`` (S1 batch 8): the routers layer may
+    import any service, so the webhook import that used to live inside
+    ``_process_batch`` moves here and the services-layer batch->infra frozen
+    edge dissolves. Failures are swallowed to a debug log — dispatch issues
+    must never affect batch final state.
+    """
+    try:
+        from app.services.webhook_service import webhook_registry
+
+        await webhook_registry.dispatch_event_async("batch.completed", payload)
+    except Exception as exc:
+        logger.debug(f"Batch webhook dispatch skipped: {exc}")
 
 
 @router.post("/api/v1/batch")
@@ -152,7 +170,7 @@ async def start_batch(batch_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=404, detail="Batch not found")
 
     try:
-        await batch_service.start_batch(batch_id, _batch_process_file)
+        await batch_service.start_batch(batch_id, _batch_process_file, on_complete=_dispatch_batch_completed_webhook)
         return {"message": "Batch started", "batch_id": batch_id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -172,7 +190,7 @@ async def pause_batch(batch_id: str):
 async def resume_batch(batch_id: str):
     """Resume a paused batch"""
     try:
-        success = await batch_service.resume_batch(batch_id, process_func=_batch_process_file)
+        success = await batch_service.resume_batch(batch_id, process_func=_batch_process_file, on_complete=_dispatch_batch_completed_webhook)
         return {"message": "Batch resumed" if success else "Cannot resume", "batch_id": batch_id}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

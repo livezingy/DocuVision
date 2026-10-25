@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **PENDING closeout batch — P-039/P-040/P-041 removed, `runs/split/` deleted** (2026-10-25, PR #108):
+  user-ruled removal of the three landed/decided entries with no promotable architecture content;
+  their conclusions live in main code + this CHANGELOG + git history (P-039 lazy-paddle-imports:
+  the change and the local-openapi-snapshot surface ARE the artifacts, `review.md`'s PR #97
+  precedent citation rewritten to drop the entry number; P-040: local 715 passed + four cloud
+  smokes PASS, readings in this CHANGELOG; P-041: SMOKE-5 PASS). The local-only
+  `docs/R&D/runs/split/` directory (24 files) is deleted in the same batch — its deletion
+  preconditions all cleared (P-037 closed/retained, P-038 sealed at 6 leaves, the three entries
+  gone; the #21 webhook template and #4 formula criteria were inlined into the entries before
+  removal), the `docs/R&D/README.md` runs index is synced, and `docs_refs_audit --check-rnd-index`
+  passes. In-text `runs/split 01/03/06/21/22` and "登记 P-040" citations in retained PENDING
+  entries now point at git history (stated in the PENDING closing record). PENDING is down to
+  **17 entries**: P-034 (decided, the one open work item), P-035/P-036 (open, trigger-gated),
+  and 14 retained precedent records.
 - **P-040 formula special batch — page-aware PDF ROI, formula_number label fix, in-place
   envelope replacement** (2026-10-25, P-040): the formula chain gets three behavior changes
   (tier C, user-ruled this batch) plus one measurement-only item. **① Page-aware ROI** —

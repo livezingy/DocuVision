@@ -29,7 +29,7 @@ from app.core.runtime import (
     table_service,
 )
 from app.services.batch_service import BatchStatus
-from app.services.single_file_pipeline import run_single_file_pipeline
+from app.orchestration.single_file_pipeline import run_single_file_pipeline
 
 router = APIRouter()
 

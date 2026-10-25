@@ -34,6 +34,7 @@ import docs_refs_audit as docs_refs  # noqa: E402
 import frontend_coupling as frontend_map  # noqa: E402
 import assets_manifest_audit as assets_manifest  # noqa: E402
 import lint_services as services_lint  # noqa: E402
+import lint_services_selftest as services_probes  # noqa: E402
 import sync_agent_rules as sync_mod  # noqa: E402
 import test_registry_audit as test_registry  # noqa: E402
 import unit_suite_pin as unit_pin  # noqa: E402
@@ -379,7 +380,7 @@ def run_selftest() -> int:
     cases += list(docs_refs.selftest_cases())
     cases += list(unit_pin.selftest_cases())
     cases += list(assets_manifest.selftest_cases())
-    cases += list(services_lint.selftest_cases())
+    cases += list(services_probes.selftest_cases())
 
     def ok(name: str, cond: bool) -> None:
         cases.append((name, bool(cond)))

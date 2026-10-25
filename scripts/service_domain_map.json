@@ -14,8 +14,17 @@
     "report": "导出与证明包（export/pack + proof_* 三件）",
     "document": "文档画像/类型分类/文件探测 + 页面文本信任与页型探测（裁决 1：page 并入）",
     "infra": "基础设施：PDF 光栅与工具、webhook、持久化存储",
-    "pipeline": "单文件分析管线入口 + PII 掩码",
+    "pipeline": "PII 掩码（分析前的敏感信息遮蔽；single_file_pipeline 已上移 orchestration/，批 1 #13 倒置）",
     "trial": "GLM trial 真值比对"
+  },
+  "shared_leaf_modules": {
+    "backend/app/services/pdf_raster.py": {
+      "added": "2026-10-24",
+      "l1": "零出向（强度 A；复算 2026-10-24：仅 stdlib + 函数内延迟 fitz/PIL，零 app.*/docuvision_core.*）",
+      "l2": "纯 PDF 工具（页数/页光栅化为临时 PNG），函数与行为无业务域语义；docstring 的 'Pro KIE / layout' 是消费方说明非自身语义",
+      "l3": "模块级仅 logger，无可变状态/单例；两函数纯输入→输出",
+      "consumers": "跨域消费 = kie(kie_qwen_service) / document(document_info_utils)；层间消费 = orchestrator(L2)、routers(L1 薄委托) 为合法层边不属跨域"
+    }
   },
   "file_domains": {
     "backend/app/services/__init__.py": "shared",
@@ -77,7 +86,6 @@
     "backend/app/services/persistence/__init__.py": "infra",
     "backend/app/services/persistence/analyze_job_store.py": "infra",
     "backend/app/services/persistence/queue_store.py": "infra",
-    "backend/app/services/single_file_pipeline.py": "pipeline",
     "backend/app/services/pii_mask.py": "pipeline",
     "backend/app/services/trial/__init__.py": "trial",
     "backend/app/services/trial/gt_diff.py": "trial"

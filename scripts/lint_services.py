@@ -107,11 +107,14 @@ def iter_imports(source: str, src_module: str, known_modules: set, is_package: b
                 yield (cand if cand in known_modules else base), node.lineno
 
 
-def classify_edges(edges, file_domains, allowlist):
+def classify_edges(edges, file_domains, allowlist, shared_leaves=None):
     """S1a/S1b over edges [(src_rel, dst_module, lineno)]. Pure function.
     Returns (issues, domain_pairs); domain_pairs maps 'src->dst' to True only
-    when every physical edge of the pair is exempt."""
+    when every physical edge of the pair is exempt. A services module listed
+    in shared_leaves is a legal channel for any domain (I-1): the edge feeds
+    no domain pair and thus no S1c cycle."""
     issues: list[dict] = []
+    shared_leaves = shared_leaves or set()
     exempt = {(e.get("src_file"), e.get("dst_module")): e for e in allowlist.get("edges", [])}
     mod_to_rel = {module_of(r): r for r in file_domains}
     pair_flags: dict = {}
@@ -132,6 +135,8 @@ def classify_edges(edges, file_domains, allowlist):
                     "layer-kind allowlist entry - adding one is a red line, ask first)"))
         if src_layer != L3 or dst_layer != L3:
             continue
+        if mod_to_rel.get(dst, "") in shared_leaves:
+            continue  # registered shared leaf: legal channel for every domain
         d_src = file_domains.get(src_rel)
         if d_src is None:
             issues.append(_issue(
@@ -313,6 +318,19 @@ def check_service_table(module_map_text: str, domain_map: dict, disk_files: set,
         if f not in section:
             issues.append(_issue("ERROR", MODULE_MAP_REL,
                                  f"§2b must mention the shared shell in its prose row: {f}"))
+    # shared-leaf roster (A3-style): the §2b prose line's count + backtick
+    # name list must equal shared_leaf_modules exactly — no hand-copy drift.
+    leaves = domain_map.get("shared_leaf_modules", {})
+    m = re.search(r"共享叶（(\d+)）：([^（\n]*)", section)
+    if leaves and m is None:
+        issues.append(_issue("ERROR", MODULE_MAP_REL,
+                             "§2b lacks the 共享叶 roster line but shared_leaf_modules is non-empty"))
+    elif m is not None:
+        names = set(re.findall(r"`([a-z_][a-z0-9_]*)`", m.group(2)))
+        expected = {Path(k).stem for k in leaves}
+        if int(m.group(1)) != len(leaves) or names != expected:
+            issues.append(_issue("ERROR", MODULE_MAP_REL, "§2b 共享叶 roster drift: "
+                                 f"line={sorted(names)} ({m.group(1)}), map={sorted(expected)} ({len(leaves)})"))
     if "出向跨域边" in header:
         i_edge = header.index("出向跨域边")
         table_pairs = {p for row in data for p in PAIR_RE.findall(row[i_edge])}
@@ -323,6 +341,33 @@ def check_service_table(module_map_text: str, domain_map: dict, disk_files: set,
         for p in sorted(allow_pairs - table_pairs):
             issues.append(_issue("ERROR", MODULE_MAP_REL,
                                  f"allowlist pair {p} missing from §2b edge column"))
+    return issues
+
+
+def shared_leaf_issues(shared_leaves: dict, leaf_sources: dict, file_domains: dict) -> list[dict]:
+    """Shared-leaf registration integrity (I-1, L1 = strength A): a registered
+    module must exist on disk (ghost = ERROR), stay mapped in file_domains
+    (ERROR), and be zero-outbound — no app.*/docuvision_core.* import at all
+    (ERROR). Pure function; leaf_sources maps rel path -> source text."""
+    issues: list[dict] = []
+    for rel in shared_leaves:
+        where = f"{DOMAIN_MAP_REL} shared_leaf_modules[{Path(rel).name}]"
+        if rel not in leaf_sources:
+            issues.append(_issue("ERROR", where, "ghost shared-leaf registration (no such file)"))
+            continue
+        if rel not in file_domains:
+            issues.append(_issue("ERROR", where,
+                                 "shared leaf must keep its file_domains entry (dual registration)"))
+        try:
+            out = list(iter_imports(leaf_sources[rel], module_of(rel), set(),
+                                    rel.endswith("__init__.py")))
+        except SyntaxError:
+            issues.append(_issue("ERROR", rel, "unparsable (fail-closed)"))
+            continue
+        for dst, lineno in out:
+            issues.append(_issue("ERROR", f"{rel}:{lineno}",
+                                 f"registered shared leaf has outbound import {dst}; "
+                                 "L1 zero-outbound is strength A - unregister it or invert"))
     return issues
 
 
@@ -341,7 +386,7 @@ def check_services() -> list[dict]:
     if err or err2:
         return [i for i in (err, err2) if i]
     file_domains: dict = domain_map.get("file_domains", {})
-
+    shared_leaves: dict = domain_map.get("shared_leaf_modules", {})
     sources: dict = {}
     for root in (d for d in (APP_DIR, PKG_DIR) if d.is_dir()):
         for p in sorted(root.rglob("*.py")):
@@ -358,8 +403,9 @@ def check_services() -> list[dict]:
         except SyntaxError as exc:
             issues.append(_issue("ERROR", rel, f"unparsable (fail-closed): {exc}"))
 
-    edge_issues, domain_pairs = classify_edges(edges, file_domains, allowlist)
+    edge_issues, domain_pairs = classify_edges(edges, file_domains, allowlist, shared_leaves)
     issues += edge_issues
+    issues += shared_leaf_issues(shared_leaves, sources, file_domains)
     actual_keys = {(s, d) for s, d, _ in edges}
     issues += allowlist_issues(actual_keys, allowlist)
     pair_dates: dict = {}
@@ -379,102 +425,9 @@ def check_services() -> list[dict]:
     return issues
 
 
-def selftest_cases():
-    """Negative probes P1-P8 (runs/split 05 §3; synthetic input only, no repo
-    facts) plus ratchet/cycle extras; same predicates as production."""
-    domap = {"backend/app/services/table_service.py": "table",
-             "backend/app/services/table_html.py": "table",
-             "backend/app/services/x.py": "table",
-             "backend/app/services/figure_service.py": "figure"}
-    no_exemption = {"edges": [], "stale_days": 90}
-
-    def alw(src, dst, pair, kind, added="2026-10-16"):
-        return {"edges": [{"src_file": src, "dst_module": dst, "domain_pair": pair,
-                           "kind": kind, "added": added}], "stale_days": 90}
-
-    alw_ok = alw("backend/app/services/table_service.py", "app.services.figure_service",
-                 "table->figure", "cross-domain")
-    cases: list = []
-
-    def ok(name: str, cond: bool) -> None:
-        cases.append((name, bool(cond)))
-
-    fig_edge = [("backend/app/services/table_service.py", "app.services.figure_service", 1)]
-    # P1: S1b cross-domain without exemption = ERROR; exempted edge stays quiet (P1b).
-    v, _ = classify_edges(fig_edge, domap, no_exemption)
-    ok("P1-s1b-cross-domain", len(v) == 1 and v[0]["level"] == "ERROR"
-       and "S1b" in v[0]["msg"] and "table -> figure" in v[0]["msg"])
-    v, pairs = classify_edges(fig_edge, domap, alw_ok)
-    ok("P1b-exempt-quiet", not v and pairs.get("table->figure") is True)
-
-    # P2: S1a reverse dependency without a layer-kind entry; a wrong-kind
-    # entry must not exempt it (P2c).
-    ORCH = "app.orchestration.document_pipeline_orchestrator"
-    rev = [("backend/app/services/x.py", ORCH, 1)]
-    v, _ = classify_edges(rev, domap, no_exemption)
-    ok("P2-s1a-reverse", len(v) == 1 and "S1a" in v[0]["msg"])
-    v, _ = classify_edges(rev, domap, alw("backend/app/services/x.py", ORCH, "pipeline->L2", "layer"))
-    ok("P2b-layer-exempt", not v)
-    v, _ = classify_edges(rev, domap, alw("backend/app/services/x.py", ORCH, "pipeline->L2", "cross-domain"))
-    ok("P2c-kind-mismatch", len(v) == 1 and "S1a" in v[0]["msg"])
-
-    # P3: non-exempt cycle = ERROR; fully-exempt cycle quiet while fresh (P10), WARN after clock (P10b).
-    v = cycle_issues({"a->b": False, "b->a": False}, {"a->b": date(2026, 10, 16)}, date(2026, 10, 24))
-    ok("P3-cycle-error", len(v) == 1 and v[0]["level"] == "ERROR" and "non-exempt" in v[0]["msg"])
-    v = cycle_issues({"a->b": True, "b->a": True}, {"a->b": date(2026, 10, 16)}, date(2026, 10, 24))
-    ok("P10-fresh-cycle-quiet", not v)
-    v = cycle_issues({"a->b": True, "b->a": True}, {"a->b": date(2026, 10, 16)}, date(2027, 1, 20))
-    ok("P10b-stale-cycle-warn", len(v) == 1 and v[0]["level"] == "WARN")
-
-    # P4/P7: §2b three-way — unmapped disk file and ghost map entry = ERROR.
-    dmap = {"domains": {"table": "t", "figure": "f"}, "file_domains": {
-        "backend/app/services/table_service.py": "table",
-        "backend/app/services/table_html.py": "table",
-        "backend/app/services/figure_service.py": "figure"}}
-    tbl = (ANCHOR_SERVICES + "\n| 域 | 文件 | 职责 | owning doc | 出向跨域边 |\n|---|---|---|---|---|\n"
-           "| table | backend/app/services/{table_service,table_html}.py（2 文件） | t | — | table->figure |\n"
-           "| figure | backend/app/services/figure_service.py | f | — | — |\n")
-    disk3 = {"backend/app/services/table_service.py", "backend/app/services/table_html.py",
-             "backend/app/services/figure_service.py"}
-    v = check_service_table(tbl, dmap, disk3 | {"backend/app/services/zz_new.py"}, alw_ok)
-    ok("P4-unmapped-file", any(i["level"] == "ERROR" and "unmapped services file" in i["msg"] for i in v))
-    ghost = {"domains": dmap["domains"],
-             "file_domains": dict(dmap["file_domains"], **{"backend/app/services/ghost.py": "table"})}
-    v = check_service_table(tbl, ghost, disk3, alw_ok)
-    ok("P7-ghost-entry", any(i["level"] == "ERROR" and "ghost entry" in i["msg"] for i in v))
-    v = check_service_table(tbl, dmap, disk3, alw_ok)
-    ok("P7b-clean-table-quiet", not v)
-
-    # P5: relative-import penetration (A-4).
-    out = list(iter_imports("from ..figure_service import X\n", "app.services.kie.text_first",
-                            {"app.services.figure_service"}))
-    ok("P5-relative-import", out == [("app.services.figure_service", 1)])
-
-    # P6: R0 import from services is legal (P6a); app.* inside the package is a violation (P6b).
-    v, _ = classify_edges([("backend/app/services/x.py", "docuvision_core.utils.pdf_text_utils", 1)],
-                          domap, no_exemption)
-    ok("P6a-r0-legal", not v)
-    v, _ = classify_edges([("packages/docuvision-core/utils/pdf_text_utils.py",
-                            "app.services.figure_service", 1)], domap, no_exemption)
-    ok("P6b-pkg-no-app", len(v) == 1 and "S1a" in v[0]["msg"])
-
-    # P8: zero false positives — in-domain sibling, services->core.config, router->runtime.
-    v, _ = classify_edges([("backend/app/services/table_service.py", "app.services.table_html", 1),
-                           ("backend/app/services/table_service.py", "app.core.config", 2),
-                           ("backend/app/routers/system.py", "app.core.runtime", 3)], domap, no_exemption)
-    ok("P8-no-false-positives", not v)
-
-    # P9: resolved entry asks for removal (WARN, free); stale entry fires clock WARN (P9b).
-    v = allowlist_issues(set(), alw_ok, today=date(2026, 10, 24))
-    ok("P9-resolved-remove", len(v) == 1 and v[0]["level"] == "WARN" and "ratchet" in v[0]["msg"])
-    v = allowlist_issues({("backend/app/services/table_service.py", "app.services.figure_service")},
-                         alw_ok, today=date(2027, 1, 20))
-    ok("P9b-stale-clock", len(v) == 1 and v[0]["level"] == "WARN" and "clock" in v[0]["msg"])
-    return cases
-
-
 def main() -> int:
     if "--selftest" in sys.argv[1:]:
+        from lint_services_selftest import selftest_cases  # deferred: sibling module
         cases = list(selftest_cases())
         failed = [name for name, passed in cases if not passed]
         if failed:

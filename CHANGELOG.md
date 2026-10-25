@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **S1 batch 1 — shared-leaf channel + #13 inversion** (2026-10-24, P-037/P-038): the frozen-edge
+  ratchet moves **15 -> 12 entries**. (1) `pdf_raster` passes L2/L3 review and is registered as the
+  first **shared leaf** (`shared_leaf_modules` in `service_domain_map.json`, front-end F5
+  `leaf_services` counterpart): L1 = strength-A zero-outbound predicate is machine-checked
+  (a registered leaf with any `app.*`/`docuvision_core.*` outbound import = ERROR), `lint_services`
+  accepts it as a legal cross-domain channel, and module-map §2b gains a roster line reconciled
+  against the map (A3-style, bidirectional) — this dissolves `kie->infra` and `document->infra`.
+  (2) #13 reverse dependency is inverted the "pipeline moves up" way:
+  `single_file_pipeline.py` moves **verbatim** (`git mv`, tier-A byte-identical) into
+  `backend/app/orchestration/` — it was an orchestration convenience entry living in L3; its only
+  caller `routers/batch.py` gets a one-line import-path change (tier-B single hunk), L1->L2 is an
+  allowed matrix cell, and `pipeline->L2` dissolves. `services -> orchestration` is now
+  zero-exception. To keep `lint_services.py` inside the 500-line budget the 24 negative probes
+  (now P1-P13c incl. shared-leaf channel/ghost/roster) moved verbatim to sibling
+  `lint_services_selftest.py` (Placement D — host was at 499/500). pipeline domain shrinks to
+  `pii_mask.py` (still 15 domains). module-map §1/§2b/§5/§6, kernel routing.md S1b,
+  DEVELOPMENT.md rule 7 and doc-sync-ownership updated (services no-contract roster 24 -> 23).
 - **S1 services structure gates** (2026-10-24, runs/split batch 0, P-037): the services layer gets the
   same data-driven placement governance the frontend has had since v1.8.3. New `scripts/lint_services.py`
   (stdlib AST, 499 lines, wired through `audit_agent_ops.py` — zero CI-workflow changes) enforces

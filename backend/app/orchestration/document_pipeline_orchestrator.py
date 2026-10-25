@@ -84,6 +84,8 @@ class DocumentPipelineOrchestrator:
 
         await persist_task_safe(task)
 
+        from app.services.file_type_detector import detect_file_type
+
         detected_type, _detect_pages = detect_file_type(task["file_path"])
         result: Dict[str, Any] = {
             "document_info": {

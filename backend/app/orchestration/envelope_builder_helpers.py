@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from loguru import logger  # _apply_inverse_rotation warns when cv2 is unavailable
+
 
 def _as_confidence(value: Any, default: Optional[float] = None) -> Optional[float]:
     """Coerce layout block confidence; None/missing/invalid → default (None = 未测量 ≠ 0)."""

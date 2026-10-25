@@ -19,6 +19,10 @@
 - 纯逻辑/契约改动：本地 pytest 全绿 + 静态检查（`ruff check ... --select F401,F841`）。
 - GPU 依赖改动：mock 单测 + 在交付文档写 Cloud 验证步骤与验收标准（本机无 GPU，不跑推理）。
 - 前端改动：`python scripts/lint_frontend.py`（F1-F7）+ `python scripts/check_frontend_baseline.py`（C1-C8 + C9 注入保真）+ `cd frontend && npm run lint`（P-010 风格 linter，**2026-09-17 起已接 CI**）+ kernel `core/frontend.md`（落点 / 白名单判据）；契约不变不跑 E2E；触及 UI 时列入云手测清单。
+- **Placement footer ↔ 触发条件对账**（所有含代码的 PR，2026-10-25 批 12 起强制）：逐个核对"新增文件或
+  新增模块级 `def`/`class`/常量"（kernel `testing.md` 触发定义）⇄ 交付 footer 的 Placement 判据行——
+  漏写或留空即 P2 意见（触发未声明 = 落点决策逃逸评审）。在案判例：PR #97 全 footer 缺失仍合并
+  （P-039 runtime.py 新增两个模块级 def 应声明 R）——检测缺口由本项补上。
 
 ## 审查红线（不可越过）
 - 不宣称 GPU / 云端功能"已验证"（本机无 GPU）。

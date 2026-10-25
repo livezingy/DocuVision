@@ -41,7 +41,9 @@
 9. services 结构门禁（增删/搬移 `backend/app/services/**` 或改 import 时）：`python scripts/lint_services.py --selftest` +
    `python scripts/lint_services.py`（module-map §5 的 **S1a/S1b/S1c/A2b**，经 audit 接线）。ERROR → 按输出定位：
    层/域误置改代码，真需跨域边走 Placement X 判据（登记 = **红线先问**）；WARN 冻结边逾期/已消解 →
-   整改批次（P-037）或移除条目收棘轮。
+   移除条目收棘轮。**P-037 已于 2026-10-25 收口**（冻结边 14→0、allowlist 空、>500 巨户清零且
+   `file_size_allowlist` pins 同日清零——空表 = 全员受 500 全局预算约束，新增 pin 只应出现在
+   拆分在途的临时豁免上）。
 
 ## 清账批次（正式动作，触发式而非周期式）
 

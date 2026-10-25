@@ -257,6 +257,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **S1 batch 12 — closing batch: P-038 finalized (6-leaf sealed), P-017 closed, pins zeroed,
+  Placement review rule + N semantics codified** (2026-10-25, P-037/P-038/P-017): **P-038** —
+  L1 rescan finds 36 zero-outbound files (6 registered leaves + 30 unregistered candidates);
+  per-file L2/L3 review seals the shared-leaf scope at **6 leaves, no additions**: 7 fail L3
+  (engines/mixins/stateful singletons/SQLite store), 22 fail L2 (domain-semantic leaves), 1
+  (pdf_tools_service) formally qualifies but has no cross-domain consumer — registration
+  channel stays open only for real cross-domain need (Placement N + user ruling). **P-017** —
+  user ruling keeps the global 500-line budget: all eight former giants split under their real
+  seams land ≤497, no domain needs a higher budget (the "splitting inflates line count"
+  failure mode never reproduced in backend). **pins zeroed** — ocr_service 457 / main.py 257
+  sub-budget watch pins removed; `file_size_allowlist` is now empty (every file under the
+  global 500 budget; future pins only as in-flight split exemptions). **review.md** gains the
+  mandatory "Placement footer ↔ trigger reconciliation" review item (PR #97 whole-footer
+  omission as the on-record case). **kernel testing.md** N semantics codifies practice
+  (new domain key OR shared-leaf registration, PR #91/#96/#98 precedents), derived via sync.
+  operations.md patrol notes the P-037 closure state. Local 688 passed / 14 skipped /
+  0 errors; all gates green.
 - **S1 closing — P-037 closed: consolidated cloud round green on main 9438458** (2026-10-25,
   P-037/PENDING): full suite **691 passed / 1 skipped / 0 failed** (= 689 cloud baseline + the
   two batch-11 anchors), live suite **10 passed**, pico text-first smoke **eight stats keys

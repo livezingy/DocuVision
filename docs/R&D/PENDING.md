@@ -93,12 +93,13 @@
   `test_data/scripts/build_multipage_kie_fixtures.py` 移除。
 
 ### P-017 · F1 500 行预算是否调整（按域差异化预算 vs 上调预算）（2026-09-20，v1.9 S2-5 暴露）
-> status: open · since: 2026-09-20
+> status: retained · since: 2026-09-20
 - **待决问题**：单文件 **500 行**预算（kernel `frontend.md` + `DEVELOPMENT.md` 第 4 条 + `frontend_size_allowlist.json` 棘轮口径）在**复杂服务层反复失真**时，是否调整上限策略、怎么调——**裁决对象应是「backend 服务层是否需独立预算」，而非仅凭前端 `pipeline/run.js` 一次越线**。
 - **500 失真的证据面（供裁决；2026-10-05 实测）**：① 巨函数切分会**增加**行数（新增函数边界 / 闭包参数 / docstring），与「切分让文件变小」的假设相反 ⇒ 2026-09-20 S2 批 6 次切分中 `pipeline/run.js` **474 → 524 越线**；② `backend/app` 侧已有 **9 个文件经 `file_size_allowlist.json` 棘轮固化**（`layout_service.py` 1804 · `table_service.py` 1613 · `document_pipeline_orchestrator.py` 1248 · `formula_service.py` 734 · `batch_service.py` 686 · `figure_service.py` 681 · `envelope_builder.py` 620 · `export_service.py` 544 · `ocr_service.py` 457；合计 ~8,300 行，3 个 >1200）⇒ 棘轮条目本身就是「撞线即固化」的产物记录；③ **门禁口径辨析**：`lint_file_size.py` 只扫 git-tracked 的 `backend/app` + `scripts/`（`SCAN_ROOTS`）⇒ `scripts/measure/*` 与 `test_data/scripts/*` 属 **local-only 无护栏区**（不进 F1 视野），`frontend/*.js` 归 `lint_frontend` F1–F7 另一套，`backend/tests/*` 豁免；④ **当前最贴线** = `scripts/lint_frontend.py` **497/500**。
 - **候选路线（各自优缺点待裁决时展开）**：① **按域差异化预算**——在 `frontend_domain_map.json` 为每域登记预算（大域放宽、单文件工具域维持 500）。优点：切分线可按域缝走、预算仍是可评审的数据编辑；缺点：预算表成为**新的漂移面**（需门禁 + 棘轮 + staleness，参照 A6 做法），且「域内单文件 900 行」的退化仍需再细化。② **上调全局预算**（如 500 → 700）。优点：规则简单、无新增维护面；缺点：失去「接近上限」预警信号，与 app.js 172 行棘轮的参照关系需重算语义，且不区分「巨文件但内聚」与「巨文件且杂糅」。
 - **已裁决、不属本条待决的部分**：本次越线按 S2 先例拆同域兄弟模块（`frontend/modules/pipeline/task-socket.js`；F3 允许同目录兄弟 import，C8 边表与 C9 注入均不变）；**不进 allowlist**（那是把臃肿固化成基线，与「棘轮只减不增」方向相反），抬上限属 kernel 红线、需单独授权。
 - **共同前置**：任何路线都要先写明 kernel `frontend.md` / `DEVELOPMENT.md` 第 4 条 / `frontend_size_allowlist.json` 的同步义务与棘轮口径。
+- **收口（批 12，2026-10-25，用户裁决 = 维持 500 全局预算，差异化压力实证消失）**：待决问题"复杂服务层是否需独立预算"以 runs/split 批 3-12 的实测回答——orchestrator 1297 / envelope_builder 620 / table 795 / layout 1614 / formula 734 / batch 686 / figure 632 / export 544 八个巨户**按真实缝拆分后全部达标**（终件 ≤497：门面 115-336、引擎/解析件最大 layout_pp_parse 497），没有任何域需要 >500 预算；"巨函数切分会增加行数"的失真证据（前端 pipeline/run.js 474→524）未在 backend 复现（拆分判据 = 域表 + 黄金样例 + 符号归属，行数只是棘轮——06 反 gaming 纪律的有效性实证）。保留理由：判例与前置义务留档；若未来某域按真实缝拆完仍 >500，按 06 §三 以实证重开本条（P-017 的原始设计意图）。
 - **触发条件**：下一次 F1 越线（切分 / 功能增长 / 新模块任一原因），或用户主动要求评估上限策略。
 - **指针**：`docs/architecture/v1.9-roadmap.md` §S2（F1 预算与本项的真实冲突、切分先例）/ §S3（tsc **不是**「比行数更好的质量代理」，故不能以引入类型检查替代本条讨论）｜ `scripts/file_size_allowlist.json`（棘轮）+ `scripts/lint_frontend.py`（F1–F7）｜ CHANGELOG 与 git 历史。
 
@@ -541,12 +542,13 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **指针**：`docs/architecture/module-map.md` §2b/§5/§6（A2b）｜ kernel `routing.md`（S1 三规则 + services 黄金样例）与 `testing.md`（Placement）｜ CHANGELOG `[Unreleased]`（S1 条目含勘误）｜ `docs/R&D/runs/split/`（目录级：批次执行计划与后续执行记录）。
 
 ### P-038 · I-1 共享叶登记制 `shared_leaf_modules`（S1+1 增量；L1 强度已裁决 A）（2026-10-24，自 runs/split 03 §4 立项登记）
-> status: open · since: 2026-10-24
+> status: retained · since: 2026-10-24
 - **登记门槛（两问）**：①**不归入 P-037**——那是还债轨迹，本条是**新增登记机制**的待决范围（机制面独立：判据 + 登记表 + 对账，runs/split 01 Adversarial check 已警告其成本）；②**不可直接晋升**——L2/L3 人审未做，无定稿可载。
 - **待决问题**：34 个零出向候选逐个过 **L2（无域语义）/ L3（无域状态）人审**后范围定稿。首登 `pdf_raster`（纯光栅化工具，判据清晰）即消解 P-037 批 1 的两条 `->infra` 边；`page_text_trust` 是「事实共享叶」（被 table/evidence/document 三域跨域消费）但 L2 存疑（「页面文本信任」可能带域语义），待人审——通过可再消解 `table->document` 与 `evidence->document` 两条。
 - **已裁决（2026-10-19，runs/split 03 §4.3）**：L1 判据强度 **A（零出向谓词）**——一条谓词、零白名单、零漂移面；强度 B（允许基础层出向的白名单）保留为升级路径，非废弃。
 - **进展（批 6，2026-10-25）**：已登记 6 叶——`pdf_raster`（批 1）/ `text_first_contract` + `kie_default_rules`（批 2）/ `page_text_trust`（P-038 D）/ `bbox_geometry`（P-038 A+）/ `table_cell_confidence`（批 6：纯逐格置信度量，layout 解析路径 / report 指标卡 / orchestration L2 三方消费、table 域零消费；allowlist target 的「移模块或倒置」判档**移模块**——倒置结构不可能，raw `table_res_list` payload 仅存在于 layout `_parse_result` 调用点——同批消解 `layout->table` 与 `report->table`，棘轮 4→2）。候选范围定稿仍在途。
 - **候选路线**：S1+1 批次两步走（34 候选逐个 L2/L3 → 范围定稿后在 `service_domain_map.json` 增 `shared_leaf_modules` 登记面 + S1b 识别为合法通道 + §2b 基建行）。
+- **定稿（批 12，2026-10-25，L1 复扫 36 零出向 = 已登 6 叶 + 未登 30 候选，逐个 L2/L3 人审）**：**共享叶范围封册 = 6 叶，不新增**。30 候选三类判定——①**L3 不过（有状态/引擎/存储）7 个**：formula_engine、layout_pp_visualization、table_pp_parse（引擎 Mixin 操作实例态）、ocr_service、seal_service（域引擎）、hitl_queue（模块级单例）、persistence/queue_store（SQLite I/O）；②**L2 不过（域语义叶子，域内互引/私有叶）22 个**：_layout_geometry、_layout_order（layout 私有叶）、batch_models、document_type_classifier、evidence/findings_schema、evidence/normalize、export_table_format、formula_adapt、kie/{azure_schema,field_merge,kie_field_metrics,kie_pages,query_fields,schema_templates}、pii_mask、proof_render、table_{band_range,cell_geo,html,layout,ocr_blocks}、trial/gt_diff；③**形式合格但登记动机缺位 1 个**：pdf_tools_service（纯函数 + lazy fitz，pdf_raster 同形态；唯一消费方 pdftools 路由为层间合法，无跨域消费方——登记制解决跨域合法通道，无跨域需求不造登记面，反 gaming 同源）。**未来新增叶的唯一通道 = 出现真实跨域消费方时按 L1/L2/L3 判据登记（Placement N + 用户裁决）**。保留理由：机制已常态化（登记面 + 判据 + 对账由 lint_services/domain_map 承载，`shared_leaf_modules` 六叶证据齐）；候选池定稿留档本条，runs/split 目录删除后本条即唯一真源。
 - **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
 - **指针**：`docs/R&D/runs/split/`（03 §4 候选池实证与 L1 强度裁决表，目录级）｜ P-037（还债批次序列与消解目标）。
 

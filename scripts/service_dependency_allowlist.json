@@ -11,16 +11,6 @@
       "added": "2026-10-16",
       "status": "frozen",
       "target": "事件队列经注入或上提，消解跨域"
-    },
-    {
-      "src_file": "backend/app/services/batch_service.py",
-      "dst_module": "app.services.webhook_service",
-      "domain_pair": "batch->infra",
-      "line": 464,
-      "kind": "cross-domain",
-      "added": "2026-10-16",
-      "status": "frozen",
-      "target": "webhook 有状态+域语义，不过共享叶判据——留冻结边+倒置目标"
     }
   ]
 }

@@ -186,7 +186,14 @@ async def test_batch_service_resume_no_pending_finalizes(tmp_path: Path) -> None
     assert recovered.status == BatchStatus.PAUSED
 
     # Resume with no pending tasks → must finalize, not stay PROCESSING.
-    ok = await svc2.resume_batch(batch.batch_id, process_func=None)
+    # on_complete spy pins the batch 8 asymmetry fix: the finalize path must
+    # fire the same completion callback the normal _process_batch tail does.
+    fired = []
+
+    async def _spy(payload):
+        fired.append(payload)
+
+    ok = await svc2.resume_batch(batch.batch_id, process_func=None, on_complete=_spy)
     assert ok is True
     final = svc2.get_batch(batch.batch_id)
     assert final.status == BatchStatus.COMPLETED, f"expected completed, got {final.status}"
@@ -194,6 +201,12 @@ async def test_batch_service_resume_no_pending_finalizes(tmp_path: Path) -> None
     # Persisted to store.
     row = store.load("batch_jobs", batch.batch_id)
     assert row["status"] == "completed"
+    # Completion callback fired (fire-and-forget: yield one loop tick).
+    await asyncio.sleep(0)
+    assert len(fired) == 1, f"expected exactly one completion callback, got {fired}"
+    assert fired[0]["batch_id"] == batch.batch_id
+    assert fired[0]["status"] == "completed"
+    assert fired[0]["completed_tasks"] == 1
     store.close()
 
 

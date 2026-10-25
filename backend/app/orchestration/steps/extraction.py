@@ -9,11 +9,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict
 from loguru import logger
 from app.core.config import settings
+from app.orchestration.envelope_builder import EnvelopeBuilder
 from app.orchestration.steps.perception import _collect_layout_blocks  # shared helper (tier B)
 
 if TYPE_CHECKING:
     from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
 PipelineContext = Dict[str, Any]
+
+# P-040 ②: formula-region label set, single-sourced from EnvelopeBuilder (status
+# classification + envelope merge use the same object; test_formula_label_sets.py
+# pins the agreement — numbered display formulas join the ROI path here).
+FORMULA_LAYOUT_TYPES = EnvelopeBuilder.SKIP_FORMULA_TYPES
 
 
 async def table_step(ctx: PipelineContext) -> None:
@@ -170,7 +176,7 @@ async def formula_step(ctx: PipelineContext) -> None:
     layout_result = ctx["result"].get("layout", {}) if isinstance(ctx["result"], dict) else {}
     formula_boxes = _collect_layout_blocks(
         layout_result,
-        accepted_types={"formula", "inline_formula", "equation"},
+        accepted_types=FORMULA_LAYOUT_TYPES,
     )
     roi_source_image_path = ctx["task"].get("preprocessed_image_path") or ctx["file_path"]
     logger.info(

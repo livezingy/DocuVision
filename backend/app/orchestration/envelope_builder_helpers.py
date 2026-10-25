@@ -152,7 +152,7 @@ def _map_block_type_to_kind(block_type: str) -> str:
         return "header"
     elif t in {"footer", "footer_image", "footnote", "page_footer"}:
         return "footer"
-    elif t in {"number", "formula_number"}:
+    elif t == "number":
         return "number"
     elif t in {"table"}:
         return "table"
@@ -161,7 +161,7 @@ def _map_block_type_to_kind(block_type: str) -> str:
         "figure_table_chart", "flowchart",
     }:
         return "figure"
-    elif t in {"formula", "inline_formula", "equation", "formula_body", "display_formula"}:
+    elif t in {"formula", "inline_formula", "equation", "formula_body", "display_formula", "formula_number"}:
         return "formula"
     elif t in {"seal", "stamp"}:
         return "seal"

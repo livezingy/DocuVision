@@ -79,7 +79,7 @@ async def phase1_envelope_step(ctx: PipelineContext) -> None:
                 filtered_blocks = [
                     b for b in existing_blocks
                     if not (
-                        str(b.get("type", "")).lower() in {"formula", "inline_formula"}
+                        str(b.get("type", "")).lower() in EnvelopeBuilder.SKIP_FORMULA_TYPES
                         and str(b.get("processing_status", "")).lower() == "skip_formula"
                     )
                 ]

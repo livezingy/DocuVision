@@ -257,6 +257,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **S1 batch 8 — batch_service split three ways + batch->infra frozen edge dissolved**
+  (2026-10-25, P-037): the 686-line pinned `batch_service.py` splits into `batch_models.py`
+  (185 — `_StoreLike`/`BatchStatus`/`TaskStatus`/`BatchTask`/`BatchJob` verbatim, pure data),
+  `batch_runner.py` (241 — `BatchRunnerMixin`: `_process_batch` + pause/resume/cancel operating
+  on the facade-owned instance state, plus the new `_notify_batch_complete` helper) and the
+  facade (328 — store wiring/CRUD/queries/start entry, composes the mixin, re-exports the four
+  type names so consumers stay unchanged). **Edge dissolution**: the inline
+  `webhook_registry` import in `_process_batch` becomes an injected `on_complete` callback —
+  `routers/batch.py` gains the module-level `_dispatch_batch_completed_webhook` closure and
+  injects it at start/resume; the services-layer `batch->infra` frozen edge is removed
+  (allowlist 2 -> 1, only `evidence->hitl` remains). Declared behavior change (separate commit,
+  tier C): the resume-with-no-pending-tasks finalize path (crash recovery) now fires the same
+  completion callback — previously it silently skipped `batch.completed`; behavior anchor added
+  to `test_batch_service_resume_no_pending_finalizes`. Evidence: 5 classes + 15 methods
+  byte-identical vs HEAD; tier-B hunks enumerated (3 signatures + 2 call threadings +
+  webhook->notify swap); symtable check clean (caught a missing `Protocol` import in
+  batch_models during verification, fixed before commit). Local 686 passed / 14 skipped /
+  0 errors; gates green. `file_size_allowlist` pins 5 -> 4; batch domain 2 -> 4 files.
+  Cloud steps deferred to the consolidated round (runs/split 14 plan section 3).
 - **S1 batch 7 — formula_service split three ways** (2026-10-25, P-037): the 734-line pinned
   `formula_service.py` splits into the service facade (`formula_service.py`, 208 lines —
   `FormulaService.__init__/is_ready/get_status/recognize` verbatim, base list composed with the

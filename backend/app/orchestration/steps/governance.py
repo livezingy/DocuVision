@@ -20,7 +20,9 @@ async def evidence_step(ctx: PipelineContext) -> None:
 
     Runs after the envelope so quote grounding can use the fused layer's
     per-page text; verifies PICO findings fail-closed and routes near_match
-    / slot findings to HITL (see services/evidence/gate.py).
+    / slot findings to HITL (the gate returns the candidates as data; the
+    enqueue lives here at the composition point — batch 11 inversion,
+    isomorphic with the kie_step enqueue).
     """
     from app.core.config import settings
 
@@ -31,7 +33,20 @@ async def evidence_step(ctx: PipelineContext) -> None:
     await orchestrator.update_progress(ctx, 90, "Evidence verification (gate A/B/C)...")
     from app.services.evidence.gate import run_evidence_gate
 
-    ctx["result"]["evidence"] = await run_evidence_gate(ctx)
+    block = await run_evidence_gate(ctx)
+    # Batch 11 inversion: enqueue at the composition point — the frozen
+    # evidence->hitl edge dissolves (services/evidence no longer imports
+    # hitl); review ids are backfilled so the stored evidence block keeps
+    # its exact API shape (hitl_payloads is popped, never persisted).
+    hitl_payloads = block.pop("hitl_payloads", [])
+    if hitl_payloads:
+        from app.services.hitl_queue import hitl_queue
+
+        paper_id = str(ctx.get("task", {}).get("file_name") or "unknown")
+        for reason, payload in hitl_payloads:
+            item = await hitl_queue.enqueue(ctx["task_id"], paper_id, reason, payload)
+            block["hitl_review_ids"].append(item.review_id)
+    ctx["result"]["evidence"] = block
 
 
 async def pii_mask_step(ctx: PipelineContext) -> None:

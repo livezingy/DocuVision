@@ -219,6 +219,66 @@ def test_run_evidence_gate_end_to_end(tmp_path, monkeypatch):
     assert block["failure_ledger"][0]["reject_class"] == "overclaim"
 
 
+def _near_match_ctx(tmp_path, task_id: str):
+    """Legacy-path ctx whose single candidate lands in near_match (HITL route)."""
+    quote = " ".join(["word"] * 27) + " a b c"
+    hay = " ".join(["word"] * 27) + " other ending words"
+    candidate = grounded_candidate(quote=quote)
+    candidate["statement"] = quote
+    return {
+        "task_id": task_id,
+        "task": {"file_name": "doc.pdf"},
+        "file_path": _make_pdf(tmp_path),
+        "result": {"kie_fields": {"findings": [candidate]}},
+        "phase1_fused": {"pages": [{"page": 1, "blocks": [{"payload": {"text": hay}}]}]},
+        "orchestrator": _StubOrchestrator(),
+    }
+
+
+def test_gate_returns_hitl_as_data_without_enqueue(tmp_path, monkeypatch):
+    """Batch 11 inversion: the gate exports HITL candidates as data only.
+
+    Direct ``run_evidence_gate`` call must NOT touch the queue — the enqueue
+    side effect lives in orchestration/steps/governance.py.
+    """
+    from app.services import hitl_queue as hq_module
+
+    fresh_queue = HitlReviewQueue()
+    monkeypatch.setattr(hq_module, "hitl_queue", fresh_queue)
+
+    ctx = _near_match_ctx(tmp_path, "t-data")
+    block = asyncio.run(gate.run_evidence_gate(ctx))
+    assert block["hitl_payloads"], "gate must return HITL candidates as data"
+    reason, _payload = block["hitl_payloads"][0]
+    assert reason == gate.EVIDENCE_HITL_NEAR_MATCH
+    assert fresh_queue.list_pending() == [], "gate must not enqueue (inversion)"
+
+
+def test_evidence_step_enqueues_hitl_at_composition_point(tmp_path, monkeypatch):
+    """Batch 11 inversion: the step enqueues and backfills review ids.
+
+    ``hitl_payloads`` is popped before the block is stored (API shape
+    unchanged); the patched queue receives exactly the near_match item.
+    """
+    from app.core.config import settings
+    from app.orchestration.document_pipeline_orchestrator import evidence_step
+    from app.services import hitl_queue as hq_module
+
+    monkeypatch.setattr(settings, "EVIDENCE_ENABLED", True)
+    fresh_queue = HitlReviewQueue()
+    monkeypatch.setattr(hq_module, "hitl_queue", fresh_queue)
+
+    ctx = _near_match_ctx(tmp_path, "t-step")
+    asyncio.run(evidence_step(ctx))
+
+    block = ctx["result"]["evidence"]
+    assert "hitl_payloads" not in block, "transient key must not persist"
+    assert len(block["hitl_review_ids"]) == 1
+    pending = fresh_queue.list_pending()
+    assert len(pending) == 1
+    assert pending[0]["reason"] == gate.EVIDENCE_HITL_NEAR_MATCH
+
+
 def test_evidence_step_attributes_processed_page_when_quote_block_unmappable(tmp_path, monkeypatch):
     """P-029 page-attribution fix (PENDING option 1).
 

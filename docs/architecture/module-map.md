@@ -92,7 +92,7 @@ core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 | ocr | backend/app/services/ocr_service.py | OCR 引擎封装 | docuvision-system-design.md §3.2–3.4 | — |
 | seal | backend/app/services/seal_service.py | 印章区域提取 | — | — |
 | kie | backend/app/services/kie/{KieManager,__init__,azure_schema,field_merge,field_validation,kie_field_metrics,kie_pages,query_fields,schema_templates,text_first,value_typer}.py（11 文件） + backend/app/services/{kie_fields_update,kie_qwen_service}.py（2 文件） | KIE 字段抽取/合并/校验/模板/指标 | kie.md、kie-custom-fields.md | — |
-| evidence | backend/app/services/evidence/{__init__,findings_schema,gate,grounding,normalize,verifier}.py（6 文件） | 证据门禁与 grounding（三闸 / V0-V6 梯 / text-first） | evidence-layer.md | evidence->hitl |
+| evidence | backend/app/services/evidence/{__init__,findings_schema,gate,grounding,normalize,verifier}.py（6 文件） | 证据门禁与 grounding（三闸 / V0-V6 梯 / text-first；HITL 候选以数据出口，入队在 orchestration/steps/governance 组合点——批 11 倒置，evidence->hitl 边消解） | evidence-layer.md | — |
 | hitl | backend/app/services/{hitl_policy,hitl_queue}.py（2 文件） | 人工复核策略与队列 | v1.5-roadmap.md（hitl_queue） | — |
 | batch | backend/app/services/{batch_service,batch_models,batch_runner,batch_export_service}.py（4 文件） | 批量任务管理与导出打包：数据模型（batch_models）/ 运行控制 Mixin（batch_runner：处理循环 + pause/resume/cancel + 完成回调注入点，批 8 拆出——webhook 派发经 routers/batch.py on_complete 注入，batch->infra 冻结边消解） | v1.5-roadmap.md | — |
 | report | backend/app/services/{export_service,export_render_docx,export_render_markdown,export_table_format,pack_export_service,proof_pack,proof_render,proof_report}.py（8 文件） | 导出与证明包：export 家族（门面 + Markdown/DOCX 渲染 Mixin + 纯格式 helper 叶，批 10 拆出）+ pack 导出 + proof_* 三件 | docuvision-system-design.md §9.1 · provenance-review.md（proof_*） | — |

@@ -12,6 +12,8 @@
 > 同日 P-038 裁决 A+（B→A+ 改判）：bbox_geometry 第 5 共享叶（figure 钉死 681→632 同批下调），消解 table->figure（棘轮 5→4）；
 > 批 6（2026-10-25）：table_cell_confidence 第 6 共享叶（判档"移模块"：倒置因 raw payload 仅在 layout 解析点而结构不可能；
 > table 域零消费、域归属系 P-027 D8 历史命名，自 table 迁 infra），消解 layout->table 与 report->table（棘轮 4→2）；
+> 同批 layout_service 1614 拆五（门面 115 / 引擎 423 / 解析 Mixin 497 / 可视化 Mixin 237 / 子进程 412，逐字节搬移，
+> 钉死条目 −1，7→6；layout 域 4→8 文件）；
 > §2/§3 路由/前端域结构不变，55 守恒）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `scripts/service_domain_map.json`（services 15 域，§2b）· `scripts/service_dependency_allowlist.json`（冻结跨域边，只减不增）·
@@ -83,7 +85,7 @@ core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 
 <!-- audit:backend-service-domains -->
 | 域 | 文件 | 职责 | owning doc | 出向跨域边 |
-| layout | backend/app/services/{layout_service,_layout_geometry,_layout_order,unified_layout_service}.py（4 文件） | 版面结构与阅读顺序（主入口 + 几何/顺序私有叶 + unified 融合） | pp-structurev3-official-findings.md | — |
+| layout | backend/app/services/{layout_service,layout_engine_ppstructure,layout_engine_subprocess,layout_pp_parse,layout_pp_visualization,_layout_geometry,_layout_order,unified_layout_service}.py（8 文件） | 版面结构与阅读顺序：服务门面（layout_service）+ PP-Structure 引擎家族（引擎核心 + 解析 Mixin + 可视化 Mixin + 子进程隔离，批 6 拆出）+ 几何/顺序私有叶 + unified 融合 | pp-structurev3-official-findings.md | — |
 | table | backend/app/services/{table_alignment,table_backfill,table_band_range,table_cell_geo,table_engine_ppstructure,table_html,table_layout,table_ocr_blocks,table_pp_parse,table_pseudo_filter,table_service}.py（11 文件） | 表格识别全家族：服务门面（table_service）/ PP-Structure 引擎（table_engine_ppstructure + table_pp_parse 解析 Mixin，批 5 拆出）/ 对齐/回填/HTML（逐格置信 table_cell_confidence 已登第 6 共享叶迁 infra，批 6） | pp-structurev3-official-findings.md（table_service）· provenance-review.md（backfill/alignment） | — |
 | figure | backend/app/services/figure_service.py | 图像区域提取 | pp-structurev3-official-findings.md | — |
 | formula | backend/app/services/formula_service.py | 公式区域提取 | — | — |

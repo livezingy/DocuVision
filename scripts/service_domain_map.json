@@ -1,7 +1,7 @@
 {
   "comment": "Backend services domain map (S1b fact source, runs/split ruling 1 of 2026-10-16: 15 domains, page_* merged into document). File granularity only - no symbol lists (P-019 lesson). Fail-closed: every backend/app/services/**/*.py on disk must have exactly one entry; an unmapped new file, a ghost entry, or a file mapped twice is an audit ERROR. The services/__init__.py shell maps to domain 'shared' and is registered as the prose row under module-map.md section 2b (B-2), not as a table row. Adding a domain or moving a file = Placement N/D decision in the same commit (kernel testing.md footer); owning docs live in module-map section 2b (single source, B-7).",
   "domains": {
-    "layout": "版面结构与阅读顺序：layout_service 主入口 + 几何/顺序私有叶 + unified 融合",
+    "layout": "版面结构与阅读顺序：layout_service 门面 + PP-Structure 引擎家族（engine_ppstructure 核心 + pp_parse/pp_visualization Mixin + engine_subprocess，批 6 拆出）+ 几何/顺序私有叶 + unified 融合",
     "table": "表格识别全家族：检测/伪表过滤/对齐/回填/HTML（table_* 11 模块互引；逐格置信 table_cell_confidence 已登第 6 共享叶迁 infra，批 6）",
     "figure": "图像区域提取",
     "formula": "公式区域提取",
@@ -65,6 +65,10 @@
     "backend/app/services/__init__.py": "shared",
     "backend/app/services/_layout_geometry.py": "layout",
     "backend/app/services/_layout_order.py": "layout",
+    "backend/app/services/layout_engine_ppstructure.py": "layout",
+    "backend/app/services/layout_engine_subprocess.py": "layout",
+    "backend/app/services/layout_pp_parse.py": "layout",
+    "backend/app/services/layout_pp_visualization.py": "layout",
     "backend/app/services/batch_export_service.py": "batch",
     "backend/app/services/batch_service.py": "batch",
     "backend/app/services/bbox_geometry.py": "infra",

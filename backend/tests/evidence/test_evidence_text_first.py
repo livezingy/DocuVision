@@ -25,6 +25,7 @@ from app.services.evidence.grounding import (
     attribute_candidates,
     grounding_source,
     parse_marker_page,
+    trusted_grounding_page_set,
 )
 from app.services.hitl_queue import HitlReviewQueue
 from app.services.kie import text_first as tf
@@ -401,7 +402,12 @@ def test_m1_build_text_first_payloads_sources(tmp_path):
         ),
     )
     layout = _layout([_elem(2, "text", "ocr text for page two")])
-    payloads = tf.build_text_first_payloads(pdf, layout, [1, 2, 3])
+    payloads = tf.build_text_first_payloads(
+        layout,
+        [1, 2, 3],
+        blocks_by_page=grounding_source(pdf).blocks,
+        trusted_pages=trusted_grounding_page_set(pdf),
+    )
     assert payloads[1]["source"] == tf.SOURCE_TEXT_LAYER
     assert "[p1_b0]" in payloads[1]["windows"][0]
     assert payloads[2]["source"] == tf.SOURCE_FUSED_OCR  # declared fallback (R3)
@@ -505,6 +511,11 @@ def test_c1a_bmc_page5_text_first_grounding_hit(tmp_path, monkeypatch):
 def test_c1a_bmc_payload_covers_page5():
     """M2 DoD local face: the payload builder on the real corpus covers page 5
     (the findings page) with text_layer source and absolute-page markers."""
-    payloads = tf.build_text_first_payloads(str(BMC_PDF), {"elements": []}, list(range(1, 6)))
+    payloads = tf.build_text_first_payloads(
+        {"elements": []},
+        list(range(1, 6)),
+        blocks_by_page=grounding_source(str(BMC_PDF)).blocks,
+        trusted_pages=trusted_grounding_page_set(str(BMC_PDF)),
+    )
     assert 5 in payloads and payloads[5]["source"] == tf.SOURCE_TEXT_LAYER
     assert any("[p5_b" in window for window in payloads[5]["windows"])

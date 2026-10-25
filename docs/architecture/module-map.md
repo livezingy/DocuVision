@@ -4,8 +4,9 @@
 > 最近对照：v1.12.0 / main 06d6e7c（2026-10-24，S1 落地批 0：新增 §2b services 15 域表 + §5 S1a/S1b/S1c/A2b 门禁行 +
 > §1 后端依赖律改写——orchestration 定位为 services 的同级消费方；同日批 1：共享叶首登 pdf_raster（消解 2 边）+
 > single_file_pipeline 上移 orchestration/（#13 消解，services→编排零例外），棘轮 15→12 条目；同日批 2：双共享叶
-> `text_first_contract`/`kie_default_rules` 破两组域环（域间图无环），棘轮 12→9（`kie->evidence` 留单向冻结，随批 3 消解）；
-> §2/§3 路由/前端域结构不变，55 守恒）
+> `text_first_contract`/`kie_default_rules` 破两组域环，棘轮 12→9；批 3（2026-10-25）：orchestrator 拆
+> steps/ 五模块（1297→142）+ envelope_builder 拆 helpers（620→486），行数钉死条目 -2，KIE 步骤注入 grounding
+> 消解 `kie->evidence`（棘轮 9→8）；§2/§3 路由/前端域结构不变，55 守恒）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `scripts/service_domain_map.json`（services 15 域，§2b）· `scripts/service_dependency_allowlist.json`（冻结跨域边，只减不增）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
@@ -26,7 +27,9 @@ services/ 15 域（业务，§2b；域内互引 ✓，    shared/* · preview-st
   跨域须登记 S1b，禁→编排/路由/runtime）     （D4 shell / D5 preview-paging / D8 pipeline
 orchestration/（编排 = services 的同级        / D9 result-panels 为目录域）
   消费方：DI 注入不建服务；含批 1 上移的
-  single_file_pipeline——services→编排
+  single_file_pipeline 与批 3 拆出的 steps/
+  步骤包（perception/extraction/kie/
+  governance/envelope）——services→编排
   零例外，S1a 全量生效）
 core/runtime.py（共享状态枢纽，双身份）
 core/ · models/ · packages/（L4 叶子；packages 独立可安装）
@@ -80,7 +83,7 @@ core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 | formula | backend/app/services/formula_service.py | 公式区域提取 | — | — |
 | ocr | backend/app/services/ocr_service.py | OCR 引擎封装 | docuvision-system-design.md §3.2–3.4 | — |
 | seal | backend/app/services/seal_service.py | 印章区域提取 | — | — |
-| kie | backend/app/services/kie/{KieManager,__init__,azure_schema,field_merge,field_validation,kie_field_metrics,kie_pages,query_fields,schema_templates,text_first,value_typer}.py（11 文件） + backend/app/services/{kie_fields_update,kie_qwen_service}.py（2 文件） | KIE 字段抽取/合并/校验/模板/指标 | kie.md、kie-custom-fields.md | kie->evidence |
+| kie | backend/app/services/kie/{KieManager,__init__,azure_schema,field_merge,field_validation,kie_field_metrics,kie_pages,query_fields,schema_templates,text_first,value_typer}.py（11 文件） + backend/app/services/{kie_fields_update,kie_qwen_service}.py（2 文件） | KIE 字段抽取/合并/校验/模板/指标 | kie.md、kie-custom-fields.md | — |
 | evidence | backend/app/services/evidence/{__init__,findings_schema,gate,grounding,normalize,verifier}.py（6 文件） | 证据门禁与 grounding（三闸 / V0-V6 梯 / text-first） | evidence-layer.md | evidence->hitl、evidence->document |
 | hitl | backend/app/services/{hitl_policy,hitl_queue}.py（2 文件） | 人工复核策略与队列 | v1.5-roadmap.md（hitl_queue） | — |
 | batch | backend/app/services/{batch_service,batch_export_service}.py（2 文件） | 批量任务管理与导出打包 | v1.5-roadmap.md | batch->infra |
@@ -93,8 +96,8 @@ core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 共享壳（非域）：`backend/app/services/__init__.py` 为空壳（无 eager import），域归属 = shared，A2b 三向对账含它。
 共享叶（3）：`pdf_raster`、`text_first_contract`、`kie_default_rules`（I-1/P-038：L1 零出向机检 + L2/L3 人审
 证据见 `service_domain_map.json` 的 `shared_leaf_modules`；任何域可 import，前端 F5 `leaf_services` 的后端对应物；
-名单与本行 A2b 双向对账。批 2 起两组域环 evidence⇄kie、hitl⇄kie 已破除——共享谓词上提叶 + 经枢纽注入，
-**域间图已无环**；残留 `kie->evidence` 为单向冻结边，随批 3 orchestrator 拆分消解）。
+名单与本行 A2b 双向对账。批 2 破两组域环、批 3 消解残留单向边 `kie->evidence`（KIE 步骤注入 grounding）——
+**域间图无环且无残留环债性质的跨域边**）。
 边列登记的是 allowlist **域对键**（双向对账：表内键 ⊆ allowlist 且 allowlist 键 ⊆ 表内）；条目粒度 = 具体边
 （src_file + dst_module），见 `scripts/service_dependency_allowlist.json`。
 

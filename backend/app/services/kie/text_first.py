@@ -26,7 +26,7 @@ from ``evidence.grounding``), not imported here.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from app.services.text_first_contract import (  # noqa: F401 (re-exported contract surface)
     BODY_ELEMENT_TYPES,
@@ -110,17 +110,18 @@ def _layout_text_by_page(layout: Optional[Dict[str, Any]]) -> Dict[int, List[str
 
 
 def build_text_first_payloads(
-    file_path: str,
     layout: Optional[Dict[str, Any]],
     selected_pages: List[int],
+    *,
+    blocks_by_page: Dict[int, List[str]],
+    trusted_pages: Set[int],
 ) -> Dict[int, Dict[str, Any]]:
     """Per-page text-first payloads (M1): ``{page: {page, source, n_chars, windows}}``.
 
-    The native text layer comes from ``evidence.grounding`` -- "same source"
-    is the P-032 contract, not an implementation accident. This one-way
-    kie->evidence edge stays frozen in the S1 allowlist; it dissolves with the
-    orchestrator split (runs/split batch 3) when the grounding layer gets
-    injected at the composition point instead.
+    The native text layer and the trusted-page set are INJECTED by the caller
+    (the orchestrator's KIE step passes ``evidence.grounding``'s results) —
+    the same-source P-032 contract holds without any kie->evidence import
+    (dissolved in runs/split batch 3).
 
     ``source`` records which text fed the model: ``text_layer`` when the page
     passes the M5 evidence trust predicate (native layer exists, no OCR
@@ -129,18 +130,11 @@ def build_text_first_payloads(
     Pages with no text on either channel are absent: they fall back to the
     image channel, which the payload map makes visible (nothing is silently
     mixed)."""
-    from app.services.evidence.grounding import (
-        grounding_source,
-        trusted_grounding_page_set,
-    )
-
-    source = grounding_source(file_path)
-    trusted = trusted_grounding_page_set(file_path)
     layout_text = _layout_text_by_page(layout)
     payloads: Dict[int, Dict[str, Any]] = {}
     for page_num in selected_pages:
-        native = source.blocks.get(page_num) or []
-        if page_num in trusted and native:
+        native = blocks_by_page.get(page_num) or []
+        if page_num in trusted_pages and native:
             blocks, tag = native, SOURCE_TEXT_LAYER
         else:
             ocr_blocks = layout_text.get(page_num) or []

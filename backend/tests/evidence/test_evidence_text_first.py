@@ -28,6 +28,7 @@ from app.services.evidence.grounding import (
 )
 from app.services.hitl_queue import HitlReviewQueue
 from app.services.kie import text_first as tf
+from app.services import text_first_contract as tfc
 from app.services.kie.KieManager import KieManager
 from app.services.kie_qwen_service import QwenDocumentKIEService, _merge_text_window_fields
 
@@ -317,7 +318,7 @@ def test_m1_split_windows_single_window_and_overlap(monkeypatch):
     windows = tf.split_windows(blocks, 7)
     assert windows == ["[p7_b0] short one\n[p7_b1] short two\n[p7_b2] short three"]
 
-    monkeypatch.setattr(tf, "TEXT_FIRST_WINDOW_MAX_CHARS", 60)
+    monkeypatch.setattr(tfc, "TEXT_FIRST_WINDOW_MAX_CHARS", 60)
     big = ["a" * 20, "b" * 20, "c" * 20, "d" * 20]
     windows = tf.split_windows(big, 2)
     # 1-block overlap: each window after the first re-opens with the previous
@@ -330,7 +331,7 @@ def test_m1_split_windows_single_window_and_overlap(monkeypatch):
 
 
 def test_m1_split_windows_oversize_single_block(monkeypatch):
-    monkeypatch.setattr(tf, "TEXT_FIRST_WINDOW_MAX_CHARS", 10)
+    monkeypatch.setattr(tfc, "TEXT_FIRST_WINDOW_MAX_CHARS", 10)
     windows = tf.split_windows(["x" * 50, "y3"], 1)
     assert len(windows) == 2
     assert windows[0] == "[p1_b0] " + "x" * 50  # a block is never split further

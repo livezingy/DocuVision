@@ -14,128 +14,58 @@ Single home of the P-032 adjudicated rules, pinned as code constants:
     model context window is split at block boundaries with a 1-block overlap,
     markers keep absolute page numbers.
 
-This module shares the native text extraction with the evidence gate's
-grounding source (``app.services.evidence.grounding``) -- "same source" is
-the P-032 contract, not an implementation accident.
+The pinned constants, the marker/payload format and the pure decision
+predicates live in the shared leaf ``app.services.text_first_contract``
+(runs/split batch 2: both the KIE channel and the evidence gate consume the
+SAME functions); this module keeps the settings-reading wrappers with the
+original signatures plus the payload assembly. "Same source" with the
+evidence grounding text remains the P-032 contract: the grounding layer is
+injected by the orchestrator (``blocks_by_page`` / ``trusted_pages`` come
+from ``evidence.grounding``), not imported here.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-# P-032 adjudication 2 constants (C1-calibrated; never runtime-tuned).
-BODY_PAGE_MIN_TEXT_ELEMENTS = 8
-BODY_PAGE_MIN_TEXT_CHARS = 500
-
-# Layout element types that count as body content (adjudication 2).
-BODY_ELEMENT_TYPES = frozenset({"text", "paragraph", "title", "table", "figure_caption"})
-
-# P-032 adjudication 3: sliding-window bound (chars incl. markers), to be
-# confirmed against the C1 Cloud token measurements.
-TEXT_FIRST_WINDOW_MAX_CHARS = 12000
-
-# Per-page input source tags recorded in debug_input (M1 DoD).
-SOURCE_TEXT_LAYER = "text_layer"
-SOURCE_FUSED_OCR = "fused_ocr"
+from app.services.text_first_contract import (  # noqa: F401 (re-exported contract surface)
+    BODY_ELEMENT_TYPES,
+    BODY_PAGE_MIN_TEXT_CHARS,
+    BODY_PAGE_MIN_TEXT_ELEMENTS,
+    SOURCE_FUSED_OCR,
+    SOURCE_TEXT_LAYER,
+    TEXT_FIRST_WINDOW_MAX_CHARS,
+    block_marker,
+    build_page_payload,
+    select_body_pages,
+    split_windows,
+)
+from app.services.text_first_contract import (
+    text_first_enabled as _text_first_enabled_pure,
+)
+from app.services.text_first_contract import text_first_from_ctx as _from_ctx_pure
 
 
 def text_first_enabled(document_type: str, is_pdf: bool) -> bool:
-    """P-032 feature flag gate: text-first applies to pico on PDFs only."""
-    if not is_pdf or str(document_type).lower() != "pico":
-        return False
+    """P-032 feature flag gate (settings-reading wrapper over the shared leaf)."""
     try:
         from app.core.config import settings
 
-        return bool(getattr(settings, "EVIDENCE_TEXT_FIRST", False))
+        flag = bool(getattr(settings, "EVIDENCE_TEXT_FIRST", False))
     except Exception:
-        return False
+        flag = False
+    return _text_first_enabled_pure(document_type, is_pdf, flag)
 
 
 def text_first_from_ctx(ctx: Dict[str, Any]) -> bool:
-    """Same-source text-first decision from a pipeline ctx (P-032 review D2).
+    """Same-source text-first decision from a pipeline ctx (settings wrapper)."""
+    try:
+        from app.core.config import settings
 
-    Resolves the document type from ``result.kie_meta.resolved_document_type``
-    and PDF-ness from ``file_path``, then defers to :func:`text_first_enabled` --
-    the same predicate the KIE step uses, so the extraction channel and the
-    evidence grounding path cannot diverge (unknown type / non-PDF -> legacy).
-    """
-    result = ctx.get("result") or {}
-    kie_meta = result.get("kie_meta") if isinstance(result.get("kie_meta"), dict) else {}
-    doc_type = str(kie_meta.get("resolved_document_type") or "")
-    is_pdf = str(ctx.get("file_path") or "").lower().endswith(".pdf")
-    return text_first_enabled(doc_type, is_pdf)
-
-
-def block_marker(page_num: int, block_index: int) -> str:
-    """Globally-unique block marker: absolute page number, 0-based block."""
-    return f"[p{page_num}_b{block_index}]"
-
-
-def build_page_payload(
-    blocks: List[str],
-    page_num: int,
-    block_indices: Optional[List[int]] = None,
-) -> str:
-    """Marker-annotated text for one page (or window): one line per block."""
-    indices = list(range(len(blocks))) if block_indices is None else block_indices
-    return "\n".join(
-        f"{block_marker(page_num, index)} {text}" for index, text in zip(indices, blocks)
-    )
-
-
-def split_windows(blocks: List[str], page_num: int) -> List[str]:
-    """Block-boundary sliding windows for one page (adjudication 3).
-
-    Windows carry at least one block even when a single block exceeds the
-    char bound (a block cannot be split further); consecutive windows overlap
-    by exactly one block so a quote spanning the boundary stays locatable."""
-    if not blocks:
-        return []
-    windows: List[str] = []
-    start = 0
-    total = len(blocks)
-    while start < total:
-        size = 0
-        last = start
-        for index in range(start, total):
-            chunk = len(block_marker(page_num, index)) + 1 + len(blocks[index]) + 1
-            if size + chunk > TEXT_FIRST_WINDOW_MAX_CHARS and index > start:
-                break
-            size += chunk
-            last = index
-        indices = list(range(start, last + 1))
-        windows.append(build_page_payload([blocks[i] for i in indices], page_num, indices))
-        if last + 1 >= total:
-            break
-        start = last if last > start else last + 1
-    return windows
-
-
-def select_body_pages(layout: Dict[str, Any], page_count: int) -> List[int]:
-    """Body pages per the pinned adjudication-2 rule (M2).
-
-    A page is a body page when it carries >= BODY_PAGE_MIN_TEXT_ELEMENTS
-    layout elements of the body types AND >= BODY_PAGE_MIN_TEXT_CHARS
-    characters across those elements (skips covers / pure-image pages)."""
-    counts: Dict[int, int] = {}
-    chars: Dict[int, int] = {}
-    for elem in (layout or {}).get("elements", []) or []:
-        if not isinstance(elem, dict):
-            continue
-        if str(elem.get("type", "")).lower() not in BODY_ELEMENT_TYPES:
-            continue
-        try:
-            page_no = int(elem.get("page", elem.get("page_id", 1)))
-        except (TypeError, ValueError):
-            continue
-        counts[page_no] = counts.get(page_no, 0) + 1
-        chars[page_no] = chars.get(page_no, 0) + len(str(elem.get("text") or ""))
-    return [
-        page
-        for page in range(1, page_count + 1)
-        if counts.get(page, 0) >= BODY_PAGE_MIN_TEXT_ELEMENTS
-        and chars.get(page, 0) >= BODY_PAGE_MIN_TEXT_CHARS
-    ]
+        flag = bool(getattr(settings, "EVIDENCE_TEXT_FIRST", False))
+    except Exception:
+        flag = False
+    return _from_ctx_pure(ctx, flag)
 
 
 def resolve_pages_text_first(
@@ -185,6 +115,12 @@ def build_text_first_payloads(
     selected_pages: List[int],
 ) -> Dict[int, Dict[str, Any]]:
     """Per-page text-first payloads (M1): ``{page: {page, source, n_chars, windows}}``.
+
+    The native text layer comes from ``evidence.grounding`` -- "same source"
+    is the P-032 contract, not an implementation accident. This one-way
+    kie->evidence edge stays frozen in the S1 allowlist; it dissolves with the
+    orchestrator split (runs/split batch 3) when the grounding layer gets
+    injected at the composition point instead.
 
     ``source`` records which text fed the model: ``text_layer`` when the page
     passes the M5 evidence trust predicate (native layer exists, no OCR

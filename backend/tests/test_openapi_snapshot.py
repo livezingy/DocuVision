@@ -1,25 +1,15 @@
 """OpenAPI contract snapshot test (v1.8 §5.3).
 
-Cloud-face policy test: it is skipped unless ``DOCUVISION_CLOUD_TESTS=1`` is
-set. (Since P-039 ``app.main`` imports without the paddle stack, so the old
-"needs the paddle stack" justification is gone; the gate is kept as the
-established cloud face for the frozen OpenAPI contract.) It locks the analyze
-routes' shared Form contract — any route removal or schema break turns red;
-the v1.8-allowed diff is additive only (``table_text_backfill``).
+Local-face test (since the P-039 follow-up ruling, batch 6.5): the former
+``DOCUVISION_CLOUD_TESTS`` gate was policy, not necessity — ``app.main``
+imports without the paddle stack since P-039, and router assembly in
+``main.py`` is a static list, so the local schema equals the cloud one.
+It locks the analyze routes' shared Form contract — any route removal or
+schema break turns red; the v1.8-allowed diff is additive only
+(``table_text_backfill``).
 """
 
 from __future__ import annotations
-
-import os
-
-import pytest
-
-_CLOUD = os.environ.get("DOCUVISION_CLOUD_TESTS", "").strip().lower() in {"1", "true", "yes"}
-
-pytestmark = pytest.mark.skipif(
-    not _CLOUD,
-    reason="OpenAPI snapshot is cloud-face policy; set DOCUVISION_CLOUD_TESTS=1 (app.main import no longer needs the paddle stack since P-039)",
-)
 
 _ALLOWED_INCREMENTAL_PARAMS = {"table_text_backfill"}
 

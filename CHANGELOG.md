@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **S1 batch 5 — table_service split three ways** (2026-10-25, P-037): the 795-line pinned
+  `table_service.py` splits along the family's established mixin seam into the service facade
+  (`table_service.py`, 325 lines — `TableService` verbatim + engine re-export so test import
+  paths stay stable), the engine module (`table_engine_ppstructure.py`, 234 — `BaseTableEngine`
+  + `PPStructureTableEngine` with the parse mixin composed into its base list) and
+  `table_pp_parse.py` (269 — `TablePPParseMixin`: `_extract_from_layout_elements` +
+  `_parse_tables`, the verbatim tail of the engine class). Size ratchet pin removed
+  (**8 -> 7 entries**); table domain 10 -> 12 files. Deferred heavy imports (bs4/fitz/PIL/
+  paddleocr) travel verbatim inside the moved bodies; usage-vs-import hard audit run BEFORE
+  push (batch-3 lesson applied; all five flags were function-level deferred imports).
+  `table->figure` stays frozen pending a P-038 ruling on the geometry trio — figure_service
+  itself uses the three functions at 7+ sites, so a consumer-side move would only flip the
+  edge; shared-leaf candidate assessment delivered in the batch record. Based on pre-#93 main:
+  three trivial overlaps (module-map table row, domain-map JSON, CHANGELOG) rebase after #93.
 - **S1 batch 3 — orchestrator & envelope_builder split; kie->evidence dissolved** (2026-10-25, P-037):
   the two pinned L2 giants are split and both size ratchet entries removed. The 1297-line
   `document_pipeline_orchestrator.py` becomes a 142-line sequencing core plus

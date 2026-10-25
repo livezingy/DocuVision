@@ -8,6 +8,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-040 formula special batch — page-aware PDF ROI, formula_number label fix, in-place
+  envelope replacement** (2026-10-25, P-040): the formula chain gets three behavior changes
+  (tier C, user-ruled this batch) plus one measurement-only item. **① Page-aware ROI** —
+  `formula_step` groups layout formula boxes by page; PDF inputs re-rasterize each page group
+  via the registered `pdf_raster` shared leaf (`matrix_scale=2.0`, the exact frame the layout
+  PDF branch renders at — that branch never emits a preprocessed page image, which is why the
+  old `preprocessed || file_path` chain handed `cv2.imread` a `.pdf` and died softly); the temp
+  PNG is deleted after use, image inputs keep the old chain untouched, per-page `recognize()`
+  calls aggregate (`_merge_formula_stats`; any page succeeding marks the step succeeded,
+  all-fail surfaces the first error). **② formula_number** — the numbered-display-formula label
+  (a real PP-DocLayout label, previously routed down the OCR-text path as garbage) joins the
+  formula semantics; the canonical set is single-sourced as `EnvelopeBuilder.SKIP_FORMULA_TYPES`
+  with a cross-site anti-drift sentinel (`test_formula_label_sets.py`). **③ In-place
+  replacement** — the engine stamps `source_id` on every ROI result; `build_formula_replacements`
+  maps results back onto their source blocks and `apply_formula_replacements` swaps
+  skip_formula placeholders in place across ALL fused pages: block_id / bbox / official
+  reading_order survive, payload becomes `{$$LaTeX$$, latex, mathml: None}` so formulas flow
+  with the body text, unrecognized regions degrade to `formula_unrecognized` instead of
+  vanishing, engine-off regions keep their placeholder; `view["formulas"]` now comes from the
+  view builder's own kind aggregation (per page, correct reading order) instead of a tail-append
+  adapter overwrite on page 1. `text.js` textLike lists gain formula/inline_formula (2-line
+  label addition required by the body-flow ruling). **④** `pipeline_formula_batch_size` 1 vs 8
+  A/B is a cloud-readings-only item (defaults unchanged). Local: full suite
+  **715 passed / 14 skipped / 0 failed** (+29 new cases across three new test files and
+  `test_envelope_builder.py`), `lint_frontend OK`, `lint_file_size OK`, `audit_agent_ops 0/0`.
+  **Cloud verification PASS (2026-10-25, HEAD 94a73c8)**: SMOKE-F1 single-page/two-formula PDF
+  `attempted True / error_level none / 2 latex / rate 1.0 / body contains $$` (before the fix the
+  same input died softly with `runtime_error / recognized 0`); SMOKE-F2 two-page PDF one formula
+  per page with distinct latex (page-aware sourcing holds); SMOKE-F3 rotated page (set_rotation
+  90) yields a non-empty latex (frame alignment holds). ④ batch A/B: size 1 -> 2/2 in 656 ms,
+  size 8 -> 2/2 in 614 ms — noise-level on a two-formula sample, **default stays 1**. Honest
+  quality note: plus-M recognition on small matplotlib crops is weak (e.g. `=\frac{\sqrt{\pi}}{2}`
+  read as `=1`, `∇·B=0` read as an arrow array) — a model-capability surface, not a pipeline
+  defect; the plus-L comparison is left as a future observation, not a new entry.
+- **P-041 webhook end-to-end cloud verification PASS** (2026-10-25, P-041): the batch-8 `on_complete`
+  injection chain now has its missing end-to-end receipt reading, executed as the dedicated cloud round
+  the batch-12 closing deferred. Full chain exercised on a real `WEBHOOK_ENABLED` service:
+  registration via `POST /api/v1/webhooks` (header `X-DocuVision-Admin-Token`) returned 200 with a
+  `batch.completed` subscription at a public webhook.site receiver (public address, so the SSRF guard
+  admits it); a two-file batch (`webhook-smoke`) completed **2/2**; the receiver captured **exactly 1
+  POST** whose body carries the correct event name, terminal status and counters
+  (`completed_tasks: 2 / failed_tasks: 0`). Verdict **SMOKE-5 WEBHOOK: PASS** per the user's reading.
+  Two sub-paths of the gap definition were honestly NOT exercised (registered without a secret, so no
+  `X-DocuVision-Signature` header was produced or checked; first delivery succeeded, so the
+  `max_retries=2` failure path never ran) - both are unit-testable locally against
+  `webhook_service.dispatch_event_async` without GPU, recorded in the PENDING entry rather than
+  reopened. Readings and the migrated command essentials now live in the P-041 entry itself, which
+  discharges the "inline the runs/split #21 template before directory deletion" precondition - the
+  `runs/split` deletion gate is now down to P-040 only. PENDING status `open -> landed`.
 - **S1 batch 6 — layout_service split five ways** (2026-10-25, P-037): the 1614-line pinned
   `layout_service.py` splits along the batch-5 mixin seam into the service facade
   (`layout_service.py`, 115 lines — `LayoutService` verbatim + compat re-exports so the

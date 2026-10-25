@@ -67,13 +67,18 @@ class EnvelopeBuilder:
             "pp_structure_v3": layout_result or {},
         }
 
+    # P-040 ②: formula-region labels — single source shared by the ROI collection
+    # (steps/extraction formula_step), this status classification, and the envelope-step
+    # merge filter; test_formula_label_sets.py pins the cross-site agreement.
+    SKIP_FORMULA_TYPES: Set[str] = {"formula", "inline_formula", "equation", "formula_number"}
+
     # Labels eligible for per-block OCR text replacement (all PP-StructureV3 text labels)
     _OCR_TEXT_LABELS: Set[str] = {
         "doc_title", "paragraph_title", "abstract_title", "reference_title",
         "content_title", "text", "abstract", "content", "reference",
         "reference_content", "algorithm", "header", "header_image",
         "footer", "footer_image", "footnote", "figure_title",
-        "aside_text", "number", "formula_number",
+        "aside_text", "number",
         # legacy / general labels
         "title", "subtitle", "figure_caption", "table_caption",
         "list", "list_item",
@@ -98,7 +103,7 @@ class EnvelopeBuilder:
 
         if t == "table":
             return "skip_table"
-        if t in {"formula", "inline_formula"}:
+        if t in self.SKIP_FORMULA_TYPES:
             return "skip_formula"
         if t in {"seal", "stamp"}:
             return "skip_seal"

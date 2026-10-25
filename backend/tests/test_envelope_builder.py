@@ -151,6 +151,39 @@ class TestProcessingStatus:
 
 
 # ===========================================================================
+# P-040 ②: formula_number joins the formula path (skip_formula + kind formula);
+# "number" (page number) keeps its OCR-text semantics.
+# ===========================================================================
+
+class TestFormulaNumberSkip:
+    def _fused_for(self, etype, text=""):
+        layout = _make_layout_result([_elem("e_fn", etype, text=text)])
+        return builder.build_fused_layer(layout)
+
+    def test_formula_number_skip_status(self):
+        fused = self._fused_for("formula_number", text="(1)")
+        assert fused["pages"][0]["blocks"][0]["processing_status"] == "skip_formula"
+
+    def test_equation_skip_status(self):
+        fused = self._fused_for("equation", text="x")
+        assert fused["pages"][0]["blocks"][0]["processing_status"] == "skip_formula"
+
+    def test_number_stays_ocr(self):
+        fused = self._fused_for("number", text="3")
+        assert fused["pages"][0]["blocks"][0]["processing_status"] == "no_ocr"
+
+    def test_formula_number_view_formula_aggregation(self):
+        fused = self._fused_for("formula_number", text="(1)")
+        preprocessing = builder.build_preprocessing_metadata(
+            _make_layout_result([_elem("e_fn", "formula_number", text="(1)")]),
+            use_doc_unwarping=False,
+        )
+        view = builder.build_view_layer(fused, preprocessing)
+        assert len(view["formulas"]) == 1
+        assert view["formulas"][0]["kind"] == "formula"
+
+
+# ===========================================================================
 # A3: provenance structure
 # ===========================================================================
 

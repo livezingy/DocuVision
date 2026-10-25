@@ -561,21 +561,30 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **指针**：`docs/R&D/runs/split/12-P039-lazy-paddle-imports.md`（执行记录：逐点使用形态评估表、档 B 逐 hunk 分类、读数对账；local-only）｜ `docs/R&D/runs/split/09-批3-执行记录.md` §七（盲区归因教训）｜ kernel `testing.md`（本机/Cloud 判据，经本轮实证仍自洽）｜ CHANGELOG `[Unreleased]`。
 
 ### P-040 · formula ROI 模式对 PDF 输入失效（cv2.imread 读不了 PDF）（2026-10-25，云测集中轮 ④ 归因产出）
-> status: open · since: 2026-10-25
+> status: landed · since: 2026-10-25
 - **登记门槛（两问）**：①**不归入 P-037**——那是结构还债轨迹（已收口），本条是**功能缺陷**且经 093f7cb 基线对照证实**预存在**（批 7 拆分前的版本同样失败，同错误同位置）；②**不可直接晋升**——修复属行为性改动（档 C），修复方向需用户裁决，无 living doc 可承载。
-- **事实（2026-10-25 云测，main 9438458 与 093f7cb 双版本同样复现）**：PDF 上传 + `enable_formula=true` + layout 检出公式框 → ROI 模式 → `_crop_formula_rois`（批 7 后在 formula_engine.py）的 `cv2.imread(<上传的 PDF>)` 返回 None → `RuntimeError: could not read image for ROI crop` → rebuild 重试再失败 → 软级 `runtime_error`、recognized 0。根因：cv2 无法解码 PDF；`steps/extraction.py:174` 的 `roi_source_image_path = preprocessed_image_path or file_path` 在 PDF 输入时（无 preprocessed 产物）回退原始 PDF 路径。**从未暴露的原因**：`enable_formula` 默认关 + 历轮云测/live 均未开启该面。同轮读数反证引擎链本身健康：device=gpu、PP-FormulaNet_plus-M 缓存命中并初始化成功、rebuild 重试链与错误分级（runtime_error/soft）全部按设计工作。
-- **候选修复路线（留裁决）**：① step 层对 PDF 传页光栅（复用 figure_service 的 fitz 2x 渲染，与 layout 坐标空间对齐最稳）；② `_crop_formula_rois` 内支持 PDF（fitz 渲染后再裁剪）；③ ROI 失败时回退整页模式（paddlex.predict 可直接吃 PDF，但坐标/框映射语义需评估）。任一路线 = 行为性改动（档 C）+ 本机 mock 锚 + 云测复验。
-- **触发条件**：用户裁决修复路线时（默认不阻塞批 12 收尾批——收尾批不含行为性代码改动）。
-- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单 §七 ④ 归因记录、16 号批 7 记录）｜ backend/app/services/formula_engine.py `_crop_formula_rois` ｜ backend/app/orchestration/steps/extraction.py:174。
+- **事实（2026-10-25 云测，main 9438458 与 093f7cb 双版本同样复现）**：PDF 上传 + `enable_formula=true` + layout 检出公式框 → ROI 模式 → `_crop_formula_rois`（批 7 后在 formula_engine.py）的 `cv2.imread(<上传的 PDF>)` 返回 None → `RuntimeError: could not read image for ROI crop` → rebuild 重试再失败 → 软级 `runtime_error`、recognized 0。根因：cv2 无法解码 PDF；`steps/extraction.py` 的 `roi_source_image_path = preprocessed_image_path or file_path` 在 PDF 输入时（无 preprocessed 产物）回退原始 PDF 路径。**从未暴露的原因**：`enable_formula` 默认关 + 历轮云测/live 均未开启该面。同轮读数反证引擎链本身健康：device=gpu、PP-FormulaNet_plus-M 缓存命中并初始化成功、rebuild 重试链与错误分级（runtime_error/soft）全部按设计工作。
+- **✅ 裁决（2026-10-25，用户）+ 实施记录（分支 feat/p040-formula-batch，4 commits）**：修复路线取 **①页感知版**，并裁决三项子项——获取页图 = **formula_step 按需重渲染**（复用共享叶 `pdf_raster.rasterize_pdf_page(matrix_scale=2.0)`，与 layout PDF 分支 fitz 2x 同帧；**不动 layout 引擎**、PNG 生命周期自管）；未识别（空 LaTeX）公式块 = **原位保留 + 新状态 `formula_unrecognized`**；公式 = **进正文**（替换块 `payload.text = "$$LaTeX$$"`，对齐官方 markdown 行为）。同批顺带三件：**②** `formula_number`（真实 PP-DocLayout 标签）从 OCR 文本路径并入公式语义——canonical 集单源化为 `EnvelopeBuilder.SKIP_FORMULA_TYPES`（ROI 收集 / skip 分类 / kind 映射 / envelope 合入四点一致，防漂移哨兵 `test_formula_label_sets.py` 钉死）；**③** envelope 合入从「滤除占位 + 尾部追加（只合 pages[0]）」改为**原位替换**（引擎在 ROI 结果上盖章 `source_id` ↔ layout 元素 id；block_id/bbox/官方 reading_order 原样保留；`view["formulas"]` 改由 view builder 自聚合，逐页正确阅读序；seal 同构块本批不动）；**④** `pipeline_formula_batch_size` 1 vs 8 云测对照读数（默认值不动）。**本机读数（2026-10-25）**：全量 **715 passed / 14 skipped / 0 failed**（批 3 基线 686 + 新增 29 用例：label_sets 5 + step_pdf_roi 7 + inplace 12 + envelope_builder 4 + registry 1）；`lint_frontend OK`、`lint_file_size OK`、`audit_agent_ops 0/0`、registry audit 过。
+- **✅ 云测读数（2026-10-25 云实跑回传，HEAD = 94a73c8；四项全过，用户回传登记本条）**：
+  - **SMOKE-F1 单页双公式：PASS**——`attempted True` / `error_level none` / `view.formulas` 2 项 latex 非空（`\int_{0}^{\infty}\mathrm{e}^{-x^2}dx=1` · `t=m c^{2}+\sum_{i=1}^{n}\alpha_{i}x`）/ `formula_blocks_total 2` / `formula_recognition_rate 1.0` / 正文含 `$$`。P-040 判红转绿（修复前同面 = `runtime_error` / recognized 0）。
+  - **SMOKE-F2 两页各一公式：PASS**——`per_page = [(1,1,…),(2,1,…)]` 各页恰 1 公式且 latex 互异 ⇒ **页感知成立**（逐页 rasterize + 各归各页）。
+  - **SMOKE-F3 旋转页（set_rotation 90）：PASS**——`formulas` 1 项 latex 非空 ⇒ 旋转页公式框与页图对齐（坐标系风险实测项通过）。
+  - **④ batch 对照**：`batch_size 1 → recognized 2/2, 656ms`；`8 → 2/2, 614ms`——两公式小样本下差异噪声级 ⇒ **无显著收益，维持默认 1 不动**（按裁决只取读数）。
+  - **识别质量注记（如实登记，非链路缺陷）**：matplotlib 孤立公式小裁剪图上 plus-M 读数偏弱——F1 第二式右边 `=\frac{\sqrt{\pi}}{2}` 读作 `=1`、F2 p1 `a²+b²=c²` 读作 `t+b²=1`、p2 `∇·B=0` 读作箭头阵列、F3 只读出根号部分。属模型能力面（修复前 PDF 输入根本走不到识别），plus-L 档位对照留作后续观察，不立新条目。
+- **候选修复路线（历史留档；①已裁决实施）**：① step 层对 PDF 传页光栅（✅ 已裁决：pdf_raster 按需重渲染版）；② `_crop_formula_rois` 内支持 PDF（fitz 渲染后再裁剪）；③ ROI 失败时回退整页模式（paddlex.predict 可直接吃 PDF，但坐标/框映射语义需评估）。
+- **触发条件**：改 formula 链路任一环节（页感知 ROI / 原位替换 / 标签集）时同查本条；90 天晋升窗口至 2027-01 起。
+- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单 §四/§七）｜ backend/app/orchestration/steps/extraction.py `formula_step`（页感知 + `_merge_formula_stats`）｜ backend/app/services/formula_engine.py `_crop_formula_rois`（source_id 盖章）｜ backend/app/services/formula_adapt.py `build_formula_replacements` ｜ backend/app/orchestration/steps/envelope.py `apply_formula_replacements` ｜ 新测试 `test_formula_{label_sets,step_pdf_roi,inplace_replacement}.py`。
 
 ### P-041 · webhook 派发链路云测确认缺口（批 8 消解面的端到端实收未执行）（2026-10-25，云测集中轮 ⑤ 改专项）
-> status: open · since: 2026-10-25
+> status: landed · since: 2026-10-25
 - **登记门槛（两问）**：①**不归入 P-040**——那是 formula 功能缺陷，本条是**验证缺口**（批 8 `on_complete` 注入链的真实 webhook 派发端到端读数从未执行）；②**不可直接晋升**——需云环境执行（公网接收端 + WEBHOOK 旗标服务），结论待读数。
 - **已覆盖面（本条缺口的边界）**：本机 spy 锚（test_queue_persistence：enqueue 恰一次 + payload 断言 + resume finalize 档 C 锚）；live test 7（batch 双文件流走注入链，派发失败仅 debug 日志不阻断终态——吞异常语义）。**缺口** = 真实 `WEBHOOK_ENABLED` 服务上的注册 → 派发 → 公网接收端实收（含 HMAC 签名/重试路径）。
 - **事实**：云测集中轮 ⑤ 列为可选项未完成（一轮命令因终端复制损坏报 SyntaxError，分行版重发后用户裁决改专项处理）。
-- **待办（专项，命令模板要点）**：四旗标起服（`DOCUVISION_WEBHOOK_ENABLED=1 DOCUVISION_WEBHOOK_ADMIN_TOKEN=<自选口令>`，注册 header 名 **`X-DocuVision-Admin-Token`**，启用时空 token fail-closed）→ webhook.site 公网接收端注册 `batch.completed`（SSRF 守卫拒私网地址，接收端须公网）→ 双文件 batch 流 → 接收端 POST 实收断言；回退方式 = 服务端控制台 grep `Webhook delivered event=batch.completed`。完整命令模板见 runs/split 21 号清单 §八（**目录删除前须内联迁移至本条**）。
-- **触发条件**：专项处理时（不阻塞批 12 收尾批——收尾批不含行为性代码改动）。
-- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单）｜ backend/app/routers/batch.py `_dispatch_batch_completed_webhook` ｜ backend/tests/test_queue_persistence.py（spy 锚）。
+- **✅ 云测专项实收（2026-10-25 执行，读数经用户回传登记本条；判定 = SMOKE-5 WEBHOOK: PASS）**：四旗标起服 + webhook.site 公网接收端注册 + 双文件 batch 流 + 接收端实收断言全链走通——①**注册**：`POST /api/v1/webhooks`（header `X-DocuVision-Admin-Token`）→ **200**，`subscription_id 956ddc18-b6d9-4c24-b989-c0b031a07449`、events `["batch.completed"]`、url = webhook.site 公网接收端（公网地址 ⇒ SSRF 守卫放行）；②**batch**：completed **2 / 2**（name `webhook-smoke`，batch_id `9103a605-0435-4d80-96f2-62d6a6601796`）；③**实收**：接收端 **POSTs = 1**，首包 body = `{"event": "batch.completed", "payload": {"batch_id": …, "name": "webhook-smoke", "status": "completed", "completed_tasks": 2, "failed_tasks": 0}, "timestamp": …}`——事件名、终态、计数字段全部正确。**批 8 注入链的端到端实收缺口就此闭合**。
+- **如实登记的未触发子路径（不构成缺口重开）**：缺口定义中「含 HMAC 签名/重试路径」两子路径本轮未走到——①**签名**：`X-DocuVision-Signature`（sha256(body)）仅在订阅带 `secret` 时挂（`webhook_service.py` `dispatch_event_async`），本轮按无 secret 注册 ⇒ 头部未产生、接收端未核验；②**重试**：`max_retries=2` 仅投递失败/异常时走，本轮首投即 2xx。两者后续可在本机单测构造带 secret 订阅/失败端点覆盖（纯 httpx/mock 面，不涉 GPU），无须重开本条。
+- **待办（命令要点，已随本轮执行）**：四旗标起服（`DOCUVISION_WEBHOOK_ENABLED=1 DOCUVISION_WEBHOOK_ADMIN_TOKEN=<自选口令>`，注册 header 名 **`X-DocuVision-Admin-Token`**，启用时空 token fail-closed）→ webhook.site 公网接收端注册 `batch.completed`（SSRF 守卫拒私网地址，接收端须公网）→ 双文件 batch 流 → 接收端 POST 实收断言；回退方式 = 服务端控制台 grep `Webhook delivered event=batch.completed`。完整命令模板原文在 runs/split 21 号清单 §八——**其要点与读数已随本条落档，目录删除前的内联迁移义务就此清偿**（runs/split 删除闸门现仅剩 P-040）。
+- **触发条件**：已执行收口（2026-10-25）；后续改 `_dispatch_batch_completed_webhook` / `webhook_service` 派发语义（签名/重试/事件面）时同查本条。
+- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单 §八 模板原文）｜ backend/app/routers/batch.py `_dispatch_batch_completed_webhook` ｜ backend/app/routers/webhooks.py（注册路由）｜ backend/app/services/webhook_service.py `dispatch_event_async`（签名/重试实现位）｜ backend/tests/test_queue_persistence.py（spy 锚）。
 
 
 

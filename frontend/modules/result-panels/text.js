@@ -50,7 +50,9 @@ function resolveSemanticTextBlocks(blocksData, result) {
                 'header', 'footer', 'page_header', 'page_footer', 'reference',
                 'reference_content', 'abstract', 'content', 'algorithm',
                 'list_item', 'list', 'equation', 'figure_caption', 'aside_text',
-                'number', 'formula_number'
+                'number', 'formula_number',
+                // P-040 ③: swapped formula blocks carry $$LaTeX$$ in text
+                'formula', 'inline_formula'
             ].includes(t)
                 && !!(b.text || b.content);
         }).map((b, i) => ({
@@ -79,7 +81,9 @@ function resolveLayoutTextElements(result) {
         'section_header', 'header', 'footer', 'page_header', 'page_footer',
         'reference', 'reference_content', 'abstract', 'content', 'algorithm',
         'list_item', 'list', 'equation', 'figure_caption', 'table_caption',
-        'aside_text', 'number', 'formula_number'
+        'aside_text', 'number', 'formula_number',
+        // P-040 ③: swapped formula blocks carry $$LaTeX$$ in text
+        'formula', 'inline_formula'
     ]);
 
     return elements.filter(el => {

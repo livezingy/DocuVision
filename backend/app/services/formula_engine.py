@@ -239,6 +239,7 @@ class FormulaEngineMixin:
 
         roi_paths: List[str] = []
         normalized_boxes: List[List[int]] = []
+        source_ids: List[str] = []
 
         for i, raw_box in enumerate(layout_formula_boxes):
             if not isinstance(raw_box, dict):
@@ -263,8 +264,11 @@ class FormulaEngineMixin:
             cv2.imwrite(roi_path, crop)
             roi_paths.append(roi_path)
             normalized_boxes.append([x1, y1, x2, y2])
+            # P-040 ③: source layout element id rides along so the envelope
+            # in-place swap can map each crop back onto its block.
+            source_ids.append(str(raw_box.get("source_id", "") or ""))
 
-        return roi_dir, roi_paths, normalized_boxes
+        return roi_dir, roi_paths, normalized_boxes, source_ids
 
 
     def _predict_formula_rois(
@@ -341,7 +345,9 @@ class FormulaEngineMixin:
 
         roi_dir = ""
         try:
-            roi_dir, roi_paths, normalized_boxes = self._crop_formula_rois(image_path, layout_formula_boxes)
+            roi_dir, roi_paths, normalized_boxes, source_ids = self._crop_formula_rois(
+                image_path, layout_formula_boxes
+            )
             roi_results = self._predict_formula_rois(roi_paths, predict_kwargs)
 
             formula_items: List[Dict[str, Any]] = []
@@ -357,6 +363,7 @@ class FormulaEngineMixin:
                         "rec_formula": rec_formula,
                         "dt_polys": bbox,
                         "source": "layout_roi",
+                        "source_id": source_ids[idx] if idx < len(source_ids) else "",
                     }
                 )
 

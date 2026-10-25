@@ -128,8 +128,20 @@
  "test_file_type_detector_pages.py": {
   "kind": "full"
  },
+ "test_formula_inplace_replacement.py": {
+  "kind": "full",
+  "note": "P-040 ③: in-place formula replacement (source_id mapping, identity/reading-order survival, $$..$$ body flow, unrecognized degrade; mock, no paddle)"
+ },
+ "test_formula_label_sets.py": {
+  "kind": "full",
+  "note": "P-040 ② anti-drift: formula-region label set agreement across ROI collection / status classification / kind mapping (mock, no paddle)"
+ },
  "test_formula_service_grading.py": {
   "kind": "full"
+ },
+ "test_formula_step_pdf_roi.py": {
+  "kind": "full",
+  "note": "P-040 ①: page-aware formula ROI (per-page rasterize via pdf_raster, preprocessed||original chain for images, stats merge; mock, no paddle)"
  },
  "test_golden_backfill.py": {
   "kind": "full"

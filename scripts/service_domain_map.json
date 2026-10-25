@@ -2,7 +2,7 @@
   "comment": "Backend services domain map (S1b fact source, runs/split ruling 1 of 2026-10-16: 15 domains, page_* merged into document). File granularity only - no symbol lists (P-019 lesson). Fail-closed: every backend/app/services/**/*.py on disk must have exactly one entry; an unmapped new file, a ghost entry, or a file mapped twice is an audit ERROR. The services/__init__.py shell maps to domain 'shared' and is registered as the prose row under module-map.md section 2b (B-2), not as a table row. Adding a domain or moving a file = Placement N/D decision in the same commit (kernel testing.md footer); owning docs live in module-map section 2b (single source, B-7).",
   "domains": {
     "layout": "版面结构与阅读顺序：layout_service 主入口 + 几何/顺序私有叶 + unified 融合",
-    "table": "表格识别全家族：检测/伪表过滤/对齐/回填/HTML/逐格置信（table_* 10 模块互引）",
+    "table": "表格识别全家族：检测/伪表过滤/对齐/回填/HTML（table_* 11 模块互引；逐格置信 table_cell_confidence 已登第 6 共享叶迁 infra，批 6）",
     "figure": "图像区域提取",
     "formula": "公式区域提取",
     "ocr": "OCR 引擎封装",
@@ -13,7 +13,7 @@
     "batch": "批量任务管理与导出打包",
     "report": "导出与证明包（export/pack + proof_* 三件）",
     "document": "文档画像/类型分类/文件探测 + 页面文本信任与页型探测（裁决 1：page 并入）",
-    "infra": "基础设施：PDF 光栅与工具、webhook、持久化、共享契约叶（text_first_contract / kie_default_rules / bbox_geometry）",
+    "infra": "基础设施：PDF 光栅与工具、webhook、持久化、共享契约/度量叶（text_first_contract / kie_default_rules / bbox_geometry / table_cell_confidence）",
     "pipeline": "PII 掩码（分析前的敏感信息遮蔽；single_file_pipeline 已上移 orchestration/，批 1 #13 倒置）",
     "trial": "GLM trial 真值比对"
   },
@@ -45,6 +45,13 @@
       "l2": "纯 PDF 工具（页数/页光栅化为临时 PNG），函数与行为无业务域语义；docstring 的 'Pro KIE / layout' 是消费方说明非自身语义",
       "l3": "模块级仅 logger，无可变状态/单例；两函数纯输入→输出",
       "consumers": "跨域消费 = kie(kie_qwen_service) / document(document_info_utils)；层间消费 = orchestrator(L2)、routers(L1 薄委托) 为合法层边不属跨域"
+    },
+    "backend/app/services/table_cell_confidence.py": {
+      "added": "2026-10-25",
+      "l1": "零出向（强度 A）：仅 typing + loguru——纯逐格置信聚合/投影/摘要函数，零 app.*/第三方重依赖（比 pdf_raster/page_text_trust 的函数内延迟 fitz 更干净）",
+      "l2": "PP-StructureV3 表格 OCR 逐格置信度量（per-table 帧裁决 by containment + 合并格投影 + 度量摘要/低分切线）：生产端适配器读引擎 raw payload，消费方各带各的问题（layout 问元素携带、orchestration 问表挂载、report 问指标卡）——度量面中立，同 page_text_trust 形态（D8/P-027 叙事归 pp-structurev3 finding 文档）。批 6 判档（2026-10-25）：allowlist target 的'移模块或倒置'裁**移模块**——倒置结构不可能（raw table_res_list payload 仅存在于 layout _parse_result 调用点，倒置须改元素数据契约 = 档 C + GPU 面）；table 域自身零消费，域归属纯属历史命名（P-027 D8 自 layout 侧立项），故登共享叶而非迁 layout 域（迁 layout 会造 report->layout 新边，踩'新增豁免条目'红线）",
+      "l3": "纯函数 + 模块级阈值常量（LOW_CONFIDENCE_CUT / DEFAULT_FRAME_OK_RATIO），无状态",
+      "consumers": "跨域 = layout（解析路径 cell_confidence_from_table_item/page_height_of）/ report（proof_report 指标卡 summarize+cut）；层间 = orchestration/steps/extraction（attach_cell_confidence，L2 合法层边）；table 域零消费（正因如此自 table 迁 infra，域 12→11 文件）"
     },
     "backend/app/services/text_first_contract.py": {
       "added": "2026-10-25",
@@ -108,7 +115,7 @@
     "backend/app/services/table_alignment.py": "table",
     "backend/app/services/table_backfill.py": "table",
     "backend/app/services/table_band_range.py": "table",
-    "backend/app/services/table_cell_confidence.py": "table",
+    "backend/app/services/table_cell_confidence.py": "infra",
     "backend/app/services/table_cell_geo.py": "table",
     "backend/app/services/table_engine_ppstructure.py": "table",
     "backend/app/services/table_html.py": "table",

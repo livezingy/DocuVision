@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **S1 batch 6 — `table_cell_confidence` registered as the sixth shared leaf** (2026-10-25,
+  P-037/P-038): both remaining `table_cell_confidence`-pointing frozen edges (`layout->table`
+  via layout_service.py:24 and `report->table` via proof_report.py:22) dissolve in one move.
+  The allowlist target's "move module or invert" adjudication resolves as **move**: inversion
+  is structurally impossible — the raw `table_res_list` engine payload only exists at layout's
+  `_parse_result` call site, so inverting would change the element data contract (tier C +
+  GPU surface) — and relocating the module into the layout domain would create a new
+  `report->layout` edge (allowlist-addition red line). Evidence: the module is pure (typing +
+  loguru only, zero app-internal imports — cleaner than pdf_raster/page_text_trust which keep
+  a deferred fitz), is consumed by layout (producer adapters) / report (summary card) /
+  orchestration L2 (attach), and has ZERO table-domain consumers — its table placement was
+  historical naming from the P-027 D8 work. Governance-only change: registered in
+  `service_domain_map.json` `shared_leaf_modules` + reclassified table -> infra (table domain
+  12 -> 11 files, infra 6 -> 7); dependency ratchet **4 -> 2** (remaining: `evidence->hitl`,
+  `batch->infra`). No file move, no code change.
 - **P-038 ruling A+ — box-geometry family extracted as the 5th shared leaf** (2026-10-25, revised
   from ruling B the same session): all seven pure geometry helpers (`_bbox_tuple`, `_clamp_box`,
   `_h_overlap_ratio`, `_v_overlap_ratio`, `_merged_box`, `_containment_ratio`, `_v_gap`) move

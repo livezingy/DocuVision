@@ -543,6 +543,7 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **登记门槛（两问）**：①**不归入 P-037**——那是还债轨迹，本条是**新增登记机制**的待决范围（机制面独立：判据 + 登记表 + 对账，runs/split 01 Adversarial check 已警告其成本）；②**不可直接晋升**——L2/L3 人审未做，无定稿可载。
 - **待决问题**：34 个零出向候选逐个过 **L2（无域语义）/ L3（无域状态）人审**后范围定稿。首登 `pdf_raster`（纯光栅化工具，判据清晰）即消解 P-037 批 1 的两条 `->infra` 边；`page_text_trust` 是「事实共享叶」（被 table/evidence/document 三域跨域消费）但 L2 存疑（「页面文本信任」可能带域语义），待人审——通过可再消解 `table->document` 与 `evidence->document` 两条。
 - **已裁决（2026-10-19，runs/split 03 §4.3）**：L1 判据强度 **A（零出向谓词）**——一条谓词、零白名单、零漂移面；强度 B（允许基础层出向的白名单）保留为升级路径，非废弃。
+- **进展（批 6，2026-10-25）**：已登记 6 叶——`pdf_raster`（批 1）/ `text_first_contract` + `kie_default_rules`（批 2）/ `page_text_trust`（P-038 D）/ `bbox_geometry`（P-038 A+）/ `table_cell_confidence`（批 6：纯逐格置信度量，layout 解析路径 / report 指标卡 / orchestration L2 三方消费、table 域零消费；allowlist target 的「移模块或倒置」判档**移模块**——倒置结构不可能，raw `table_res_list` payload 仅存在于 layout `_parse_result` 调用点——同批消解 `layout->table` 与 `report->table`，棘轮 4→2）。候选范围定稿仍在途。
 - **候选路线**：S1+1 批次两步走（34 候选逐个 L2/L3 → 范围定稿后在 `service_domain_map.json` 增 `shared_leaf_modules` 登记面 + S1b 识别为合法通道 + §2b 基建行）。
 - **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
 - **指针**：`docs/R&D/runs/split/`（03 §4 候选池实证与 L1 强度裁决表，目录级）｜ P-037（还债批次序列与消解目标）。

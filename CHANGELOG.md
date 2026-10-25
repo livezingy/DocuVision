@@ -257,6 +257,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **S1 batch 12 — closing batch: P-038 finalized (6-leaf sealed), P-017 closed, pins zeroed,
+  Placement review rule + N semantics codified** (2026-10-25, P-037/P-038/P-017): **P-038** —
+  L1 rescan finds 36 zero-outbound files (6 registered leaves + 30 unregistered candidates);
+  per-file L2/L3 review seals the shared-leaf scope at **6 leaves, no additions**: 7 fail L3
+  (engines/mixins/stateful singletons/SQLite store), 22 fail L2 (domain-semantic leaves), 1
+  (pdf_tools_service) formally qualifies but has no cross-domain consumer — registration
+  channel stays open only for real cross-domain need (Placement N + user ruling). **P-017** —
+  user ruling keeps the global 500-line budget: all eight former giants split under their real
+  seams land ≤497, no domain needs a higher budget (the "splitting inflates line count"
+  failure mode never reproduced in backend). **pins zeroed** — ocr_service 457 / main.py 257
+  sub-budget watch pins removed; `file_size_allowlist` is now empty (every file under the
+  global 500 budget; future pins only as in-flight split exemptions). **review.md** gains the
+  mandatory "Placement footer ↔ trigger reconciliation" review item (PR #97 whole-footer
+  omission as the on-record case). **kernel testing.md** N semantics codifies practice
+  (new domain key OR shared-leaf registration, PR #91/#96/#98 precedents), derived via sync.
+  operations.md patrol notes the P-037 closure state. Local 688 passed / 14 skipped /
+  0 errors; all gates green.
+- **S1 closing — P-037 closed: consolidated cloud round green on main 9438458** (2026-10-25,
+  P-037/PENDING): full suite **691 passed / 1 skipped / 0 failed** (= 689 cloud baseline + the
+  two batch-11 anchors), live suite **10 passed**, pico text-first smoke **eight stats keys
+  identical + engaged True + trusted_pages [1..10]** (marker 13 vs batch-6's 15 = KIE model
+  non-determinism; hard criteria unaffected). The formula-targeted smoke FAILED and the
+  093f7cb baseline comparison attributed it to a **pre-existing defect, not a batch-7
+  regression** (identical failure on the pre-split monolith; root cause = cv2.imread cannot
+  decode PDFs while extraction.py falls back to the raw upload path for PDF inputs —
+  registered as **P-040**; the same round proves the post-split engine chain healthy:
+  device=gpu, PP-FormulaNet_plus-M init from cache, rebuild retry and error grading all
+  working as designed). Final ratchets: **pins 15 -> 2** (zero files over the 500 budget
+  remain; sub-budget watch pins ocr 457 / main 257 left for the batch-12 ruling) and
+  **frozen edges 14 -> 0** (allowlist empty; the 90-day cycle clock dies with the last edge).
+  Structural governance continues via the S1 gates (lint_services fail-closed + audit
+  three-way reconciliation).
 - **S1 batch 11 — evidence->hitl inverted; the frozen-edge ratchet reaches zero**
   (2026-10-25, P-037): `run_evidence_gate` no longer imports `hitl_queue` — HITL candidates
   leave the gate as data (`block["hitl_payloads"]`, built from `report.hitl_payloads` which

@@ -73,6 +73,8 @@ diff 触及应用逻辑/UI/API 时并列六项：
   内层模板（`·` 分隔）：`Placement: <符号/文件> -> <落点> · 判据=<R|D|N|X> · 理由 · 复用之源`：
   - **R** 复用既有宿主——宿主已达行数预算（500/allowlist 记录值）⇒ 降级 D（拆分宿主），理由须引用预算数字；
   - **D** 域内新文件（同域已有文件放不下的合法归宿）；
-  - **N** 新领域——同 PR 登记 `service_domain_map.json` 新键 + module-map §2b 行 + owning doc；
+  - **N** 新领域或新登记面——域表新键（同 PR 登记 `service_domain_map.json` 新键 + module-map
+    §2b 行 + owning doc）或共享叶登记（`shared_leaf_modules`：L1 零出向机检 + L2/L3 人审证据
+    入 domain_map，P-038 登记制，判例 PR #91/#96/#98）；
   - **X** 跨域调用——同 PR 登记 `service_dependency_allowlist.json`（**新增条目 = 红线，先问**），
     理由须引用登记键（如 `X · 登记=table->figure`），reviewer 可三方对 diff footer ↔ allowlist ↔ lint 输出。

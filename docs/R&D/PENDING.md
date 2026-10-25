@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **18** 条）
+## 待确认（本区共 **20** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-039`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-039` `P-040` `P-041`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -93,12 +93,13 @@
   `test_data/scripts/build_multipage_kie_fixtures.py` 移除。
 
 ### P-017 · F1 500 行预算是否调整（按域差异化预算 vs 上调预算）（2026-09-20，v1.9 S2-5 暴露）
-> status: open · since: 2026-09-20
+> status: retained · since: 2026-09-20
 - **待决问题**：单文件 **500 行**预算（kernel `frontend.md` + `DEVELOPMENT.md` 第 4 条 + `frontend_size_allowlist.json` 棘轮口径）在**复杂服务层反复失真**时，是否调整上限策略、怎么调——**裁决对象应是「backend 服务层是否需独立预算」，而非仅凭前端 `pipeline/run.js` 一次越线**。
 - **500 失真的证据面（供裁决；2026-10-05 实测）**：① 巨函数切分会**增加**行数（新增函数边界 / 闭包参数 / docstring），与「切分让文件变小」的假设相反 ⇒ 2026-09-20 S2 批 6 次切分中 `pipeline/run.js` **474 → 524 越线**；② `backend/app` 侧已有 **9 个文件经 `file_size_allowlist.json` 棘轮固化**（`layout_service.py` 1804 · `table_service.py` 1613 · `document_pipeline_orchestrator.py` 1248 · `formula_service.py` 734 · `batch_service.py` 686 · `figure_service.py` 681 · `envelope_builder.py` 620 · `export_service.py` 544 · `ocr_service.py` 457；合计 ~8,300 行，3 个 >1200）⇒ 棘轮条目本身就是「撞线即固化」的产物记录；③ **门禁口径辨析**：`lint_file_size.py` 只扫 git-tracked 的 `backend/app` + `scripts/`（`SCAN_ROOTS`）⇒ `scripts/measure/*` 与 `test_data/scripts/*` 属 **local-only 无护栏区**（不进 F1 视野），`frontend/*.js` 归 `lint_frontend` F1–F7 另一套，`backend/tests/*` 豁免；④ **当前最贴线** = `scripts/lint_frontend.py` **497/500**。
 - **候选路线（各自优缺点待裁决时展开）**：① **按域差异化预算**——在 `frontend_domain_map.json` 为每域登记预算（大域放宽、单文件工具域维持 500）。优点：切分线可按域缝走、预算仍是可评审的数据编辑；缺点：预算表成为**新的漂移面**（需门禁 + 棘轮 + staleness，参照 A6 做法），且「域内单文件 900 行」的退化仍需再细化。② **上调全局预算**（如 500 → 700）。优点：规则简单、无新增维护面；缺点：失去「接近上限」预警信号，与 app.js 172 行棘轮的参照关系需重算语义，且不区分「巨文件但内聚」与「巨文件且杂糅」。
 - **已裁决、不属本条待决的部分**：本次越线按 S2 先例拆同域兄弟模块（`frontend/modules/pipeline/task-socket.js`；F3 允许同目录兄弟 import，C8 边表与 C9 注入均不变）；**不进 allowlist**（那是把臃肿固化成基线，与「棘轮只减不增」方向相反），抬上限属 kernel 红线、需单独授权。
 - **共同前置**：任何路线都要先写明 kernel `frontend.md` / `DEVELOPMENT.md` 第 4 条 / `frontend_size_allowlist.json` 的同步义务与棘轮口径。
+- **收口（批 12，2026-10-25，用户裁决 = 维持 500 全局预算，差异化压力实证消失）**：待决问题"复杂服务层是否需独立预算"以 runs/split 批 3-12 的实测回答——orchestrator 1297 / envelope_builder 620 / table 795 / layout 1614 / formula 734 / batch 686 / figure 632 / export 544 八个巨户**按真实缝拆分后全部达标**（终件 ≤497：门面 115-336、引擎/解析件最大 layout_pp_parse 497），没有任何域需要 >500 预算；"巨函数切分会增加行数"的失真证据（前端 pipeline/run.js 474→524）未在 backend 复现（拆分判据 = 域表 + 黄金样例 + 符号归属，行数只是棘轮——06 反 gaming 纪律的有效性实证）。保留理由：判例与前置义务留档；若未来某域按真实缝拆完仍 >500，按 06 §三 以实证重开本条（P-017 的原始设计意图）。
 - **触发条件**：下一次 F1 越线（切分 / 功能增长 / 新模块任一原因），或用户主动要求评估上限策略。
 - **指针**：`docs/architecture/v1.9-roadmap.md` §S2（F1 预算与本项的真实冲突、切分先例）/ §S3（tsc **不是**「比行数更好的质量代理」，故不能以引入类型检查替代本条讨论）｜ `scripts/file_size_allowlist.json`（棘轮）+ `scripts/lint_frontend.py`（F1–F7）｜ CHANGELOG 与 git 历史。
 
@@ -530,22 +531,24 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **指针**：`docs/architecture/v1.9-roadmap.md`（branch protection / required checks 决策行）｜ CHANGELOG `[Unreleased]`（paths 翻转判决与清单原文）｜ `.github/workflows/{lint,agent-ops-audit,kie-phase-a}.yml`。
 
 ### P-037 · services 结构门禁 S1 落地与冻结边还债（2026-10-24，runs/split 批 0 启动时登记）
-> status: decided · since: 2026-10-24
+> status: retained · since: 2026-10-24
 - **登记门槛（两问）**：①**不归入已有条目**——P-017 只管行数预算、P-019 已结（单源化教训），本条是**结构落点**维度，无在册承载体；②**不可直接晋升**——S1 机制本身已晋升（kernel `routing.md`/`testing.md` + `module-map.md` §2b/§5），但**14 条冻结边的还债批次是在途义务**，需跟踪轨迹至棘轮收口。
 - **已落地（批 0，2026-10-24，本 PR）**：`lint_services.py`（S1a/S1b/S1c，499 行，经 audit 接线零 CI 改动）+ `service_domain_map.json`（15 域 63 文件 fail-closed）+ `service_dependency_allowlist.json`（冻结棘轮）+ module-map §2b/A2b + kernel 三文件 + Placement footer 第 6 项 + DEVELOPMENT 第 7 条 + operations KPI。落地复算逐行核对了 2026-10-16 快照的 13 边（全命中）。
 - **基线勘误（重要）**：lint 首跑发现第 14 条**预存在**跨域边 `proof_report.py:22 → table_cell_confidence`（report→table，2026-10-15 随 P-027 A 合入）——runs/split 01 审核「零漏边」结论**不成立**，已按冻结语义登记（added 2026-10-24 + erratum note）。初始基线 = **14 边 / 15 条目**，非 13。
 - **在途义务（还债批次，序列与操作规范见 `docs/R&D/runs/split/` 批次执行计划）**：批 1 机制消解（I-1 首登 `pdf_raster` 共享叶 → `kie->infra`/`document->infra` 消解；`pipeline->L2` 倒置）→ 批 2 两组环整改（evidence⇄kie、hitl⇄kie，上提公共谓词；**碰 GPU 路径须 mock+云测**）→ 批 3+ 巨型文件拆分（table_service → layout_service → 单域文件 → orchestrator/envelope_builder 殿后，L2 动管线入口需端到端）。每批：改码前基线四样快照 + 等价性证据档 A/B/C + `file_size_allowlist` 棘轮同步收紧 + Placement 判据。
-- **进展（2026-10-25，批 11 时点，代码面全部完成）**：批 7 formula（钉死 6→5）→ 批 8 batch 拆三 + `batch->infra` 消解（边 2→1）→ 批 9 figure 拆二（钉死 4→3）→ 批 10 export 拆四件家族（钉死 3→2，**>500 巨户清零**）→ **批 11 `evidence->hitl` 倒置（边 1→0）**——`run_evidence_gate` 改数据出口（`hitl_payloads` 由调用步 pop），enqueue 上移 `steps/governance.py:evidence_step`（与 kie_step 同构）；**冻结边棘轮 14→0**。批 6.5-10（PR #99-103）CI 绿待授权合并。**P-037 正式收口 = 云测集中一轮全绿后**（runs/split 14 号计划 §三：全量 689+5 对照 / live 10 / pico 冒烟 / formula 定向冒烟）。
+- **进展（2026-10-25，批 11 时点，代码面全部完成）**：批 7 formula（钉死 6→5）→ 批 8 batch 拆三 + `batch->infra` 消解（边 2→1）→ 批 9 figure 拆二（钉死 4→3）→ 批 10 export 拆四件家族（钉死 3→2，**>500 巨户清零**）→ **批 11 `evidence->hitl` 倒置（边 1→0）**——`run_evidence_gate` 改数据出口（`hitl_payloads` 由调用步 pop），enqueue 上移 `steps/governance.py:evidence_step`（与 kie_step 同构）；**冻结边棘轮 14→0**。批 6.5-11（PR #99-104）经用户授权合并（main = 9438458）。
+- **收口（2026-10-25，云测集中轮读数，main = 9438458）**：① 全量 **691 passed / 1 skipped / 0 failed**（= 689 云面基线 + 批 11 锚 2，逐数符合预期）；② live **10 passed**；③ pico text-first 冒烟**八键逐键一致 + engaged True + trusted_pages [1..10]**（marker 13 vs 批 6 的 15 = KIE 模型非确定性波动，硬判定不受影响）；④ formula 冒烟 FAIL 经 **093f7cb 基线对照裁定为预存在缺陷、非批 7 回归**（同错误同位置复现于拆分前版本；根因 = `cv2.imread` 读不了 PDF + `steps/extraction.py:174` PDF 输入回退原始路径，登记 **P-040**；同轮读数反证拆分后引擎链健康：device=gpu / PP-FormulaNet_plus-M 初始化成功 / rebuild 重试 / 错误分级全部按设计工作）。**棘轮终态：pins 15→2**（>500 巨户清零，余 ocr 457 / main 257 看管线待批 12 裁定）**、冻结边 14→0**（allowlist 空，90 天环时钟机制随最后一条边移除自然失效）。保留理由：结构治理常态化由 S1 门禁承载（lint_services fail-closed + audit 三向对账），后续巨户零容忍；runs/split 目录按删除规则处置（批 12 收尾批）。
 - **触发条件**：本 PR 合入后按批次序列推进；冻结边 90 天时钟（最早 2027-01-14 起）到期未动 = lint WARN，巡检可见。
 - **指针**：`docs/architecture/module-map.md` §2b/§5/§6（A2b）｜ kernel `routing.md`（S1 三规则 + services 黄金样例）与 `testing.md`（Placement）｜ CHANGELOG `[Unreleased]`（S1 条目含勘误）｜ `docs/R&D/runs/split/`（目录级：批次执行计划与后续执行记录）。
 
 ### P-038 · I-1 共享叶登记制 `shared_leaf_modules`（S1+1 增量；L1 强度已裁决 A）（2026-10-24，自 runs/split 03 §4 立项登记）
-> status: open · since: 2026-10-24
+> status: retained · since: 2026-10-24
 - **登记门槛（两问）**：①**不归入 P-037**——那是还债轨迹，本条是**新增登记机制**的待决范围（机制面独立：判据 + 登记表 + 对账，runs/split 01 Adversarial check 已警告其成本）；②**不可直接晋升**——L2/L3 人审未做，无定稿可载。
 - **待决问题**：34 个零出向候选逐个过 **L2（无域语义）/ L3（无域状态）人审**后范围定稿。首登 `pdf_raster`（纯光栅化工具，判据清晰）即消解 P-037 批 1 的两条 `->infra` 边；`page_text_trust` 是「事实共享叶」（被 table/evidence/document 三域跨域消费）但 L2 存疑（「页面文本信任」可能带域语义），待人审——通过可再消解 `table->document` 与 `evidence->document` 两条。
 - **已裁决（2026-10-19，runs/split 03 §4.3）**：L1 判据强度 **A（零出向谓词）**——一条谓词、零白名单、零漂移面；强度 B（允许基础层出向的白名单）保留为升级路径，非废弃。
 - **进展（批 6，2026-10-25）**：已登记 6 叶——`pdf_raster`（批 1）/ `text_first_contract` + `kie_default_rules`（批 2）/ `page_text_trust`（P-038 D）/ `bbox_geometry`（P-038 A+）/ `table_cell_confidence`（批 6：纯逐格置信度量，layout 解析路径 / report 指标卡 / orchestration L2 三方消费、table 域零消费；allowlist target 的「移模块或倒置」判档**移模块**——倒置结构不可能，raw `table_res_list` payload 仅存在于 layout `_parse_result` 调用点——同批消解 `layout->table` 与 `report->table`，棘轮 4→2）。候选范围定稿仍在途。
 - **候选路线**：S1+1 批次两步走（34 候选逐个 L2/L3 → 范围定稿后在 `service_domain_map.json` 增 `shared_leaf_modules` 登记面 + S1b 识别为合法通道 + §2b 基建行）。
+- **定稿（批 12，2026-10-25，L1 复扫 36 零出向 = 已登 6 叶 + 未登 30 候选，逐个 L2/L3 人审）**：**共享叶范围封册 = 6 叶，不新增**。30 候选三类判定——①**L3 不过（有状态/引擎/存储）7 个**：formula_engine、layout_pp_visualization、table_pp_parse（引擎 Mixin 操作实例态）、ocr_service、seal_service（域引擎）、hitl_queue（模块级单例）、persistence/queue_store（SQLite I/O）；②**L2 不过（域语义叶子，域内互引/私有叶）22 个**：_layout_geometry、_layout_order（layout 私有叶）、batch_models、document_type_classifier、evidence/findings_schema、evidence/normalize、export_table_format、formula_adapt、kie/{azure_schema,field_merge,kie_field_metrics,kie_pages,query_fields,schema_templates}、pii_mask、proof_render、table_{band_range,cell_geo,html,layout,ocr_blocks}、trial/gt_diff；③**形式合格但登记动机缺位 1 个**：pdf_tools_service（纯函数 + lazy fitz，pdf_raster 同形态；唯一消费方 pdftools 路由为层间合法，无跨域消费方——登记制解决跨域合法通道，无跨域需求不造登记面，反 gaming 同源）。**未来新增叶的唯一通道 = 出现真实跨域消费方时按 L1/L2/L3 判据登记（Placement N + 用户裁决）**。保留理由：机制已常态化（登记面 + 判据 + 对账由 lint_services/domain_map 承载，`shared_leaf_modules` 六叶证据齐）；候选池定稿留档本条，runs/split 目录删除后本条即唯一真源。
 - **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
 - **指针**：`docs/R&D/runs/split/`（03 §4 候选池实证与 L1 强度裁决表，目录级）｜ P-037（还债批次序列与消解目标）。
 
@@ -556,5 +559,23 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **已落地（2026-10-25，分支 feat/p039-lazy-paddle-imports，候选①+②合并）**：runtime 的服务闭包决定只做 main/runtime 不够——layout_service/ocr_service 的顶层 `import paddle`（两处均为**零使用的死 import**）会把墙原样砌回。四处全部惰性化：main.py 横幅块（paddle 版本 print + paddlex home 验证）迁入 runtime 的 `_log_paddle_stack_banner()`；runtime GPU 探测包进 `_detect_use_gpu()`（无 paddle 时 use_gpu=False 降级）；**初始化顺序语义逐字保持**（横幅 → GPU 自检 → 单例构造）。本机验收：`import app.main` 可行且 paddle 不入 sys.modules；全量 681 passed / 0 收集错误（批 3 基线 657 + 5 错）；门禁五件套全绿，棘轮 main.py 268→257。**云测一轮全过（档 B 证据闭合，同日）**：/health healthy + engines 非空、全量 689 passed 1 skipped（与 09 批 3 复跑读数同数）、live 10 passed（GPU 管线真跑）。环境侧：fastapi==0.109.0 + python-multipart + matplotlib 3.11.2（py3.11 适配）经用户确认安装；httpx 需 <0.28（requirements 既有钉版，starlette 0.35 TestClient 与 httpx 0.28 不兼容）。
 - **遗留（已裁决并落地，批 6.5，2026-10-25）**：用户裁决 openapi 快照 ×2 **转本机面**（`DOCUVISION_CLOUD_TESTS` skipif 移除；`app.main` 自 P-039 本机可 import 且路由装配为静态清单，本机 schema 与云端一致——5 测试本机全过、与 GPU 盒生成的 baseline 逐字节一致）；`test_table_template_analyze` 保留 `importorskip("paddle")` full-env 标记（真需要 paddle）。本机全量 681/19 → **686 passed / 14 skipped**。
 - **指针**：`docs/R&D/runs/split/12-P039-lazy-paddle-imports.md`（执行记录：逐点使用形态评估表、档 B 逐 hunk 分类、读数对账；local-only）｜ `docs/R&D/runs/split/09-批3-执行记录.md` §七（盲区归因教训）｜ kernel `testing.md`（本机/Cloud 判据，经本轮实证仍自洽）｜ CHANGELOG `[Unreleased]`。
+
+### P-040 · formula ROI 模式对 PDF 输入失效（cv2.imread 读不了 PDF）（2026-10-25，云测集中轮 ④ 归因产出）
+> status: open · since: 2026-10-25
+- **登记门槛（两问）**：①**不归入 P-037**——那是结构还债轨迹（已收口），本条是**功能缺陷**且经 093f7cb 基线对照证实**预存在**（批 7 拆分前的版本同样失败，同错误同位置）；②**不可直接晋升**——修复属行为性改动（档 C），修复方向需用户裁决，无 living doc 可承载。
+- **事实（2026-10-25 云测，main 9438458 与 093f7cb 双版本同样复现）**：PDF 上传 + `enable_formula=true` + layout 检出公式框 → ROI 模式 → `_crop_formula_rois`（批 7 后在 formula_engine.py）的 `cv2.imread(<上传的 PDF>)` 返回 None → `RuntimeError: could not read image for ROI crop` → rebuild 重试再失败 → 软级 `runtime_error`、recognized 0。根因：cv2 无法解码 PDF；`steps/extraction.py:174` 的 `roi_source_image_path = preprocessed_image_path or file_path` 在 PDF 输入时（无 preprocessed 产物）回退原始 PDF 路径。**从未暴露的原因**：`enable_formula` 默认关 + 历轮云测/live 均未开启该面。同轮读数反证引擎链本身健康：device=gpu、PP-FormulaNet_plus-M 缓存命中并初始化成功、rebuild 重试链与错误分级（runtime_error/soft）全部按设计工作。
+- **候选修复路线（留裁决）**：① step 层对 PDF 传页光栅（复用 figure_service 的 fitz 2x 渲染，与 layout 坐标空间对齐最稳）；② `_crop_formula_rois` 内支持 PDF（fitz 渲染后再裁剪）；③ ROI 失败时回退整页模式（paddlex.predict 可直接吃 PDF，但坐标/框映射语义需评估）。任一路线 = 行为性改动（档 C）+ 本机 mock 锚 + 云测复验。
+- **触发条件**：用户裁决修复路线时（默认不阻塞批 12 收尾批——收尾批不含行为性代码改动）。
+- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单 §七 ④ 归因记录、16 号批 7 记录）｜ backend/app/services/formula_engine.py `_crop_formula_rois` ｜ backend/app/orchestration/steps/extraction.py:174。
+
+### P-041 · webhook 派发链路云测确认缺口（批 8 消解面的端到端实收未执行）（2026-10-25，云测集中轮 ⑤ 改专项）
+> status: open · since: 2026-10-25
+- **登记门槛（两问）**：①**不归入 P-040**——那是 formula 功能缺陷，本条是**验证缺口**（批 8 `on_complete` 注入链的真实 webhook 派发端到端读数从未执行）；②**不可直接晋升**——需云环境执行（公网接收端 + WEBHOOK 旗标服务），结论待读数。
+- **已覆盖面（本条缺口的边界）**：本机 spy 锚（test_queue_persistence：enqueue 恰一次 + payload 断言 + resume finalize 档 C 锚）；live test 7（batch 双文件流走注入链，派发失败仅 debug 日志不阻断终态——吞异常语义）。**缺口** = 真实 `WEBHOOK_ENABLED` 服务上的注册 → 派发 → 公网接收端实收（含 HMAC 签名/重试路径）。
+- **事实**：云测集中轮 ⑤ 列为可选项未完成（一轮命令因终端复制损坏报 SyntaxError，分行版重发后用户裁决改专项处理）。
+- **待办（专项，命令模板要点）**：四旗标起服（`DOCUVISION_WEBHOOK_ENABLED=1 DOCUVISION_WEBHOOK_ADMIN_TOKEN=<自选口令>`，注册 header 名 **`X-DocuVision-Admin-Token`**，启用时空 token fail-closed）→ webhook.site 公网接收端注册 `batch.completed`（SSRF 守卫拒私网地址，接收端须公网）→ 双文件 batch 流 → 接收端 POST 实收断言；回退方式 = 服务端控制台 grep `Webhook delivered event=batch.completed`。完整命令模板见 runs/split 21 号清单 §八（**目录删除前须内联迁移至本条**）。
+- **触发条件**：专项处理时（不阻塞批 12 收尾批——收尾批不含行为性代码改动）。
+- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单）｜ backend/app/routers/batch.py `_dispatch_batch_completed_webhook` ｜ backend/tests/test_queue_persistence.py（spy 锚）。
+
 
 

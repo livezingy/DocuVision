@@ -257,6 +257,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executed - the entry still says so.
 
 ### Changed
+- **S1 batch 11 — evidence->hitl inverted; the frozen-edge ratchet reaches zero**
+  (2026-10-25, P-037): `run_evidence_gate` no longer imports `hitl_queue` — HITL candidates
+  leave the gate as data (`block["hitl_payloads"]`, built from `report.hitl_payloads` which
+  was already pure data), and the enqueue side effect moved up to
+  `orchestration/steps/governance.py:evidence_step`, isomorphic with the existing
+  `steps/kie.py` enqueue site (composition-point pattern, batch-3 precedent). The step pops
+  the transient key before storing, backfills `hitl_review_ids`, so the stored evidence
+  block keeps its exact API shape. The `evidence->hitl` frozen edge is removed —
+  **`service_dependency_allowlist` is now empty (14 -> 0 since batch 0)**. Declared tier C
+  (call-site move across layers): behavior anchors added to `tests/evidence/test_gate.py` —
+  direct gate call must not enqueue (patched queue stays empty, payloads returned as data)
+  and the step enqueues exactly one near_match item with the review id backfilled and no
+  transient key persisted. Local 688 passed / 14 skipped / 0 errors (+2 anchors); gates
+  green; module-map §2b evidence row edge column cleared. P-037 formal closure awaits the
+  consolidated cloud round (runs/split 14 plan section 3).
 - **S1 batch 10 — export_service split into a four-file family** (2026-10-25, P-037): the
   544-line pinned `export_service.py` splits vertically by format into the facade
   (`export_service.py`, 233 — `__init__` owning `output_dir` + to_json/to_csv/to_excel/

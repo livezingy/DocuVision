@@ -384,11 +384,13 @@ def verify_candidates(
 
 
 async def run_evidence_gate(ctx: Dict[str, Any]) -> Dict[str, Any]:
-    """Pipeline hook body (design L5): verify, route HITL, emit artifacts.
+    """Pipeline hook body (design L5): verify, return HITL candidates, emit artifacts.
 
     Returns the ``evidence`` block stored in the task result; writes
     findings.jsonl / failure_ledger.json under the task debug artifacts
-    directory when DEBUG_MODE is on.
+    directory when DEBUG_MODE is on. HITL candidates travel as data
+    (``hitl_payloads``, popped by the calling step); the enqueue side effect
+    lives in orchestration/steps/governance.py (batch 11 inversion).
     """
     result = ctx.get("result") or {}
     kie_fields = result.get("kie_fields") if isinstance(result.get("kie_fields"), dict) else {}
@@ -443,13 +445,11 @@ async def run_evidence_gate(ctx: Dict[str, Any]) -> Dict[str, Any]:
         trusted = trusted_page_set(str(ctx.get("file_path") or ""))
     report = verify_candidates(candidates, page_texts, trusted, paper_id)
 
-    from app.services.hitl_queue import hitl_queue
-
-    for reason, payload in report.hitl_payloads:
-        item = await hitl_queue.enqueue(
-            ctx["task_id"], paper_id, reason, payload
-        )
-        block["hitl_review_ids"].append(item.review_id)
+    # Batch 11 inversion: HITL candidates leave the gate as data; the enqueue
+    # side effect moved to the composition point (orchestration/steps/
+    # governance.py evidence_step, isomorphic with the kie_step enqueue) — the
+    # frozen evidence->hitl edge dissolves. hitl_review_ids are backfilled there.
+    block["hitl_payloads"] = list(report.hitl_payloads)
 
     block["findings"] = report.lines
     block["failure_ledger"] = report.ledger

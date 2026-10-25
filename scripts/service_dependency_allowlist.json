@@ -20,7 +20,7 @@
       "kind": "cross-domain",
       "added": "2026-10-16",
       "status": "frozen",
-      "target": "import 的是私有几何符号 _bbox_tuple/_h_overlap_ratio/_v_gap——几何三件套升共享叶（P-038）或倒置（A-12）"
+      "target": "维持冻结（P-038 裁决 B，2026-10-25：不登记共享叶——A+ 抽全家族方案被否，理由=figure 域保留私有几何实现属地、避免第 5 登记面；评估与选项表见 runs/split/11 §三）。候选出路：批 6 拆 layout/figure 时以注入或家族内聚方式整改；90 天时钟（added 2026-10-16，2027-01-14 起 WARN）照走——届时未整改将重新上台裁决"
     },
     {
       "src_file": "backend/app/services/evidence/gate.py",

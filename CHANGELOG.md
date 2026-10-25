@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-038 ruling B — geometry trio stays frozen** (2026-10-25): the shared-leaf candidate
+  `_bbox_tuple`/`_h_overlap_ratio`/`_v_gap` (pure geometry in figure_service, cross-domain
+  consumer table_pseudo_filter only) is ruled NOT registered — the A+ full-family extraction
+  was recommended (L1/L2/L3 all clean, ratchet 5->4) but the user chose to keep figure's
+  private geometry implementation in place and avoid a fifth registration surface. The ruling
+  is recorded in the allowlist entry's target (tracked, in-git); the 90-day clock still runs
+  (WARN from 2027-01-14 unless remediated — likely as injection/in-family work when batch 6
+  splits layout/figure). Options table preserved in runs/split/11 §3 (local-only).
 - **S1 batch 5 — table_service split three ways** (2026-10-25, P-037): the 795-line pinned
   `table_service.py` splits along the family's established mixin seam into the service facade
   (`table_service.py`, 325 lines — `TableService` verbatim + engine re-export so test import

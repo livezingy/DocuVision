@@ -54,6 +54,10 @@ def _collect_layout_blocks(
                     "y2": y1 + h,
                     "source_id": el.get("id", ""),
                     "source_type": t,
+                    # P-040 ①: page provenance for page-aware ROI rendering; the
+                    # engine reading_order rides along for the envelope in-place swap.
+                    "page": int(el.get("page", 1) or 1),
+                    "reading_order": el.get("reading_order"),
                 }
             )
         except Exception:

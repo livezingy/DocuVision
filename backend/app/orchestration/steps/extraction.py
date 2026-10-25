@@ -6,11 +6,14 @@ The orchestrator class import is TYPE_CHECKING-only (annotations stay strings).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+import os
+
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from loguru import logger
 from app.core.config import settings
 from app.orchestration.envelope_builder import EnvelopeBuilder
 from app.orchestration.steps.perception import _collect_layout_blocks  # shared helper (tier B)
+from app.services.pdf_raster import rasterize_pdf_page
 
 if TYPE_CHECKING:
     from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
@@ -150,6 +153,19 @@ async def table_step(ctx: PipelineContext) -> None:
     await orchestrator.update_progress(ctx, 65, f"Table extraction completed | Tables: {len(ctx['result']['tables'])}")
 
 
+def _merge_formula_stats(merged: Dict[str, Any], stats: Dict[str, Any]) -> None:
+    """Sum one recognize() stats dict into the aggregate (counts add, label_hist
+    dict-merges, first non-empty first_formula wins)."""
+    for key in ("formula_count", "layout_formula_box_count", "roi_total", "roi_recognized"):
+        if key in stats:
+            merged[key] = int(merged.get(key, 0)) + int(stats[key] or 0)
+    for label, count in (stats.get("label_hist") or {}).items():
+        hist = merged.setdefault("label_hist", {})
+        hist[label] = int(hist.get(label, 0)) + int(count or 0)
+    if merged.get("first_formula") is None and stats.get("first_formula"):
+        merged["first_formula"] = stats["first_formula"]
+
+
 async def formula_step(ctx: PipelineContext) -> None:
     options = ctx["options"]
     if not options.get("enable_formula", False):
@@ -178,12 +194,6 @@ async def formula_step(ctx: PipelineContext) -> None:
         layout_result,
         accepted_types=FORMULA_LAYOUT_TYPES,
     )
-    roi_source_image_path = ctx["task"].get("preprocessed_image_path") or ctx["file_path"]
-    logger.info(
-        "Formula ROI mode | layout_formula_boxes={} | roi_source_image={}",
-        len(formula_boxes),
-        roi_source_image_path,
-    )
 
     # Short-circuit when no layout-detected formula boxes to avoid
     # unnecessary lazy initialization of optional formula pipelines.
@@ -199,23 +209,85 @@ async def formula_step(ctx: PipelineContext) -> None:
         ctx["result"]["formula_stats"] = {"formula_count": 0, "layout_formula_box_count": 0}
         return
 
-    formula_result = await orchestrator.call_maybe_async(
-        formula_service.recognize,
-        ctx["file_path"],
-        disable_layout=True if formula_boxes else bool(options.get("formula_disable_layout", False)),
-        disable_preprocess=bool(options.get("formula_disable_preprocess", False)),
-        layout_formula_boxes=formula_boxes,
-        roi_source_image_path=roi_source_image_path,
-        two_stage_threshold_retry=bool(options.get("formula_two_stage_threshold_retry", True)),
-        primary_layout_threshold=float(options.get("formula_primary_layout_threshold", 0.5)),
-        fallback_layout_threshold=float(options.get("formula_fallback_layout_threshold", 0.2)),
-        layout_threshold=(
-            float(options["formula_layout_threshold"])
-            if options.get("formula_layout_threshold") is not None
-            else None
-        ),
-        pipeline_formula_batch_size=int(options.get("pipeline_formula_batch_size", 1)),
+    # P-040 ①: page-aware ROI. PDF inputs never carry a preprocessed page image
+    # (the layout PDF branch renders pages internally at fitz 2x and deletes
+    # them), so each page group re-rasterizes its own page via the pdf_raster
+    # shared leaf at the same matrix_scale=2.0 — the frame the PDF-branch
+    # element bboxes live in. Image inputs keep the preprocessed||original
+    # chain (single page, behaviour unchanged).
+    boxes_by_page: Dict[int, List[Dict[str, Any]]] = {}
+    for box in formula_boxes:
+        boxes_by_page.setdefault(int(box.get("page", 1) or 1), []).append(box)
+    is_pdf = str(ctx["file_path"] or "").lower().endswith(".pdf")
+    logger.info(
+        "Formula ROI mode | layout_formula_boxes={} | pages={} | input_pdf={}",
+        len(formula_boxes),
+        sorted(boxes_by_page.keys()),
+        is_pdf,
     )
+
+    unwrapped_all: List[Any] = []
+    merged_stats: Dict[str, Any] = {}
+    first_failure: Optional[Dict[str, Any]] = None
+    any_ok = False
+    for page_num in sorted(boxes_by_page.keys()):
+        roi_tmp_path: Optional[str] = None
+        if is_pdf:
+            roi_path, roi_tmp_path = rasterize_pdf_page(
+                ctx["file_path"], page_num, matrix_scale=2.0
+            )
+        else:
+            roi_path = ctx["task"].get("preprocessed_image_path") or ctx["file_path"]
+        try:
+            page_result = await orchestrator.call_maybe_async(
+                formula_service.recognize,
+                ctx["file_path"],
+                disable_layout=True,
+                disable_preprocess=bool(options.get("formula_disable_preprocess", False)),
+                layout_formula_boxes=boxes_by_page[page_num],
+                roi_source_image_path=roi_path,
+                two_stage_threshold_retry=bool(options.get("formula_two_stage_threshold_retry", True)),
+                primary_layout_threshold=float(options.get("formula_primary_layout_threshold", 0.5)),
+                fallback_layout_threshold=float(options.get("formula_fallback_layout_threshold", 0.2)),
+                layout_threshold=(
+                    float(options["formula_layout_threshold"])
+                    if options.get("formula_layout_threshold") is not None
+                    else None
+                ),
+                pipeline_formula_batch_size=int(options.get("pipeline_formula_batch_size", 1)),
+            )
+        finally:
+            if roi_tmp_path and os.path.exists(roi_tmp_path):
+                try:
+                    os.remove(roi_tmp_path)
+                except OSError as cleanup_exc:
+                    logger.debug(f"Formula ROI page raster cleanup failed: {cleanup_exc}")
+
+        if isinstance(page_result, dict) and page_result.get("ok", False):
+            any_ok = True
+            unwrapped_all.extend(page_result.get("unwrapped_results", []) or [])
+            _merge_formula_stats(merged_stats, page_result.get("stats", {}) or {})
+        elif first_failure is None:
+            first_failure = page_result if isinstance(page_result, dict) else {}
+            logger.warning(f"Formula recognition failed on page {page_num}: {first_failure}")
+
+    if any_ok:
+        formula_result = {
+            "ok": True,
+            "stage": "roi_batch",
+            "unwrapped_results": unwrapped_all,
+            "stats": merged_stats,
+        }
+    else:
+        formula_result = {
+            "ok": False,
+            "unwrapped_results": [],
+            "stats": merged_stats,
+            "error": str(first_failure.get("error", "") or "invalid_formula_result") if first_failure else "invalid_formula_result",
+            "error_level": str(first_failure.get("error_level", "soft") or "soft") if first_failure else "soft",
+            "error_code": str(first_failure.get("error_code", "invalid_result") or "invalid_result") if first_failure else "invalid_result",
+            "failure_stage": str(first_failure.get("failure_stage", "inference") or "inference") if first_failure else "inference",
+        }
 
     if not isinstance(formula_result, dict) or not formula_result.get("ok", False):
         logger.warning(f"Formula recognition skipped or failed: {formula_result}")

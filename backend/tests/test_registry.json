@@ -135,6 +135,10 @@
  "test_formula_service_grading.py": {
   "kind": "full"
  },
+ "test_formula_step_pdf_roi.py": {
+  "kind": "full",
+  "note": "P-040 ①: page-aware formula ROI (per-page rasterize via pdf_raster, preprocessed||original chain for images, stats merge; mock, no paddle)"
+ },
  "test_golden_backfill.py": {
   "kind": "full"
  },

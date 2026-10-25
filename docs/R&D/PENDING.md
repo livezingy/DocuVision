@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **19** 条）
+## 待确认（本区共 **20** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-039` `P-040`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-039` `P-040` `P-041`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -565,5 +565,15 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **候选修复路线（留裁决）**：① step 层对 PDF 传页光栅（复用 figure_service 的 fitz 2x 渲染，与 layout 坐标空间对齐最稳）；② `_crop_formula_rois` 内支持 PDF（fitz 渲染后再裁剪）；③ ROI 失败时回退整页模式（paddlex.predict 可直接吃 PDF，但坐标/框映射语义需评估）。任一路线 = 行为性改动（档 C）+ 本机 mock 锚 + 云测复验。
 - **触发条件**：用户裁决修复路线时（默认不阻塞批 12 收尾批——收尾批不含行为性代码改动）。
 - **指针**：`docs/R&D/runs/split/`（目录级：21 号清单 §七 ④ 归因记录、16 号批 7 记录）｜ backend/app/services/formula_engine.py `_crop_formula_rois` ｜ backend/app/orchestration/steps/extraction.py:174。
+
+### P-041 · webhook 派发链路云测确认缺口（批 8 消解面的端到端实收未执行）（2026-10-25，云测集中轮 ⑤ 改专项）
+> status: open · since: 2026-10-25
+- **登记门槛（两问）**：①**不归入 P-040**——那是 formula 功能缺陷，本条是**验证缺口**（批 8 `on_complete` 注入链的真实 webhook 派发端到端读数从未执行）；②**不可直接晋升**——需云环境执行（公网接收端 + WEBHOOK 旗标服务），结论待读数。
+- **已覆盖面（本条缺口的边界）**：本机 spy 锚（test_queue_persistence：enqueue 恰一次 + payload 断言 + resume finalize 档 C 锚）；live test 7（batch 双文件流走注入链，派发失败仅 debug 日志不阻断终态——吞异常语义）。**缺口** = 真实 `WEBHOOK_ENABLED` 服务上的注册 → 派发 → 公网接收端实收（含 HMAC 签名/重试路径）。
+- **事实**：云测集中轮 ⑤ 列为可选项未完成（一轮命令因终端复制损坏报 SyntaxError，分行版重发后用户裁决改专项处理）。
+- **待办（专项，命令模板要点）**：四旗标起服（`DOCUVISION_WEBHOOK_ENABLED=1 DOCUVISION_WEBHOOK_ADMIN_TOKEN=<自选口令>`，注册 header 名 **`X-DocuVision-Admin-Token`**，启用时空 token fail-closed）→ webhook.site 公网接收端注册 `batch.completed`（SSRF 守卫拒私网地址，接收端须公网）→ 双文件 batch 流 → 接收端 POST 实收断言；回退方式 = 服务端控制台 grep `Webhook delivered event=batch.completed`。完整命令模板见 runs/split 21 号清单 §八（**目录删除前须内联迁移至本条**）。
+- **触发条件**：专项处理时（不阻塞批 12 收尾批——收尾批不含行为性代码改动）。
+- **指针**：`docs/R&D/runs/split/`（目录级：21 号清单）｜ backend/app/routers/batch.py `_dispatch_batch_completed_webhook` ｜ backend/tests/test_queue_persistence.py（spy 锚）。
+
 
 

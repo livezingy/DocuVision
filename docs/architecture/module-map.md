@@ -8,6 +8,8 @@
 > steps/ 五模块（1297→142）+ envelope_builder 拆 helpers（620→486），行数钉死条目 -2，KIE 步骤注入 grounding
 > 消解 `kie->evidence`（棘轮 9→8）；P-038 裁决 D（2026-10-25）：`page_text_trust` 登记第 4 共享叶，消解 `table->document` 与
 > `evidence->document`×2（棘轮 8→**5** 条目）；§2/§3 路由/前端域结构不变，55 守恒）
+> 批 5（2026-10-25）：table_service 795 拆三（服务门面/引擎/解析 Mixin，钉死条目 −1，8→7）；
+> §2/§3 路由/前端域结构不变，55 守恒）
 > 事实源：`scripts/frontend_domain_map.json`（前端域/白名单/init 序列）· `backend/app/routers/`（后端域）·
 > `scripts/service_domain_map.json`（services 15 域，§2b）· `scripts/service_dependency_allowlist.json`（冻结跨域边，只减不增）·
 > `backend/tests/test_route_inventory.py`（路由守恒 55）· 各 lint 脚本（门禁规则号）
@@ -79,7 +81,7 @@ core/ · models/ · packages/（L4 叶子；packages 独立可安装）
 <!-- audit:backend-service-domains -->
 | 域 | 文件 | 职责 | owning doc | 出向跨域边 |
 | layout | backend/app/services/{layout_service,_layout_geometry,_layout_order,unified_layout_service}.py（4 文件） | 版面结构与阅读顺序（主入口 + 几何/顺序私有叶 + unified 融合） | pp-structurev3-official-findings.md | layout->table |
-| table | backend/app/services/{table_service,table_alignment,table_backfill,table_band_range,table_cell_confidence,table_cell_geo,table_html,table_layout,table_ocr_blocks,table_pseudo_filter}.py（10 文件） | 表格识别全家族：检测/伪表过滤/对齐/回填/HTML/逐格置信 | pp-structurev3-official-findings.md（table_service）· provenance-review.md（backfill/alignment） | table->figure |
+| table | backend/app/services/{table_alignment,table_backfill,table_band_range,table_cell_confidence,table_cell_geo,table_engine_ppstructure,table_html,table_layout,table_ocr_blocks,table_pp_parse,table_pseudo_filter,table_service}.py（12 文件） | 表格识别全家族：服务门面（table_service）/ PP-Structure 引擎（table_engine_ppstructure + table_pp_parse 解析 Mixin，批 5 拆出）/ 对齐/回填/HTML/逐格置信 | pp-structurev3-official-findings.md（table_service）· provenance-review.md（backfill/alignment） | table->figure |
 | figure | backend/app/services/figure_service.py | 图像区域提取 | pp-structurev3-official-findings.md | — |
 | formula | backend/app/services/formula_service.py | 公式区域提取 | — | — |
 | ocr | backend/app/services/ocr_service.py | OCR 引擎封装 | docuvision-system-design.md §3.2–3.4 | — |

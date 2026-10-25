@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **P-040 formula special batch — page-aware PDF ROI, formula_number label fix, in-place
+  envelope replacement** (2026-10-25, P-040): the formula chain gets three behavior changes
+  (tier C, user-ruled this batch) plus one measurement-only item. **① Page-aware ROI** —
+  `formula_step` groups layout formula boxes by page; PDF inputs re-rasterize each page group
+  via the registered `pdf_raster` shared leaf (`matrix_scale=2.0`, the exact frame the layout
+  PDF branch renders at — that branch never emits a preprocessed page image, which is why the
+  old `preprocessed || file_path` chain handed `cv2.imread` a `.pdf` and died softly); the temp
+  PNG is deleted after use, image inputs keep the old chain untouched, per-page `recognize()`
+  calls aggregate (`_merge_formula_stats`; any page succeeding marks the step succeeded,
+  all-fail surfaces the first error). **② formula_number** — the numbered-display-formula label
+  (a real PP-DocLayout label, previously routed down the OCR-text path as garbage) joins the
+  formula semantics; the canonical set is single-sourced as `EnvelopeBuilder.SKIP_FORMULA_TYPES`
+  with a cross-site anti-drift sentinel (`test_formula_label_sets.py`). **③ In-place
+  replacement** — the engine stamps `source_id` on every ROI result; `build_formula_replacements`
+  maps results back onto their source blocks and `apply_formula_replacements` swaps
+  skip_formula placeholders in place across ALL fused pages: block_id / bbox / official
+  reading_order survive, payload becomes `{$$LaTeX$$, latex, mathml: None}` so formulas flow
+  with the body text, unrecognized regions degrade to `formula_unrecognized` instead of
+  vanishing, engine-off regions keep their placeholder; `view["formulas"]` now comes from the
+  view builder's own kind aggregation (per page, correct reading order) instead of a tail-append
+  adapter overwrite on page 1. `text.js` textLike lists gain formula/inline_formula (2-line
+  label addition required by the body-flow ruling). **④** `pipeline_formula_batch_size` 1 vs 8
+  A/B is a cloud-readings-only item (defaults unchanged). Local: full suite
+  **715 passed / 14 skipped / 0 failed** (+29 new cases across three new test files and
+  `test_envelope_builder.py`), `lint_frontend OK`, `lint_file_size OK`, `audit_agent_ops 0/0`.
+  Cloud verification steps and pass criteria are registered in the PENDING entry — GPU surface,
+  **not yet executed, cloud-verified is not claimed**.
 - **P-041 webhook end-to-end cloud verification PASS** (2026-10-25, P-041): the batch-8 `on_complete`
   injection chain now has its missing end-to-end receipt reading, executed as the dedicated cloud round
   the batch-12 closing deferred. Full chain exercised on a real `WEBHOOK_ENABLED` service:

@@ -54,7 +54,7 @@ flowchart LR
 
 - VL 的 schema 与 prompt 模板按类型定义于：`backend/app/services/kie/kie_configs/`（`_registry.yaml` 登记类型）。
 
-`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`、`coi`、`pico`（单一真源：`KIE_SUPPORTED_DOC_TYPES`，见 [`query_fields.py`](../../backend/app/services/kie/query_fields.py)）；`coi`（ACORD 25 五字段）与 `pico`（RCT findings）为 **v1.11 增量**。
+`kie_step` 支持的 `document_type`：`invoice`、`receipt`、`id_card`、`passport`、`bank_card`、`coi`、`pico`（单一真源：`KIE_SUPPORTED_DOC_TYPES`，见 [`query_fields.py`](../../backend/app/services/kie/query_fields.py)）；`coi`（ACORD 25 五字段）与 `pico`（RCT findings）为 **v1.13.0 增量**。
 
 - `auto` + `enable_kie=true` 跳过 KIE，`kie_meta.error_code = auto_document_type_requires_explicit_choice`（`stage=skipped_auto_doc_type`）——提示用户选择具体类型，而非笼统的 `unsupported_document_type`。
 - 其他非支持类型跳过 KIE，`kie_meta.error_code = unsupported_document_type`（`stage=skipped_doc_type`）。
@@ -66,7 +66,7 @@ flowchart LR
 - 实现：[`query_fields.py`](../../backend/app/services/kie/query_fields.py)、设计说明 [kie-custom-fields.md](./kie-custom-fields.md)。
 - **KIE-ACCEPT-002 不检查** query 字段是否填充；观察性指标见 `quality.kie_query_fields_requested` / `kie_query_fields_filled`。
 
-### 4.2 新增 doc-type 的登记触面（七处，v1.11 起）
+### 4.2 新增 doc-type 的登记触面（七处，v1.13.0 起）
 
 新增一个 KIE `document_type` 必须**同批**更新七处——缺任一处都是静默不一致（不会红，只会在运行期表现为"跳过"或假告警）：
 

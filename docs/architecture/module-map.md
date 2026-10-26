@@ -1,8 +1,11 @@
 # DocuVision Module Map（当前态模块地图）
 
 > Status: living — 结构变化时同步（owning 行见 `docs/agent-ops/core/doc-sync.md`）
-> 最近对照：v1.12.0 / main 06d6e7c（2026-10-24，S1 落地批 0：新增 §2b services 15 域表 + §5 S1a/S1b/S1c/A2b 门禁行 +
-> §1 后端依赖律改写——orchestration 定位为 services 的同级消费方；同日批 1：共享叶首登 pdf_raster（消解 2 边）+
+> 最近对照：v1.13.0 / main 07de132（2026-10-26，v1.13 收口：S1 结构门禁全收口——冻结边 14→0、size pins 清零、§2b 15 域表运行；
+> 共享叶 6 叶封册；P-039 main/runtime paddle import 惰性化（本机 TestClient 面解锁）；P-040 formula 链路修复重做
+> （页感知 PDF ROI / formula_number 并轨 / envelope 原位替换 + $$..$$ 进正文）；P-041 webhook e2e 云验 PASS。
+> 契约变更 = confidence Optional[float]（键消失语义）+ 公式进正文；路由 49 守恒（openapi 快照口径）；
+> 云验证 = main 07de132 全量 718 passed / 1 skipped / 0 failed + live 10 passed（2026-10-26））
 > single_file_pipeline 上移 orchestration/（#13 消解，services→编排零例外），棘轮 15→12 条目；同日批 2：双共享叶
 > `text_first_contract`/`kie_default_rules` 破两组域环，棘轮 12→9；批 3（2026-10-25）：orchestrator 拆
 > steps/ 五模块（1297→142）+ envelope_builder 拆 helpers（620→486），行数钉死条目 -2，KIE 步骤注入 grounding

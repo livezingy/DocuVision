@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-10-26
+
+> **Output contract changes in this release (read before upgrading consumers):**
+> 1. **Confidence semantics** (P-027 batch 2): `confidence` on fused blocks and `quality.avg_layout_confidence`
+>    are now `Optional[float]` — an unmeasured score is `None` and, via the route-level
+>    `response_model_exclude_none=True`, appears as an **absent key** (not `null`, not `0.0`). The OpenAPI
+>    baseline declares `anyOf: [number, null]`. Export/CSV consumers are unaffected (existing
+>    `None -> score -> 0` fallback retained).
+> 2. **Formula output semantics** (P-040 batch): formula blocks swap into their layout position instead of
+>    tail-append (block_id / official `reading_order` preserved); recognized blocks carry
+>    `payload.text = "$$LaTeX$$"` so formulas flow with body text (`view.pages[].content` and `/blocks`);
+>    new `processing_status` value `formula_unrecognized` (region kept in place, payload untouched);
+>    `formula_number` labels join the formula path; `view.formulas` is now the view layer's own
+>    per-page aggregation. PDF inputs no longer fail formula ROI (`cv2.imread` bug fixed — formula works
+>    end-to-end on PDFs for the first time). Route count unchanged (49, snapshot-guarded).
+
 ### Added
 - **PENDING closeout batch — P-039/P-040/P-041 removed, `runs/split/` deleted** (2026-10-25, PR #108):
   user-ruled removal of the three landed/decided entries with no promotable architecture content;

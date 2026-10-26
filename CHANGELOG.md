@@ -520,6 +520,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   re-verification (`baffc46`: E1 3/3 verbatim hits / E5 10=10 / E7 620 passed) recorded on its 最近对照
   line. PENDING drops to 19 entries and records P-032 on its history line; the entry had no remaining
   action left (its two follow-ups were dropped by decision, below).
+- **P-030 — PII exit mask + COI/ACORD 25 KIE domain** (2026-10-06, PR #64, with landing cleanup in PR #66):
+  two Upwork-bid-driven deliverables. (a) `enable_pii_mask` request option (default off = zero behavior;
+  four declaration sites; OpenAPI baseline and route-contract freeze regenerated in place — route count
+  stays 55): when on, a `pii_mask_step` runs between the evidence gate and `finalize_step` (ordering
+  isolation: Gate A verbatim grounding is verified BEFORE masking, so the mask cannot break quote
+  checks), rewriting the three US tax-id variants (3-2-4 SSN-style, 2-7 EIN-style, bare 9 digits;
+  10/11-digit runs and letter-adjacent runs deliberately do not match) to `[TAX-ID-MASKED]` on a deep
+  copy with per-variant counts logged — bare 9-digit is over-masked by design (known limitation, not a
+  general PII recognizer); masked output never persists back into the raw envelope. Dead
+  `ProcessingOptions` model dropped on the way. (b) `coi` becomes the sixth KIE doc-type (ACORD 25
+  five-field schema: `carrier` / `policy_type` / `eff_date` / `exp_date` / `limits`, prompt v1), wired
+  through the doc-type touchpoints plus the seventh discovered in landing
+  (`kie_field_metrics._PRODUCTION_KEY_HINTS` — missing it made the UI show a false `kie_production`
+  warning and froze confidence at 0.0; PR #66; rule registered: adding a KIE doc-type now touches six
+  surfaces + the production-key hints table), with a 5-fixture ACORD 25 corpus (2 real certificates, 2
+  synthetic, 1 negative exemption) and classifier keywords pinned to ACORD disclaimers. The known
+  `carrier` fallback on empty INSURER rows (rating boilerplate instead of blank) was parked at landing
+  and is being fixed properly by P-034 (text-first structured input). Unit cover: `test_pii_mask.py`
+  (213 lines) + classifier both-ways regression; living doc: `docs/architecture/kie.md` §4.2.
+- **P-031 — PICO evidence-extraction KIE domain** (2026-10-06, PR #65, with landing cleanup in PR #66):
+  `pico` becomes the seventh KIE doc-type (RCT findings extraction) — the KIE-side counterpart of the
+  P-029/P-032 evidence layer: same six-plus-one touchpoints as P-030b, a domain-consistency sentinel test
+  (`test_kie_domain_consistency.py`: classifier keywords == KIE supported set == registry keys, 7 == 7
+  == 7), an M1 calibration corpus of 5 open-access RCT papers (BMC ×3, PLOS ONE, Springer,
+  PMC-traceable), and frontend radio entries labeled `Evidence Extraction (PICO)` / `Certificate of
+  Insurance (COI)`. Classifier keywords X1-calibrated on the committed fixtures. The E2E run surfaced
+  the P-029 page-attribution gap (fixed below). Docs: `docs/architecture/kie.md` §4.2,
+  `KIE_ACCEPTANCE_CRITERIA.md` §Required key hints.
 - **PENDING hygiene round** (2026-10-07, user decisions; docs-only, zero product change): P-024's
   "compaction-detectability" re-test obligation was dropped as uncontrollable and unnecessary (the kernel
   ① clause kept its original conditional text at that point; the "auto-invalid if unrecognizable" branch is
@@ -656,6 +684,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`flip` official -> `raw` patched) while `html` / `td_texts` stay byte-equal across builds, the
   `pico p3` reverse sentinel flips `measured=false -> true`, and `rep` / `inv` are byte-identical
   (`cells_sha256` unchanged). `DOCUVISION_CLOUD_TESTS=1` suite green (659 passed / 1 skipped).
+- **P-029 follow-up — evidence findings attributed to the KIE-processed page** (2026-10-07, PR #67/#68;
+  gap surfaced by the P-031 E2E): findings' `grounding_page_key` stayed null because KieManager never
+  injects block ids or page text into the prompt (`quote_block` is a fabricated index that never maps
+  to a fused block_id) and single-page runs never write `kie_fields_by_page`. Fix (option 1): inject the
+  page KIE actually processed (`kie_meta.kie_pages_processed`, or the single key of
+  `kie_fields_by_page`), locate multi-page findings by scanning the fused per-page text for the
+  normalized quote, keep `quote_block` as a last-resort hint, and add `evidence.stats` self-diagnostics
+  (page_injected / page_texts_pages / trusted_pages). Cloud E2E: page=1 injected, ledger detail moves
+  from `grounding unavailable` to `N/Mw prefix` — page attribution fixed; the residual fail-closed
+  digit-punctuation item is tracked separately. Contract pinned in tests (4d822ff).
 
 ## [1.12.0] — 2026-10-05
 

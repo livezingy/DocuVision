@@ -1,18 +1,21 @@
 type_id: coi
 display_name: Certificate of Insurance (COI)
 category: document
-prompt_version: v3
+prompt_version: v3.1
 prompt_template: |-
   You are an insurance certificate information extraction engine. The provided text comes from a Certificate of Liability Insurance (ACORD 25 or equivalent), segmented into blocks; each line is prefixed with a globally-unique block marker like [p1_b0] (page 1-based, block 0-based). Extract the requested fields as they appear on the certificate.
   Output a single JSON object: {"carrier": ..., "policy_type": ..., "eff_date": ..., "exp_date": ..., "limits": ...} where every key MUST be present (never omit a key):
-    "carrier": the insurance company(ies) affording coverage. Take it ONLY from the blocks that follow the block titled "INSURER(S) AFFORDING COVERAGE" (the insurer name rows on the ACORD 25 form). Use the first listed insurer name verbatim, or a comma-separated list when multiple insurers are shown. If that region is empty, blank, or contains only rating-information boilerplate (e.g. lines mentioning "A.M. Best", "Rating", "VII or Better", or a rating bureau name without an actual insurer name), output "" — never fall back to such boilerplate.
+    "carrier": the insurance company(ies) affording coverage. Work ONLY in the region that starts at the block titled "INSURER(S) AFFORDING COVERAGE". In that region the insurer name rows come FIRST, directly under the title; on a blank form those rows appear as bare "$" placeholder symbols (lines made only of "$" characters), empty tokens, or nothing at all. Rules, in order:
+      - If the first rows under the title name one or more actual insurance companies, use the first insurer name verbatim (comma-separated list when multiple insurers are shown).
+      - If those first rows are "$" placeholders, blank, or contain no actual company name, output "" — the certificate names no insurer.
+      - NEVER use a rating-information line as the carrier: any line like "A.M. Best B+ VII or Better Insurance Carrier", "X of Y or Better", or a rating/bureau remark is FORM BOILERPLATE, not an insurer name — even when it is the only company-like text in the region or anywhere on the form, and even when it repeats several times.
     "policy_type": the coverage line(s) listed in the COVERAGES table (e.g. "Commercial General Liability", "Workers Compensation", "Automobile Liability"); use the most specific line marked or filled, comma-separated when several apply,
     "eff_date": the policy effective date (POLICY EFF column or certificate period start), copied verbatim in its printed format,
     "exp_date": the policy expiration date (POLICY EXP column or certificate period end), copied verbatim in its printed format,
     "limits": the limit(s) shown for the listed coverage line(s) (e.g. "Each Occurrence $1,000,000"); copy the printed amount(s) with their labels verbatim, or "" when the limits area is blank.
-  Rules: copy names, numbers and dates verbatim from the provided text (no reformatting, no translation); leave a field as "" when the certificate does not state it; never invent values; checkboxes never imply a value. Do not treat table headers, form captions, or rating-information lines as field values.
+  Rules: copy names, numbers and dates verbatim from the provided text (no reformatting, no translation); leave a field as "" when the certificate does not state it; never invent values; checkboxes never imply a value. Do not treat table headers, form captions, "$" placeholder rows, or rating-information lines as field values.
 schema:
-  carrier: insurer(s) affording coverage, verbatim from the INSURER(S) AFFORDING COVERAGE rows; "" when empty or rating boilerplate only
+  carrier: insurer(s) affording coverage, verbatim from the INSURER(S) AFFORDING COVERAGE rows; "" when those rows are "$" placeholders/blank, or when only rating boilerplate is present
   policy_type: coverage line(s) from the COVERAGES table, verbatim
   eff_date: policy effective date, printed format
   exp_date: policy expiration date, printed format

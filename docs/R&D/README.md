@@ -34,6 +34,9 @@ Deletion rule: a pack/record is deletable once **no tracked document still refer
 | [P027/R3-执行记录.md](runs/P027/R3-执行记录.md) | P-027 R3 验收三闸 harness 化执行记录 |
 | [P027/R4-执行包.md](runs/P027/R4-执行包.md) | P-027 R4 IE 语义层专项执行包 |
 | [P027/R4-执行记录.md](runs/P027/R4-执行记录.md) | P-027 R4 IE 语义层专项执行记录 |
+| [P034/P-034-执行包-v1.md](runs/P034/P-034-执行包-v1.md) | P-034 text-first 泛化到 coi 执行包 v1（Agent D 出包） |
+| [P034/P-034-执行包-v1-审核记录.md](runs/P034/P-034-执行包-v1-审核记录.md) | P-034 执行包 v1 审核记录（有条件通过，P1×3） |
+| [P034/P-034-云测-第1轮-读数.md](runs/P034/P-034-云测-第1轮-读数.md) | P-034 云测第 1 轮读数（X2 FAIL 病灶解剖 + v3.1 迭代依据） |
 
 **保留依据**：`runs/P027/` 的保留理由写在 PENDING **P-027** 条目——**2026-10-16 更新**：P-027 已由 `decided` 转 **`retained`**，保留依据不再是「在途义务未清」，而是**被 tracked 文档反引**（PENDING 的 P-002 条目把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；[../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) 的 R2/R3/R4 行；R4 记录 §6 是隔离区 `test_data/derived/**` 证据链的唯一盘存表）⇒ 仍**未到删除条件**。
 

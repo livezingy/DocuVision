@@ -291,6 +291,59 @@ def test_d2_gate_text_first_scope_mirrors_m1(tmp_path, monkeypatch):
     assert block["stats"]["page_injected"] == 1
 
 
+_COI_FLAT_FIELDS = {
+    "carrier": "Acme Insurance Group",
+    "policy_type": "Commercial General Liability",
+    "eff_date": "01/01/2026",
+    "exp_date": "01/01/2027",
+    "limits": "Each Occurrence $1,000,000",
+}
+
+
+def test_d2_gate_text_first_scope_mirrors_m1_coi(tmp_path, monkeypatch):
+    """D2 (P-034): coi joins the whitelist on BOTH sides via the shared contract.
+
+    The kie step (``steps/kie.py`` -> ``tf.text_first_enabled``) and the gate
+    (``tfc.text_first_from_ctx``) must both run text-first for coi on PDF.
+    coi ``kie_fields`` are a flat five-field dict (no ``findings`` key), so the
+    gate's block cannot carry observable text-first stats — the mirror is
+    asserted on the shared decision functions, and the gate itself must fail
+    closed on the flat shape (early note, never a fabricated legacy enrich)."""
+    pdf = _make_pdf(
+        tmp_path,
+        pages=((("ACORD 25 certificate of liability insurance body text.",), ()),),
+    )
+    monkeypatch.setattr(settings, "EVIDENCE_ENABLED", True)
+    monkeypatch.setattr(settings, "EVIDENCE_TEXT_FIRST", True)
+    import app.services.hitl_queue as hq_module
+
+    monkeypatch.setattr(hq_module, "hitl_queue", HitlReviewQueue())
+    assert tf.text_first_enabled("coi", is_pdf=True) is True  # kie step side
+    ctx = _gate_ctx(tmp_path, pdf, [_candidate("Treatment may reduce infarct size in patients.")])
+    ctx["result"]["kie_meta"]["resolved_document_type"] = "coi"
+    ctx["result"]["kie_fields"] = dict(_COI_FLAT_FIELDS)  # flat coi schema
+    assert tfc.text_first_from_ctx(ctx, True) is True  # gate side, same decision
+    block = asyncio.run(gate.run_evidence_gate(ctx))
+    assert block["note"] == "no evidence findings in kie output"  # fail closed
+
+
+def test_d2_gate_text_first_scope_coi_requires_pdf(tmp_path, monkeypatch):
+    """D2 (P-034): coi on a non-PDF stays legacy on BOTH sides."""
+    monkeypatch.setattr(settings, "EVIDENCE_ENABLED", True)
+    monkeypatch.setattr(settings, "EVIDENCE_TEXT_FIRST", True)
+    assert tf.text_first_enabled("coi", is_pdf=False) is False  # kie step side
+    ctx = {
+        "task_id": "t1",
+        "task": {"file_name": "note.txt"},
+        "file_path": str(tmp_path / "note.txt"),
+        "result": {
+            "kie_fields": dict(_COI_FLAT_FIELDS),
+            "kie_meta": {"resolved_document_type": "coi"},
+        },
+    }
+    assert tfc.text_first_from_ctx(ctx, True) is False  # gate side, same decision
+
+
 def test_d2_gate_text_first_requires_pdf(tmp_path, monkeypatch):
     """Non-PDF input: M1 stays on the image channel, so the gate must too."""
     quote = "Treatment may reduce infarct size in patients."

@@ -50,6 +50,9 @@ When stage is `completed` **and** KIE was attempted for a supported `document_ty
 | coi | `carrier`, `policy_type`, `eff_date`, `exp_date`, `limits` |
 | pico | `findings` |
 
+- **coi carrier 特判（P-034，text-first 通道）**：空承保人样本（INSURER A–F 全空）⇒ `carrier == ""`；评级样板句（含 `A.M. Best` / `VII or Better` 字样）⇒ 禁出值。
+- **coi flag ON 五字段不退化（P-034，Cloud on/off 双跑判据）**：`DOCUVISION_EVIDENCE_TEXT_FIRST=1` 时，`policy_type` / `eff_date` / `exp_date` / `limits` 相对旗标关的 legacy 输出不得丢失或降精度（ACORD 勾选框/评级行/limits 表是否依赖视觉信号须在该对照中证实或证伪，见 PENDING P-034 验收③）。
+
 Implementation: `app.services.kie.kie_field_metrics.evaluate_kie_production_hit`
 
 ### Query fields (v1.1, `kie_query_fields`)

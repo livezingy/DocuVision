@@ -280,17 +280,19 @@ async def kie_step(ctx: PipelineContext) -> None:
     else:
         fields = fields_by_page.get(str(selected_pages[0]), {}) if fields_by_page else {}
 
-    # P-034 P0: never-omit backfill. The model may drop a key it cannot
-    # determine (round 3: carrier/limits omitted). Restore scalar schema keys
-    # with "" so the X2/P1-3 acceptance criteria see a present key (carrier == "")
-    # instead of a key-omitted shape. Empty strings are not "filled" values, so
-    # fill-confidence / production-hit metrics are unaffected.
-    schema_keys = (
-        list(merged_schema.keys())
-        if isinstance(merged_schema, dict)
-        else _base_schema_keys(document_type)
-    )
-    fields = backfill_schema_keys(fields, schema_keys)
+    # P-034 P0: never-omit backfill — scoped to the text-first channel, where
+    # the round-3 observation was made (text-first coi omitting carrier/limits).
+    # Legacy-channel output stays byte-identical to main (X3 zero-behavior
+    # anchor); scoping also keeps date/currency validation semantics untouched
+    # for full-HITL doc types (an absent key must stay "unvalidated", not become
+    # a failing empty value — caught by test_kie_return_raw_contract on cloud).
+    if tf_active:
+        schema_keys = (
+            list(merged_schema.keys())
+            if isinstance(merged_schema, dict)
+            else _base_schema_keys(document_type)
+        )
+        fields = backfill_schema_keys(fields, schema_keys)
 
     items_count = sum_items_count(fields) if multipage else int(
         last_metadata.get("items_count", 0) or 0

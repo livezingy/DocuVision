@@ -32,8 +32,8 @@ SOURCE_FUSED_OCR = "fused_ocr"
 
 
 def text_first_enabled(document_type: str, is_pdf: bool, flag: bool) -> bool:
-    """P-032 feature flag gate: text-first applies to pico on PDFs only."""
-    if not is_pdf or str(document_type).lower() != "pico":
+    """P-032 feature flag gate (P-034: whitelist widened to pico + coi on PDFs)."""
+    if not is_pdf or str(document_type).lower() not in {"pico", "coi"}:
         return False
     return bool(flag)
 

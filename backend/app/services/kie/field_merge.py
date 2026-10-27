@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List
 
 
 _SKIP_MERGE_KEYS = frozenset({"raw_output"})
@@ -55,6 +55,36 @@ def merge_kie_fields(
             merged[key] = value
 
     return merged
+
+
+def backfill_schema_keys(
+    fields: Dict[str, Any],
+    schema_keys: Iterable[str],
+) -> Dict[str, Any]:
+    """
+    Backfill missing scalar schema keys with "" (never-omit contract).
+
+    The KIE prompts instruct the model to never omit a key, but Qwen may still
+    drop a key it cannot determine (P-034 round 3: carrier/limits omitted).
+    Restoring presence with an empty value makes the X2/P1-3 acceptance criteria
+    see a present key (carrier == "") instead of a KeyError / "key omitted"
+    ambiguity. Empty strings are not "filled" values, so the fill-confidence and
+    production-hit metrics are unaffected.
+
+    List keys (items / line_items / findings) are left untouched: their empty
+    semantics is ``[]`` and is handled by downstream consumers (e.g. the evidence
+    gate treats a missing findings list as "no evidence findings").
+    """
+    if not isinstance(fields, dict):
+        return fields
+    for key in schema_keys:
+        key = str(key)
+        if key in fields:
+            continue
+        if key in _LIST_MERGE_KEYS:
+            continue
+        fields[key] = ""
+    return fields
 
 
 def sum_items_count(fields: Dict[str, Any]) -> int:

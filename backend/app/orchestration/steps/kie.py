@@ -11,12 +11,25 @@ import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from loguru import logger
 from app.core.config import settings
-from app.services.kie.field_merge import merge_kie_fields, sum_items_count
+from app.services.kie.field_merge import backfill_schema_keys, merge_kie_fields, sum_items_count
 from app.services.kie.text_first import build_text_first_payloads, resolve_pages_text_first, text_first_enabled
 from app.services.pdf_raster import pdf_page_count, rasterize_pdf_page
 if TYPE_CHECKING:
     from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
 PipelineContext = Dict[str, Any]
+
+
+def _base_schema_keys(document_type: str) -> List[str]:
+    """Return the base KIE schema key names for a supported doc-type.
+
+    Used to backfill missing scalar keys (never-omit contract) when no
+    query_fields are present (merged_schema is None). Lazily imported to keep
+    this module's import surface minimal.
+    """
+    from app.services.kie.query_fields import load_base_schema
+
+    schema = load_base_schema(document_type)
+    return [str(k) for k in schema.keys()]
 
 
 async def kie_step(ctx: PipelineContext) -> None:
@@ -266,6 +279,20 @@ async def kie_step(ctx: PipelineContext) -> None:
         ctx["result"]["kie_fields_by_page"] = fields_by_page
     else:
         fields = fields_by_page.get(str(selected_pages[0]), {}) if fields_by_page else {}
+
+    # P-034 P0: never-omit backfill — scoped to the text-first channel, where
+    # the round-3 observation was made (text-first coi omitting carrier/limits).
+    # Legacy-channel output stays byte-identical to main (X3 zero-behavior
+    # anchor); scoping also keeps date/currency validation semantics untouched
+    # for full-HITL doc types (an absent key must stay "unvalidated", not become
+    # a failing empty value — caught by test_kie_return_raw_contract on cloud).
+    if tf_active:
+        schema_keys = (
+            list(merged_schema.keys())
+            if isinstance(merged_schema, dict)
+            else _base_schema_keys(document_type)
+        )
+        fields = backfill_schema_keys(fields, schema_keys)
 
     items_count = sum_items_count(fields) if multipage else int(
         last_metadata.get("items_count", 0) or 0

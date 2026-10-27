@@ -1,6 +1,6 @@
 """Phase A tests for multipage KIE field merge."""
 
-from app.services.kie.field_merge import merge_kie_fields, sum_items_count
+from app.services.kie.field_merge import backfill_schema_keys, merge_kie_fields, sum_items_count
 
 
 def test_merge_scalar_later_non_empty_wins() -> None:
@@ -70,3 +70,31 @@ def test_merge_other_doc_types_unaffected() -> None:
     assert [i["name"] for i in merged["items"]] == ["a", "b"]
     assert [i["name"] for i in merged["line_items"]] == ["la", "lb"]
     assert merged["invoice_number"] == "B"  # scalar conflict still favors later page
+
+
+def test_backfill_scalar_schema_keys_missing() -> None:
+    # P-034 P0: the model may omit keys it cannot determine (round 3:
+    # carrier/limits omitted). Scalar keys must come back as "".
+    fields = {"policy_type": "COMMERCIAL GENERAL LIABILITY"}
+    out = backfill_schema_keys(
+        fields,
+        ["carrier", "policy_type", "eff_date", "exp_date", "limits"],
+    )
+    assert out["carrier"] == ""
+    assert out["limits"] == ""
+    assert out["eff_date"] == ""
+    assert out["exp_date"] == ""
+    assert out["policy_type"] == "COMMERCIAL GENERAL LIABILITY"
+
+
+def test_backfill_preserves_existing_and_skips_list_keys() -> None:
+    # Existing values (including already-empty "") are preserved; list keys
+    # (findings) are left untouched -- their empty semantics is [].
+    fields = {"carrier": "", "findings": []}
+    out = backfill_schema_keys(fields, ["carrier", "findings"])
+    assert out == {"carrier": "", "findings": []}
+    assert "limits" not in out  # not in schema_keys -> never invented
+
+
+def test_backfill_non_dict_returns_unchanged() -> None:
+    assert backfill_schema_keys(None, ["carrier"]) is None

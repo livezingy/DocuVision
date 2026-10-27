@@ -126,6 +126,8 @@ flowchart LR
 - **非 PDF**：`kie_pages` 仅支持默认第 1 页语义；其他 spec 返回 400。
 - **解析鲁棒性**：模型若输出非严格 JSON，字段区会退化为 `raw_output` 文本块。
 - **字段精度**：基线样本已通过 Cloud 验收；身份证等场景可能仅命中部分关键键（如 `name` 无 `id_number`），需按样例继续调 prompt/schema。
+- **text-first coi `limits`（P-034 round-4 登记，2026-10-27）**：ACORD 的 limits 表依赖视觉/表格信号——`PER STATUTE` 等评级行仅存在于 layout 表格 OCR 层，text-first（纯文本层）取不到属预期；同时 **legacy 图像通道的 `limits` 抽取自身跨轮漂移**（同夹具实测 `PER STATUTE` ↔ `EACH OCCURRENCE…` ↔ `''`）——该字段在两通道下均不稳定；round-3 曾评 hybrid 输入方案（注入 layout 表格 OCR），round-4 同轮 on/off 对照无退化故未立项，若后续对 limits 绝对精度有需求须另立项。载体：`runs/P034/`（P-034）。
+- **text-first 正文页阈值（P-034 round-1 登记，2026-10-27）**：`BODY_PAGE_MIN_TEXT_ELEMENTS=8` / `BODY_PAGE_MIN_TEXT_CHARS=500` 校准自 pico 学术语料；ACORD 类单页表单的页元素数/字符数可低于阈值，coi 依赖 `or [1]` 单页兜底进入 text-first（四轮云端实测有效）。per-doc-type 重校准未立项，登记为已知局限。
 
 ## 7. 参考与测试
 

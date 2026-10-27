@@ -43,6 +43,7 @@
 | GPU 依赖改动 | mock 单测 + 交付文档写 Cloud 验证步骤与验收标准 |
 | 前端改动 | kernel `frontend.md`（F1-F7 语义 / 落点 / 白名单注册）+ `python scripts/lint_frontend.py`；触及 UI 时列云手测清单 |
 | 试用/演示 | `docs/demo/TRIAL_REMOTE_60MIN.md` + `scripts/trial/trial_preflight.py` |
+| 云测轮次（GPU/Cloud 验证） | `scripts/cloud/README.md` + `scripts/cloud/cloud_round_test.sh`（一键金样例：版本核验/on-off 双跑/通道自证/判定/产物落盘） |
 | 审查任务 | `docs/agent-ops/review.md`（分级/证据/依据三要素） |
 
 ## 修改规则的正确姿势

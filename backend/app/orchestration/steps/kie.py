@@ -11,12 +11,25 @@ import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from loguru import logger
 from app.core.config import settings
-from app.services.kie.field_merge import merge_kie_fields, sum_items_count
+from app.services.kie.field_merge import backfill_schema_keys, merge_kie_fields, sum_items_count
 from app.services.kie.text_first import build_text_first_payloads, resolve_pages_text_first, text_first_enabled
 from app.services.pdf_raster import pdf_page_count, rasterize_pdf_page
 if TYPE_CHECKING:
     from app.orchestration.document_pipeline_orchestrator import DocumentPipelineOrchestrator
 PipelineContext = Dict[str, Any]
+
+
+def _base_schema_keys(document_type: str) -> List[str]:
+    """Return the base KIE schema key names for a supported doc-type.
+
+    Used to backfill missing scalar keys (never-omit contract) when no
+    query_fields are present (merged_schema is None). Lazily imported to keep
+    this module's import surface minimal.
+    """
+    from app.services.kie.query_fields import load_base_schema
+
+    schema = load_base_schema(document_type)
+    return [str(k) for k in schema.keys()]
 
 
 async def kie_step(ctx: PipelineContext) -> None:
@@ -266,6 +279,18 @@ async def kie_step(ctx: PipelineContext) -> None:
         ctx["result"]["kie_fields_by_page"] = fields_by_page
     else:
         fields = fields_by_page.get(str(selected_pages[0]), {}) if fields_by_page else {}
+
+    # P-034 P0: never-omit backfill. The model may drop a key it cannot
+    # determine (round 3: carrier/limits omitted). Restore scalar schema keys
+    # with "" so the X2/P1-3 acceptance criteria see a present key (carrier == "")
+    # instead of a key-omitted shape. Empty strings are not "filled" values, so
+    # fill-confidence / production-hit metrics are unaffected.
+    schema_keys = (
+        list(merged_schema.keys())
+        if isinstance(merged_schema, dict)
+        else _base_schema_keys(document_type)
+    )
+    fields = backfill_schema_keys(fields, schema_keys)
 
     items_count = sum_items_count(fields) if multipage else int(
         last_metadata.get("items_count", 0) or 0

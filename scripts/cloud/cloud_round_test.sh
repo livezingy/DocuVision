@@ -3,26 +3,29 @@
 # cloud_round_test.sh — 云测轮次一键金样例（golden sample）
 # 规则/约定：scripts/cloud/README.md（本脚本 = README 的可执行形态）
 #
-# 出处：P-034 云测第 4 轮实证脚本（docs/R&D/runs/P034/p034_round4_cloud_test.sh，
-# 2026-10-27，HEAD c2b46e2，tampa on/off 双向 + 通道自证全链通过）。
+# 出处：P-034 云测第 4 轮实证（2026-10-27，tampa on/off 双向 + 通道自证全链通过；
+# venv/基线包含核验/产物打包改进经同一轮云端实操验证）。
 # 后续云测轮次复用本脚本：只改环境变量，不改流程。
 #
 # 用法（云端 Linux，任意临时目录）：
 #   bash cloud_round_test.sh
 #   REPO_DIR=/path/to/DocuVision bash cloud_round_test.sh      # 仓库非默认位置
 #
-# 流程：版本核验(自动 pull) -> 契约单测 -> 旗标 ON 起服务跑夹具(通道自证)
-#       -> 旗标 OFF 跑夹具 x3(分母稳定性) -> 新判据判定 -> 产物落本脚本同目录
+# 流程：虚拟环境激活 -> 版本核验(基线包含/严格两模式, 自动 pull) -> 契约单测
+#       -> 旗标 ON 起服务跑夹具(通道自证) -> 旗标 OFF 跑夹具 x3(分母稳定性)
+#       -> 自动判定 -> 产物打包为 tar.gz（与本脚本同目录）
 #
-# 产物：<PREFIX>_on.json / <PREFIX>_off_{1,2,3}.json / run_on.log / run_off.log
-#       / <PREFIX>_summary.txt（判定读数，回传重点）
+# 产物：run_{on,off}.log / <PREFIX>_on.json / <PREFIX>_off_{1,2,3}.json
+#       / <PREFIX>_summary.txt / <PREFIX>_artifacts_<HEAD>_<时间戳>.tar.gz
 # =============================================================================
 set -uo pipefail
 
 # ---- 可配置参数（环境变量覆盖；默认值 = P-034 worked example）----------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BRANCH="${BRANCH:-}"                      # 空 = 当前分支
-EXPECTED_HEAD="${EXPECTED_HEAD:-}"        # 空 = 仅告警不阻断；钉版本时传短 hash
+VENV_DIR="${VENV_DIR:-$HOME/docuvision_env}"   # 空 = 跳过激活（用系统 python）
+BRANCH="${BRANCH:-}"                           # 空 = 当前分支
+EXPECTED_HEAD="${EXPECTED_HEAD:-}"             # 空 = 仅告警；「基线包含」模式见下
+STRICT_HEAD="${STRICT_HEAD:-0}"                # 1 = 严格锁定 HEAD == EXPECTED_HEAD
 PROMPT_CHECK="${PROMPT_CHECK:-backend/app/services/kie/kie_configs/coi.yaml:v3.2}"  # path:version，空 = 跳过
 FIXTURE="${FIXTURE:-test_data/testfiles/coi/coi_acord25_tampa_sample.pdf}"
 DOC_TYPE="${DOC_TYPE:-coi}"
@@ -32,13 +35,25 @@ CHANNEL_GREP="${CHANNEL_GREP:-KIE text-first}"                     # 通道自�
 UNIT_TESTS="${UNIT_TESTS:-tests/test_kie_field_merge.py tests/test_kie_domain_consistency.py tests/evidence/test_evidence_text_first.py tests/test_kie_return_raw_contract.py}"
 RUN_UNIT="${RUN_UNIT:-1}"
 PORT="${PORT:-8000}"
-START_CMD="${START_CMD:-python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT}}"
 PREFIX="${PREFIX:-round}"
 export FIELDS BOILER PREFIX
 
 log() { echo "[cloud-round] $*"; }
 die() { echo "[cloud-round][FATAL] $*" >&2; exit 1; }
+
+# ---- 0) 虚拟环境（金样例固定环境；VENV_DIR 覆盖，置空跳过）--------------------
+if [ -n "$VENV_DIR" ]; then
+  if [ -f "$VENV_DIR/bin/activate" ]; then
+    # shellcheck disable=SC1091
+    source "$VENV_DIR/bin/activate"
+    log "已激活虚拟环境: $VENV_DIR"
+  else
+    die "虚拟环境不存在: $VENV_DIR/bin/activate (可用 VENV_DIR=/path/to/env 覆盖, 或 VENV_DIR= 跳过)"
+  fi
+fi
 PY="$(command -v python3 || command -v python)" || die "python not found"
+log "PY = $PY ($("$PY" -V 2>&1))"
+START_CMD="${START_CMD:-$PY -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT}}"
 
 SERVER_PID=""; PID_FILE="$SCRIPT_DIR/.cloud_round_server_pid"
 stop_server() {
@@ -50,8 +65,15 @@ stop_server() {
 }
 trap stop_server EXIT
 
-# ---- 0) 定位仓库 ------------------------------------------------------------
+# ---- 1) 定位仓库（从脚本目录逐级向上，兜底常见安装位置）----------------------
 REPO_DIR="${REPO_DIR:-}"
+if [ -z "$REPO_DIR" ]; then
+  d="$SCRIPT_DIR"
+  while [ "$d" != "/" ]; do
+    if [ -f "$d/backend/app/services/kie/kie_configs/coi.yaml" ]; then REPO_DIR="$d"; break; fi
+    d="$(dirname "$d")"
+  done
+fi
 if [ -z "$REPO_DIR" ]; then
   for d in "$HOME/DocuVision" "$HOME/docuvision" "$PWD"; do
     [ -f "$d/backend/app/services/kie/kie_configs/coi.yaml" ] && REPO_DIR="$d" && break
@@ -60,14 +82,28 @@ fi
 [ -n "$REPO_DIR" ] || die "未找到仓库，请指定: REPO_DIR=/path/to/DocuVision bash $0"
 log "REPO_DIR = $REPO_DIR"
 
-# ---- 1) 版本核验（自动 pull）------------------------------------------------
+# ---- 2) 版本核验（基线包含/严格两模式，自动 pull）---------------------------
+#   默认「基线包含」：EXPECTED_HEAD 已合入当前 HEAD 即通过，允许分支前进到更新提交
+#   （前进提交不触被测面时读数仍可比；P-034 第 4 轮实证形态）；
+#   STRICT_HEAD=1：严格锁定 HEAD == EXPECTED_HEAD。
 cd "$REPO_DIR" || die "无法进入 $REPO_DIR"
 [ -n "$BRANCH" ] || BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-git pull --ff-only origin "$BRANCH" || die "git pull 失败（有本地改动？先 stash）"
+git fetch origin "$BRANCH" || die "git fetch 失败（网络/远程不可达？）"
+if [ -n "$EXPECTED_HEAD" ]; then
+  git cat-file -e "${EXPECTED_HEAD}^{commit}" 2>/dev/null \
+    || die "EXPECTED_HEAD=$EXPECTED_HEAD 在仓库(含远程 $BRANCH)中不存在，请核对 hash 或分支"
+fi
+git merge --ff-only "origin/$BRANCH" || die "快进失败（本地分叉或有改动？先 stash / 检查）"
 HEAD_NOW="$(git rev-parse --short HEAD)"
 log "HEAD = $HEAD_NOW (branch=$BRANCH)"
 if [ -n "$EXPECTED_HEAD" ]; then
-  [ "$HEAD_NOW" = "$EXPECTED_HEAD" ] || die "版本不符: 期望 $EXPECTED_HEAD, 实际 $HEAD_NOW"
+  if [ "$STRICT_HEAD" = "1" ]; then
+    [ "$HEAD_NOW" = "$EXPECTED_HEAD" ] || die "版本不符(严格锁定): 期望 $EXPECTED_HEAD, 实际 $HEAD_NOW"
+  elif git merge-base --is-ancestor "$EXPECTED_HEAD" HEAD; then
+    log "版本核验通过(基线包含): EXPECTED_HEAD=$EXPECTED_HEAD 已合入 HEAD=$HEAD_NOW"
+  else
+    die "版本不符: EXPECTED_HEAD=$EXPECTED_HEAD 未合入 HEAD=$HEAD_NOW (或设 STRICT_HEAD=1)"
+  fi
 else
   log "WARN: EXPECTED_HEAD 未钉版本，读数可比性自担"
 fi
@@ -79,7 +115,7 @@ fi
 [ -f "$FIXTURE" ] || die "夹具不存在: $REPO_DIR/$FIXTURE"
 log "版本核验通过"
 
-# ---- 2) 契约单测（快速，先证代码面；UNIT_TESTS 空或 RUN_UNIT=0 跳过）--------
+# ---- 3) 契约单测（快速，先证代码面；UNIT_TESTS 空或 RUN_UNIT=0 跳过）--------
 if [ "$RUN_UNIT" = "1" ] && [ -n "$UNIT_TESTS" ]; then
   # shellcheck disable=SC2086
   ( cd backend && DOCUVISION_EVIDENCE_TEXT_FIRST=0 "$PY" -m pytest $UNIT_TESTS -q ) \
@@ -88,6 +124,7 @@ if [ "$RUN_UNIT" = "1" ] && [ -n "$UNIT_TESTS" ]; then
 fi
 
 # ---- 服务起停工具 -----------------------------------------------------------
+BASE_URL="http://localhost:${PORT}"
 wait_up() {
   for _ in $(seq 1 60); do
     code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/docs" 2>/dev/null || true)"
@@ -134,8 +171,7 @@ PYEOF
   log "结果已存 $1"
 }
 
-# ---- 3) ON 侧：通道自证 + 判据数据 ------------------------------------------
-BASE_URL="http://localhost:${PORT}"
+# ---- 4) ON 侧：通道自证 + 判据数据 -------------------------------------------
 log "=== ON 侧开始 (flag=1) ==="
 start_server 1 "$SCRIPT_DIR/run_on.log"
 submit_and_wait "$SCRIPT_DIR/${PREFIX}_on.json"
@@ -143,7 +179,7 @@ ON_HITS="$(grep -c "$CHANNEL_GREP" "$SCRIPT_DIR/run_on.log" || true)"
 log "ON 通道自证: grep '$CHANNEL_GREP' = $ON_HITS (期望 >=1)"
 stop_server
 
-# ---- 4) OFF 侧 x3：分母稳定性协议 -------------------------------------------
+# ---- 5) OFF 侧 x3：分母稳定性协议 --------------------------------------------
 log "=== OFF 侧开始 (flag=0, x3) ==="
 start_server 0 "$SCRIPT_DIR/run_off.log"
 for i in 1 2 3; do
@@ -153,7 +189,7 @@ OFF_HITS="$(grep -c "$CHANNEL_GREP" "$SCRIPT_DIR/run_off.log" || true)"
 log "OFF 通道自证: grep '$CHANNEL_GREP' = $OFF_HITS (期望 =0)"
 stop_server
 
-# ---- 5) 判定（判据口径见 scripts/cloud/README.md §判定）---------------------
+# ---- 6) 判定（判据口径见 scripts/cloud/README.md §判定）---------------------
 cd "$SCRIPT_DIR"
 "$PY" - > "$SCRIPT_DIR/${PREFIX}_summary.txt" <<'JUDGE'
 import json, os
@@ -199,8 +235,18 @@ JUDGE
   echo "channel ON hits=$ON_HITS (期望>=1) / OFF hits=$OFF_HITS (期望=0)"
 } >> "$SCRIPT_DIR/${PREFIX}_summary.txt"
 
+# ---- 7) 打包产物（tar.gz 落与本脚本同目录，回传用）--------------------------
+TARBALL="${PREFIX}_artifacts_${HEAD_NOW}_$(date +%Y%m%d_%H%M%S).tar.gz"
+( cd "$SCRIPT_DIR" \
+  && tar -czf "$TARBALL" \
+       run_on.log run_off.log \
+       "${PREFIX}_on.json" "${PREFIX}_off_1.json" "${PREFIX}_off_2.json" "${PREFIX}_off_3.json" \
+       "${PREFIX}_summary.txt" ) \
+  || die "产物打包失败"
+log "产物已打包: $SCRIPT_DIR/$TARBALL"
+
 log "=== 完成，回传产物（与本 .sh 同目录）==="
 ls -l "$SCRIPT_DIR"/run_on.log "$SCRIPT_DIR"/run_off.log \
       "$SCRIPT_DIR"/${PREFIX}_on.json "$SCRIPT_DIR"/${PREFIX}_off_*.json \
-      "$SCRIPT_DIR"/${PREFIX}_summary.txt
+      "$SCRIPT_DIR"/${PREFIX}_summary.txt "$SCRIPT_DIR/$TARBALL"
 log "判定读数见 ${PREFIX}_summary.txt"

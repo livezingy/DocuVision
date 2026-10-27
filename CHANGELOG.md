@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **P-034 — KIE text-first channel generalized to `coi`, `carrier` boilerplate fallback truly fixed (2026-10-27)**:
+  the P-032 text-first input channel (native text layer cut into `[pN_bM]`-marked blocks, same-source with the
+  evidence gate grounding) now serves `coi` in addition to `pico` — the doc-type whitelist lives in
+  `text_first.py` as the single decision point shared by the KIE side and the evidence-gate side (mirrored by
+  `test_d2_gate_text_first_scope_mirrors_m1` + a coi positive case). `coi.yaml` gets a new-basis prompt
+  (**v3.2**: mechanical carrier procedure + worked example; never emit rating boilerplate, empty insurer ⇒
+  `carrier == ""`). Cloud round-4 acceptance (feature branch, full runbook in `scripts/cloud/`): tampa on/off
+  double run (ON x1 + OFF x3, channel self-cert ON=1/OFF=0, artifacts in `docs/R&D/runs/P034/`) — `carrier`
+  key present and empty (the parked P-030 defect is fixed), all five fields on ≡ off with zero missing keys;
+  PENDING P-034 → `landed`. Known limitations registered in `docs/architecture/kie.md` §6 (coi `limits` relies
+  on visual/table signal and the legacy extractor itself drifts across rounds; body-page thresholds stay
+  pico-calibrated, ACORD single-page forms rely on the `or [1]` fallback).
+- **Cloud round-test golden sample (`scripts/cloud/`)**: one-click runner distilled from the proven P-034
+  round-4 script — venv activation, version gate (baseline-inclusive ancestor check by default,
+  `STRICT_HEAD=1` for byte-exact lock), contract tests, flag-on/off x3 with channel self-cert, auto-judge
+  (key-presence + boilerplate ban + OFF-majority denominator), artifacts packaged as tar.gz next to the
+  script. Rules and judging conventions in `scripts/cloud/README.md`; future GPU/Cloud verification rounds
+  reuse it with env overrides only (registered in AGENTS.md task routing).
+
+### Fixed
+- **KIE never-omit backfill, scoped to the text-first channel (P-034 P0)**: Qwen may drop keys it cannot
+  determine (round 3: `carrier`/`limits` omitted entirely, diluting the acceptance criteria) —
+  `field_merge.backfill_schema_keys` restores missing scalar schema keys as `""` at assembly time
+  (`steps/kie.py`, only when the text-first channel is active; legacy output byte-identical, list keys
+  untouched, fill-confidence/production-hit metrics unaffected since `""` is not a filled value). An earlier
+  unconditional variant changed legacy validation semantics (backfilled empties failed date/currency rules
+  and fired the HITL enqueue path — caught by cloud regression `test_kie_step_calls_service_and_sets_fields`)
+  and was reverted to the scoped form in the same batch; local full suite 720 passed / 0 failed.
+
 ## [1.13.0] — 2026-10-26
 
 > **Output contract changes in this release (read before upgrading consumers):**

@@ -4,6 +4,9 @@
 > 最近对照：main `21983d0`（2026-10-07，#69 merge；P-032 M1-M5 + C4 落地，Cloud 复验 `baffc46` **全绿**——
 > E1 引文逐字命中 3/3 / E5 多页不丢 10=10 / E7 回归 620 passed·0 fail）。P-032 已结并**晋升出 PENDING**（2026-10-07；
 > 本文即 `backend/app/services/evidence/**` 的 owning living doc，契约见 §2 模块表与 §4.1 text-first 分支）。
+> **P-034（2026-10-27）**：text-first 白名单 `{pico}` → `{pico, coi}`（通道判定单一真源 `text_first.py` 不变），
+> Cloud 复验 `c2b46e2`（tampa on/off 双向 + 通道自证 + never-omit 补空键）**全绿**——判据与产物见 `runs/P034/`
+> （P-034 已转 `landed`）；已知局限（coi limits / 正文页阈值）登记于 `kie.md` §6。
 > 来源：sciextract RCT 报告 v2 实证的三闸方法（闸 A 逐字 quote 接地 / 闸 B hedge 保真 / 闸 C 槽完整性），
 > 自交接件移植（设计稿/执行包/执行记录 local-only：`docs/R&D/runs/P029/`）。
 
@@ -25,7 +28,7 @@
 | `backend/app/services/evidence/verifier.py` | V0-V6 归一梯 + 判类写死 + 闸 B 集差语义 + 闸 C 槽行；`--selftest` 自检入口；全链 UTF-8、诊断 ASCII（Windows GBK 守卫） |
 | `backend/app/services/evidence/gate.py` | fail-closed 门禁：failure ledger、HITL 路由、findings JSONL 产物、页接地文本构建与页信任闸（旗标分叉见 §4） |
 | `backend/app/services/evidence/grounding.py` | P-032 新增：同源原生文本层构建（`grounding_source`，PyMuPDF 按页分块）+ evidence 专用信任谓词（`trusted_grounding_page_set`，M5：`total_chars>0` 且 `invisible_ratio<0.5`）+ 确定性页归属（`attribute_candidates`：marker 提示 → V0-V6 梯扫最低页 → 最高前缀比页兜底承载 `N/Mw prefix` detail）；`page_text_trust.py` 本体只读不动 |
-| `backend/app/services/kie/text_first.py` | P-032 新增（M1/M2，纯逻辑）：`[p{页}_b{块}]` marker 注入（绝对页号、0 起块序）、块边界滑窗（重叠 1 块）、正文页判定（≥8 body 型元素且 ≥500 字符，裁决常量）与页解析包装；与 `grounding_source` 同源是契约 |
+| `backend/app/services/kie/text_first.py` | P-032 新增（M1/M2，纯逻辑）：`[p{页}_b{块}]` marker 注入（绝对页号、0 起块序）、块边界滑窗（重叠 1 块）、正文页判定（≥8 body 型元素且 ≥500 字符，裁决常量——按 pico 语料校准，ACORD 类单页表单靠 `or [1]` 兜底，局限见 `kie.md` §6）与页解析包装；**doc-type 白名单 = `{pico, coi}`**（P-034，2026-10-27，KIE 侧与证据门侧同一判定）；与 `grounding_source` 同源是契约 |
 | `backend/app/services/kie/kie_configs/pico.yaml` | PICO 域模板（prompt v4 + `prompt_version: v4` 头 + schema，`quote_block` 引 marker），`_registry.yaml` 注册；KieManager 可加载 |
 
 ## §3 三闸语义（写死）
@@ -56,12 +59,14 @@
 ### §4.1 text-first 分支（P-032，默认关）
 
 - 旗标 `EVIDENCE_TEXT_FIRST`（默认 **False**，env `DOCUVISION_EVIDENCE_TEXT_FIRST`/`EVIDENCE_TEXT_FIRST`，须与
-  `EVIDENCE_ENABLED` 同开）：`run_evidence_gate` 与 pico KIE 输入同时切到 text-first 通道；**旗标关 = #68 图片
-  通道行为逐分支原样**（enrich 三级启发式 / fused 接地 / E1 信任集）。
-- **抽取输入**（M1/M2）：pico 在 PDF 上不再喂图——每页喂「原生文本层按块拼接 + `[p{页}_b{块}]` marker」（每页
-  一次调用；超窗按块边界滑窗、重叠 1 块）；默认页集 = layout 正文页（≥8 body 型元素且 ≥500 字符）再交
+  `EVIDENCE_ENABLED` 同开）：`run_evidence_gate` 与**白名单内 doc-type（pico/coi）**的 KIE 输入同时切到 text-first
+  通道；**旗标关 = #68 图片通道行为逐分支原样**（enrich 三级启发式 / fused 接地 / E1 信任集）。
+- **抽取输入**（M1/M2）：白名单内 doc-type 在 PDF 上不再喂图——每页喂「原生文本层按块拼接 + `[p{页}_b{块}]` marker」
+  （每页一次调用；超窗按块边界滑窗、重叠 1 块）；默认页集 = layout 正文页（≥8 body 型元素且 ≥500 字符）再交
   `KIE_MAX_PAGES` 截断；`debug_input` 记录每页输入来源 `text_layer`/`fused_ocr`（M5 谓词失败页显式降级 fused_ocr
   并在证据闸 fail-closed，不静默混用；两通道皆无文本的页回落图片通道，以 payload 缺席显式呈现）。
+  **coi 增量（P-034）**：单页表单多无正文页命中 ⇒ `or [1]` 兜底单页；多窗口合并单次推理（tampa 实测
+  `windows=1 chars=3978`）；输出经 schema 补空键回填（never-omit，P-034 P0，仅 text-first 通道生效）。
 - **确定性接地**（M4）：页归属不再用 `kie_pages_processed`/`quote_block` 启发式——marker 提示页优先，其次对
   同源原生文本做 V0-V6 梯扫（页序升序、最低页胜），全落空归属最高前缀比页使 ledger detail 保持 `N/Mw prefix`
   （E2 禁 `grounding unavailable`）；命中后 `SourceRef.page_num` + `quote_span` 落记录。

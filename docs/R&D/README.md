@@ -25,6 +25,13 @@ execution packs & records — temporary, deletable once no tracked document stil
 
 ### runs/ (per-project execution packs/records — temporary, local-only)
 
+> **删除条件（2026-10-27 起，用户裁决；取代此前散落的先例口径——历史记录不改写）**：执行包与执行产物的删除须**同时**满足
+> **内容条件组**（① 对应 P-xxx 条目已 `landed`；② 该条目的 CHANGELOG 结论段已随版本切进 tag——`[Unreleased]` 不算；
+> ③ 无 tracked 文档仍反引本目录）**与时间兜底 30 天**（自条目 `since` 落地日起算），**双条件取后到**——
+> 内容条件先齐也要等满 30 天，超 30 天才齐则齐之日即可删。删除同批动作：结论指针先收进 tracked 载体
+> （CHANGELOG / living doc / PENDING 正文，local-only 件无 git 历史可回溯）→ 更新本索引 →
+> `python scripts/docs_refs_audit.py --check-rnd-index` 0/0。
+
 Deletion rule: a pack/record is deletable once **no tracked document still references any file in it** — check PENDING entries and this index first. CHANGELOG / release-note history citations do **not** block deletion (they are archives by design). Any add/delete under `runs/` must update the index below **in the same batch**: runs files are gitignored, so a dead index link is invisible to CI — verify locally with `python scripts/docs_refs_audit.py --check-rnd-index`.
 
 | File | Purpose |

@@ -39,7 +39,7 @@ Deletion rule: a pack/record is deletable once **no tracked document still refer
 | [P034/P-034-云测-第1轮-读数.md](runs/P034/P-034-云测-第1轮-读数.md) | P-034 云测第 1 轮读数（X2 FAIL 病灶解剖 + v3.1 迭代依据） |
 | [P034/P-034-云测-第2-3轮-读数.md](runs/P034/P-034-云测-第2-3轮-读数.md) | P-034 云测第 2-3 轮读数（通道自证 ✅ + X2 PASS，limits 退化定性 → 设计复核选项） |
 | [P034/P-034-云测第2-3轮-复核记录.md](runs/P034/P-034-云测第2-3轮-复核记录.md) | P-034 云测第 2-3 轮复核记录（X2 键省略稀释 + limits 退化再定性 → P0-P3 对策待裁决） |
-| [P034/p034_round4_cloud_test.sh](runs/P034/p034_round4_cloud_test.sh) | P-034 第 4 轮一键云测脚本（round-4 实证原件；金样例 = `scripts/cloud/cloud_round_test.sh`） |
+| （已删）P034/p034_round4_cloud_test.sh → [scripts/cloud/cloud_round_test.sh](../../scripts/cloud/cloud_round_test.sh) | P-034 第 4 轮一键云测脚本**已提炼入库**（2026-10-27，`dcf99a2`/`4eb3939`，用户改版的 venv/基线包含核验/打包改进一并吸收）；目录原件同批删除，git 历史可回溯；后续云测一律用 `scripts/cloud/` 金样例 |
 | [P034/p034_round4_artifacts_dcf99a2_20261027_065004.tar.gz](runs/P034/p034_round4_artifacts_dcf99a2_20261027_065004.tar.gz) | P-034 第 4 轮产物包（七件齐：双侧日志/result JSON×4/summary；已解包留档同目录） |
 
 **保留依据**：`runs/P027/` 的保留理由写在 PENDING **P-027** 条目——**2026-10-16 更新**：P-027 已由 `decided` 转 **`retained`**，保留依据不再是「在途义务未清」，而是**被 tracked 文档反引**（PENDING 的 P-002 条目把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；[../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) 的 R2/R3/R4 行；R4 记录 §6 是隔离区 `test_data/derived/**` 证据链的唯一盘存表）⇒ 仍**未到删除条件**。

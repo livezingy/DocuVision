@@ -1,0 +1,65 @@
+# 前端架构规范
+
+> 生成自 kernel `docs/agent-ops/core/`（frontend）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
+<!-- kernel-ref: frontend.md:2d0f0ef97202f59b -->
+
+## 目标
+`app.js` 只做装配（imports + `initXxx({deps})` + boot + mediator），新 UI 函数一律进 `frontend/modules/**`；
+用机器可判的规则锁死模块边界与落点，使不同 Agent 新增前端功能时产出同构代码。
+
+## 硬规则（`lint_frontend.py` + `check_frontend_baseline.py` 机器判，违反 = CI 红）
+1. **F1 行数预算**：`frontend/app.js` + `modules/**` + `shared/**` 单文件 ≤500 行；存量棘轮在
+   `scripts/frontend_size_allowlist.json`，只减不增。
+2. **F2 入口棘轮**：`app.js` 顶层 `function` / `async function` 数 ≤ `app_js_functions`，只减不增。
+3. **F3 import 方向**：`modules/**` 禁 import `../app.js`、禁跨域 import 兄弟域；只许 `modules/utils/*`、
+   同目录兄弟文件、白名单文件、`shared/*`。
+4. **F4 装配形态**：`index.html` 唯一入口 `app.js`（`type="module"`）；模块文件不得被 `index.html` 直接加载。
+5. **F5 叶服务注册制**：`frontend_domain_map.json` 的 `module_import_whitelist.files` 每条必须登记于
+   `leaf_services` / `shared_state_modules`（日期 + evidence）；L1/L2/L3 判据不得放宽。
+6. **F6 init 必被装配**：`modules/**` 每个 `export function initXxx` 必须在 `app.js` 被调用
+   （名字级断言；**deps 侧由 C9 补齐**，见第 8 条）。
+7. **F7 孤儿模块可达性**：`modules/**` 每个文件必须被 `app.js` / `index.html` / 其它脚本 import；
+   例外只登记在 `frontend_domain_map.json` 的 `known_orphans`（附日期与说明）。**登记 ≠ 接线**：
+   把孤儿接回管线属行为变更，不在结构治理批次内做。
+8. **C9 注入保真**：`app.js` 传给每个 `initXxx` 的 key 集合必须**恰好等于**该模块体实际读取的 `deps.*`
+   集合——缺 key 会让模块留下空桩（v1.8.3 B5a 的失败形态，`no-undef` 看不见：标识符已声明）、
+   多 key 是死注入（`no-unused-vars` 看不见：对象属性作为实参）。签名非空且非 `deps` 一律 fail-closed。
+   机检 `frontend_coupling.py::check_injection_keys`，由 `check_frontend_baseline.py` 默认运行。
+
+## 依赖律（与 module-map §1 同源）
+- **L1 装配层唯一**：`app.js` 只装配不放域逻辑。
+- **L2 import 只许向下**：域 →（域内兄弟 | `utils/*` | `shared/*` | 白名单叶服务），禁环。
+- **L3 跨域调用经装配注入**：`initXxx({deps})` 装配期一次性完成，**禁 `window.*` 桥**。
+- **L4 共享状态走指定枢纽**：`preview-state` / `api-state`（唯一允许双向 live binding 的例外）。
+- **L5 例外注册制**：白名单是数据编辑（criterion L1+L2+L3 + evidence + 日期），不开代码口子。
+
+## 新增/修改前端代码的强制动作
+1. **落点**：新 UI 函数进对应域模块（域表见 module-map §3）；新域 → `frontend_domain_map.json` `domains`
+   + module-map §3 行 + `app.js` 装配；跨域需求 → 追加注入或提前把被调者出仓，禁建 `window.*` 桥。
+2. **同步事实源（缺一 CI 红）**：`scripts/frontend_domain_map.json`（域 / 白名单 / init 序列 / 已知孤儿）、
+   `docs/architecture/module-map.md` §3/§5（域清单 / 文件数 / 门禁行）、`frontend/README_FRONTEND.md`（组件说明）。
+3. **白名单新增**：只走数据编辑，附 L1+L2+L3 判据与 evidence；叶服务一旦需要域状态或域分支，
+   即摘出白名单改为装配注入。
+4. **棘轮**：缩小后跑 `python scripts/check_frontend_baseline.py --update` 下调记录；**禁止上调**（kernel 红线）。
+
+## 本机 lint（stdlib / node，不碰 paddle）
+- `python scripts/lint_frontend.py`（F1-F7）
+- `python scripts/check_frontend_baseline.py`（C1-C8 设计基线 + **C9 注入保真**）
+- `cd frontend && npm run lint`（ESLint `no-unused-vars` + `no-undef`；2026-09-17 起已接 CI）
+- `python scripts/check_frontend_baseline.py --syntax`（`node --check` 全模块 + `app.js`）
+- `python scripts/check_e2e_allowlist.py`（**E1**：e2e 白名单格式/时效/棘轮 + 套件用例数钉死；`--selftest`）
+- `python scripts/audit_agent_ops.py`（check 3 对账 module-map §2/§3/§5 与事实源；`--selftest` 解析回归）
+
+## 已知 gap（记录在案，勿当作规则违反）
+- **F6 只有名字级**：deps 侧的"引用但没被注入"已由 **C9** 补上（2026-09-17 落地，P-008 gap 1 的选项 B）；
+  F6 自身仍只断言"被调用"。剩下的中间态解法（JSDoc + `tsc --allowJs --checkJs --noEmit`）留 v1.9 前端批次评估。
+- **F7 只判可达性、不判接线**：登记 `known_orphans` 只让**新**孤儿暴露（P-008）。v1.9 S4 已把两个在册孤儿
+  全部退役（2026-09-20，用户裁决：D11 floating-progress 连同 DOM/CSS，utils/geometry 连同其单测），
+  `known_orphans` 现为空——把孤儿接回管线仍是行为变更决策，不属 lint 修复。
+- **模板串里的内联事件处理器是结构盲区**：`<img ... onload="adjustDocumentSize()">` 这类写法在**全局作用域**求值，
+  模块内绑定不可见 → 运行时 `ReferenceError`，而 `no-undef` 不分析字符串、C1-C9/F1-F7 全是结构性的（P-016 实测
+  3 处，2026-09-17 已清零）。**新增/修改模板一律用 `element.addEventListener('load'|'error', fn)` 在插入 HTML 后接线，
+  不要写 `on*=` 属性**；注意缓存命中时 `load` 可能不触发，需按 `element.complete` 补一次调用。
+- **e2e 运行时错误白名单是数据，不是许可**：`frontend/tests/e2e/expected-errors.json` 每条须带 `reason` +
+  `added`（`match` 是**字面量子串**，禁正则元字符），条目数受棘轮上限约束、超 90 天 WARN；**扩容必须同
+  commit 给理由**，能修因就不要加条目（机检 **E1** = `scripts/check_e2e_allowlist.py`，2026-09-20 起进 CI）。

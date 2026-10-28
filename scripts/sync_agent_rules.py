@@ -130,6 +130,42 @@ AGENTS = {
             },
         ],
     },
+    "zcode": {
+        "dir": REPO_ROOT / ".zcode" / "rules",
+        "ext": ".md",
+        "files": [
+            {
+                "out": "001-general.md",
+                "sources": ["constraints"],
+                "title": "通用约束",
+                "frontmatter": None,
+            },
+            {
+                "out": "004-project.md",
+                "sources": ["environment", "testing"],
+                "title": "项目事实与测试验证",
+                "frontmatter": None,
+            },
+            {
+                "out": "009-doc-sync.md",
+                "sources": ["doc-sync"],
+                "title": "文档同步（强制，防漂移）",
+                "frontmatter": None,
+            },
+            {
+                "out": "010-routing.md",
+                "sources": ["routing"],
+                "title": "后端路由架构规范",
+                "frontmatter": None,
+            },
+            {
+                "out": "011-frontend.md",
+                "sources": ["frontend"],
+                "title": "前端架构规范",
+                "frontmatter": None,
+            },
+        ],
+    },
 }
 
 

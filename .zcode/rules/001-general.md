@@ -1,0 +1,78 @@
+# 通用约束
+
+> 生成自 kernel `docs/agent-ops/core/`（constraints）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
+<!-- kernel-ref: constraints.md:fd19ebd26e627189 -->
+
+## 响应语言与代码语言
+- 回复默认中文；代码、注释、docstring、日志、UI 文案、命令、变量名一律英文（ASCII 优先）。
+- `docs/` 设计文档可用中文。
+- 代码里非 ASCII 仅当运行时数据要求（如待本地化的用户可见串）；文件存 UTF-8 无 BOM。
+
+## 模型使用
+- 默认 Pro 套餐内模型；不主动升级到超出 Pro 套餐的模型。
+- Git 同步等纯机械操作（pull/fetch/push 及 push 前 status/add/commit）可用免费模型。
+- 用户明确要求"用免费模型"时按其要求执行当前任务。
+
+## 思维原则（第一性原则）
+- 从问题本质出发，先列不可再分的基本约束（技术栈/环境/契约/性能预算/不可改接口），再推导方案，不靠类比。
+- 不谄媚；给真实判断；方案有问题直接指出，发现更好做法直接说。
+
+## 对抗性审查
+- 给方案/改动时主动列出该方案**何时不成立**——至少 1 条反例或失败模式（输入边界、规模上限、契约冲突、性能假设）。
+- 改契约/性能相关代码时，写出该假设在什么条件下崩。
+- 交付 footer 加 **Adversarial check** 项。
+
+## 沟通方式
+- 结论先行，再给理由；不要先铺垫背景。
+- 遇模糊需求，先给最合理方案，再问要不要调整。
+- 不要问"你确定要这样吗"，除非命中红线。
+- 长对话 Context ≥ 90% 或已混乱、用户又下新命令时：建议开新对话并给出可粘贴约束（目标/范围/分支/约束/验收/模式）。
+- **自省不可靠**：Agent 读不到上下文占用，故「已混乱」以可观测代理判定——压缩事件 / 同一文件重复读 ≥2 次 / 连续工具
+  调用因内容不符失败 ≥2 次 / 推翻自身先前结论，任一命中即主动提议开新对话。
+- **触发不依赖"想起来"（P-024，两个强制检查点，替代纯自省）**：
+  ① **可辨识的压缩/交接输入 ⇒ 视作触发已发生**：若正在阅读的内容能辨识为压缩摘要或会话交接（而非正常上下文），
+    回复开头先给一行「压缩已发生 + 四条计数」并附可粘贴交接块（除非用户明确说继续）。平台不保证该输入可辨识，
+    故此条按**尽力而为**执行：不可辨识时只靠 ②（2026-10-07 已撤销"实测回填"义务——不可控且无必要，见 PENDING P-024）。
+  ② **交付检查点**：每次创建 commit / PR、以及每次写 CHANGELOG / PENDING 时，写一行
+    `Session-check: rereads=<n> failures=<n> reversals=<n> compaction=<0|1> -> propose=<yes|no>`，**全 0 也写**，
+    落 commit message 或 PR 正文（reviewer 可抽查）。刻意**不做 CI 机器判定**：`audit_agent_ops.py` 跑在 checkout 上
+    读不到 PR 正文，CI 浅克隆也常读不到 PR 自身的 commit（要机器查须先改 fetch-depth / 只查 push→main，另走 CI 红线授权）。
+
+## 自主边界（红线，auto-accept 下也必须先问）
+- 删除文件、目录、git 分支或远端 ref（含 `git branch -D`、`git push origin --delete`、`git worktree remove --force`）、git 历史或已推送历史改写（本轮明确授权的除外）。
+- 修改 `.env`、密钥、token、CI/CD 配置（含 `.github/workflows/**`）。
+- 数据库 schema 变更或数据迁移。
+- git push、git rebase、git reset --hard、强制推送。
+- 安装新的全局依赖或修改系统配置。
+- 公开发布（npm publish、部署生产、发文章等）。
+- 抬高棘轮上限（`scripts/file_size_allowlist.json` / `scripts/frontend_size_allowlist.json` 的既有计数只减不增）。
+- 扩大前端白名单（`scripts/frontend_domain_map.json` 的 `module_import_whitelist` / `leaf_services` / `shared_state_modules` 新增条目）。
+- 扩大 services 依赖豁免（`scripts/service_dependency_allowlist.json` 新增跨域/反向边条目——冻结棘轮只减不增，下调/移除免费）。
+- 改 `frontend/index.html` 的入口脚本或加载顺序。
+
+## 通用工程纪律
+- 改完主动跑验证，不要只改不验（Pro 验证在 Cloud/CI，给命令与期望）。
+- 不要为了让代码跑起来注释掉报错或加绕过标记，找根本原因。
+- 密钥、token、密码不进代码、不进 commit、不进日志。
+- 大改动前先在 Plan Mode 出方案，确认后再动手。
+- Python：遵循 PEP 8、类型提示、模块化设计、合理 OOP/函数式、错误处理与日志、按需单测。
+- **门禁/验收结论必须附证据**：可复制命令 + 实际输出片段 + 期望值；只写「已通过」视为未验证。
+- **结构性搬移/重构须有机器可判的等价性证据**（契约快照、冻结测试、零 diff），且**禁止顺手修无关缺陷**——要修就单独 commit/PR。
+- **基线类文件须可追溯**：快照/allowlist/冻结文件的来源 commit 与再生成命令必须写明；来源错（如取拆后而非拆前）则证明力归零。
+- **大二进制入库须声明**：新增 >5MB 的二进制（测试夹具、演示媒体）必须在 PR 描述写明「理由 + 是否测试夹具」。
+  夹具有意随仓库走（云端/CI 才能复现，见 P-015 的取舍），故不是禁止，而是要求可追溯；Git LFS 未采纳。
+
+## 官方依据优先
+- 改代码/选 API/定参数先查官方文档/源码（优先级：官方源码 > 官方文档 > 官方 issue > 第三方博客）。
+- 方案标注依据来源（段名/URL/源码行号/issue 编号/§节）；无依据的"我觉得"不算方案。
+- 核对版本（paddleocr 3.3.2 / paddlex 3.3.12 / paddlepaddle-gpu 3.3.0）；跨版本差异显式标注。
+- 查到的长期参考写入 `docs/architecture/` 对应 living doc，避免重复检索。
+- 本节覆盖**所有事实性断言**（数字/基准/规则），不限代码与 API：无来源不给具体数值；不确定须标「未验证」，不得用推测填空。
+
+## 对话收尾回顾
+- 每次对话结束前，回顾本次是否出现新的约定、习惯或特殊要求。
+- 值得固化则**提议**更新 rules/SKILLS（列改哪条、改什么），等用户确认后再改，不擅改。
+- R&D 结论：稳定后晋升 `docs/architecture/`；待确认结论登记到 `docs/R&D/PENDING.md`（每次会话可见"有 N 条待确认"）。
+- 仅一次性任务无新约定则跳过。
+- 收尾须产出**下次会话必读清单**（`PENDING.md` + kernel 五文件 + `CHANGELOG.md` + `DEVELOPMENT.md`）；设计稿类 local-only 草稿**用完即删**（结论已晋升则无损失，git tag/PR 即归档）。
+- **plan 存档清理**：`.codebuddy/plans/` 的会话 plan 落地并合入后，对应存档**可删**（结论已由代码 / 文档 / git 历史承载）；plans 目录 gitignored，删后无回溯——标「未完成」或尚有争议的先保留。

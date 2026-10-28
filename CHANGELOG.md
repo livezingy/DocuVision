@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Commit message gate: `scripts/lint_commit_msgs.py` + Lint CI step (type enum per `.cursor/rules/003-git.mdc`; merge/revert auto-commits exempt).
+- Agent-ops: runtime tri-role declaration (orchestrator/executor/verifier) in `agents.md`; new kernel `verification.md` (routine tiers, verdict spec, tool admission) synced to all three agent shells.
 - **P-034 — KIE text-first channel generalized to `coi`, `carrier` boilerplate fallback truly fixed (2026-10-27)**:
   the P-032 text-first input channel (native text layer cut into `[pN_bM]`-marked blocks, same-source with the
   evidence gate grounding) now serves `coi` in addition to `pico` — the doc-type whitelist lives in

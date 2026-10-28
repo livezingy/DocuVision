@@ -273,6 +273,7 @@ scripts/*
 !scripts/docs_refs_audit.py
 !scripts/assets_manifest_audit.py
 !scripts/lint_routes.py
+!scripts/lint_commit_msgs.py
 !scripts/lint_file_size.py
 !scripts/file_size_allowlist.json
 !scripts/lint_frontend.py

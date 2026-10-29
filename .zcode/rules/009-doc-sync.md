@@ -1,0 +1,81 @@
+# 文档同步（强制，防漂移）
+
+> 生成自 kernel `docs/agent-ops/core/`（doc-sync）。勿手改副本；改共享约束请编辑 kernel 后重跑 `scripts/sync_agent_rules.py`。
+<!-- kernel-ref: doc-sync.md:8dee12ab961cc038 -->
+
+## 根因
+文档滞后源于：无强制触发 / 无归属 / 文档远离代码 / 无漂移检测 / 文档与测试脱节。以下机制对症。
+
+## 机制 1：交付 footer 加 Doc sync（强制声明）
+改契约/编排/API 时 footer **必须**声明 Doc sync，三选一：
+- `updated <doc> §<节>` —— 已同步
+- `N/A（未触及任何 living 契约）` —— 显式声明，须说明未触及哪类
+- `drift: <doc> 仍写旧 <字段/端点>，待修` —— 记录漂移，列入后续修复
+不允许沉默跳过。**PR 评审必检项**：footer 缺 Doc sync，或声明与 diff 不符（改契约却写 `N/A`）→ 驳回。
+
+## 机制 2：文档归属表（改哪个模块→同步哪个文档）
+逐模块 owning doc 见附表 [`../doc-sync-ownership.md`](../doc-sync-ownership.md)（含未核实 TODO、判定口径）。
+改模块时按表同步 owning doc；表未覆盖的新模块，新增契约时一并补表。
+
+## 机制 3：契约 = 测试 = 权威
+- **有 pytest 的契约，测试是权威，`.md` 是人类可读派生视图**。
+- `.md` 契约段顶部标注 `权威：tests/<file>.py`；代码改了测试会红，`.md` 漂移不致命。
+- 无测试覆盖的契约靠 `.md` 人工同步——属高风险，footer Doc sync 必须点名。
+- 测试绿不豁免 `.md` 同步义务，测试仅兜底。
+
+## 机制 4：living doc 标注"最近对照"
+每份 living doc 顶部加一行：
+```
+> 最近对照：v1.4.0 / commit abc123（2026-07-25）
+```
+- 不强制每次小改刷新，但**发版/合 main 时必须刷新**。
+- **刷新口径 = 本 PR 的 base commit**（该 PR 的分支创建时其 base 分支的 tip）——**不是**合入后的 merge commit。
+  后者会让文档在每次收口 PR 之后固定落后一格，而 A5 只比版本号、拦不住这种落后。
+  同一 PR 内已刷新过的文档，收口时无需再刷。
+- 漂移可见——读者一眼知道文档对照哪个版本。
+
+## 机制 5：漂移审计脚本
+`scripts/audit_agent_ops.py`：校验各 Agent 副本与 kernel 一致（kernel-ref 哈希）+ grep living doc 提到的端点/字段/路径对照代码符号表。挂 PR→main CI。
+
+## 文档生命周期
+| 标签 | 含义 | 助手义务 |
+|------|------|----------|
+| living | `docs/architecture/*`、`docs/README.md` | 改契约代码时同步 |
+| frozen | `docs/release/RELEASE_*`、`MERGE_MAIN_v*` | 发版快照，日常不改 |
+| append-only | `KIE_TEST_RUN_TRACKER.md` | 只追加批次 |
+| local only | `docs/R&D/*`（除 README）、`test_data/assets/`、`test_data/derived/`、`test_data/local/`、`*Upwork*` | 不得提交 |
+
+- 新增/重命名 `docs/` 文档时更新 `docs/README.md` 索引。
+- 验收路径以 `test_data/testfiles/` 为准；acceptance 文档勿引用不存在的 fixture。
+- 与 `main-tracked-issues.md` 冲突时以代码与 living architecture 为准。
+- R&D 结论稳定后晋升 `docs/architecture/`，不在 R&D 堆长期真源。
+- **晋升检查点（P-025）**：每次写 `PENDING.md` 或 CHANGELOG 时**必须**回答一轮「本轮有无条目达到可晋升/可移除标准」，
+  并在 commit message / PR 正文留一行 `Promotion-check: <n> eligible (P-xxx…) -> promoted|deferred`（零条写
+  `Promotion-check: 0 eligible`；跳过会留空白，reviewer 可抽查——与 `Session-check` 同形，不设 CI 机检）。
+- **PENDING 条目元数据**：每条标题下首行必须是 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`
+  （状态单一事实源）；抬头只留 ID 索引 + 语义说明、**不写统计副本**。机检 **DOC-3**：缺元数据/状态未知/日期非 ISO/
+  未来日期/索引与 `### P-xxx` 标题不一致 = ERROR（fail-closed），`landed`/`decided` 超 90 天 = WARN
+  （landed 促晋升 living doc 或改列 `retained` 写明理由；decided 促收口或拆出在途义务）。
+- `local only` 行的「不得提交」由 `.gitignore` 兜底：CI checkout 不含这些文件，**结构性无机检**（勿假设有门禁）。
+- **PENDING 单写入通道**：`docs/R&D/PENDING.md` 只有**按清账批次程序走的会话**可编辑（程序见 `operations.md`
+  §清账批次；**任何 Agent 均可充当**该会话，但必须满足触发条件与清单）；其它会话 / Agent 只读——跟踪职责
+  （如 Codebuddy）= 读 + 上报待办至下一轮清账批次，**不直接编辑**。该纪律无写锁 / 无机检（CI 浅克隆读不到
+  PR 正文与编辑会话），防线 = PR review 按 §清账批次的判据事后驳回。
+- **清账批次（触发式正式动作）**：触发 = 版本收口 + 累计 ≥2 条 eligible（eligible = 有结论可晋升 living doc ／ 已结
+  可移除 ／ 正文埋有应迁出的触发式残留 ／ 正文该压缩，命中任一）；刻意**不设周期**（"每 N 天"无据，且会产生无米之炊
+  的空批次）。清单见 `operations.md` §清账批次。
+- **R&D 索引同批**：删除 / 新增 `docs/R&D/runs/` 下 local-only 文件时，必须**同批**更新 `docs/R&D/README.md` 的
+  runs 索引——runs 文件被 gitignore，死链对 CI 不可见（同上「结构性无机检」）；本地复核
+  `python scripts/docs_refs_audit.py --check-rnd-index`。
+- **PENDING 登记门槛（两问）**：新条目登记前先答——①能否**归入已有条目**（同主题 / 同触发）？②能否**直接晋升**
+  living doc？两问皆否才登记；登记动作本身按 P-025 留 `Promotion-check:` 行（登记与清除由同一义务反向平衡）。
+- **PENDING 条目正文规范**：`open` 只写「待决问题 + 候选路线 + 触发条件」，**不写执行流水**（流水只属
+  `decided`/`retained` 或 `runs/` 执行记录）；`decided`/`retained` 正文裁到「在途义务清单（decided）／保留理由
+  （retained）+ 判例 + 指针」，执行细节下沉 `runs/`。
+- **指针白名单**：条目内的去向指针只允许三类稳定目标——living doc §节 ｜ CHANGELOG 版本段 ｜ `runs/` 执行记录
+  （有 README 索引维护）；**禁裸 commit hash**（可随精简/重写失效，须经上述载体间接引用）。
+
+## README / CHANGELOG 格式
+- README 须含：项目简介、安装说明、使用方法、许可证（贡献指南按需，不强制）。
+- CHANGELOG 条目格式：`## v1.x.0` 段下依次 `- 新增功能: <desc>` / `- 修复bug: <desc>`。
+- 文档中引用代码示例、命令、路径、标识符用英文。

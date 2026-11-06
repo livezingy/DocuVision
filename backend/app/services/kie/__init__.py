@@ -12,14 +12,13 @@ from app.services.kie.azure_schema import (
     KieResult,
     Span,
 )
-from app.services.kie.value_typer import FIELD_TYPE_MAP, ValueTyper
+from app.services.kie.value_typer import ValueTyper
 
 __all__ = [
     "AddressValue",
     "BaseField",
     "BoundingRegion",
     "CurrencyValue",
-    "FIELD_TYPE_MAP",
     "KieResult",
     "Span",
     "ValueTyper",

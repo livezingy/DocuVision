@@ -29,18 +29,6 @@ from app.orchestration.steps import (  # noqa: F401 (re-export; step bodies live
 PipelineContext = Dict[str, Any]
 
 
-async def _run_progressed_step(
-    ctx: PipelineContext,
-    *,
-    progress: int,
-    message: str,
-    func: Callable[[PipelineContext], Awaitable[None]],
-) -> None:
-    await ctx["orchestrator"].update_progress(ctx, progress, message)
-    await func(ctx)
-
-
-
 class DocumentPipelineOrchestrator:
     """Orchestrates document processing and task-state transitions."""
 

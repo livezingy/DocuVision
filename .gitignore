@@ -297,7 +297,6 @@ scripts/*
 # make_test_report / convert_golden; archive/RUNBOOK.md is form-B record keeping)
 !scripts/qa/
 !scripts/qa/**
-!scripts/aistudio_setup.sh
 # Cloud round-test golden sample (P-034 round 4, 2026-10-27): one-click
 # on/off + channel self-cert + judge runner; rules in scripts/cloud/README.md
 !scripts/cloud/

@@ -22,7 +22,6 @@ _PRODUCTION_KEY_HINTS: Dict[str, List[str]] = {
 
 # id_card 专项精度（KIE-ACCEPT-003）：在 002 之上要求号码字段可用
 _ID_CARD_ID_NUMBER_RE = re.compile(r"^[0-9]{17}[0-9Xx]$")
-_ID_CARD_PRECISION_KEYS: List[str] = ["name", "id_number"]
 
 
 def _is_non_empty(value: Any) -> bool:

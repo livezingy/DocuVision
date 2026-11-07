@@ -20,6 +20,7 @@ execution packs & records — temporary, deletable once no tracked document stil
 | [DocuVision-项目全景图.md](reference/DocuVision-项目全景图.md) | 跨项目切换回来的第一入口（结构/版本/在途事项速览；结构变化时刷新本图） |
 | [capability-card-v1.12.md](reference/capability-card-v1.12.md) | 面向 Agent U 的投标能力卡（v1.0.3）：13 能力域（+行 12 RCT 验证资产 / 行 13 evidence 校验层）+ 诚实边界 + 营销词黑名单 + 数字来源索引；tag `v1.12.0` 已回填 |
 | [azure/azure-contract-and-paddle-discovery.md](reference/azure/azure-contract-and-paddle-discovery.md) | Azure sample observations + contract direction notes（2026-10-08 索引校正：实际在 `reference/azure/` 子目录下） |
+| [logic-flow.md](reference/logic-flow.md) + [logic-flow.html](reference/logic-flow.html) | 整仓逻辑处理图（2026-11-05 三份只读勘察）：端到端业务数据流 / 依赖关系 / 治理管线三视图，Mermaid 节点带 `文件:行号` 源码锚点；html 为 Mermaid CDN 渲染版。2026-11-08 自 `docs/architecture/` 移入（改判 local-only 参考资料，非 living 契约） |
 
 > **已清理（2026-10-08 索引校正）**：`capability-card-v1.10-v1.0.md`（前版能力卡，磁盘已不在；其历史内容由 git 历史承载）。
 

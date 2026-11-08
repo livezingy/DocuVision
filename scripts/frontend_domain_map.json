@@ -30,7 +30,7 @@
     ],
     "D2 status-bar": [
       "shouldDisplayStatus", "processStatusQueue", "updateStatusBarThrottled",
-      "clearStatusQueue", "updateStatusBar"
+      "updateStatusBar"
     ],
     "D3 upload-queue": [
       "insertInitialSkeleton", "initUploadZone", "handleFiles", "createQueueItem",
@@ -74,7 +74,6 @@
       "updateContentFormulas", "updateContentSeals", "updateResultJson"
     ],
     "D10 overlay": [
-      "getPageImageMeta", "computeImageSha256Hex", "validateImageCoordinateBinding",
       "getSvgAnnotationColors", "getOverlayLayerType", "shouldRenderOverlayType",
       "renderDocumentWithAnnotations", "renderTextPreview", "highlightResultItem"
     ],
@@ -87,7 +86,7 @@
     "D14 batch": [
       "initBatchProcessing", "downloadBatchExport", "setBatchControlsForBatch",
       "createBatch", "startBatch", "pollBatchStatus", "updateBatchUI", "pauseBatch",
-      "resumeBatch", "cancelBatch", "getBatchResults"
+      "resumeBatch", "cancelBatch"
     ],
     "D15 hitl-review": [
       "initHitlReviews", "refreshHitlReviews", "loadHitlReviewDetail",
@@ -215,7 +214,7 @@
     "D8 pipeline": ["lastRenderedAnalysisResult", "lastFetchedBlocks"],
     "D9 result-panels": ["TABLE_TEMPLATE_COLUMNS"],
     "D10 overlay": [
-      "enableOverlaySha256Validation", "overlayLayerVisibility"
+      "overlayLayerVisibility"
     ],
     "D15 hitl-review": [
       "hitlSelectedReviewId", "hitlSelectedTaskId", "hitlCurrentProfile",

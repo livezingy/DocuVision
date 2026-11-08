@@ -102,15 +102,6 @@ export function updateStatusBarThrottled(status, data, isImmediate = false) {
 }
 
 /**
- * Clear status update queue
- * Used when we need to reset the queue (e.g., on error)
- */
-export function clearStatusQueue() {
-    statusUpdateQueue = [];
-    isProcessingQueue = false;
-}
-
-/**
  * Update status bar
  */
 export function updateStatusBar(status = 'default', data = {}) {

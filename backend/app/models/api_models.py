@@ -66,13 +66,6 @@ class ViewElement(BaseModel):
     payload: Dict[str, Any] = {}
 
 
-class ViewContent(BaseModel):
-    """Content collections for a page in the view layer"""
-    paragraphs: List[ViewElement] = []
-    tables: List[ViewElement] = []
-    figures: List[ViewElement] = []
-
-
 class ViewPage(BaseModel):
     """A page in the view layer"""
     page_num: int
@@ -185,11 +178,6 @@ class TaskStatus(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     result: Optional[Dict[str, Any]] = None
-
-
-class BatchCreateModel(BaseModel):
-    name: str
-    options: Dict[str, Any] = {}
 
 
 class KieFieldsPatchModel(BaseModel):

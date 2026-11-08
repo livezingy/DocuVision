@@ -1,6 +1,6 @@
 # AGENTS.md — 多 Agent 规则体系入口
 
-> 本仓库由多个 AI 助手（Cursor / Codebuddy / VSCode）协作开发。ZCode 已于 2026-09-26 退役（见 `docs/agent-ops/core/agents.md`）。
+> 本仓库由多个 AI 助手（Cursor / Codebuddy / VSCode / ZCode）协作开发。ZCode 曾于 2026-09-26 退役、2026-10-28 回归（见 `docs/agent-ops/core/agents.md`）。
 > 共享约束的唯一真源在 `docs/agent-ops/core/`；各 Agent 目录为**生成式薄壳**，勿手改。
 
 ## 快速导航
@@ -16,25 +16,25 @@
 
 ## 规则层次
 1. **共享约束（唯一真源）** → `docs/agent-ops/core/`（6 文件，约 60 行/个软上限）。
-2. **各 Agent 副本（生成）** → `.cursor/rules/`、`.codebuddy/rules/`，由 sync 脚本派生并写 `kernel-ref` 哈希。
+2. **各 Agent 副本（生成）** → `.cursor/rules/`、`.codebuddy/rules/`、`.zcode/rules/`，由 sync 脚本派生并写 `kernel-ref` 哈希。
 3. **Agent 特有（本地，不参与 sync）** → 各目录的非生成文件（如 Cursor `002-python`/`003-git`）。
 
 ## 会话红线与任务分流（所有 Agent）
 
-> 本节是任何 Agent 的**入口摘要**；逐字以下方 kernel 为准。当前花名册 = Cursor / Codebuddy / VSCode（ZCode 已于 2026-09-26 退役，见 `docs/agent-ops/core/agents.md`）。
+> 本节是任何 Agent 的**入口摘要**；逐字以下方 kernel 为准。当前花名册 = Cursor / Codebuddy / VSCode / ZCode（ZCode 2026-10-28 回归，见 `docs/agent-ops/core/agents.md`）。
 
-### 红线（逐字摘自 kernel `constraints.md` §自主边界，以 kernel 为准；命中先问）
-- 删除文件、目录或 git 历史（本轮明确授权的除外）。
+### 红线（前 10 条逐字摘自 kernel `constraints.md` §自主边界，以 kernel 为准；命中先问）
+- 删除文件、目录、git 分支或远端 ref（含 `git branch -D`、`git push origin --delete`、`git worktree remove --force`）、git 历史或已推送历史改写（本轮明确授权的除外）。
 - 修改 `.env`、密钥、token、CI/CD 配置（含 `.github/workflows/**`）。
 - 数据库 schema 变更或数据迁移。
 - git push、git rebase、git reset --hard、强制推送。
 - 安装新的全局依赖或修改系统配置。
 - 公开发布（npm publish、部署生产、发文章等）。
-- 本机无 GPU：不宣称 GPU / 云端功能"已验证"；GPU 依赖改动交付 mock 单测 + Cloud 验证步骤。
 - 抬高棘轮上限（`scripts/file_size_allowlist.json` / `scripts/frontend_size_allowlist.json` 的既有计数只减不增）。
 - 扩大前端白名单（`scripts/frontend_domain_map.json` 的 `module_import_whitelist` / `leaf_services` / `shared_state_modules` 新增条目）。
-- 扩大 services 依赖豁免（`scripts/service_dependency_allowlist.json` 新增跨域/反向边条目——只减不增，下调/移除免费）。
+- 扩大 services 依赖豁免（`scripts/service_dependency_allowlist.json` 新增跨域/反向边条目——冻结棘轮只减不增，下调/移除免费）。
 - 改 `frontend/index.html` 的入口脚本或加载顺序。
+- 本机无 GPU：不宣称 GPU / 云端功能"已验证"；GPU 依赖改动交付 mock 单测 + Cloud 验证步骤。（本条为入口补充摘要，非 §自主边界原文；GPU 纪律以 kernel 环境与测试分层为准）
 
 ### 任务分流
 | 任务 | 读 / 做 |

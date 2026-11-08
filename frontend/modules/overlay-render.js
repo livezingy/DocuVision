@@ -18,7 +18,6 @@
  * The module-scope "same-name binding" trick keeps every call site byte-identical;
  * app.js wires `initOverlayRender({ ... })` at module scope.
  */
-import { showNotification } from './notifications.js';
 import { API_BASE_URL } from './api-config.js';
 import {
     currentPreviewPage, currentQueueItem, currentOriginalFileUrl, currentTaskId,
@@ -28,7 +27,6 @@ import {
 import { escapeHtml } from './utils/dom.js';
 import { formatAzureRoleLabel } from './utils/text.js';
 
-let enableOverlaySha256Validation = false;
 const overlayLayerVisibility = {
     text: true,
     table: true,
@@ -85,81 +83,6 @@ export function getSvgAnnotationColors(type) {
         list_item:   { stroke: '#06b6d4', fill: 'rgba(6,182,212,0.08)'  },
     };
     return colorMap[type] || { stroke: '#6b7280', fill: 'rgba(107,114,128,0.08)' };
-}
-
-export function getPageImageMeta(result, pageNum = 1) {
-    const docInfo = (result && result.document_info) ? result.document_info : {};
-    const meta = docInfo.page_image_meta;
-    if (!meta || typeof meta !== 'object') return null;
-
-    if (Array.isArray(meta.pages)) {
-        const match = meta.pages.find(p => Number(p.page || 1) === Number(pageNum));
-        return match || null;
-    }
-
-    return meta;
-}
-
-export async function computeImageSha256Hex(image) {
-    const src = image?.currentSrc || image?.src || '';
-    if (!src || !window.crypto || !window.crypto.subtle) return '';
-
-    const response = await fetch(src, { cache: 'no-store' });
-    if (!response.ok) return '';
-
-    const buffer = await response.arrayBuffer();
-    const digest = await window.crypto.subtle.digest('SHA-256', buffer);
-    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-export async function validateImageCoordinateBinding(image, result, pageNum = 1) {
-    if (!image || !result) return true;
-
-    const expected = getPageImageMeta(result, pageNum);
-    if (!expected) return true;
-
-    const expectedWidth = Number(expected.width_px || 0);
-    const expectedHeight = Number(expected.height_px || 0);
-    if (expectedWidth <= 0 || expectedHeight <= 0) return true;
-
-    const actualWidth = Number(image.naturalWidth || 0);
-    const actualHeight = Number(image.naturalHeight || 0);
-
-    if (actualWidth !== expectedWidth || actualHeight !== expectedHeight) {
-        console.error(
-            `[Layout] Image binding mismatch: expected ${expectedWidth}x${expectedHeight}, got ${actualWidth}x${actualHeight}`,
-            expected
-        );
-        showNotification('Image size does not match coordinate metadata. Skipping overlays to avoid offset.', 'warning');
-        return false;
-    }
-
-    if (!enableOverlaySha256Validation) {
-        return true;
-    }
-
-    const expectedSha = String(expected.sha256 || '').trim().toLowerCase();
-    if (!expectedSha) {
-        return true;
-    }
-
-    try {
-        const actualSha = (await computeImageSha256Hex(image)).toLowerCase();
-        if (!actualSha) {
-            showNotification('Unable to compute image SHA256. Skipping SHA verification.', 'info');
-            return true;
-        }
-        if (actualSha !== expectedSha) {
-            console.error(`[Layout] Image SHA256 mismatch: expected=${expectedSha}, actual=${actualSha}`);
-            showNotification('Image SHA256 mismatch with coordinate metadata. Skipping overlays.', 'warning');
-            return false;
-        }
-    } catch (error) {
-        console.warn('[Layout] SHA256 verification failed:', error);
-        showNotification('SHA256 verification failed. Proceeding with size validation only.', 'info');
-    }
-
-    return true;
 }
 
 export function getOverlayLayerType(type) {

@@ -321,19 +321,3 @@ export async function cancelBatch(batchId) {
         showNotification(`Failed to cancel: ${error.message}`, 'error');
     }
 }
-
-/**
- * Get batch results
- */
-export async function getBatchResults(batchId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/batch/${batchId}/results`);
-        if (response.ok) {
-            return await response.json();
-        }
-        return null;
-    } catch (error) {
-        showNotification(`Failed to get results: ${error.message}`, 'error');
-        return null;
-    }
-}

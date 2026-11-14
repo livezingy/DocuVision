@@ -92,6 +92,15 @@ AGENTS = {
                     "globs": "frontend/**/*.js,frontend/**/*.html,frontend/**/*.css",
                 },
             },
+            {
+                "out": "012-verification.mdc",
+                "sources": ["verification"],
+                "title": "验证例程规范",
+                "frontmatter": {
+                    "description": "验证例程规范",
+                    "globs": "docs/**/*.md,backend/app/**/*.py,packages/docuvision-core/**/*.py,frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js",
+                },
+            },
         ],
     },
     "codebuddy": {
@@ -128,6 +137,12 @@ AGENTS = {
                 "title": "前端架构规范",
                 "frontmatter": None,
             },
+            {
+                "out": "012-verification.md",
+                "sources": ["verification"],
+                "title": "验证例程规范",
+                "frontmatter": None,
+            },
         ],
     },
     "zcode": {
@@ -162,6 +177,12 @@ AGENTS = {
                 "out": "011-frontend.md",
                 "sources": ["frontend"],
                 "title": "前端架构规范",
+                "frontmatter": None,
+            },
+            {
+                "out": "012-verification.md",
+                "sources": ["verification"],
+                "title": "验证例程规范",
                 "frontmatter": None,
             },
         ],

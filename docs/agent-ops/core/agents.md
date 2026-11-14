@@ -15,6 +15,7 @@
 - **ZCode**：验证角色（2026-10-28 回归，用户裁决「按ZCode已回归执行」）：门禁编排执行、verdict 唯一持有、观测与报告（运行时三角色，声明见本区末尾）。2026-09-26 曾退役（同批清理史见 git 历史）；GLM 沙箱 patch 协议存档仍在 `docs/agent-ops/glm-sandbox-patch.md`（不再有活跃引用）。审查职责仍按 `docs/agent-ops/review.md` 由当轮承接者执行，不绑定具体 Agent。
 - **Codebuddy**：低频辅助。会话回顾 + 跟踪 `docs/R&D/PENDING.md` 待决结论。
 - **VSCode**：编辑器配置（解释器指向 `D:\USERS\livez\Python\python.exe`、tasks），不承载规则。
+- **运行时三角色（2026-10-27 立项，P-042 一期）**：本地 Agent 按职责分为编排（读契约、派 step、收 verdict）、执行（按执行包实施、产 PR）、验证（跑门禁、读数、唯一持有 verdict；观测与报告归此角色）。执行与验证独立——执行方自报数字无效。三角色为运行时分工非工具实体；实体映射已登记：ZCode=验证（2026-10-28 回归，见角色矩阵）；执行/编排映射待用户裁决。验证例程真源 = kernel `verification.md`。
 
 ## kernel 映射
 | core 文件 | Cursor | Codebuddy | ZCode |
@@ -25,6 +26,7 @@
 | `doc-sync.md` | `009-doc-sync.mdc` | `009-doc-sync.md` | `009-doc-sync.md` |
 | `routing.md` | `010-routing.mdc` | `010-routing.md` | `010-routing.md` |
 | `frontend.md` | `011-frontend.mdc` | `011-frontend.md` | `011-frontend.md` |
+| `verification.md` | `012-verification.mdc` | `012-verification.md` | `012-verification.md` |
 
 ## 生成与审计
 - 生成薄壳：`python scripts/sync_agent_rules.py`（写 kernel-ref 哈希，幂等）。

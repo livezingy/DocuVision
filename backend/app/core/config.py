@@ -45,6 +45,17 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DOCUVISION_CORS_ORIGINS", "CORS_ORIGINS"),
     )
 
+    # Google Sheets direct-write (R-003/P-042 T3): path to a Google service
+    # account JSON key on the operator machine. Empty = Sheets export off
+    # (credentials never enter the repo — .env stays untracked, kernel red
+    # line; GOOGLE_APPLICATION_CREDENTIALS is the google-auth standard alias).
+    GOOGLE_SERVICE_ACCOUNT_FILE: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "GOOGLE_SERVICE_ACCOUNT_FILE", "GOOGLE_APPLICATION_CREDENTIALS"
+        ),
+    )
+
     # OCR
     OCR_LANG: str = "ch"  # ch, en, multi
 

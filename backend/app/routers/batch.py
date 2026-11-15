@@ -8,6 +8,7 @@ the APIRouter — paths are written in full so the OpenAPI contract is unchanged
 
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
 from typing import Any, Dict, List, Optional
@@ -90,6 +91,89 @@ async def _dispatch_batch_completed_webhook(payload: Dict[str, Any]) -> None:
         logger.debug(f"Batch webhook dispatch skipped: {exc}")
 
 
+async def _dispatch_batch_sheets_export(payload: Dict[str, Any]) -> None:
+    """Direct-write the finished batch's mapping-result rows to Google Sheets
+    (R-003/P-042 T3, AC2).
+
+    Opt-in per batch via ``options.sheets_export`` (``spreadsheet_id`` +
+    optional ``worksheet``, default ``MappedRows``); credentials come from the
+    operator machine's settings (``GOOGLE_SERVICE_ACCOUNT_FILE`` /
+    ``GOOGLE_APPLICATION_CREDENTIALS`` alias) and travel by parameter only —
+    never into logs. Execution model: gspread is synchronous (several HTTPS
+    round-trips per export), so the export runs off the event loop via
+    ``asyncio.to_thread`` — an inline call here would stall every concurrent
+    request on this worker for the duration (review round 1). Failures are
+    swallowed to a debug log: export issues must never affect batch final
+    state (same fire-and-forget + swallow semantics as the webhook dispatch).
+    """
+    try:
+        from app.core.config import settings
+        from app.services.sheets_export_service import export_batch_to_sheets
+
+        credentials_file = str(settings.GOOGLE_SERVICE_ACCOUNT_FILE or "").strip()
+        if not credentials_file:
+            return
+        batch = batch_service.get_batch(str(payload.get("batch_id") or ""))
+        if batch is None:
+            return
+        sheets_cfg = (batch.options or {}).get("sheets_export")
+        if not isinstance(sheets_cfg, dict):
+            return
+        spreadsheet_id = str(sheets_cfg.get("spreadsheet_id") or "").strip()
+        if not spreadsheet_id:
+            return
+        worksheet_name = str(sheets_cfg.get("worksheet") or "").strip() or "MappedRows"
+        summary = await asyncio.to_thread(
+            export_batch_to_sheets,
+            batch,
+            credentials_file=credentials_file,
+            spreadsheet_id=spreadsheet_id,
+            worksheet_name=worksheet_name,
+        )
+        logger.debug(f"Batch sheets export done: {summary}")
+    except Exception as exc:
+        logger.debug(f"Batch sheets export skipped: {exc}")
+
+
+async def _dispatch_batch_per_order_export(payload: Dict[str, Any]) -> None:
+    """Split the finished batch into per-order CSV files (R-003/P-042 T5, AC6).
+
+    Opt-in per batch via ``options.per_order=True``; target directory from
+    ``options.per_order_output_dir``, falling back to
+    ``<settings.OUTPUT_DIR>/per_order/<batch_id>`` (ERP watch semantics).
+    Local small-file writes, but still dispatched off the event loop via
+    ``asyncio.to_thread`` (review round 1: one execution model for both
+    export dispatches). Failures are swallowed to a debug log — export
+    issues must never affect batch final state (same contract as the
+    webhook/Sheets dispatch).
+    """
+    try:
+        from app.services.per_order_export_service import export_batch_per_order
+
+        batch = batch_service.get_batch(str(payload.get("batch_id") or ""))
+        if batch is None:
+            return
+        opts = batch.options or {}
+        if not opts.get("per_order"):
+            return
+        output_dir = str(opts.get("per_order_output_dir") or "").strip()
+        if not output_dir:
+            output_dir = os.path.join(settings.OUTPUT_DIR, "per_order", str(batch.batch_id))
+        summary = await asyncio.to_thread(export_batch_per_order, batch, output_dir)
+        logger.debug(f"Batch per-order export done: {summary}")
+    except Exception as exc:
+        logger.debug(f"Batch per-order export skipped: {exc}")
+
+
+async def _on_batch_completed(payload: Dict[str, Any]) -> None:
+    """Composed ``batch.completed`` hook: webhook dispatch + opt-in Sheets
+    direct-write + opt-in per-order CSV split (routers may import any
+    service — no services-layer edge)."""
+    await _dispatch_batch_completed_webhook(payload)
+    await _dispatch_batch_sheets_export(payload)
+    await _dispatch_batch_per_order_export(payload)
+
+
 @router.post("/api/v1/batch")
 async def create_batch(
     name: str = Form(...),
@@ -170,7 +254,7 @@ async def start_batch(batch_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=404, detail="Batch not found")
 
     try:
-        await batch_service.start_batch(batch_id, _batch_process_file, on_complete=_dispatch_batch_completed_webhook)
+        await batch_service.start_batch(batch_id, _batch_process_file, on_complete=_on_batch_completed)
         return {"message": "Batch started", "batch_id": batch_id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -190,7 +274,7 @@ async def pause_batch(batch_id: str):
 async def resume_batch(batch_id: str):
     """Resume a paused batch"""
     try:
-        success = await batch_service.resume_batch(batch_id, process_func=_batch_process_file, on_complete=_dispatch_batch_completed_webhook)
+        success = await batch_service.resume_batch(batch_id, process_func=_batch_process_file, on_complete=_on_batch_completed)
         return {"message": "Batch resumed" if success else "Cannot resume", "batch_id": batch_id}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

@@ -204,6 +204,45 @@ def _collect_mapped_table_rows(batch: BatchJob) -> List[Dict[str, Any]]:
     return rows
 
 
+def _mapped_rows_columns(batch: BatchJob, rows: List[Dict[str, Any]]) -> List[str]:
+    """Column order for the MappedRows sheet — the mapping result drives the
+    export columns (R-003/P-042 T2, AC1).
+
+    When the pipeline stamped the resolved customer-schema field order
+    (``mapped_table_fields``, set by table_step via the kie schema-mapping
+    config layer), the schema order wins with the batch context column
+    ``file_name`` first. Without a stamp (built-in docuvision_core templates
+    or legacy results) the legacy first-seen key order is kept unchanged.
+    """
+    keys: List[str] = []
+    seen: Set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        for k in row:
+            if k not in seen:
+                seen.add(k)
+                keys.append(str(k))
+
+    fields: List[str] = []
+    for task in batch.tasks:
+        result = task.result if isinstance(task.result, dict) else {}
+        stamped = result.get("mapped_table_fields")
+        if isinstance(stamped, list) and stamped:
+            fields = [str(f) for f in stamped if str(f).strip()]
+            break
+
+    ordered: List[str] = []
+    if fields:
+        for col in ["file_name"] + fields:
+            if col in seen and col not in ordered:
+                ordered.append(col)
+    for k in keys:
+        if k not in ordered:
+            ordered.append(k)
+    return ordered
+
+
 def build_batch_xlsx_bytes(batch: BatchJob, mode: str = "all") -> bytes:
     """Build aggregated batch workbook (summary, optional KIE sheet, per-file table sheets)."""
     import pandas as pd
@@ -235,7 +274,10 @@ def build_batch_xlsx_bytes(batch: BatchJob, mode: str = "all") -> bytes:
 
         mapped_rows = _collect_mapped_table_rows(batch)
         if mapped_rows:
-            pd.DataFrame(mapped_rows).to_excel(writer, sheet_name="MappedRows", index=False)
+            columns = _mapped_rows_columns(batch, mapped_rows)
+            pd.DataFrame(mapped_rows, columns=columns).to_excel(
+                writer, sheet_name="MappedRows", index=False
+            )
             used_names.add("MappedRows")
 
         if include_tables:

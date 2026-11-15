@@ -95,6 +95,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `test_data/acceptance/UI_VERIFICATION_MATRIX.md` §2.1/§2.2/§2.3 updated accordingly (local reruns of
   `npx playwright test batch-table-mapping` are diagnostic); spec verified green locally (1 passed,
   0 runtime errors, eslint clean).
+- **R-004 / P-043 — n8n integration pack (T1/T3/T4 closes; pack v1.2, Ying 2026-11-12 batch)**: n8n import
+  templates `docs/integrations/n8n/docuvision-v1-generic.json` + `docuvision-v1.1-outlook.json` (intake
+  upload/analyze → `task.completed` callback → result fetch, plus a one-off webhook registration flow; Outlook
+  variant watches an M365 inbox, filters PO mail, and writes per-field CSV to an n8n-side watch dir; zero
+  credentials, every backend URL via `$env.DOCUVISION_BASE_URL` expressions) with a directory README index
+  (`docs/integrations/n8n/README.md`, directory-index + import/prerequisites per pack §5). Generated REST API
+  reference `docs/integrations/rest-api.md` (49 distinct paths / 54 HTTP operations + 1 WebSocket = frozen 55;
+  hand-edits invalid — `backend/tests/test_route_doc_reconciliation.py` regenerates via
+  `DOCUVISION_REST_DOC=write` and diffs the committed file line-by-line in check mode). Webhook event reference
+  `docs/integrations/webhook-events.md` (task.completed / batch.completed 触发点·载荷·派发行为·WS 对照，
+  每条字段带 governance/batch_runner/webhook_service 真源锚). Reconciliation tests: `test_route_doc_reconciliation.py`
+  (doc == openapi == frozen 55; per_order_output_dir escape → HTTP 422 at batch create; n8n template HTTP-node
+  endpoint refs — `$env` base-url placeholder stripped, `$json.FIELD` → `{FIELD}` — asserted ⊆ openapi paths,
+  unresolvable expressions skipped and reported, never guessed) and `test_webhook_service.py` (same-finalize
+  dual capture: webhook `task.completed` ⟺ WS `completed` 帧; `succeeded` alias accepted by both result gates;
+  WS route emits the pinned `{"type":"status","status":"completed"}` frame on its current-frame branch). Backend
+  half-loop smoke `scripts/integrations/n8n_loop_smoke.py` (local receiver → register → analyze → await callback
+  → payload/HMAC assert → result endpoint; admin token from `DOCUVISION_WEBHOOK_ADMIN_TOKEN` env only; same-host
+  private-addressed machines get a structural SSRF diagnosis — callback must resolve non-private, e.g. cloud-box
+  public IP; n8n docker-side import testing stays manual per pack §5, UNRUN without docker).
 
 ### Fixed
 - **KIE never-omit backfill, scoped to the text-first channel (P-034 P0)**: Qwen may drop keys it cannot

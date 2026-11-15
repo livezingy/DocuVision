@@ -317,10 +317,21 @@ def _cid_rate(page: Any, page_index: Any, chars_by_font: Dict[str, int], total_c
     The signal key stays ``cid_rate``; the value now compares the pypdf
     ``/Resources/Font`` dicts for missing ``/ToUnicode`` entries against the
     per-font character counts of the page's text objects (cross-engine name
-    matching is subset-tag/whitespace/case-insensitive). Diagnostic signal
-    only — it feeds ``signals`` and no verdict branch. Fails soft to ``0.0``
-    when the pypdf page is unavailable (no ``page_index``) or any step
-    raises."""
+    matching is subset-tag/whitespace/case-insensitive).
+
+    Interpretation note (R-005 low ②): under this new semantics the base-14
+    standard fonts (Helvetica, Times, Courier families, Symbol, ZapfDingbats)
+    carry no ``/ToUnicode`` by construction per the PDF specification — their
+    encodings are predefined — so a healthy born-digital page typeset in
+    standard fonts legitimately reads a high value (≈1.0). When using this
+    signal for diagnosis, interpret it together with the page's font
+    collection (``font_count`` / base fonts from :func:`_font_signals`): a
+    high ``cid_rate`` is only anomalous for non-standard embedded fonts, not
+    a standalone defect marker.
+
+    Diagnostic signal only — it feeds ``signals`` and no verdict branch.
+    Fails soft to ``0.0`` when the pypdf page is unavailable (no
+    ``page_index``) or any step raises."""
     pypdf_page = _pypdf_page_of(page, page_index)
     if pypdf_page is None or not chars_by_font or total_chars <= 0:
         return 0.0

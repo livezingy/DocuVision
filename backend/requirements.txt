@@ -46,7 +46,8 @@ httpx>=0.24.0,<0.28.0
 # PDF Processing
 # ============================================
 pypdfium2>=5,<6
-reportlab>=4.0,<5
+# R-005: verified on reportlab 5.1.0 (green suite ran on that version).
+reportlab>=5.0,<6
 pdf2image==1.17.0
 pypdf==3.17.4
 
@@ -118,4 +119,7 @@ matplotlib-inline==0.1.6
 # ============================================
 pytest>=7.4.0
 pytest-asyncio>=0.23.0
-PyMuPDF>=1.24.0,<1.26.0  # AGPL — test-only fixture creation; NOT a runtime dependency (P-046)
+# AGPL — NOT a runtime dependency (P-046: backend/app has zero fitz imports).
+# Dev tooling only: scripts/measure & scripts/cloud use fitz as measurement /
+# cloud-test tooling; backend/tests use it as test fixture creation.
+PyMuPDF>=1.24.0,<1.26.0

@@ -15,12 +15,12 @@ def pdf_page_count(file_path: str) -> int:
     if ext != ".pdf":
         return 1
     try:
-        import fitz
+        import pypdfium2
     except ImportError:
         return 1
     try:
-        with fitz.open(file_path) as doc:
-            return len(doc)
+        with pypdfium2.PdfDocument(file_path) as pdf:
+            return len(pdf)
     except Exception:
         logger.warning("pdf_page_count: cannot open %s", file_path)
         return 0
@@ -37,27 +37,24 @@ def rasterize_pdf_page(
 
     Returns (image_path, temp_path_to_delete). On failure returns (file_path, None).
     """
-    import fitz
-    from PIL import Image
+    import pypdfium2
 
     try:
-        doc = fitz.open(file_path)
+        pdf = pypdfium2.PdfDocument(file_path)
     except Exception:
         logger.warning("rasterize_pdf_page: cannot open %s", file_path)
         return file_path, None
     try:
-        if page_num < 1 or page_num > len(doc):
+        # init_forms 必须在 pdf[i] 取页前调用（formenv 在取柄时绑定）；普通 PDF 无害 no-op。
+        pdf.init_forms()
+        if page_num < 1 or page_num > len(pdf):
             return file_path, None
-        page = doc[page_num - 1]
-        pix = page.get_pixmap(matrix=fitz.Matrix(matrix_scale, matrix_scale))
-        if pix.alpha:
-            img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
-            img = img.convert("RGB")
-        else:
-            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        page = pdf[page_num - 1]
+        # render(scale=matrix_scale) ↔ fitz Matrix(scale, scale)；to_pil() 恒为 RGB 3 通道
+        img = page.render(scale=matrix_scale).to_pil()
         fd, tmp_path = tempfile.mkstemp(suffix=".png", prefix=f"kie_pdf_p{page_num}_")
         os.close(fd)
         img.save(tmp_path, format="PNG")
         return tmp_path, tmp_path
     finally:
-        doc.close()
+        pdf.close()

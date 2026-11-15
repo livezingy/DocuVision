@@ -1,4 +1,10 @@
-"""PDF toolbox: merge, split, metadata, AcroForm fill (MVP)."""
+"""PDF toolbox: merge, split, metadata, AcroForm fill (MVP).
+
+Migrated from PyMuPDF (fitz) to pypdf 3.17.4 (P-046 package A).
+Function signatures and return contracts are unchanged; metadata key
+names differ vs. fitz (registered as an acceptable deviation: the
+router passes the dict through verbatim).
+"""
 
 from __future__ import annotations
 
@@ -27,62 +33,78 @@ def coerce_page_list(pages: Union[None, int, List[Any]]) -> Optional[List[int]]:
 
 
 def merge_pdfs(file_paths: List[str], output_path: str) -> str:
-    import fitz
+    from pypdf import PdfWriter
 
-    doc = fitz.open()
+    writer = PdfWriter()
     for path in file_paths:
-        src = fitz.open(path)
-        doc.insert_pdf(src)
-        src.close()
-    doc.save(output_path)
-    doc.close()
+        writer.append(path)
+    writer.write(output_path)
     logger.info(f"Merged {len(file_paths)} PDFs -> {output_path}")
     return output_path
 
 
 def split_pdf(file_path: str, output_dir: str, pages: Optional[List[int]] = None) -> List[str]:
-    import fitz
+    from pypdf import PdfReader, PdfWriter
 
     os.makedirs(output_dir, exist_ok=True)
-    src = fitz.open(file_path)
+    reader = PdfReader(file_path)
+    page_count = len(reader.pages)
     outputs: List[str] = []
-    page_indices = coerce_page_list(pages) or list(range(1, src.page_count + 1))
+    page_indices = coerce_page_list(pages) or list(range(1, page_count + 1))
     for page_num in page_indices:
-        if page_num < 1 or page_num > src.page_count:
+        if page_num < 1 or page_num > page_count:
             continue
-        out_doc = fitz.open()
-        out_doc.insert_pdf(src, from_page=page_num - 1, to_page=page_num - 1)
+        writer = PdfWriter()
+        writer.add_page(reader.pages[page_num - 1])
         out_path = os.path.join(output_dir, f"page_{page_num}.pdf")
-        out_doc.save(out_path)
-        out_doc.close()
+        writer.write(out_path)
         outputs.append(out_path)
-    src.close()
     return outputs
 
 
 def read_pdf_metadata(file_path: str) -> Dict[str, Any]:
-    import fitz
+    from pypdf import PdfReader
 
-    doc = fitz.open(file_path)
-    meta = doc.metadata or {}
-    info = {
-        "page_count": doc.page_count,
-        "metadata": dict(meta),
+    reader = PdfReader(file_path)
+    info = reader.metadata
+    meta: Dict[str, Any] = {}
+    if info is not None:
+        # pypdf property names (fitz used title/author/subject/creator/
+        # producer/creationDate/modDate; pypdf uses creation_date and
+        # modification_date). Values are stringified so the dict stays
+        # JSON-serializable (pypdf parses dates into datetime objects).
+        for key in (
+            "title",
+            "author",
+            "subject",
+            "creator",
+            "producer",
+            "creation_date",
+            "modification_date",
+        ):
+            value = getattr(info, key, None)
+            if value is not None:
+                meta[key] = str(value)
+    return {
+        "page_count": len(reader.pages),
+        "metadata": meta,
     }
-    doc.close()
-    return info
 
 
 def fill_acroform(input_path: str, output_path: str, field_values: Dict[str, str]) -> str:
-    import fitz
+    from pypdf import PdfWriter
 
-    doc = fitz.open(input_path)
-    for page in doc:
-        for widget in page.widgets() or []:
-            name = widget.field_name
-            if name and name in field_values:
-                widget.field_value = field_values[name]
-                widget.update()
-    doc.save(output_path)
-    doc.close()
+    writer = PdfWriter(clone_from=input_path)
+    for page in writer.pages:
+        try:
+            # auto_regenerate=True sets /NeedAppearances=True in the
+            # AcroForm dict (pypdf _writer.py set_need_appearances_writer),
+            # the equivalent of fitz's widget.update() appearance refresh.
+            writer.update_page_form_field_values(page, field_values, auto_regenerate=True)
+        except Exception:
+            # Per-page tolerance: pages without annots / AcroForm-less
+            # documents (pypdf raises PyPdfError) are skipped, matching
+            # the previous fitz no-widget no-op behavior.
+            continue
+    writer.write(output_path)
     return output_path

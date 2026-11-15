@@ -23,6 +23,7 @@ import inspect
 import os
 from datetime import datetime
 from importlib import metadata as _metadata
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -297,27 +298,36 @@ def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1)
 
         ext = os.path.splitext(file_path)[1].lower()
         if ext == ".pdf":
-            import fitz  # PyMuPDF
+            import pypdfium2
 
-            doc = fitz.open(file_path)
+            pdf = pypdfium2.PdfDocument(file_path)
             try:
-                if page_num < 1 or page_num > len(doc):
+                # init_forms 必须在 pdf[i] 取页前调用（formenv 在取柄时绑定）；普通 PDF 无害 no-op。
+                pdf.init_forms()
+                if page_num < 1 or page_num > len(pdf):
                     return meta
 
-                page = doc[page_num - 1]
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                meta["width_px"] = int(pix.width)
-                meta["height_px"] = int(pix.height)
-                meta["sha256"] = hashlib.sha256(pix.tobytes("png")).hexdigest()
+                page = pdf[page_num - 1]
+                bitmap = page.render(scale=2.0)  # scale=2.0 ↔ fitz Matrix(2, 2)
+                meta["width_px"] = int(bitmap.width)
+                meta["height_px"] = int(bitmap.height)
+
+                # sha256 bridge: pypdfium2 has no pix.tobytes("png") equivalent —
+                # encode PNG via PIL into memory and hash the bytes (pack §4).
+                img = bitmap.to_pil()
+                _buf = BytesIO()
+                img.save(_buf, format="PNG")
+                meta["sha256"] = hashlib.sha256(_buf.getvalue()).hexdigest()
 
                 # Explicit PDF-page-points -> rendered-image-px transform.
                 # Useful when a downstream pipeline emits PDF-native coords.
-                rect = page.rect
-                rect_w = float(getattr(rect, "width", 0.0) or 0.0)
-                rect_h = float(getattr(rect, "height", 0.0) or 0.0)
+                # get_size() is rotation-aware, same semantics as fitz page.rect.
+                page_w, page_h = page.get_size()
+                rect_w = float(page_w or 0.0)
+                rect_h = float(page_h or 0.0)
                 if rect_w > 0 and rect_h > 0:
-                    pdf_to_img_scale_x = float(pix.width) / rect_w
-                    pdf_to_img_scale_y = float(pix.height) / rect_h
+                    pdf_to_img_scale_x = float(bitmap.width) / rect_w
+                    pdf_to_img_scale_y = float(bitmap.height) / rect_h
                 else:
                     pdf_to_img_scale_x = 1.0
                     pdf_to_img_scale_y = 1.0
@@ -332,7 +342,7 @@ def _build_page_image_meta(file_path: str, task_id: str = "", page_num: int = 1)
                 }
                 return meta
             finally:
-                doc.close()
+                pdf.close()
 
         from PIL import Image as PILImage
         with PILImage.open(file_path) as img:

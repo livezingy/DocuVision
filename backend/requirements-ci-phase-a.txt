@@ -9,6 +9,13 @@ pydantic-settings==2.1.0
 python-dotenv==1.0.0
 PyYAML==6.0.2
 Pillow==10.2.0
+# PyMuPDF stays for TEST-ONLY fixture creation (P-046: runtime uses pypdfium2).
 PyMuPDF>=1.24.0,<1.26.0
 numpy>=1.24.0,<2.0
 loguru==0.7.2
+# 2026-11-15 (P-046/R-005): runtime modules now import these directly
+# (pdf_raster/page_text_trust -> pypdfium2; pdf_tools_service -> pypdf;
+# proof_render -> reportlab). Mirrors requirements.txt pins.
+pypdfium2>=5,<6
+pypdf==3.17.4
+reportlab>=5.0,<6

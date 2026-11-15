@@ -1,16 +1,19 @@
 """Proof Pack annotated-PDF renderer (v1.8.1 E2).
 
 Burns provenance boxes into the page content stream of the ORIGINAL PDF
-(vector ``draw_rect``, not annotation objects — annotations can be toggled
-off by the reader; burned content is the evidence). Green/amber boxes are
-anchored to the printed characters themselves (matched-word union bbox —
-exact by construction); red-flagged cells are NOT drawn (no matched geometry
-exists for a failed alignment) and are reported via the review list instead.
+(vector ``canvas.rect`` strokes from a reportlab single-page overlay, merged
+page-by-page on top of the original with pypdf — not annotation objects;
+annotations can be toggled off by the reader, burned content is the
+evidence). Green/amber boxes are anchored to the printed characters
+themselves (matched-word union bbox — exact by construction); red-flagged
+cells are NOT drawn (no matched geometry exists for a failed alignment) and
+are reported via the review list instead.
 
 Pure post-processing: reads the task result JSON (tables + view + quality +
 preprocessing) and the original PDF; the pipeline itself is untouched. This
-module imports only ``fitz`` and the stdlib so its tests run without the GPU
-stack (v1.8.1 §2 constraint).
+module imports only ``pypdfium2``/``reportlab``/``pypdf`` and the stdlib so
+its tests run without the GPU stack (v1.8.1 §2 constraint; fitz-free per
+R-005 package C).
 
 Coordinate contract (v1.8.1 §3.3, verified against f2ad595):
   * provenance lives in ``result["tables"][i]["cell_provenance"]`` as a 2D
@@ -25,16 +28,25 @@ Coordinate contract (v1.8.1 §3.3, verified against f2ad595):
     never mis-drawn: document-level when preprocessing reports
     "preprocessed" space or a deskew angle, page-level for rotated PDF pages
     and geometry mismatches.
+
+Axis convention: all stored geometry (table bbox ÷2, word anchors, figure
+polygons) is in top-left pt space — the fitz-era contract, unchanged.
+reportlab canvases are bottom-left, so every drawn y is flipped
+``y_bl = page_height - y_tl``.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from io import BytesIO
 from typing import Any, Dict, List, Optional, Tuple
 
-import fitz
+import pypdf
+import pypdfium2
+from reportlab.pdfgen.canvas import Canvas
 
-# Rasterization uses fitz.Matrix(2, 2): PDF pt = raster px / 2.
+# Rasterization renders pages at a 2x raster scale (pypdfium2 render(scale=2.0)):
+# PDF pt = raster px / 2.
 RASTER_SCALE = 2.0
 # View-page dims vs PDF-page rect sanity check (defensive; 2% per §3.3).
 GEOMETRY_TOLERANCE = 0.02
@@ -60,7 +72,7 @@ class ProofStyle:
     TABLE_WIDTH = 0.5
     FIGURE_WIDTH = 0.5
 
-    FOOTER_SIZE = 6.5  # pt, ASCII-only (helv); localized details live in report.html
+    FOOTER_SIZE = 6.5  # pt, ASCII-only (Helvetica base-14); details in report.html
     FOOTER_TEXT = "Proof: green=verified, amber=corrected; review items in report.html"
 
 
@@ -84,11 +96,38 @@ class AnnotationSummary:
         return asdict(self)
 
 
+@dataclass
+class Rect:
+    """Minimal top-left pt-space rect replacing PyMuPDF's ``Rect``.
+
+    Attribute semantics identical to that class: ``width``/``height`` may be
+    negative for inverted rects; ``is_empty`` is True when x1 <= x0 or
+    y1 <= y0 (zero-area boxes count as empty).
+    """
+
+    x0: float
+    y0: float
+    x1: float
+    y1: float
+
+    @property
+    def width(self) -> float:
+        return self.x1 - self.x0
+
+    @property
+    def height(self) -> float:
+        return self.y1 - self.y0
+
+    @property
+    def is_empty(self) -> bool:
+        return self.x1 <= self.x0 or self.y1 <= self.y0
+
+
 def _skip(summary: AnnotationSummary, reason: str) -> None:
     summary.pages_skipped[reason] = summary.pages_skipped.get(reason, 0) + 1
 
 
-def table_rect_pt(bbox: Dict[str, Any]) -> Optional[fitz.Rect]:
+def table_rect_pt(bbox: Dict[str, Any]) -> Optional[Rect]:
     """Raster-px table bbox {x, y, width, height} → PDF pt rect (÷2)."""
     try:
         x = float(bbox.get("x"))
@@ -99,18 +138,18 @@ def table_rect_pt(bbox: Dict[str, Any]) -> Optional[fitz.Rect]:
         return None
     if w <= 0 or h <= 0:
         return None
-    return fitz.Rect(x / RASTER_SCALE, y / RASTER_SCALE, (x + w) / RASTER_SCALE, (y + h) / RASTER_SCALE)
+    return Rect(x / RASTER_SCALE, y / RASTER_SCALE, (x + w) / RASTER_SCALE, (y + h) / RASTER_SCALE)
 
 
 def split_cell_rect(
-    rect: fitz.Rect, n_rows: int, n_cols: int, row: int, col: int
-) -> Optional[fitz.Rect]:
+    rect: Optional[Rect], n_rows: int, n_cols: int, row: int, col: int
+) -> Optional[Rect]:
     """Uniform-grid cell rect inside a pt-space table rect (§3.3)."""
     if n_rows <= 0 or n_cols <= 0 or rect is None or rect.is_empty:
         return None
     col_w = rect.width / n_cols
     row_h = rect.height / n_rows
-    return fitz.Rect(
+    return Rect(
         rect.x0 + col * col_w,
         rect.y0 + row * row_h,
         rect.x0 + (col + 1) * col_w,
@@ -124,8 +163,8 @@ def derive_cell_rect(
     """Pt-space cell rect straight from the raster-px table bbox.
 
     Mirrors ``table_backfill.derive_cell_bbox`` (÷2 first, then uniform
-    split); reimplemented here so this module stays fitz+stdlib-only. A test
-    pins the equivalence.
+    split); reimplemented here so this module stays pdfium/reportlab/pypdf
+    +stdlib-only. A test pins the equivalence.
     """
     rect = table_rect_pt(table_bbox)
     cell = split_cell_rect(rect, n_rows, n_cols, row, col)
@@ -134,7 +173,7 @@ def derive_cell_rect(
     return (cell.x0, cell.y0, cell.x1, cell.y1)
 
 
-def _polygon_rect_px(polygon: List[Any]) -> Optional[fitz.Rect]:
+def _polygon_rect_px(polygon: List[Any]) -> Optional[Rect]:
     """Flat polygon [x0,y0,x1,y0,x1,y1,x0,y1] in raster px → pt rect."""
     if not isinstance(polygon, (list, tuple)) or len(polygon) < 8:
         return None
@@ -143,7 +182,7 @@ def _polygon_rect_px(polygon: List[Any]) -> Optional[fitz.Rect]:
         ys = [float(v) for v in polygon[1::2]]
     except (TypeError, ValueError):
         return None
-    rect = fitz.Rect(min(xs) / RASTER_SCALE, min(ys) / RASTER_SCALE, max(xs) / RASTER_SCALE, max(ys) / RASTER_SCALE)
+    rect = Rect(min(xs) / RASTER_SCALE, min(ys) / RASTER_SCALE, max(xs) / RASTER_SCALE, max(ys) / RASTER_SCALE)
     if rect.is_empty:
         return None
     return rect
@@ -156,7 +195,7 @@ def _table_page_num(table: Dict[str, Any]) -> int:
         return 1
 
 
-def _view_page_dims_ok(view_page: Dict[str, Any], page_rect: fitz.Rect) -> bool:
+def _view_page_dims_ok(view_page: Dict[str, Any], page_rect: Rect) -> bool:
     """Defensive check: view px dims must match the PDF page at 2x raster.
 
     Missing, non-numeric or non-positive dims mean "no information, proceed":
@@ -179,21 +218,35 @@ def _view_page_dims_ok(view_page: Dict[str, Any], page_rect: fitz.Rect) -> bool:
     )
 
 
-def _word_bbox_rect(value: Any) -> Optional[fitz.Rect]:
+def _word_bbox_rect(value: Any) -> Optional[Rect]:
     """Cell anchor from the funnel's matched-word union bbox (pt space)."""
     if not isinstance(value, (list, tuple)) or len(value) != 4:
         return None
     try:
-        rect = fitz.Rect(*(float(v) for v in value))
+        rect = Rect(*(float(v) for v in value))
     except (TypeError, ValueError):
         return None
     return None if rect.is_empty else rect
 
 
+def _draw_rect_tl(
+    canvas: Canvas, page_height: float, rect: Rect, color: Tuple[float, float, float], width: float
+) -> None:
+    """Stroke a top-left-space rect on a bottom-left-origin reportlab canvas.
+
+    fitz-era ``page.draw_rect(rect)`` equivalent: only the y axis flips
+    (``y_bl = page_height - y_tl``); x, extent and stroke styling are 1:1.
+    """
+    canvas.setStrokeColorRGB(*color)
+    canvas.setLineWidth(width)
+    canvas.rect(rect.x0, page_height - rect.y1, rect.width, rect.height, stroke=1, fill=0)
+
+
 def _draw_cells(
-    page: fitz.Page,
+    canvas: Canvas,
+    page_height: float,
     table: Dict[str, Any],
-    table_rect: fitz.Rect,
+    table_rect: Rect,
     style: ProofStyle,
     summary: AnnotationSummary,
 ) -> bool:
@@ -241,7 +294,7 @@ def _draw_cells(
             cell = anchor if anchor is not None else split_cell_rect(table_rect, n_rows, n_cols, i, j)
             if cell is None:
                 continue
-            page.draw_rect(cell, color=color, width=width)
+            _draw_rect_tl(canvas, page_height, cell, color, width)
             if value == _PROVENANCE_CONFIRMED:
                 summary.cells_confirmed += 1
             else:
@@ -250,15 +303,16 @@ def _draw_cells(
     return drew_any
 
 
-def _draw_footer(page: fitz.Page, style: ProofStyle) -> None:
-    """One ASCII legend line inside the bottom 18pt safe area (§3.2)."""
-    page.insert_text(
-        fitz.Point(36, page.rect.height - 9),
-        ProofStyle.FOOTER_TEXT,
-        fontsize=style.FOOTER_SIZE,
-        fontname="helv",
-        color=style.FOOTER_GRAY,
-    )
+def _draw_footer(canvas: Canvas, style: ProofStyle) -> None:
+    """One ASCII legend line inside the bottom 18pt safe area (§3.2).
+
+    fitz-era ``insert_text`` wrote the baseline at top-left y = height - 9;
+    on the bottom-left-origin reportlab canvas that is y = 9 (same 36pt left
+    margin, same Helvetica/helv base-14 font, same 6.5pt size).
+    """
+    canvas.setFont("Helvetica", style.FOOTER_SIZE)
+    canvas.setFillColorRGB(*style.FOOTER_GRAY)
+    canvas.drawString(36, 9, ProofStyle.FOOTER_TEXT)
 
 
 def render_annotated_pdf(
@@ -274,12 +328,20 @@ def render_annotated_pdf(
     preprocessing — D9 merged ``preprocessing`` into task results; legacy
     results without it are treated as "original" space, matching v1.8
     behavior for upright documents).
+
+    Engine (R-005 package C): page count/size/rotation come from pypdfium2
+    (``get_size`` is rotation-aware, matching the fitz ``page.rect``
+    semantics this contract was pinned against); drawing goes onto a
+    reportlab single-page overlay per annotated page; overlays are merged on
+    top of the original pages with pypdf. Unlike the previous ``doc.save``,
+    pypdf performs no garbage collection of dead objects — a cosmetic-level
+    deviation, output content is identical.
     """
     style = style or ProofStyle()
     summary = AnnotationSummary()
-    doc = fitz.open(pdf_path)
+    doc = pypdfium2.PdfDocument(pdf_path)
     try:
-        summary.pages_total = doc.page_count
+        summary.pages_total = len(doc)
 
         preprocessing = result.get("preprocessing") or {}
         coordinate_space = str(preprocessing.get("coordinate_space") or "original")
@@ -303,19 +365,27 @@ def render_annotated_pdf(
                     continue
         tables = [t for t in (result.get("tables") or []) if isinstance(t, dict)]
 
+        # (page_index, single-page overlay PDF bytes) for every drawn page.
+        overlays: List[Tuple[int, bytes]] = []
+
         if summary.document_skipped_reason is not None:
-            summary.pages_skipped[summary.document_skipped_reason] = doc.page_count
+            summary.pages_skipped[summary.document_skipped_reason] = len(doc)
         else:
-            for page in doc:
-                page_num = page.number + 1
-                if page.rotation != 0:
+            for page_index in range(len(doc)):
+                page = doc[page_index]
+                page_num = page_index + 1
+                if page.get_rotation() != 0:
                     _skip(summary, "rotation")
                     continue
+                page_width, page_height = page.get_size()
+                page_rect = Rect(0.0, 0.0, page_width, page_height)
                 view_page = view_pages.get(page_num)
-                if view_page is not None and not _view_page_dims_ok(view_page, page.rect):
+                if view_page is not None and not _view_page_dims_ok(view_page, page_rect):
                     _skip(summary, "geometry")
                     continue
 
+                buffer = BytesIO()
+                canvas = Canvas(buffer, pagesize=(page_width, page_height))
                 drew_any = False
 
                 # Figure outlines first (they carry no provenance semantics).
@@ -326,7 +396,7 @@ def render_annotated_pdf(
                         rect = _polygon_rect_px(element.get("polygon") or [])
                         if rect is None:
                             continue
-                        page.draw_rect(rect, color=style.FIGURE_OUTLINE, width=style.FIGURE_WIDTH)
+                        _draw_rect_tl(canvas, page_height, rect, style.FIGURE_OUTLINE, style.FIGURE_WIDTH)
                         summary.figures_outlined += 1
                         drew_any = True
 
@@ -337,17 +407,27 @@ def render_annotated_pdf(
                     if rect is None:
                         summary.tables_without_bbox += 1
                         continue
-                    page.draw_rect(rect, color=style.TABLE_OUTLINE, width=style.TABLE_WIDTH)
+                    _draw_rect_tl(canvas, page_height, rect, style.TABLE_OUTLINE, style.TABLE_WIDTH)
                     drew_any = True
-                    if not _draw_cells(page, table, rect, style, summary):
+                    if not _draw_cells(canvas, page_height, table, rect, style, summary):
                         summary.cells_fallback_table_level += 1
 
                 if footer_stamp:
-                    _draw_footer(page, style)
+                    _draw_footer(canvas, style)
+                if drew_any or footer_stamp:
+                    # An overlay with no content would emit a 0-page PDF on
+                    # save() — only finalize pages that actually carry marks.
+                    canvas.save()
+                    overlays.append((page_index, buffer.getvalue()))
                 if drew_any:
                     summary.pages_annotated += 1
 
-        doc.save(out_path, garbage=3, deflate=True)
+        writer = pypdf.PdfWriter()
+        writer.append(pdf_path)
+        for page_index, overlay_bytes in overlays:
+            overlay_reader = pypdf.PdfReader(BytesIO(overlay_bytes))
+            writer.pages[page_index].merge_page(overlay_reader.pages[0])
+        writer.write(out_path)
     finally:
         doc.close()
     return summary

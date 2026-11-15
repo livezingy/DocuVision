@@ -8,7 +8,7 @@ Usage (backend venv active, from backend/ cwd):
     python -m app.services.page_type_probe --input test_data/testfiles \
         --out outputs/page_type_calib.json
 
-Read-only: never writes back to inputs. Only PyMuPDF is required.
+Read-only: never writes back to inputs. Only pypdfium2 (+pypdf) is required.
 """
 
 from __future__ import annotations
@@ -23,15 +23,15 @@ from app.services.page_text_trust import judge_page_trust
 
 
 def _probe_pdf(file_path: str) -> Dict[str, Any]:
-    import fitz
+    import pypdfium2 as pdfium
 
     pages: List[Dict[str, Any]] = []
-    with fitz.open(file_path) as doc:
-        for idx, page in enumerate(doc):
-            result = judge_page_trust(page)
+    with pdfium.PdfDocument(file_path) as pdf:
+        for index in range(len(pdf)):
+            result = judge_page_trust(pdf[index], page_index=index)
             pages.append(
                 {
-                    "page": idx + 1,
+                    "page": index + 1,
                     "verdict": result.verdict,
                     "trusted": result.trusted,
                     "confidence": result.confidence,

@@ -275,22 +275,24 @@ class PaddleOCREngine(BaseOCREngine):
             return await self._process_image(file_path)
 
     async def _process_pdf(self, pdf_path: str) -> Dict[str, Any]:
-        import fitz  # PyMuPDF
+        import pypdfium2
 
-        doc = fitz.open(pdf_path)
-        page_count = len(doc)  # 保存页数，避免关闭后访问
+        pdf = pypdfium2.PdfDocument(pdf_path)
+        # init_forms 必须在 pdf[i] 取页前调用（formenv 在取柄时绑定）；普通 PDF 无害 no-op。
+        pdf.init_forms()
+        page_count = len(pdf)  # 保存页数，避免关闭后访问
         all_blocks = []
 
         try:
             for page_num in range(page_count):
-                page = doc[page_num]
+                page = pdf[page_num]
 
-                # Render page to image
-                mat = fitz.Matrix(2, 2)  # 2x scale for better accuracy
-                pix = page.get_pixmap(matrix=mat)
+                # Render page to image (2x scale for better accuracy);
+                # to_pil() 恒为 RGB 3 通道
+                bitmap = page.render(scale=2.0)
 
                 img_path = f"{pdf_path}_page_{page_num}.png"
-                pix.save(img_path)
+                bitmap.to_pil().save(img_path)
 
                 # OCR recognition
                 result = self._call_ocr(img_path)
@@ -303,7 +305,7 @@ class PaddleOCREngine(BaseOCREngine):
                 if os.path.exists(img_path):
                     os.remove(img_path)
         finally:
-            doc.close()
+            pdf.close()
 
         return {
             "engine": "PaddleOCR",

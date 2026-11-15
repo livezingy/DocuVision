@@ -49,14 +49,14 @@ def trusted_grounding_page_set(file_path: str) -> Set[int]:
     failures and unreadable documents are fail-closed (page left out)."""
     trusted: Set[int] = set()
     try:
-        import fitz
+        import pypdfium2 as pdfium
 
         from app.services.page_text_trust import judge_page_trust
 
-        with fitz.open(file_path) as doc:
-            for index in range(doc.page_count):
+        with pdfium.PdfDocument(file_path) as pdf:
+            for index in range(len(pdf)):
                 try:
-                    signals = judge_page_trust(doc[index]).signals
+                    signals = judge_page_trust(pdf[index], page_index=index).signals
                 except Exception:
                     continue  # single-page failure -> untrusted (fail-closed)
                 total = int(signals.get("total_chars") or 0)
@@ -82,26 +82,32 @@ class GroundingSource:
 
 
 def grounding_source(file_path: str) -> GroundingSource:
-    """Per-page native text blocks via PyMuPDF (deterministic: the same PDF
-    yields the same blocks, so the M1 payload and this grounding source are
-    identical by construction). Image blocks are skipped."""
+    """Per-page native text blocks via pdfminer.six (engine switched from
+    PyMuPDF in R-005 package B; deterministic: the same PDF yields the same
+    blocks, so the M1 payload and this grounding source are identical by
+    construction). ``LTTextBoxHorizontal`` boxes are text-only by
+    construction, which replaces the fitz ``get_text("blocks")`` image-block
+    filter. NOTE: block granularity differs between the engines (pdfminer
+    text boxes vs MuPDF blocks); quote-to-block attribution regressions are
+    covered by the cloud round / regression list."""
     blocks: Dict[int, List[str]] = {}
     texts: Dict[int, str] = {}
     try:
-        import fitz
+        from pdfminer.high_level import extract_pages
+        from pdfminer.layout import LTTextBoxHorizontal
 
-        with fitz.open(file_path) as doc:
-            for index in range(doc.page_count):
-                page_blocks: List[str] = []
-                for raw in doc[index].get_text("blocks"):
-                    if not raw or not isinstance(raw[4], str):
-                        continue
-                    if len(raw) > 6 and raw[6] != 0:
-                        continue  # image block
-                    if raw[4].strip():
-                        page_blocks.append(raw[4])
-                blocks[index + 1] = page_blocks
-                texts[index + 1] = normalize("\n".join(page_blocks))
+        for index, page_layout in enumerate(extract_pages(file_path)):
+            page_blocks: List[str] = []
+            for element in page_layout:
+                if not isinstance(element, LTTextBoxHorizontal):
+                    continue
+                raw = element.get_text()
+                if not raw or not isinstance(raw, str):
+                    continue
+                if raw.strip():
+                    page_blocks.append(raw)
+            blocks[index + 1] = page_blocks
+            texts[index + 1] = normalize("\n".join(page_blocks))
     except Exception:
         return GroundingSource(blocks={}, texts={})  # fail-closed: no grounding
     return GroundingSource(blocks=blocks, texts=texts)

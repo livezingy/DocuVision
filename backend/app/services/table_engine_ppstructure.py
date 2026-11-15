@@ -160,28 +160,23 @@ class PPStructureTableEngine(
             return await self._extract_from_image(file_path)
 
     async def _extract_from_pdf(self, pdf_path: str) -> List[Dict[str, Any]]:
-        import fitz
-        from PIL import Image
+        import pypdfium2
 
-        doc = fitz.open(pdf_path)
-        page_count = len(doc)  # 保存页数，避免关闭后访问
+        pdf = pypdfium2.PdfDocument(pdf_path)
+        # init_forms 必须在 pdf[i] 取页前调用（formenv 在取柄时绑定）；普通 PDF 无害 no-op。
+        pdf.init_forms()
+        page_count = len(pdf)  # 保存页数，避免关闭后访问
         all_tables = []
 
         try:
             for page_num in range(page_count):
-                page = doc[page_num]
+                page = pdf[page_num]
 
-                mat = fitz.Matrix(2, 2)
-                pix = page.get_pixmap(matrix=mat)
+                bitmap = page.render(scale=2.0)  # scale=2.0 ↔ fitz Matrix(2, 2)
                 img_path = f"{pdf_path}_table_{page_num}.png"
 
-                # 确保图像是 RGB 格式（3通道）
-                if pix.alpha:
-                    img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
-                    img = img.convert("RGB")
-                    img.save(img_path)
-                else:
-                    pix.save(img_path)
+                # to_pil() 恒为 RGB 3 通道
+                bitmap.to_pil().save(img_path)
 
                 result = self._call_engine(img_path)
                 tables = self._parse_tables(result, page_num + 1)
@@ -190,7 +185,7 @@ class PPStructureTableEngine(
                 if os.path.exists(img_path):
                     os.remove(img_path)
         finally:
-            doc.close()
+            pdf.close()
 
         return all_tables
 

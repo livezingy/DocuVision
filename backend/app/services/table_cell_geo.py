@@ -49,7 +49,9 @@ def derive_cell_bbox(
 ) -> Optional[Tuple[float, float, float, float]]:
     """Derive a cell bbox in PDF pt space from the raster-space table bbox.
 
-    Rasterization uses ``fitz.Matrix(2, 2)``, so PDF pt = raster px / 2.
+    Rasterization renders pages at a 2x raster scale (R-005: pypdfium2
+    ``render(scale=2.0)``, replacing the fitz-era ``Matrix(2, 2)`` — the
+    divide-by-two semantics is unchanged), so PDF pt = raster px / 2.
     Cells are assumed uniform (R3 fallback: SLANeXt HTML has no per-cell bbox).
     Returns None when the grid is degenerate.
     """

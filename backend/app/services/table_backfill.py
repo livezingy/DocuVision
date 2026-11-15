@@ -37,6 +37,76 @@ PROVENANCE_TEXT_BACKFILLED = "text_backfilled"
 PROVENANCE_TEXT_MISMATCH = "text_mismatch"
 
 
+def _page_words(page: Any) -> List[Any]:
+    """Text-layer words of a **pdfplumber** page in the 8-tuple shape
+    recorded by ``table_layout.py`` (W_X0, W_Y0, W_X1, W_Y1, W_TEXT,
+    W_BLOCK, W_LINE, W_WORDNO = x0, y0, x1, y1, word, block, line, word_no).
+
+    Engine switch (R-005 package B): the fitz ``get_text("words")`` source is
+    replaced by pdfplumber ``extract_words()``. Adaptation notes:
+
+    * ``x0``/``x1`` map 1:1; pdfplumber's glyph-box ``top``/``bottom`` map
+      directly to ``y0``/``y1`` (both engines are top-left origin, so every
+      geometry consumer keeps working unchanged).
+    * Y-box semantics differ (registered): fitz words carry the line-height
+      box, pdfplumber words carry the glyph ink box — crossing checks
+      (``table_cell_geo._extract_cell_text_layer``) and row-band geometry
+      therefore see a tighter box than fitz produced.
+    * ``block``/``line``/``word_no`` are synthesized deterministically: words
+      are chained into visual lines on ``top`` with pdfplumber's default
+      y_tolerance (3pt, the same clustering its line grouping uses), lines
+      numbered in ascending order, words numbered by ``x0`` within the line,
+      ``block`` constant (0). This preserves the consumption contract — T1
+      buckets consecutive runs by ``(block, line)`` and orders them by
+      ``word_no`` (``table_alignment._gen_runs``), and the T2 single-line
+      check keys on ``w[6]``.
+    """
+    import pdfplumber
+
+    try:
+        raw_words = page.extract_words()
+    except Exception:
+        return []
+    if not raw_words:
+        return []
+
+    tops = sorted({float(w["top"]) for w in raw_words})
+    clusters: List[List[float]] = [[tops[0]]]
+    for top in tops[1:]:
+        if top <= clusters[-1][-1] + 3.0:  # pdfplumber DEFAULT_Y_TOLERANCE
+            clusters[-1].append(top)
+        else:
+            clusters.append([top])
+    line_of: Dict[float, int] = {
+        t: line_no for line_no, cluster in enumerate(clusters) for t in cluster
+    }
+
+    members_by_line: Dict[int, List[Any]] = {}
+    for w in raw_words:
+        members_by_line.setdefault(line_of[float(w["top"])], []).append(w)
+
+    words: List[Any] = []
+    for line_no in sorted(members_by_line):
+        members = sorted(
+            members_by_line[line_no],
+            key=lambda w: (float(w["x0"]), float(w["x1"])),
+        )
+        for word_no, w in enumerate(members):
+            words.append(
+                [
+                    float(w["x0"]),
+                    float(w["top"]),
+                    float(w["x1"]),
+                    float(w["bottom"]),
+                    w["text"],
+                    0,  # block (constant; (block, line) uniqueness comes from line)
+                    line_no,
+                    word_no,
+                ]
+            )
+    return words
+
+
 def _solve_candidate(
     model: LayoutModel,
     table_bbox: Dict[str, Any],
@@ -323,11 +393,17 @@ def backfill_tables(
     if not enabled or not tables:
         return summary
 
-    import fitz
+    import pdfplumber
+    import pypdfium2 as pdfium
 
     try:
-        doc = fitz.open(file_path)
+        doc = pdfium.PdfDocument(file_path)
     except Exception:
+        return summary
+    try:
+        plumber_pdf = pdfplumber.open(file_path)
+    except Exception:
+        doc.close()
         return summary
 
     debug_records: Optional[List[Dict[str, Any]]] = [] if debug_dir else None
@@ -350,16 +426,16 @@ def backfill_tables(
                 summary["pages_skipped_preprocessed"] += 1
                 continue
             page = doc[page_num - 1]
-            trust = judge_page_trust(page)
+            trust = judge_page_trust(page, page_index=page_num - 1)
             summary["pages_judged"] += 1
             summary["page_verdicts"].append(trust.verdict)
             if not trust.trusted:
                 continue
             # coordinate alignment requires an unrotated page (§4.2)
-            if page.rotation != 0:
+            if page.get_rotation() != 0:
                 continue
             summary["pages_text_layer_trusted"] += 1
-            page_words = page.get_text("words")
+            page_words = _page_words(plumber_pdf.pages[page_num - 1])
             page_tables = tables_by_page[page_num]
             for t_idx, t in page_tables:
                 # P-002 D9: sibling pt rects — words centered inside a sibling
@@ -386,6 +462,10 @@ def backfill_tables(
                     summary["align_reason_counts"][key] += val
     finally:
         doc.close()
+        try:
+            plumber_pdf.close()
+        except Exception:
+            pass
 
     cand = summary["cells_candidates"]
     if cand > 0:

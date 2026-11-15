@@ -26,6 +26,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (key-presence + boilerplate ban + OFF-majority denominator), artifacts packaged as tar.gz next to the
   script. Rules and judging conventions in `scripts/cloud/README.md`; future GPU/Cloud verification rounds
   reuse it with env overrides only (registered in AGENTS.md task routing).
+- **P-042 T2 (R-003) — customer schema column mapping made configurable (AC1 backend half)**: a customer
+  schema persisted through the existing KIE template store (`POST /api/v1/kie/templates/{id}` → YAML) or an
+  inline `kie_custom_schema` on the batch options now drives table column mapping for every task of the
+  batch. New config layer `backend/app/services/kie/schema_mapping.py` (resolve/build/apply, pure functions,
+  fail-closed: unusable schema → no mapping) wired into `table_step`'s custom-template branch
+  (`orchestration/steps/extraction.py`), which stamps the resolved schema field order on the task result
+  (`mapped_table_fields`); the MappedRows export sheet (`batch_export_service.py`) derives its column order
+  from that stamp (batch context column `file_name` first; legacy first-seen key order kept when no stamp —
+  built-in `bank_statement`/`invoice_line_items` behavior unchanged). No new REST endpoint; no new
+  services-layer cross-domain edge (export face reads stamped result keys only); customer schema truth
+  values never enter git (test fixtures are fictional, template store monkeypatched to tmp_path).
+- **P-042 T1+T3 (R-003) — Google Sheets direct-write with per-task idempotency (AC2)**: new batch-domain
+  service `backend/app/services/sheets_export_service.py` — `gspread==6.2.1` (MIT, pure Python) pinned in
+  `backend/requirements.txt`; bound to `batch.completed` via the routers-layer composed `on_complete`
+  closure (`routers/batch.py`: webhook dispatch + opt-in Sheets export, same fire-and-forget/swallow
+  semantics as the webhook — the sync gspread export dispatched off the event loop via
+  `asyncio.to_thread`). Opt-in per batch through `options.sheets_export`
+  (`spreadsheet_id` + optional `worksheet`, default `MappedRows`); credentials travel by parameter only
+  from the operator machine (`GOOGLE_SERVICE_ACCOUNT_FILE` / `GOOGLE_APPLICATION_CREDENTIALS` alias in
+  settings, empty = disabled) — never into repo, logs, return values or error text (client errors
+  re-raised sanitized). The gspread client gets an explicit per-call timeout (`HTTPClient.set_timeout`;
+  6.2.1 defaults to unbounded) and the dispatch runs off the event loop via `asyncio.to_thread` — sync
+  gspread inline in the `batch.completed` callback would stall the worker (review round 1). Rows carry
+  `batch_id`/`task_id`/`file_name` identity columns + the mapping-result field columns (same source as
+  the MappedRows xlsx face, so the T4 comparison lines up field by field); idempotency per AC2: existing
+  rows whose `task_id` matches the current batch's tasks are replaced bottom-up and fresh rows appended —
+  same-task re-runs never duplicate (uuid4 task ids can never collide across batches); fresh worksheets
+  auto-create; header mismatch fails closed. No new REST endpoint; unit tests fake gspread through the
+  `_build_client` monkeypatch seam (no network).
+- **P-042 T5 (R-003) — per-order CSV split export (AC6, 定稿点 3)**: batch-level `per_order=True` opt-in
+  splits the finished batch into one CSV per order — "one CSV file per order in a set format" (Upwork
+  demand anchor) — new batch-domain service `backend/app/services/per_order_export_service.py` reusing
+  `batch_export_service.render_csv` and the aggregate MappedRows column derivation, so every order file
+  carries the identical mapping-result header set (ERP column mapping stays stable across orders).
+  Filenames are deterministic (sanitized file stem; duplicate stems get a task-id suffix whose prefix
+  width grows until unique — re-runs compute the exact same names), making the export file-level
+  idempotent: same-batch re-runs overwrite in place, never duplicate files. Target directory is
+  configurable (`options.per_order_output_dir`, fallback `<settings.OUTPUT_DIR>/per_order/<batch_id>` —
+  ERP watch semantics); completed tasks without mapping rows are skipped (no empty CSVs for the ERP).
+  Bound to `batch.completed` via the same routers-layer composed `on_complete` closure
+  (webhook + Sheets + per-order, exports dispatched off the event loop via `asyncio.to_thread`),
+  failures swallowed — batch final state unaffected. No new REST
+  endpoint; no new services-layer cross-domain edge.
+- **P-042 T4 + e2e (R-003) — same-source-same-value assertion (AC3) and Pro e2e for one-config batch
+  mapping (AC1 frontend half)**: (1) `backend/tests/test_export_service.py` gains
+  `TestSameSourceSameValue` — the batch's mapping result (`mapped_table_rows` + T2 stamp) is one source
+  flowing to three surfaces, compared field-by-field: the Google Sheets write path (rows captured at the
+  service's worksheet seam, mock level, no network), the aggregate xlsx MappedRows sheet (read back via
+  pandas), and the T5 per-order CSV files (parsed back); numeric text cells canonicalize to float because
+  the xlsx round-trip numericises them ('2' -> 2.0 — a storage artifact, not a value change); the
+  empty-mapping case agrees across all three surfaces (nothing written anywhere). (2) New Pro Playwright
+  spec `frontend/tests/e2e/batch-table-mapping.e2e.js` (UI-BM-01): the mapping template configured once in
+  the Options dialog reaches the batch create payload verbatim (`options.table_template` on
+  POST /api/v1/batch) and the whole batch completes under it (2/2 tasks, task table rendered) — backend
+  endpoints mocked at the route level, no GPU. The spec is **covered by CI**: the lint.yml e2e job runs
+  `npm run test:e2e` = `playwright test`, whose testMatch `**/*.e2e.js` picks up every spec under
+  `tests/e2e` automatically (review round 1 correction — the spec was never CI-exempt), and
+  check_e2e_allowlist in the lint job enforces the updated suite pin. Suite pin
+  `scripts/e2e_suite_pin.json` 5→6 specs / 15→16 tests (only-increase, same-change discipline);
+  `test_data/acceptance/UI_VERIFICATION_MATRIX.md` §2.1/§2.2/§2.3 updated accordingly (local reruns of
+  `npx playwright test batch-table-mapping` are diagnostic); spec verified green locally (1 passed,
+  0 runtime errors, eslint clean).
 
 ### Fixed
 - **KIE never-omit backfill, scoped to the text-first channel (P-034 P0)**: Qwen may drop keys it cannot

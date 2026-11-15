@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **19** 条）
+## 待确认（本区共 **21** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-047` `P-048`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-042` `P-043` `P-047` `P-048`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -553,6 +553,27 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **定稿（批 12，2026-10-25，L1 复扫 36 零出向 = 已登 6 叶 + 未登 30 候选，逐个 L2/L3 人审）**：**共享叶范围封册 = 6 叶，不新增**。30 候选三类判定——①**L3 不过（有状态/引擎/存储）7 个**：formula_engine、layout_pp_visualization、table_pp_parse（引擎 Mixin 操作实例态）、ocr_service、seal_service（域引擎）、hitl_queue（模块级单例）、persistence/queue_store（SQLite I/O）；②**L2 不过（域语义叶子，域内互引/私有叶）22 个**：_layout_geometry、_layout_order（layout 私有叶）、batch_models、document_type_classifier、evidence/findings_schema、evidence/normalize、export_table_format、formula_adapt、kie/{azure_schema,field_merge,kie_field_metrics,kie_pages,query_fields,schema_templates}、pii_mask、proof_render、table_{band_range,cell_geo,html,layout,ocr_blocks}、trial/gt_diff；③**形式合格但登记动机缺位 1 个**：pdf_tools_service（纯函数 + lazy fitz，pdf_raster 同形态；唯一消费方 pdftools 路由为层间合法，无跨域消费方——登记制解决跨域合法通道，无跨域需求不造登记面，反 gaming 同源）。**未来新增叶的唯一通道 = 出现真实跨域消费方时按 L1/L2/L3 判据登记（Placement N + 用户裁决）**。保留理由：机制已常态化（登记面 + 判据 + 对账由 lint_services/domain_map 承载，`shared_leaf_modules` 六叶证据齐）；候选池定稿留档本条，runs/split 目录删除后本条即唯一真源。
 - **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
 - **指针**：`docs/R&D/runs/split/` 已于 2026-10-25 收尾批删除（03 §4 候选池实证与 L1 强度裁决表明细进 git 历史；候选池定稿真源即上文本条正文）｜ P-037（还债批次序列与消解目标）。
+
+### P-042 · Egress 出口层——客户 schema → Google Sheets / Excel 直写（2026-11-15，R-003 承接）
+> status: open · since: 2026-11-15
+- **来源与登记义务**：R-003 pack v1.2 §7 编号登记义务（AgentE 落地首动作）——P1-1 编号勘误（原 P-044 三方双指）后勘误登 **P-042**（登记时 PENDING 真源未占用）。pack v1.2 awaiting-dispatch（待 Ying 投放）；施工由 ZCode workflow 承担中。
+- **在途义务（R-003 施工与验收）**：Sheets 直写通道（选型 **gspread**，MIT；绑定事件 **batch.completed** = batch 全量出口语义）＋客户 schema 字段映射配置化（一次配置 batch 全量生效）＋幂等（同 task 重跑不重复行）＋Sheets/csv/xlsx 同源同值断言＋**per-order 拆分导出**（Upwork 单显式出口形态「one CSV file per order」，定稿点 3 已采纳）。
+- **需求佐证锚**：Upwork 单 ~022120614538119429026（US 制造商 PO 自动化：出口 = 「Produces one CSV file per order in a set format」＋自托管「hosted inside our own environment, fully owned by us」）。
+- **契约**：AC 6 条（v1.2 随 review-01 处置由 5 扩 6：映射一次配置 batch 生效 / 幂等 / 同源同值 / webhook 不受影响 / 全量回归 0 failed / per-order 拆分）；gate 名口径 = 仓内 `backend/tests/test_registry.json` 键名。
+- **out（勿在此面扩）**：CRM/ERP/会计平台直连（pack 原文注 P-052 挂起）；n8n 入口归 **P-043**/R-004；ERP 参照校验层（值级对账缺口）另案评估。
+- **红线**：客户 schema/客户材料永不进 git；Sheets 类凭据不进仓、不进日志、不进对话。
+- **指针**：`docs/R&D/runs/R-003/pack.md`（v1.2；review-01 conditional pass 已闭环）｜ P-043（同单 n8n 入口）。
+
+### P-043 · n8n / Make 集成包（2026-11-15，R-004 承接）
+> status: open · since: 2026-11-15
+- **来源与登记义务**：R-004 pack v1.2 §7 编号勘误（R-003 review P1-1 同型外推）登 **P-043**；PENDING 补登与 P-042 同批（AgentE 落地首动作）。pack v1.2 awaiting-dispatch（待 Ying 投放）。
+- **在途义务（R-004 施工与验收）**：REST API 全量文档（**INV-1 冻结 55 端点 == OpenAPI paths** 对账用例）＋n8n 导入模板（workflow JSON 工件落 `docs/integrations/n8n/`；DOC 门禁覆盖 = 目录 README 索引行 + `docs_refs_audit` 对账）＋webhook 事件类型全表化＋WS 口径对账断言（`task.completed` ⟺ WS `{"type":"status","status":"completed"}`，succeeded 归一别名）＋n8n 实例最小闭环实测＋Outlook 版模板（定稿点 4）。
+- **交付形态（定稿点 2，维持原判）**：n8n 导入模板（workflow JSON）主交付、community node 后置触发——仓栈 Python/FastAPI 引入 Node 构建链 = 技术栈污染，无客户需求驱动不立项。
+- **闭环前置三件（缺任一件 = 默认静默 no-op，P-027 判例 2「含模块缺接线」同型）**：①后端 `WEBHOOK_ENABLED=true`；②非空 `WEBHOOK_ADMIN_TOKEN`；③n8n 经 `POST /api/v1/webhooks` 订阅注册。
+- **需求佐证锚**：Upwork 单 ~022120614538119429026（收件箱监控 = Microsoft 365 / Outlook / Front ⇒ n8n 原生 Trigger 节点 + DocuVision API 编排，零自研邮箱监听；R-004 由「生态入口」升级为该类需求完整方案骨架）。
+- **契约**：AC 6 条（模板一键导入闭环 / webhook 与 WS 口径一致 / 文档 == 冻结 55 / OpenAPI 快照回归 / 交付物落仓登记 `docs_refs_audit` 0 error / 全量回归 0 failed）。
+- **out（勿在此面扩）**：Make 平台模板（文档覆盖、后置）；QuickBooks/Xero 直连（pack 原文注 P-052 挂起）；community node 脚手架（需时另立项）。
+- **指针**：`docs/R&D/runs/R-004/pack.md`（v1.2；review-01 conditional pass 已闭环）｜ P-042（同单 Egress 出口层）。
 
 ### P-047 · R-005 云测 V4 RENDER_SCALE 预期项无源——已结 retained（幻影锚判例）（2026-11-15 立项，同日结案）
 > status: retained · since: 2026-11-15

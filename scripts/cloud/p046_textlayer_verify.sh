@@ -355,7 +355,14 @@ def cmd_ocrsmoke():
     from app.services.ocr_service import OCRService
     svc = OCRService()
     if not getattr(svc, "_ready", False):
-        svc._init_engine()
+        # OCRService exposes _init_engines (plural, multi-engine registry);
+        # fall back to _init_engine for older shapes. Cloud round 1 hit
+        # AttributeError on the singular name (return manifest 2026-11-15).
+        init = getattr(svc, "_init_engines", None) or getattr(svc, "_init_engine", None)
+        if init is None:
+            print("OCR_INIT_METHOD=MISSING")
+            return 3
+        init()
     if not getattr(svc, "_ready", False):
         print("OCR_READY=False")
         return 3
@@ -629,19 +636,43 @@ def cmd_backfill():
         try:
             from app.services.table_backfill import derive_cell_bbox
             bbox = tables[0]["bbox"]
-            cells = []
-            for r in range(2):
-                for c in range(2):
-                    cells.append(derive_cell_bbox(bbox, 2, 2, r, c))
+
             def _num(v):
                 try:
                     return float(v)
                 except Exception:
                     return None
-            tb = {k: _num(bbox.get(k)) for k in ("x", "y", "width", "height")}
-            inside = all(_num(cell) is not None for cell in cells)
-            derive_ok = bool(inside and tb["width"] and tb["height"])
-            lines.append("derive_cell_bbox_2x2=%s first=%r" % (derive_ok, cells[0]))
+
+            def _cell_bounds(cell):
+                """Accept dict {x,y,width,height} or 4-tuple (x0,y0,x1,y1)."""
+                if isinstance(cell, dict):
+                    vals = tuple(_num(cell.get(k)) for k in ("x", "y", "width", "height"))
+                    if all(v is not None for v in vals):
+                        x, y, w, h = vals
+                        return (x, y, x + w, y + h)
+                    return None
+                if isinstance(cell, (list, tuple)) and len(cell) == 4:
+                    vals = tuple(_num(v) for v in cell)
+                    if all(v is not None for v in vals):
+                        return vals
+                    return None
+                return None
+
+            tb_x, tb_y = _num(bbox.get("x")), _num(bbox.get("y"))
+            tb_w, tb_h = _num(bbox.get("width")), _num(bbox.get("height"))
+            cells = [derive_cell_bbox(bbox, 2, 2, r, c) for r in range(2) for c in range(2)]
+            bounds = [_cell_bounds(cell) for cell in cells]
+            inside = True
+            if None in bounds or None in (tb_x, tb_y, tb_w, tb_h):
+                inside = False
+            else:
+                for (x0, y0, x1, y1) in bounds:
+                    if x0 < tb_x - 1 or y0 < tb_y - 1 or x1 > tb_x + tb_w + 1 or y1 > tb_y + tb_h + 1:
+                        inside = False
+                        break
+            derive_ok = bool(inside)
+            lines.append("derive_cell_bbox_2x2=%s first=%r table=%r"
+                         % (derive_ok, cells[0], {k: bbox.get(k) for k in ("x", "y", "width", "height")}))
         except Exception as e:
             lines.append("derive_cell_bbox_ERR=%r" % (e,))
             derive_ok = False
@@ -732,8 +763,13 @@ record backfill geometry $?
 
 # ---- 11) app smoke (C2): pytest API contract; REAL_APP=1 adds a real boot ----
 log "=== C2 app smoke ==="
+# C2 carriers: real TestClient pytest files (23 cases). The two files named in
+# the closure doc draft (test_api_contract_smoke/test_api_pipeline) are
+# run-scripts, not pytest files -> exit 5 "no tests collected" (cloud round 1).
 ( cd "$REPO_DIR/backend" && PYTHONPATH=. "$PY" -m pytest \
-    tests/test_api_contract_smoke.py tests/test_api_pipeline.py -q --tb=short ) \
+    tests/test_analyze_kie_options.py tests/test_blocks_reading_order.py \
+    tests/test_phase1_analyze_form.py tests/test_table_template_analyze.py \
+    tests/test_trial_auth.py -q --tb=short ) \
   > "$OUT_DIR/${PREFIX}_appsmoke.log" 2>&1
 record appsmoke contract_pytest $?
 if [ "$REAL_APP" = "1" ]; then

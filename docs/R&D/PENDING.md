@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **17** 条）
+## 待确认（本区共 **19** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-047` `P-048`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -553,3 +553,19 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **定稿（批 12，2026-10-25，L1 复扫 36 零出向 = 已登 6 叶 + 未登 30 候选，逐个 L2/L3 人审）**：**共享叶范围封册 = 6 叶，不新增**。30 候选三类判定——①**L3 不过（有状态/引擎/存储）7 个**：formula_engine、layout_pp_visualization、table_pp_parse（引擎 Mixin 操作实例态）、ocr_service、seal_service（域引擎）、hitl_queue（模块级单例）、persistence/queue_store（SQLite I/O）；②**L2 不过（域语义叶子，域内互引/私有叶）22 个**：_layout_geometry、_layout_order（layout 私有叶）、batch_models、document_type_classifier、evidence/findings_schema、evidence/normalize、export_table_format、formula_adapt、kie/{azure_schema,field_merge,kie_field_metrics,kie_pages,query_fields,schema_templates}、pii_mask、proof_render、table_{band_range,cell_geo,html,layout,ocr_blocks}、trial/gt_diff；③**形式合格但登记动机缺位 1 个**：pdf_tools_service（纯函数 + lazy fitz，pdf_raster 同形态；唯一消费方 pdftools 路由为层间合法，无跨域消费方——登记制解决跨域合法通道，无跨域需求不造登记面，反 gaming 同源）。**未来新增叶的唯一通道 = 出现真实跨域消费方时按 L1/L2/L3 判据登记（Placement N + 用户裁决）**。保留理由：机制已常态化（登记面 + 判据 + 对账由 lint_services/domain_map 承载，`shared_leaf_modules` 六叶证据齐）；候选池定稿留档本条，runs/split 目录删除后本条即唯一真源。
 - **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
 - **指针**：`docs/R&D/runs/split/` 已于 2026-10-25 收尾批删除（03 §4 候选池实证与 L1 强度裁决表明细进 git 历史；候选池定稿真源即上文本条正文）｜ P-037（还债批次序列与消解目标）。
+
+### P-047 · R-005 云测 V4「PADDLE_PDX_PDF_RENDER_SCALE 源码命中」声明未证——归因待查（2026-11-15，自 fitz_abc_p046_closure.md §10 云测登记立项）
+> status: open · since: 2026-11-15
+- **现象（云端实测，`r005_cloud_verify.sh` evidence 模式 @ `e284cd2`，A10 GPU，PIN_DRIFT=0）**：V4 段 `RENDER_SCALE_VERIFY=NOT_VERIFIED_NO_SOURCE_HIT`、`source_hits=0`——R-005 pack sec.0 声称的 `PADDLE_PDX_PDF_RENDER_SCALE` 官方源码命中在 paddlex 3.3.12 + pypdfium2 5.13.0 构建上未复现（脚注纪律：paddlex 可用性失败不计命中——`paddlex_status=AVAILABLE`，是真 0 命中）。
+- **影响面**：不阻塞其他云测读数（V4 尺寸等值 `equal=True` 独立成立）；影响的是 pack sec.0「喂入尺度语义由 paddlex 环境变量锚定」的声明链。
+- **待查方向**：① paddlex 3.3.12 源码中该环境变量是否更名/移除（rg paddlex 源码 `RENDER_SCALE`）；② pypdfium2 5.13.0 与 paddlex 内部渲染路径的适配变化；③ pack sec.0 引述是否过时（写稿时 paddlex 版本不同）。
+- **裁决预分支**：变量已更名 → 更新 pack/闭包文档声明链；paddlex 不再暴露 → 按「喂入尺度由仓内预渲染自锚（R-005 已移除 paddlex PDF 路径依赖）」收口。
+- **指针**：`docs/R&D/runs/R-005/attachments/fitz_abc_p046_closure.md` §10.1/§10.3｜`scripts/cloud/r005_cloud_verify.sh` V4 段｜R-005 pack sec.0。
+
+### P-048 · KIE carrier 兜底样板句与 P-034 X2 验收口径不一致——归因待查（2026-11-15，自批次③ cloud_round 立项）
+> status: open · since: 2026-11-15
+- **现象（`cloud_round_test.sh` @ `8a45ba6`，fixture=tampa coi，ON/OFF×3）**：五字段键全在（never-omit ✓）、通道自证 ON=1/OFF=0 ✓、OFF×3 分母稳定；但 ON 侧 `carrier='A.M. Best B+ VII or Better Insurance Carrier'`（`<<BOILERPLATE` 标记）且 OFF×3 对称——与 P-034 验收轮 X2 口径（carrier 键在场且 `== ""`、评级样板句零出现 @`dcf99a2` 2026-10-27）不一致。
+- **已排除（非 rasterize 引擎面回归）**：① ON/OFF 对称（非单向劣化）；② KIE 喂入链未被 R-005/包ABC 触碰（本 fixture 走 text-first 通道，`run_on.log` 实证 `source=text_layer windows=1 chars=4048`；rasterize 仅影响 KIE 的 PDF ROI 渲染路径）；③ 文本往返 9/9（包B grounding 无损）。
+- **待查方向**：① PROMPT_CHECK（`kie_configs/coi.yaml:v3.2`）在分支上的实际内容与 P-034 验收轮（`dcf99a2`）是否一致；② `EVIDENCE_TEXT_FIRST` 旗标 / warmup env 组合差异；③ `dcf99a2..8a45ba6` 间 KIE 层（kie_configs / kie_qwen_service / prompt）git 变更清单；④ KIE 模型非确定性（P-034 有 marker 波动先例）。
+- **裁决预分支**：prompt/旗标组合差异 → 复跑对照即收口；KIE 层真回归 → 按 P-034 判据面立案修复；两种结论均不改 R-005/P-046 的引擎面结论。
+- **指针**：`docs/R&D/runs/R-005/attachments/fitz_abc_p046_closure.md` §10.1/§10.3｜`scripts/cloud/cloud_round_test.sh`｜P-034（retained）X2 口径。

@@ -352,22 +352,20 @@ def cmd_ocrsmoke():
         fixture = corpus[0]
         print("OCRSMOKE_FIXTURE_FALLBACK=%s" % fixture)
     png, w, h = _pdfium_render_png(fixture)
-    from app.services.ocr_service import OCRService
-    svc = OCRService()
-    if not getattr(svc, "_ready", False):
-        # OCRService exposes _init_engines (plural, multi-engine registry);
-        # fall back to _init_engine for older shapes. Cloud round 1 hit
-        # AttributeError on the singular name (return manifest 2026-11-15).
-        init = getattr(svc, "_init_engines", None) or getattr(svc, "_init_engine", None)
-        if init is None:
-            print("OCR_INIT_METHOD=MISSING")
-            return 3
-        init()
-    if not getattr(svc, "_ready", False):
+    from app.services.ocr_service import PaddleOCREngine
+    # The feeding chain (ocr_service._process_pdf -> _call_ocr) runs on
+    # PaddleOCREngine; OCRService is the multi-engine facade above it.
+    # Cloud round 1 hit AttributeError on OCRService._init_engine (facade
+    # exposes _init_engines registry only), round 2 hit OCR_READY=False on the
+    # facade (its _ready lives on the inner engine) - use the engine directly.
+    eng = PaddleOCREngine(use_gpu=True)
+    if not eng.is_ready():
+        eng._init_engine()
+    if not eng.is_ready():
         print("OCR_READY=False")
         return 3
     print("OCR_READY=True")
-    result = svc._call_ocr(png)
+    result = eng._call_ocr(png)
     blocks = []
     for item in result or []:
         if isinstance(item, dict) and str(item.get("text", "")).strip():
@@ -662,17 +660,23 @@ def cmd_backfill():
             tb_w, tb_h = _num(bbox.get("width")), _num(bbox.get("height"))
             cells = [derive_cell_bbox(bbox, 2, 2, r, c) for r in range(2) for c in range(2)]
             bounds = [_cell_bounds(cell) for cell in cells]
+            # derive_cell_bbox returns PT-space rects (raster px / 2): cloud
+            # round 2 evidence - cell (36.0, 47.5, ...) vs px-space table
+            # x=72/y=95 -> exactly half. Compare in pt space.
+            pt = ((tb_x / 2.0, tb_y / 2.0, (tb_x + tb_w) / 2.0, (tb_y + tb_h) / 2.0)
+                  if None not in (tb_x, tb_y, tb_w, tb_h) else None)
             inside = True
-            if None in bounds or None in (tb_x, tb_y, tb_w, tb_h):
+            if pt is None or None in bounds:
                 inside = False
             else:
                 for (x0, y0, x1, y1) in bounds:
-                    if x0 < tb_x - 1 or y0 < tb_y - 1 or x1 > tb_x + tb_w + 1 or y1 > tb_y + tb_h + 1:
+                    if x0 < pt[0] - 1 or y0 < pt[1] - 1 or x1 > pt[2] + 1 or y1 > pt[3] + 1:
                         inside = False
                         break
             derive_ok = bool(inside)
-            lines.append("derive_cell_bbox_2x2=%s first=%r table=%r"
-                         % (derive_ok, cells[0], {k: bbox.get(k) for k in ("x", "y", "width", "height")}))
+            lines.append("derive_cell_bbox_2x2=%s first=%r table_px=%r table_pt=%r"
+                         % (derive_ok, cells[0],
+                            {k: bbox.get(k) for k in ("x", "y", "width", "height")}, pt))
         except Exception as e:
             lines.append("derive_cell_bbox_ERR=%r" % (e,))
             derive_ok = False

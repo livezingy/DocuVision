@@ -32,9 +32,11 @@ Per v1.8-design §3.1:
     overlay = invisible_ratio >= 0.5 AND image_coverage >= 0.8 (confidence=1.0)
     otherwise -> untrusted (mixed)
 
-Dependency: pypdfium2 + pypdf (backend already depends on both; PyMuPDF is
-no longer imported here). This module does NOT live in docuvision-core —
-Pro is the sole consumer after Lite removal.
+Dependency: the R-005 package B engine stack — pypdfium2 / pdfplumber /
+pypdf (this module imports pypdfium2 + pypdf directly; pdfplumber serves
+the words path in ``table_backfill``). PyMuPDF is no longer imported here.
+This module does NOT live in docuvision-core — Pro is the sole consumer
+after Lite removal.
 """
 
 from __future__ import annotations

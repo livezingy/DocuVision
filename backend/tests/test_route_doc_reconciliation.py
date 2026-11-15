@@ -217,7 +217,7 @@ def test_rest_doc_reconciliation() -> None:
 @pytest.mark.asyncio
 async def test_batch_create_rejects_per_order_dir_escape(monkeypatch, tmp_path) -> None:
     """越界 per_order_output_dir（.. 穿越 / base 外绝对路径）→ 路由 422，
-    且不落任何批次（confine 发生在建目录/存文件之前，batch.py:196 < :219）。"""
+    且不落任何批次（confine 发生在建目录/存文件之前，batch.py:224 < :228）。"""
     import httpx
 
     from app.core import config as config_module

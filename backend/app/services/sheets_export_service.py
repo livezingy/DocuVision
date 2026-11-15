@@ -37,11 +37,11 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.services.batch_service import BatchJob, BatchTask, TaskStatus
 
-__all__ = ["build_sheets_rows", "export_batch_to_sheets"]
+__all__ = ["DEFAULT_WORKSHEET", "build_sheets_rows", "export_batch_to_sheets"]
 
 # Identity columns always first; field columns follow in mapping-result order.
 _IDENTITY_COLUMNS = ("batch_id", "task_id", "file_name")
-_DEFAULT_WORKSHEET = "MappedRows"
+DEFAULT_WORKSHEET = "MappedRows"
 
 # Per-call HTTPS cap (connect, read) seconds, via HTTPClient.set_timeout.
 # gspread 6.2.1 defaults to None = requests' unbounded wait; without this a
@@ -185,7 +185,7 @@ def export_batch_to_sheets(
     *,
     credentials_file: str,
     spreadsheet_id: str,
-    worksheet_name: str = _DEFAULT_WORKSHEET,
+    worksheet_name: str = DEFAULT_WORKSHEET,
     client_builder: Optional[ClientBuilder] = None,
 ) -> Dict[str, Any]:
     """Upsert the batch's mapping-result rows into the target worksheet.

@@ -87,10 +87,10 @@ Self-hosted n8n allows `$env` in expressions unless `N8N_BLOCK_ENV_ACCESS_IN_NOD
 | Template element | Source of truth | Evidence |
 |------------------|-----------------|----------|
 | Trigger type `n8n-nodes-base.microsoftOutlookTrigger` typeVersion 1, event default `messageReceived` | n8n source | MicrosoftOutlookTrigger.node.ts:21 (`version: 1`), :122-129 (Trigger On / default) |
-| Graph query selects `subject` (used by the PO filter) | n8n source | MicrosoftOutlookTrigger.node.ts:73 (field list `id,conversationId,subject,bodyPreview,from,...`) |
+| Graph query selects `subject` (used by the PO filter) | n8n source | trigger/GenericFunctions.ts:72-73 (field list `id,conversationId,subject,bodyPreview,from,...`) |
 | `options.downloadAttachments` → binary fields `attachment_0`, `attachment_1`, ... | n8n source | trigger/MessageDescription.ts:124-136 (attachmentsPrefix description: index appended, `attachment_` → `attachment_0`); poll path trigger/GenericFunctions.ts:193-203 |
 | Attachment binary field name resolved by expression (first binary field) | n8n httpRequest source | HttpRequest/V3/Description.ts:603-607 (`inputDataFieldName` accepts an expression) |
-| `Is PO mail?` — IF contains on `$json.subject`, keyword via `$env.DOCUVISION_PO_SUBJECT_KEYWORD` (fallback literal `PO`) | trigger output + IF node | subject per MicrosoftOutlookTrigger.node.ts:73; operator `contains` per IF v2 conditions schema (IfV2.node.ts:55-56) |
+| `Is PO mail?` — IF contains on `$json.subject`, keyword via `$env.DOCUVISION_PO_SUBJECT_KEYWORD` (fallback literal `PO`) | trigger output + IF node | subject per trigger/GenericFunctions.ts:72-73; operator `contains` per IF v2 conditions schema (IfV2.node.ts:55-56) |
 | Intake posts the SAME attachment to `/api/v1/upload` and `/api/v1/analyze` in parallel | pack.md T1 intake chain (A4); T5 lists only "附件 POST upload" but upload never processes | backend/app/routers/analyzer.py:88 (upload docstring: no processing), :207-210 (analyze creates its own task_id); `task.completed` fires only from the analyze finalize step, backend/app/orchestration/steps/governance.py:117-128 |
 | `document_type` = `$env.DOCUVISION_PO_DOCUMENT_TYPE || 'auto'` | analyze Form default | backend/app/routers/analyzer.py:150 (`document_type: str = Form("auto")`) |
 | Callback payload mapping (task_id/file_name/status/validation_passed) | dispatch payload | backend/app/orchestration/steps/governance.py:120-127 |
@@ -112,7 +112,7 @@ python scripts/integrations/n8n_loop_smoke.py --base-url http://localhost:8000 \
 ```
 
 - Requires the backend running with §3 items 1–2 applied (`WEBHOOK_ENABLED=true`, non-empty `WEBHOOK_ADMIN_TOKEN`) — started by Ying per pack.md §4/§5.
-- `--file` example above uses `test_data/testfiles/invoices/invoice_sample_01.pdf` (verified present in the repo 2026-11-15; the illustrative `sample-invoice.png` from the task note does not exist in that directory — `ls` shows `README.md`, `invoice_line_items_sample.pdf`, `invoice_sample_01.pdf`, `multipage/`, `receipt-invoice-like.png`).
+- `--file` example above uses `test_data/testfiles/invoices/invoice_sample_01.pdf` (verified present in the repo 2026-11-15); the illustrative `sample-invoice.png` also exists in the same directory (tracked since ae3852a) — either file works with the smoke script; an earlier draft wrongly claimed it missing (corrected 2026-11-16).
 - **Script status declaration**: `scripts/integrations/` did not exist at the time of this README's writing (measured `ls` 2026-11-15). The command shape above is the agreed contract; once the script lands, its actual `--help` / flags are authoritative and this section should be re-verified. Not executed in this task — no pass/fail claim is made here.
 - The smoke's own callback receiver must satisfy the SSRF gate (non-loopback/private address, webhook_service.py:21-30, 89-90); on a single host with no such address the dispatch self-check cannot pass without a backend-side bypass change, which is out of scope for T1/T5 (see Known issues).
 
@@ -134,13 +134,13 @@ python scripts/integrations/n8n_loop_smoke.py --base-url http://localhost:8000 \
 
 | Field | Behavior at the backend | Evidence |
 |-------|------------------------|----------|
-| `per_order_output_dir` omitted or empty (with `options.per_order=true`) | Backend default `<settings.OUTPUT_DIR>/per_order/<batch_id>` | backend/app/services/per_order_export_service.py:44-45; opt-in gate backend/app/routers/batch.py:163; dispatch backend/app/routers/batch.py:138-174 |
-| `per_order_output_dir` escapes OUTPUT_DIR (`..` traversal, other drive) | `ValueError` at batch creation → **HTTP 422** | backend/app/routers/batch.py:185-204 (raise at :204); ValueError text backend/app/services/per_order_export_service.py:58-66; confinement docstring names the n8n watch-dir use case (per_order_export_service.py:39-42) |
+| `per_order_output_dir` omitted or empty (with `options.per_order=true`) | Backend default `<settings.OUTPUT_DIR>/per_order/<batch_id>` | backend/app/services/per_order_export_service.py:53-54; opt-in gate backend/app/routers/batch.py:163; dispatch backend/app/routers/batch.py:138-174 |
+| `per_order_output_dir` escapes OUTPUT_DIR (`..` traversal, other drive) | `ValueError` at batch creation → **HTTP 422** | backend/app/routers/batch.py:185-204 (raise at :204); ValueError raise backend/app/services/per_order_export_service.py:64-66; confinement docstring names the n8n watch-dir use case (per_order_export_service.py:39-42) |
 | `GET /api/v1/batch/{batch_id}/export.csv` | query `mode` ∈ {kie, summary, failures} default `kie`, `validation_passed_only` bool; `text/csv` + `Content-Disposition` `batch_<id>_<mode>.csv` | backend/app/routers/batch_export.py:44-66 |
 
 The n8n-side `$env.DOCUVISION_WATCH_DIR` written by the Outlook Flow B is a **separate output** from the backend per-order dir: they coincide only if the operator mounts the same volume and maps paths deliberately. The backend never receives nor returns the n8n watch path.
 
-**HMAC verification limitation:** `X-DocuVision-Signature` = HMAC-SHA256(secret, raw body) hex (webhook_service.py:146-147, body serialized `json.dumps(..., ensure_ascii=True)` :139). The n8n Webhook node exposes parsed JSON (`{headers, params, query, body}` — n8n source Webhook.node.ts:344-347), not raw bytes, and a JS re-serialization does not reproduce Python's byte layout; byte-exact verification needs a fronting proxy. The templates do not fake an HMAC check node.
+**HMAC verification:** `X-DocuVision-Signature` = HMAC-SHA256(secret, raw body) hex (webhook_service.py:146-147, body serialized `json.dumps(..., ensure_ascii=True)` :139). Byte-exact verification in n8n is possible without a fronting proxy: enable the Webhook node's `options.rawBody` (n8n source Webhook.node.ts:338-356 — the output item then carries `binary.data` = base64 of the raw request body), and a Code node can base64-decode it and compute HMAC-SHA256 over the exact bytes Python signed. The templates ship without the verify node (`rawBody` off by default); turn it on when you need strict verification.
 
 ## 8. Known issues / constraints (verified against source, not fixed by the templates)
 

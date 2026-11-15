@@ -210,7 +210,7 @@ def main() -> int:
             analyze = client.post(
                 f"{base}/api/v1/analyze",
                 files={"file": (file_name, fh.read(), mime)},
-                data={"document_type": "auto"},  # bool Form 字段不传（analyzer.py:160-161 注释：true/false 字符串会验证报错）
+                data={"document_type": "auto"},  # bool Form 字段不传（analyzer.py:181-182 注释：true/false 字符串会验证报错）
             )
         if analyze.status_code != 200:
             return _fail(f"analyze 失败: {analyze.status_code} {analyze.text[:200]}")

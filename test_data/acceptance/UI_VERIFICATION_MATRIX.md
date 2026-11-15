@@ -30,7 +30,7 @@ cd frontend && npm run test:e2e
 | 套件 | 路径 | 后端 |
 |------|------|------|
 | Vitest | `frontend/tests/unit/queue.test.js`, `envelope_display.test.js` | 无 |
-| Playwright | `frontend/tests/e2e/process-smoke.e2e.js`, `process-queue.e2e.js`, `process-table-mapping.e2e.js`, `process-pdf-tools.e2e.js`, `batch-table-mapping.e2e.js` | **Mock** |
+| Playwright | `frontend/tests/e2e/process-smoke.e2e.js`, `process-queue.e2e.js`, `process-table-mapping.e2e.js`, `process-pdf-tools.e2e.js`, `process-quality-panel.e2e.js`, `batch-table-mapping.e2e.js` | **Mock** |
 
 ### 2.2 用例映射（当前已落地）
 

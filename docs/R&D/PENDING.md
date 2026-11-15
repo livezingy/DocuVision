@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **21** 条）
+## 待确认（本区共 **22** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-042` `P-043` `P-047` `P-048`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-042` `P-043` `P-047` `P-048` `P-049`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -593,3 +593,11 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **待查方向**：① PROMPT_CHECK（`kie_configs/coi.yaml:v3.2`）在分支上的实际内容与 P-034 验收轮（`dcf99a2`）是否一致；② `EVIDENCE_TEXT_FIRST` 旗标 / warmup env 组合差异；③ `dcf99a2..8a45ba6` 间 KIE 层（kie_configs / kie_qwen_service / prompt）git 变更清单；④ KIE 模型非确定性（P-034 有 marker 波动先例）。
 - **裁决预分支**：prompt/旗标组合差异 → 复跑对照即收口；KIE 层真回归 → 按 P-034 判据面立案修复；两种结论均不改 R-005/P-046 的引擎面结论。
 - **指针**：`docs/R&D/runs/R-005/attachments/fitz_abc_p046_closure.md` §10.1/§10.3｜`scripts/cloud/cloud_round_test.sh`｜P-034（retained）X2 口径。
+
+### P-049 · kie_template_id 键无 document_type 门禁即激活 schema 表格映射——v1.5 KIE 接线时复核（2026-11-16 立项，R-003 审查触发式）
+> status: open · since: 2026-11-16
+- **现象**：`backend/app/services/kie/schema_mapping.py:41,126`（R-003/P-042 T2 落地）——`resolve_mapping_config` 对带 `kie_template_id` 的批次直接激活表格列映射，不经 document_type 门禁。该键现为 KIE 侧保留键（`resolve_custom_schema` 未接线，`query_fields.py:29-33` 注明 analyze Form 尚未暴露），**当前无活跃消费者、非回归**。
+- **触发条件**：v1.5 KIE 接线（analyze Form 暴露 `kie_template_id` 或 `resolve_custom_schema` 接线）时复核——届时为 KIE 选模板将静默开启表格列映射并改写 MappedRows 导出面，语义相撞。
+- **候选处置**：键门禁（document_type 白名单）或键改名（`table_template_id` 与 KIE 模板键分离）；由接线批次顺带处置，不单独施工。
+- **来源与登记**：R-003 施工独立审查 low（2026-11-15，详见 verdict 草案 §审查）；批次 C 规划项经 Ying 2026-11-16 批登记。
+- **指针**：`docs/R&D/runs/R-003/steps/p042-egress-verdict-draft.md`｜P-042（retained 候选，施工已落地）｜R-003 pack v1.2 §2 T2。

@@ -1,11 +1,11 @@
 """Page-level text-layer trust measurement (shared leaf; multi-domain contract).
 
 Measures the physical properties of a PDF page's native text layer —
-invisible rendered character ratio (Tr3 via ``Page.get_texttrace()``),
-full-page image coverage (``Page.get_image_info()``), font signatures and
-``(cid:N)`` placeholder rate — and turns them into a conservative verdict
-plus raw signals. Each consumer brings its own question to the same public
-result:
+invisible rendered character ratio (Tr 3 text objects via ``pypdfium2``),
+full-page image coverage (image object bounds via ``pypdfium2``), font
+signatures (``pypdf`` resource walk) and the ToUnicode-missing font
+character rate — and turns them into a conservative verdict plus raw
+signals. Each consumer brings its own question to the same public result:
 
   * table backfill (``table_backfill``): is this layer safe to overwrite
     table cells from? — the E1 gatekeeper question; the thresholds and the
@@ -19,29 +19,32 @@ result:
     vocabulary (single source of truth).
 
 The module itself is domain-neutral: no service state, stdlib plus deferred
-PyMuPDF only. Registered as a shared leaf in ``service_domain_map.json``
-(P-038 ruling D, 2026-10-25). Behaviour is untouched — the previous
-docstring framed the module solely as the E1 backfill gatekeeper; P-032's
-zero-touch covers behaviour, and the wording change is recorded with the
-ruling.
+pypdfium2 / pypdf only (fitz surface replaced per R-005 package B; signal
+equivalence was probed empirically in
+``docs/R&D/runs/R-005/attachments/r005v2_fitz_surface_replacement_probe.py``).
+Registered as a shared leaf in ``service_domain_map.json`` (P-038 ruling D,
+2026-10-25). Verdict vocabulary, thresholds and signal keys are unchanged —
+only the extraction engines underneath moved (see ``_cid_rate`` for the one
+registered semantic change).
 
 Per v1.8-design §3.1:
     trusted = (invisible_ratio < 0.2) AND (image_coverage < 0.5)
     overlay = invisible_ratio >= 0.5 AND image_coverage >= 0.8 (confidence=1.0)
     otherwise -> untrusted (mixed)
 
-Dependency: PyMuPDF only (backend already depends on it). This module does
-NOT live in docuvision-core — Pro is the sole consumer after Lite removal,
-so core does not gain a fitz dependency.
+Dependency: pypdfium2 + pypdf (backend already depends on both; PyMuPDF is
+no longer imported here). This module does NOT live in docuvision-core —
+Pro is the sole consumer after Lite removal.
 """
 
 from __future__ import annotations
 
+import io
 import re
+import weakref
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
-
-_CID_RE = re.compile(r"\(cid:\d+\)")
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 # Verdicts (single source of truth; file_type_detector consumes these).
 VERDICT_TEXT_LAYER = "text_layer"
@@ -58,137 +61,317 @@ class PageTrustResult:
     signals: Dict[str, Any]    # raw signal values (debug log + quality layer)
 
 
-def _span_char_count(span: Dict[str, Any]) -> int:
-    """Return character count of a texttrace span, defensively."""
-    chars = span.get("chars")
-    if isinstance(chars, (list, tuple)):
-        return len(chars)
-    text = span.get("text")
-    if isinstance(text, str):
-        return len(text)
-    return 0
+# --- pypdf resource cache ---------------------------------------------------
+# One ``PdfReader`` per pdfium ``PdfDocument`` (weak-keyed: the entry dies with
+# the document). ``pypdf.PdfReader`` pages are needed for the /Resources/Font
+# walk and the /ToUnicode presence check, which pdfium cannot express.
+_PYPDF_READERS: "weakref.WeakKeyDictionary[Any, Any]" = weakref.WeakKeyDictionary()
 
 
-def _trace_stats(page: Any) -> Tuple[int, int]:
-    """Return ``(total_chars, invisible_chars)`` from ``get_texttrace()``.
+def _pypdf_page_of(page: Any, page_index: Any) -> Any:
+    """pypdf page for a pdfium page's ``(document, 0-based index)`` pair.
 
-    ``get_texttrace()`` returns a flat list of span dicts. A span's ``type``
-    field encodes the PDF text rendering mode (Tr); 3 is invisible (render
-    mode 3: neither fill nor stroke). Defensive against nested block/line
-    shapes seen in some bindings.
+    Reads the source the pdfium document was opened from (``PdfDocument._input``:
+    a ``Path``/``str`` path, raw bytes or a file-like object) and caches the
+    ``PdfReader`` on the document. Returns ``None`` on any failure — callers
+    then degrade to the pdfium text-object font fallback (fail-soft, same
+    shape as the previous ``get_fonts`` ``except`` branch)."""
+    if page_index is None:
+        return None
+    try:
+        import pypdf
 
-    KNOWN UPSTREAM RISK: PyMuPDF's ``get_texttrace()`` has a refcount bug that
-    can hard-crash the interpreter (`none_dealloc: deallocating None`) when
-    accumulating traces across many pages. It is a C-level fault, so Python
-    try/except cannot catch it. Mitigations in place:
-      * the analyze path only calls this per table-bearing page
-        (see ``table_backfill.backfill_tables``), not per document page;
-      * ``requirements.txt`` pins PyMuPDF ``<1.26.0`` — versions above that
-        (observed: 1.27.2.3) are known to trigger it.
-    Verify with the GATEKEEPER-STABILITY gate before release.
-    """
+        index = int(page_index)
+        if index < 0:
+            return None
+        doc = getattr(page, "pdf", None) or getattr(page, "parent", None)
+        if doc is None:
+            return None
+        reader = _PYPDF_READERS.get(doc)
+        if reader is None:
+            source = getattr(doc, "_input", None)
+            if isinstance(source, Path):
+                reader = pypdf.PdfReader(str(source))
+            elif isinstance(source, str):
+                reader = pypdf.PdfReader(source)
+            elif isinstance(source, (bytes, bytearray)):
+                reader = pypdf.PdfReader(io.BytesIO(bytes(source)))
+            elif hasattr(source, "read"):
+                reader = pypdf.PdfReader(source)
+            else:
+                return None
+            _PYPDF_READERS[doc] = reader
+        return reader.pages[index]
+    except Exception:
+        return None
+
+
+def _page_font_resources(pypdf_page: Any) -> Dict[str, Any]:
+    """Resolved ``/Resources`` dict for a pypdf page, walking ``/Parent`` for
+    inherited resources (PDF spec 7.8.3; mirrors fitz page-scoped semantics)."""
+    node = pypdf_page
+    depth = 0
+    while node is not None and depth < 64:
+        resources = node.get("/Resources")
+        if resources is not None:
+            resources = resources.get_object()
+            if isinstance(resources, dict):
+                return resources
+        parent = node.get("/Parent")
+        node = parent.get_object() if parent is not None else None
+        depth += 1
+    return {}
+
+
+def _normalize_font_name(name: str) -> str:
+    """Comparable font-name form for cross-engine matching: drop the leading
+    ``/``, the subset tag (``ABCDEF+``) and all whitespace, lowercase."""
+    name = name.lstrip("/")
+    if "+" in name:
+        name = name.split("+", 1)[1]
+    return re.sub(r"\s+", "", name).lower()
+
+
+def _text_obj_stats(page: Any) -> Tuple[int, int, Dict[str, int], List[str]]:
+    """``(total_chars, invisible_chars, chars_by_font, obj_font_names)`` from
+    the page's text objects (pypdfium2 raw walk).
+
+    Invisible = ``FPDFTextObj_GetTextRenderMode`` ==
+    ``FPDF_TEXTRENDERMODE_INVISIBLE`` (render mode 3: neither fill nor
+    stroke; measured value 3, probe S1). Char counts come from
+    ``PdfTextObj.extract()`` per object — probe S1 verified the fitz
+    ``get_texttrace()`` span counts (total 39 / invisible 19 on the Tr3
+    fixture) reproduce exactly. Defensive against per-object extraction
+    failures (single-object failure counts 0 chars, same as a span without
+    ``chars``/``text`` in the previous implementation)."""
+    import pypdfium2 as pdfium
+    import pypdfium2.raw as pdfium_c
+
     total = 0
     invisible = 0
+    chars_by_font: Dict[str, int] = {}
+    obj_fonts: List[str] = []
     try:
-        trace = page.get_texttrace()
+        textpage = page.get_textpage()
     except Exception:
-        return 0, 0
-    if not isinstance(trace, list):
-        return 0, 0
-
-    spans: list = []
-    for item in trace:
-        if not isinstance(item, dict):
-            continue
-        if "spans" in item:
-            spans.extend(item.get("spans", []) or [])
-        elif "lines" in item:
-            for line in item.get("lines", []) or []:
-                if isinstance(line, dict):
-                    spans.extend(line.get("spans", []) or [])
-        else:
-            spans.append(item)
-
-    for span in spans:
-        if not isinstance(span, dict):
-            continue
-        count = _span_char_count(span)
-        total += count
-        if span.get("type") == 3:
-            invisible += count
-    return total, invisible
+        return 0, 0, {}, []
+    try:
+        try:
+            objs = list(
+                page.get_objects(
+                    filter=[pdfium_c.FPDF_PAGEOBJ_TEXT], max_depth=2, textpage=textpage
+                )
+            )
+        except Exception:
+            return 0, 0, {}, []
+        for obj in objs:
+            try:
+                text = obj.extract() or ""
+            except Exception:
+                text = ""
+            try:
+                render_mode = int(pdfium_c.FPDFTextObj_GetTextRenderMode(obj))
+            except Exception:
+                render_mode = None
+            try:
+                font_name = obj.get_font().get_base_name() or ""
+            except Exception:
+                font_name = ""
+            count = len(text)
+            total += count
+            if render_mode == int(pdfium_c.FPDF_TEXTRENDERMODE_INVISIBLE):
+                invisible += count
+            if font_name:
+                chars_by_font[font_name] = chars_by_font.get(font_name, 0) + count
+                obj_fonts.append(font_name)
+        return total, invisible, chars_by_font, obj_fonts
+    finally:
+        try:
+            textpage.close()
+        except Exception:
+            pass
 
 
 def _image_coverage(page: Any) -> float:
-    """Union area of image bboxes divided by page area."""
-    import fitz
+    """Image coverage: the bounding box of all clipped image bboxes, divided
+    by the page area.
 
-    rect = page.rect
-    area = float(rect.width * rect.height)
+    Semantics preserved from the fitz implementation, whose ``fitz.Rect``
+    ``|`` chain produced the *bounding box* of the clipped image rects (not
+    the exact union area); the probe (S2, single image) cannot distinguish
+    the two, so the bounding-box math is kept for value equivalence.
+
+    ``PdfObject.get_bounds()`` returns ``(l, b, r, t)`` bottom-left origin;
+    ``page.get_size()`` matches the fitz ``page.rect`` rotation semantics
+    (probe S2: equal coverage 0.053 on the f4 fixture; on rotated pages both
+    engines clip the unrotated object bounds against the rotated page rect,
+    so the value carries the same bias as before).
+
+    REGISTERED GAP (R-005 package B): pdfium's ``FPDF_PAGEOBJ`` enumeration
+    covers page content only — images drawn inside annotation appearance
+    streams are invisible to it (fitz ``get_image_info`` did include them).
+    Measured example: pub_bmc page 1 — fitz 0.6105 (4 content images + 1
+    annotation-appearance image stretching the bbox) vs pypdfium2 0.0017
+    (content images only); verdict mixed -> text_layer on that page.
+    Diagnostic-direction impact only: under-counting coverage biases toward
+    ``text_layer`` trust; the E1 consumer (table backfill) still runs the
+    per-cell T1/T2/T3 + sanity gates, and the evidence M5 predicate does not
+    read ``image_coverage`` at all."""
+    import pypdfium2 as pdfium
+    import pypdfium2.raw as pdfium_c
+
+    try:
+        width, height = page.get_size()
+    except Exception:
+        return 0.0
+    area = float(width) * float(height)
     if area <= 0:
         return 0.0
     try:
-        images = page.get_image_info(xrefs=True)
+        images = list(page.get_objects(filter=[pdfium_c.FPDF_PAGEOBJ_IMAGE], max_depth=2))
     except Exception:
         return 0.0
-    if not isinstance(images, list):
+    clipped: List[Tuple[float, float, float, float]] = []
+    for obj in images:
+        try:
+            l, b, r, t = obj.get_bounds()
+        except Exception:
+            continue
+        l = max(float(l), 0.0)
+        b = max(float(b), 0.0)
+        r = min(float(r), float(width))
+        t = min(float(t), float(height))
+        if r <= l or t <= b:
+            continue
+        clipped.append((l, b, r, t))
+    if not clipped:
         return 0.0
-    union = fitz.Rect()
-    for im in images:
-        bbox = im.get("bbox") if isinstance(im, dict) else None
-        if not bbox:
-            continue
-        r = fitz.Rect(bbox) & rect
-        if r.is_empty or r.get_area() <= 0:
-            continue
-        union |= r
-    return union.get_area() / area
+    u_l = min(rect[0] for rect in clipped)
+    u_b = min(rect[1] for rect in clipped)
+    u_r = max(rect[2] for rect in clipped)
+    u_t = max(rect[3] for rect in clipped)
+    return (u_r - u_l) * (u_t - u_b) / area
 
 
-def _font_signals(page: Any) -> Dict[str, Any]:
-    """Font diversity and GlyphLessFont (Tesseract OCR) signature hit."""
-    try:
-        fonts = page.get_fonts(full=True)
-    except Exception:
-        fonts = []
-    if not isinstance(fonts, list):
-        fonts = []
+def _font_signals(page: Any, page_index: Any, fallback_names: List[str]) -> Dict[str, Any]:
+    """Font diversity and GlyphLessFont (Tesseract OCR) signature hit.
+
+    Primary: ``pypdf`` walk of the page's ``/Resources/Font`` dictionaries
+    (resource-level semantics equal to fitz ``get_fonts(full=True)`` — probe
+    S3: both report ``Helvetica`` / ``Segoe UI Symbol Regular``). Fallback:
+    the pdfium text-object font names — they only cover fonts actually used
+    by text objects (probe S3: ``SegoeUISymbol`` differs from the resource
+    ``BaseFont``), so they step in only when the resource walk fails or
+    yields nothing.
+
+    REGISTERED GAP (R-005 package B): the walk does not descend into
+    annotation appearance streams or form XObject resources, which fitz
+    ``get_fonts(full=True)`` did include; ``font_count`` can read lower on
+    such pages (measured: pub_bmc pages drop 8->4 .. 10->9). Diagnostic
+    signal only — no verdict branch reads ``font_count``."""
+    import pypdf
+
     basefonts = set()
     glyphless = False
-    for f in fonts:
-        basefont = (f[3] if (isinstance(f, (list, tuple)) and len(f) > 3) else "") or ""
-        if basefont:
-            basefonts.add(basefont)
-        combined = " ".join(str(x) for x in (f if isinstance(f, (list, tuple)) else []))
-        if "GlyphLessFont" in combined:
-            glyphless = True
+    pypdf_page = _pypdf_page_of(page, page_index)
+    if pypdf_page is not None:
+        try:
+            fonts_res = _page_font_resources(pypdf_page).get("/Font")
+            fonts_res = fonts_res.get_object() if fonts_res is not None else {}
+            if isinstance(fonts_res, dict):
+                for _key, value in fonts_res.items():
+                    try:
+                        font = value.get_object() if value is not None else None
+                    except Exception:
+                        font = None
+                    if not isinstance(font, dict):
+                        continue
+                    basefont = font.get("/BaseFont") or ""
+                    basefont = str(basefont)
+                    if basefont:
+                        basefonts.add(basefont)
+                    if "GlyphLessFont" in basefont:
+                        glyphless = True
+        except Exception:
+            basefonts = set()
+            glyphless = False
+    if not basefonts:
+        for name in fallback_names or []:
+            if name:
+                basefonts.add(name)
+                if "GlyphLessFont" in name:
+                    glyphless = True
     return {"font_count": len(basefonts), "glyphless_font": glyphless}
 
 
-def _cid_rate(page: Any) -> float:
-    """Ratio of ``(cid:N)`` placeholder occurrences to total text length."""
-    try:
-        text = page.get_text("text") or ""
-    except Exception:
-        text = ""
-    if not text:
+def _cid_rate(page: Any, page_index: Any, chars_by_font: Dict[str, int], total_chars: int) -> float:
+    """Ratio of text-object characters rendered with fonts that lack a
+    ``/ToUnicode`` CMap.
+
+    SEMANTIC CHANGE (R-005 package B, registered): the fitz implementation
+    counted literal ``(cid:N)`` placeholders produced by fitz text
+    extraction. pypdfium2 extraction does not emit that placeholder shape,
+    so the old computation would silently read ``0.0`` on the new engine.
+    The signal key stays ``cid_rate``; the value now compares the pypdf
+    ``/Resources/Font`` dicts for missing ``/ToUnicode`` entries against the
+    per-font character counts of the page's text objects (cross-engine name
+    matching is subset-tag/whitespace/case-insensitive). Diagnostic signal
+    only — it feeds ``signals`` and no verdict branch. Fails soft to ``0.0``
+    when the pypdf page is unavailable (no ``page_index``) or any step
+    raises."""
+    pypdf_page = _pypdf_page_of(page, page_index)
+    if pypdf_page is None or not chars_by_font or total_chars <= 0:
         return 0.0
-    return len(_CID_RE.findall(text)) / len(text)
+    try:
+        fonts_res = _page_font_resources(pypdf_page).get("/Font")
+        fonts_res = fonts_res.get_object() if fonts_res is not None else {}
+        if not isinstance(fonts_res, dict):
+            return 0.0
+        missing: set = set()
+        for _key, value in fonts_res.items():
+            try:
+                font = value.get_object() if value is not None else None
+            except Exception:
+                font = None
+            if not isinstance(font, dict):
+                continue
+            if font.get("/ToUnicode") is None:
+                basefont = str(font.get("/BaseFont") or "")
+                if basefont:
+                    missing.add(_normalize_font_name(basefont))
+        if not missing:
+            return 0.0
+        affected = sum(
+            count
+            for name, count in chars_by_font.items()
+            if _normalize_font_name(name) in missing
+        )
+        return affected / total_chars
+    except Exception:
+        return 0.0
 
 
-def judge_page_trust(page: "Any") -> PageTrustResult:
+def judge_page_trust(page: Any, page_index: int | None = None) -> PageTrustResult:
     """Judge whether a page's text layer is trustworthy (E1 gatekeeper).
 
     Conservative by design: only clearly born-digital pages (near-zero
     invisible rendering AND below-threshold image coverage) are trusted.
     Everything ambiguous falls through to untrusted so backfill is never
     applied to a possibly-untrustworthy layer.
+
+    ``page`` is a ``pypdfium2.PdfPage``. ``page_index`` (0-based) enables the
+    pypdf ``/Resources/Font`` walk behind the ``font_count`` / ``glyphless_font``
+    / ``cid_rate`` signals; without it those signals degrade to the pdfium
+    text-object font fallback (``cid_rate`` then reads ``0.0``). Verdict
+    vocabulary, thresholds and signal keys are unchanged from the fitz
+    implementation; ``cid_rate`` carries the one registered semantic change
+    (see :func:`_cid_rate`).
     """
-    total_chars, invisible_chars = _trace_stats(page)
+    total_chars, invisible_chars, chars_by_font, obj_fonts = _text_obj_stats(page)
     invisible_ratio = (invisible_chars / total_chars) if total_chars else 0.0
     image_coverage = _image_coverage(page)
-    font_signals = _font_signals(page)
-    cid_rate = _cid_rate(page)
+    font_signals = _font_signals(page, page_index, obj_fonts)
+    cid_rate = _cid_rate(page, page_index, chars_by_font, total_chars)
 
     signals = {
         "invisible_ratio": round(invisible_ratio, 4),

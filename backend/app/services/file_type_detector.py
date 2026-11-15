@@ -46,16 +46,16 @@ def detect_file_type_pages(file_path: str) -> Dict[str, Any]:
             "born_digital": False,
         }
 
-    import fitz
+    import pypdfium2 as pdfium
 
     page_types: List[str] = []
     page_verdicts: List[str] = []
     page_confidences: List[float] = []
 
     try:
-        with fitz.open(str(path)) as doc:
-            for page in doc:
-                result = judge_page_trust(page)
+        with pdfium.PdfDocument(str(path)) as pdf:
+            for index in range(len(pdf)):
+                result = judge_page_trust(pdf[index], page_index=index)
                 page_verdicts.append(result.verdict)
                 page_confidences.append(result.confidence)
                 page_types.append("digital" if result.trusted else "scan")

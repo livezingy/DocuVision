@@ -207,14 +207,14 @@ def trusted_page_set(file_path: str) -> Set[int]:
     """1-based page numbers whose text layer the E1 gatekeeper trusts (design A7)."""
     trusted: Set[int] = set()
     try:
-        import fitz
+        import pypdfium2 as pdfium
 
         from app.services.page_text_trust import judge_page_trust
 
-        with fitz.open(file_path) as doc:
-            for index in range(doc.page_count):
+        with pdfium.PdfDocument(file_path) as pdf:
+            for index in range(len(pdf)):
                 try:
-                    if judge_page_trust(doc[index]).trusted:
+                    if judge_page_trust(pdf[index], page_index=index).trusted:
                         trusted.add(index + 1)
                 except Exception:  # single-page failure -> untrusted (fail-closed)
                     continue

@@ -1,6 +1,8 @@
 """Tests for the E1 page-level text-layer trust gatekeeper.
 
-Synthesises two fixture classes in-test (no external assets, only PyMuPDF):
+Synthesises two fixture classes in-test (no external assets; PyMuPDF is used
+only to CREATE the fixture PDFs — the judgement entry point receives
+pypdfium2 pages, as in production):
   * real text layer (visible text, no image)      -> trusted / text_layer
   * OCR overlay layer (full-page image + Tr3 text) -> overlay (confidence=1.0)
   * ambiguous (full-page image + visible text)     -> mixed / untrusted
@@ -9,6 +11,7 @@ Synthesises two fixture classes in-test (no external assets, only PyMuPDF):
 from __future__ import annotations
 
 import fitz
+import pypdfium2 as pdfium
 
 from app.services.page_text_trust import judge_page_trust
 
@@ -58,7 +61,7 @@ def _make_mixed_pdf(path) -> None:
 
 
 def _open_page(path):
-    doc = fitz.open(path)
+    doc = pdfium.PdfDocument(path)
     try:
         return doc[0], doc
     except Exception:

@@ -11,6 +11,7 @@ import os
 import sys
 
 import fitz
+import pypdfium2 as pdfium
 import pytest
 
 _SCRIPTS_TRIAL = os.path.abspath(
@@ -48,9 +49,9 @@ def _write(doc, path) -> None:
 def test_bank_statement_generator_is_trusted(tmp_path) -> None:
     path = str(tmp_path / "bank_statement.pdf")
     _write(build_bank_statement(_font()), path)
-    doc = fitz.open(path)
+    doc = pdfium.PdfDocument(path)
     try:
-        result = judge_page_trust(doc[0])
+        result = judge_page_trust(doc[0], page_index=0)
         assert result.trusted, result.signals
         assert result.verdict == "text_layer"
     finally:
@@ -60,9 +61,9 @@ def test_bank_statement_generator_is_trusted(tmp_path) -> None:
 def test_symbol_grid_generator_is_trusted(tmp_path) -> None:
     path = str(tmp_path / "symbol_grid.pdf")
     _write(build_symbol_grid(_font()), path)
-    doc = fitz.open(path)
+    doc = pdfium.PdfDocument(path)
     try:
-        result = judge_page_trust(doc[0])
+        result = judge_page_trust(doc[0], page_index=0)
         assert result.trusted, result.signals
     finally:
         doc.close()

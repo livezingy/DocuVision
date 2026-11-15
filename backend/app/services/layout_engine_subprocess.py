@@ -328,11 +328,12 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
         ``failed_pages`` and skipped so the remaining pages still get a layout
         result — instead of failing the whole document on a single bad page.
         """
-        import fitz
-        from PIL import Image
+        import pypdfium2
 
-        doc = fitz.open(pdf_path)
-        page_count = len(doc)
+        pdf = pypdfium2.PdfDocument(pdf_path)
+        # init_forms 必须在 pdf[i] 取页前调用（formenv 在取柄时绑定）；普通 PDF 无害 no-op。
+        pdf.init_forms()
+        page_count = len(pdf)
         all_elements: List[Dict[str, Any]] = []
         page_layouts: List[Dict[str, Any]] = []
         failed_pages: List[int] = []
@@ -340,18 +341,12 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
 
         try:
             for page_num in range(page_count):
-                page = doc[page_num]
-                mat = fitz.Matrix(2, 2)
-                pix = page.get_pixmap(matrix=mat)
+                page = pdf[page_num]
+                bitmap = page.render(scale=2.0)  # scale=2.0 ↔ fitz Matrix(2, 2)
                 img_path = f"{pdf_path}_layout_{page_num}.png"
 
-                # Ensure RGB (3 channels); PPStructureV3 expects RGB, not RGBA.
-                if pix.alpha:
-                    img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
-                    img = img.convert("RGB")
-                    img.save(img_path)
-                else:
-                    pix.save(img_path)
+                # to_pil() 恒为 RGB 3 通道（PPStructureV3 要求 RGB，非 RGBA）
+                bitmap.to_pil().save(img_path)
 
                 try:
                     # Forward the 1-based page number so the worker produces
@@ -387,7 +382,7 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
                         except Exception:
                             pass
         finally:
-            doc.close()
+            pdf.close()
 
         if failed_pages:
             logger.warning(

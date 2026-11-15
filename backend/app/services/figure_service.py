@@ -297,28 +297,24 @@ class FigureService:
     def _render_pdf_pages(
         self, file_path: str, figures: List[Dict[str, Any]]
     ) -> Dict[int, Tuple[Any, int, int]]:
-        """Render the referenced PDF pages with the SAME 2x matrix used by
+        """Render the referenced PDF pages with the SAME 2x scale used by
         layout_service._analyze_pdf, so element bboxes align with pixels."""
-        import fitz
-        from PIL import Image
+        import pypdfium2
 
         wanted = sorted({int(f.get("page", 1) or 1) for f in figures})
         pages: Dict[int, Tuple[Any, int, int]] = {}
-        doc = fitz.open(file_path)
+        pdf = pypdfium2.PdfDocument(file_path)
+        # init_forms 必须在 pdf[i] 取页前调用（formenv 在取柄时绑定）；普通 PDF 无害 no-op。
+        pdf.init_forms()
         try:
-            page_count = len(doc)
+            page_count = len(pdf)
             for page_no in wanted:
                 if page_no < 1 or page_no > page_count:
                     continue
-                pix = doc[page_no - 1].get_pixmap(matrix=fitz.Matrix(2, 2))
-                if pix.alpha:
-                    img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
-                    img = img.convert("RGB")
-                else:
-                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                pages[page_no] = (img, pix.width, pix.height)
+                img = pdf[page_no - 1].render(scale=2.0).to_pil()  # scale=2.0 ↔ fitz Matrix(2, 2)，恒 RGB
+                pages[page_no] = (img, img.width, img.height)
         finally:
-            doc.close()
+            pdf.close()
         return pages
 
     def _load_image_source(

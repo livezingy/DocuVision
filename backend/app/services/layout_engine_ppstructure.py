@@ -226,31 +226,26 @@ class PPStructureEngine(_LayoutGeometryMixin, LayoutPPParseMixin, LayoutPPVisual
             return await self._analyze_image(file_path)
 
     async def _analyze_pdf(self, pdf_path: str) -> Dict[str, Any]:
-        import fitz
-        from PIL import Image
+        import pypdfium2
         import numpy as np
 
-        doc = fitz.open(pdf_path)
-        page_count = len(doc)  # 保存页数，避免关闭后访问
+        pdf = pypdfium2.PdfDocument(pdf_path)
+        # init_forms 必须在 pdf[i] 取页前调用（formenv 在取柄时绑定）；普通 PDF 无害 no-op。
+        pdf.init_forms()
+        page_count = len(pdf)  # 保存页数，避免关闭后访问
         all_elements = []
         page_layouts = []
 
         try:
             for page_num in range(page_count):
-                page = doc[page_num]
+                page = pdf[page_num]
 
-                mat = fitz.Matrix(2, 2)
-                pix = page.get_pixmap(matrix=mat)
+                bitmap = page.render(scale=2.0)  # scale=2.0 ↔ fitz Matrix(2, 2)
                 img_path = f"{pdf_path}_layout_{page_num}.png"
 
-                # 确保图像�?RGB 格式�?通道），而不�?RGBA�?通道�?
-                if pix.alpha:
-                    # 如果�?alpha 通道，转换为 RGB
-                    img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
-                    img = img.convert("RGB")
-                    img.save(img_path)
-                else:
-                    pix.save(img_path)
+                # to_pil() 恒为 RGB 3 通道（to_numpy 是 BGR，禁直喂 predict）
+                img = bitmap.to_pil()
+                img.save(img_path)
 
                 result = self._call_engine(img_path, vis_src_path=img_path)
 
@@ -264,7 +259,7 @@ class PPStructureEngine(_LayoutGeometryMixin, LayoutPPParseMixin, LayoutPPVisual
                 if os.path.exists(img_path):
                     os.remove(img_path)
         finally:
-            doc.close()
+            pdf.close()
 
         return {
             "engine": "PP-StructureV3",

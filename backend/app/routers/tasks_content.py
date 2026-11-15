@@ -316,26 +316,21 @@ async def get_page_image(task_id: str, page_num: int = 1):
     try:
         if file_ext == '.pdf':
             # Convert PDF page to image
-            import fitz  # PyMuPDF
-            from PIL import Image
+            import pypdfium2
 
-            doc = fitz.open(file_path)
-            if page_num < 1 or page_num > len(doc):
+            doc = pypdfium2.PdfDocument(file_path)
+            # init_forms 必须在 pdf[i] 取页前调用（formenv 在取柄时绑定）；普通 PDF 无害 no-op。
+            doc.init_forms()
+            page_count = len(doc)
+            if page_num < 1 or page_num > page_count:
                 doc.close()
-                raise HTTPException(status_code=400, detail=f"Page number {page_num} out of range (1-{len(doc)})")
+                raise HTTPException(status_code=400, detail=f"Page number {page_num} out of range (1-{page_count})")
 
             page = doc[page_num - 1]  # 0-indexed
 
-            # Render page to image with 2x scale for better quality
-            mat = fitz.Matrix(2, 2)
-            pix = page.get_pixmap(matrix=mat)
-
-            # Convert to PIL Image
-            if pix.alpha:
-                img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
-                img = img.convert("RGB")
-            else:
-                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            # Render page to image with 2x scale for better quality;
+            # to_pil() 恒为 RGB 3 通道
+            img = page.render(scale=2.0).to_pil()
 
             doc.close()
 
@@ -363,7 +358,7 @@ async def get_page_image(task_id: str, page_num: int = 1):
     except ImportError:
         raise HTTPException(
             status_code=500,
-            detail="PyMuPDF (fitz) is required for PDF conversion. Please install: pip install PyMuPDF"
+            detail="pypdfium2 is required for PDF conversion. Please install: pip install pypdfium2"
         )
     except Exception as e:
         logger.error(f"Error converting page to image: {e}")

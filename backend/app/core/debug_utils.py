@@ -92,7 +92,7 @@ def save_debug_overlay_image(
 
     try:
         from PIL import Image as PILImage, ImageDraw
-        import fitz  # PyMuPDF
+        import pypdfium2
     except Exception as e:
         logger.warning(f"[DebugOverlay] Dependencies unavailable: {e}")
         return None
@@ -100,18 +100,17 @@ def save_debug_overlay_image(
     try:
         ext = os.path.splitext(file_path)[1].lower()
         if ext == ".pdf":
-            doc = fitz.open(file_path)
+            pdf = pypdfium2.PdfDocument(file_path)
             try:
-                if page_num < 1 or page_num > len(doc):
+                # init_forms 必须在 pdf[i] 取页前调用（formenv 在取柄时绑定）；普通 PDF 无害 no-op。
+                pdf.init_forms()
+                if page_num < 1 or page_num > len(pdf):
                     return None
-                page = doc[page_num - 1]
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                if pix.alpha:
-                    image = PILImage.frombytes("RGBA", [pix.width, pix.height], pix.samples).convert("RGB")
-                else:
-                    image = PILImage.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                page = pdf[page_num - 1]
+                # render(scale=2.0) ↔ fitz Matrix(2, 2)；to_pil() 恒为 RGB 3 通道
+                image = page.render(scale=2.0).to_pil()
             finally:
-                doc.close()
+                pdf.close()
         else:
             image = PILImage.open(file_path).convert("RGB")
 

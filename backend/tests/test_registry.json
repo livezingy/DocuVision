@@ -35,6 +35,10 @@
   "kind": "phase-a-ci",
   "note": "Route contract freeze (pure AST scan, no app import)"
  },
+ "test_route_doc_reconciliation.py": {
+  "kind": "full",
+  "note": "Rest-doc reconciliation: docs/integrations/rest-api.md == app.openapi() == frozen 55 (DOCUVISION_REST_DOC=write regenerates) + R-003/P-042 API recon: batch create 422 on per_order_output_dir escape + R-004 T1 recon: n8n template HTTP-node endpoint refs in openapi paths"
+ },
  "test_route_inventory.py": {
   "kind": "phase-a-ci",
   "note": "Route inventory, frozen 55 endpoints (pure AST scan)"
@@ -247,6 +251,7 @@
   "kind": "full"
  },
  "test_webhook_service.py": {
-  "kind": "full"
+  "kind": "full",
+  "note": "Webhook delivery + T2 recon: finalize dual-capture (webhook task.completed <=> WS completed), succeeded alias gates, WS pinned frame (R-004)"
  }
 }

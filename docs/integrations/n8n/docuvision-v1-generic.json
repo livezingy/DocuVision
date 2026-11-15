@@ -1,0 +1,343 @@
+{
+  "name": "DocuVision v1 Generic (intake / task.completed callback / result fetch)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Flow A — Intake\n\nSources checked against the repo (as-of 2026-11-15, branch feat/r003-p042-egress):\n\n- `POST /api/v1/upload` — multipart, `file` required (backend/tests/snapshots/openapi_baseline.json → components.schemas.Body_upload_file_api_v1_upload_post.required). Response has NO response_model in the OpenAPI snapshot (200 schema {}); actual keys come from the handler: task_id / file_name / status:\"uploaded\" / message / page_count (backend/app/routers/analyzer.py:114-120).\n- `POST /api/v1/analyze` — multipart, `file` required, all other Form fields optional with backend defaults (backend/app/routers/analyzer.py:140-174). Response model = TaskStatus, required: task_id / status / progress / message / created_at (backend/tests/snapshots/openapi_baseline.json → components.schemas.TaskStatus).\n- The two branches run in parallel on purpose: the task_id returned by /upload is preview-only (analyzer.py:88 docstring: \"only uploads the file without processing, allowing immediate preview\"); /analyze always accepts its own file and creates a NEW task_id (analyzer.py:207-210). No endpoint consumes the /upload task_id to start processing.\n- Boolean Form fields: FastAPI parses \"1\"/\"0\" as True/False; the strings \"true\"/\"false\" cause 422 (comment at backend/app/routers/analyzer.py:181-182). This template sends only `file` so backend defaults apply.",
+        "height": 620,
+        "width": 420,
+        "color": 4
+      },
+      "id": "0331774a-f564-40e6-8a4f-12252a230609",
+      "name": "Sticky Note - Flow A",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-720, -60]
+    },
+    {
+      "parameters": {
+        "content": "## Flow B — task.completed callback\n\n- Webhook receives the dispatch body {event, payload, timestamp} (backend/app/services/webhook_service.py:138).\n- payload fields per dispatch site: task_id / file_name / status / validation_passed (backend/app/orchestration/steps/governance.py:120-127). status is always \"completed\" here (governance.py:85). validation_passed comes from (result.get(\"kie_validation\") or {}).get(\"validation_passed\") — may be null when KIE is off.\n- DocuVision dispatches ONLY two events: task.completed and batch.completed (webhook_service.py:73, 94). There is no failure callback — poll GET /api/v1/tasks/{task_id} for status \"failed\".\n- GET /api/v1/tasks/{task_id}/result returns 400 \"Task not completed\" unless status is \"succeeded\" or \"completed\", 404 if unknown task (backend/app/routers/tasks_content.py:30-37). Safe to call right after task.completed because status is already \"completed\" (governance.py:85, persisted governance.py:113).\n- HMAC signature: header X-DocuVision-Signature = HMAC-SHA256(secret, raw body) hex (webhook_service.py:146-147). See README: strict verification needs the raw request bytes, which the n8n Webhook node does not expose (body is already parsed JSON).",
+        "height": 500,
+        "width": 420,
+        "color": 5
+      },
+      "id": "cfaefe54-c325-4589-a06a-8d270573ab01",
+      "name": "Sticky Note - Flow B",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-720, 520]
+    },
+    {
+      "parameters": {
+        "content": "## Flow C — one-off subscription registration\n\n`POST /api/v1/webhooks` gates (backend/app/routers/webhooks.py:57-77):\n\n1. Backend env WEBHOOK_ENABLED=true (default false, alias DOCUVISION_WEBHOOK_ENABLED — backend/app/core/config.py:102-105); otherwise dispatch silently returns [] (webhook_service.py:129-130).\n2. Header X-DocuVision-Admin-Token must equal WEBHOOK_ADMIN_TOKEN (config.py:106-109); empty token fail-closes with 401 (webhooks.py:24-46, raise at :45).\n3. Request is application/x-www-form-urlencoded: url required, events default \"task.completed,batch.completed\", secret default \"\" (openapi_baseline → Body_register_webhook_api_v1_webhooks_post). 200 returns {subscription_id, url, events}.\n4. SSRF gate: URLs on loopback/private networks are rejected with 400 (webhook_service.py:21-30, 89-90 → webhooks.py:71-72). $env.DOCUVISION_CALLBACK_URL must be a non-loopback address reachable from the DocuVision host — a same-machine localhost n8n URL will be rejected (see README known issues).\n\nRun this flow once per environment; token/secret are injected via n8n env vars, never stored in the template.",
+        "height": 360,
+        "width": 420,
+        "color": 6
+      },
+      "id": "899afe92-0c6b-42c8-8c0c-218a60fe0de4",
+      "name": "Sticky Note - Flow C",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-720, 1080]
+    },
+    {
+      "parameters": {},
+      "id": "0348989d-90e2-4fdc-854a-7a18f6acecae",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-260, 0]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $env.DOCUVISION_SAMPLE_FILE_PATH }}",
+        "options": {}
+      },
+      "id": "0cf6f125-3733-4b25-a3ec-4a2ef850112d",
+      "name": "Read Sample File (binary)",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [-40, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCUVISION_BASE_URL }}/api/v1/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e05c75ac-69f0-4f76-bfbf-1cfe699d14ea",
+      "name": "POST /api/v1/upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, -160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCUVISION_BASE_URL }}/api/v1/analyze",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "35f05f99-1507-4fa5-8edd-0e810df8e304",
+      "name": "POST /api/v1/analyze",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 160]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "docuvision-task-completed",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "60e16f07-46b9-4296-b9c2-bb99fa61fabd",
+      "name": "DocuVision Callback (task.completed)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "webhookId": "c9b93906-2477-4f81-82e5-78774f3ae252",
+      "position": [-260, 640]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "55de49a3-de40-4cde-84d6-152869a41a24",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "task.completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ee38e8c9-0be2-406c-9ba2-942e1d83e6c9",
+      "name": "Is task.completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-40, 640]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1aebd545-8f7c-44d6-a486-eb897cc6a4b0",
+              "name": "task_id",
+              "value": "={{ $json.body.payload.task_id }}",
+              "type": "string"
+            },
+            {
+              "id": "db3aeae0-7ec7-4737-9746-80ca01411450",
+              "name": "file_name",
+              "value": "={{ $json.body.payload.file_name }}",
+              "type": "string"
+            },
+            {
+              "id": "e724bafc-ff19-4221-a5f5-a7f3c09a652d",
+              "name": "status",
+              "value": "={{ $json.body.payload.status }}",
+              "type": "string"
+            },
+            {
+              "id": "8e94e3fa-a7fc-451f-9ed4-1848955c8a7b",
+              "name": "validation_passed",
+              "value": "={{ $json.body.payload.validation_passed }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c75ebb75-20c3-4490-9b41-44a3940462fd",
+      "name": "Map Callback Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 560]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DOCUVISION_BASE_URL }}/api/v1/tasks/{{ $json.task_id }}/result",
+        "options": {}
+      },
+      "id": "d1f7b0a2-2b1e-4a3d-9e0e-0f1a2b3c4d5e",
+      "name": "GET /api/v1/tasks/{task_id}/result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 560]
+    },
+    {
+      "parameters": {},
+      "id": "a2b3c4d5-e6f7-4890-a1b2-c3d4e5f60718",
+      "name": "Other Event (no-op)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [200, 760]
+    },
+    {
+      "parameters": {},
+      "id": "b4c5d6e7-f809-4a1b-8c2d-3e4f5a6b7c29",
+      "name": "Manual Trigger (one-off registration)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-260, 1240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCUVISION_BASE_URL }}/api/v1/webhooks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-DocuVision-Admin-Token",
+              "value": "={{ $env.DOCUVISION_WEBHOOK_ADMIN_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $env.DOCUVISION_CALLBACK_URL }}"
+            },
+            {
+              "name": "events",
+              "value": "task.completed"
+            },
+            {
+              "name": "secret",
+              "value": "={{ $env.DOCUVISION_WEBHOOK_SECRET || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f0a1b2c3-d4e5-4678-9abb-cdef01234567",
+      "name": "POST /api/v1/webhooks (register)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-40, 1240]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Sample File (binary)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sample File (binary)": {
+      "main": [
+        [
+          {
+            "node": "POST /api/v1/upload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "POST /api/v1/analyze",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DocuVision Callback (task.completed)": {
+      "main": [
+        [
+          {
+            "node": "Is task.completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is task.completed?": {
+      "main": [
+        [
+          {
+            "node": "Map Callback Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Other Event (no-op)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Callback Payload": {
+      "main": [
+        [
+          {
+            "node": "GET /api/v1/tasks/{task_id}/result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger (one-off registration)": {
+      "main": [
+        [
+          {
+            "node": "POST /api/v1/webhooks (register)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

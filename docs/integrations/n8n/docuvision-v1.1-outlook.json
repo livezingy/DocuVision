@@ -1,0 +1,465 @@
+{
+  "name": "DocuVision v1.1 Outlook Watch (inbox → intake → task.completed → CSV watch dir)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Flow A — Outlook inbox → intake\n\nSources checked against the repo (as-of 2026-11-15, branch feat/r003-p042-egress):\n\n- Trigger parameters verified in n8n source: event default `messageReceived` (MicrosoftOutlookTrigger.node.ts:122-129); Graph query selects `subject` (MicrosoftOutlookTrigger.node.ts:73); `options.downloadAttachments` puts each attachment into binary fields named `<attachmentsPrefix><index>` = `attachment_0`, `attachment_1`, ... (trigger/MessageDescription.ts:124-136). Credential (Azure AD OAuth) is configured in n8n credentials — never in this file.\n- The multipart `inputDataFieldName` resolves the FIRST binary field via expression, so it works with any attachment count.\n- `POST /api/v1/upload` — multipart `file` required (backend/tests/snapshots/openapi_baseline.json → Body_upload_file_api_v1_upload_post.required); response keys task_id / file_name / status:\"uploaded\" / message / page_count from the handler (backend/app/routers/analyzer.py:114-120). Preview-only: its task_id does NOT feed analyze (docstring analyzer.py:88; analyze creates a NEW task_id from its own file, analyzer.py:207-210). Both branches therefore carry the same attachment.\n- `POST /api/v1/analyze` — multipart `file` + optional Form fields (analyzer.py:140-174); response model TaskStatus (openapi_baseline → components.schemas.TaskStatus). IMPORTANT: pack.md §2 T5 lists only \"附件 POST upload\", but upload never triggers processing — the `task.completed` callback only fires from the finalize step of the analyze pipeline (backend/app/orchestration/steps/governance.py:117-128), so this template posts the attachment to BOTH endpoints; analyze is the processing entry.\n- `document_type` falls back to `auto` via expression; boolean Form fields accept \"1\"/\"0\" only (analyzer.py:181-182), not \"true\"/\"false\".\n- LOAD DISCIPLINE (R-003/P-042 hardening): this template sends NO `per_order_output_dir` anywhere and never calls the batch API; no absolute path is sent to or read from the backend. See Flow C note and README for the batch-chain trust boundary.",
+        "height": 640,
+        "width": 440,
+        "color": 4
+      },
+      "id": "f68e364c-6bff-4976-8e82-869edf65ea72",
+      "name": "Sticky Note - Flow A",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-940, -80]
+    },
+    {
+      "parameters": {
+        "content": "## Flow B — task.completed → CSV to watch dir\n\n- Callback body {event, payload, timestamp} (backend/app/services/webhook_service.py:138); payload task_id / file_name / status / validation_passed per dispatch site governance.py:120-127; status always \"completed\" (governance.py:85). Only task.completed and batch.completed are dispatched (webhook_service.py:73, 94); failures have NO callback — poll GET /api/v1/tasks/{task_id} (backend/app/routers/tasks.py:31-37).\n- GET /api/v1/tasks/{task_id}/result: 400 \"Task not completed\" unless status in (\"succeeded\",\"completed\"), 404 unknown task (backend/app/routers/tasks_content.py:30-37). Result body is untyped in the snapshot (200 schema {}); keys assembled in finalize_step governance.py:89-109, including view merged from the envelope (governance.py:95-99).\n- view.fields is a DICT: field name → scalar string, or list for items/line_items/findings (assignment backend/app/orchestration/steps/envelope.py:151,153; empty scalars backfilled with \"\", list keys untouched — backend/app/services/kie/field_merge.py:60+ backfill_schema_keys). The Code node flattens it one row per field; list/object values are JSON-stringified; if view.fields is absent (KIE off) it emits a single `__no_kie_fields__` row so the CSV is still observable — it does NOT invent field values.\n- The watch directory is an n8n-side path injected via $env.DOCUVISION_WATCH_DIR (mounted volume). It is a DIFFERENT output from the backend per-order watch dir <OUTPUT_DIR>/per_order/<batch_id>, which the backend writes itself only for batch chains (backend/app/routers/batch.py:138-174).\n- Dispatch timeout 15s / 2 retries (webhook_service.py:142,151-161): the Webhook node responds immediately (responseMode onReceived).",
+        "height": 560,
+        "width": 440,
+        "color": 5
+      },
+      "id": "3d17642d-da2e-4fc3-a5a3-8f1ab60c52e1",
+      "name": "Sticky Note - Flow B",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-940, 520]
+    },
+    {
+      "parameters": {
+        "content": "## Flow C — one-off registration + batch trust boundary\n\nRegistration gates (backend/app/routers/webhooks.py:57-77): backend WEBHOOK_ENABLED=true (default false, alias DOCUVISION_WEBHOOK_ENABLED, config.py:102-105; dispatch no-ops otherwise, webhook_service.py:129-130); header X-DocuVision-Admin-Token must equal WEBHOOK_ADMIN_TOKEN (config.py:106-109; empty token fail-closes 401, webhooks.py:24-46); 200 → {subscription_id, url, events}.\n\nSSRF gate: loopback/private callback URLs are rejected with 400 (webhook_service.py:21-30, 89-90) — $env.DOCUVISION_CALLBACK_URL must be non-loopback from the DocuVision host.\n\nTRUST BOUNDARY for batch chains (R-003/P-042, cited by this template's load discipline):\n- `per_order_output_dir` is a caller-supplied option of POST /api/v1/batch `options` JSON (batch.py:207-212). Omit it (or send \"\") → backend default `<settings.OUTPUT_DIR>/per_order/<batch_id>` (backend/app/services/per_order_export_service.py:44-45; opt-in export only fires when options.per_order=true, batch.py:163).\n- Escape attempt → ValueError at batch creation mapped to HTTP 422 (batch.py:185-204, raise at :204; ValueError text per_order_export_service.py:58-66). The service docstring names this exact n8n watch-dir use case (per_order_export_service.py:39-42).\n- Therefore: never put a deployment-local absolute path into any request field; let the backend confine it.",
+        "height": 520,
+        "width": 440,
+        "color": 6
+      },
+      "id": "1f49876e-a723-4176-bf83-4981d273d33b",
+      "name": "Sticky Note - Flow C",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-940, 1140]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "event": "messageReceived",
+        "filters": {
+          "hasAttachments": true
+        },
+        "options": {
+          "downloadAttachments": true,
+          "attachmentsPrefix": "attachment_"
+        }
+      },
+      "id": "7ce59530-50d8-4bc9-aab0-d181223be930",
+      "name": "Outlook Trigger (inbox watch)",
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1,
+      "position": [-440, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "83d48578-5565-4dae-ae9a-616fdda3caf5",
+              "leftValue": "={{ $json.subject || '' }}",
+              "rightValue": "={{ $env.DOCUVISION_PO_SUBJECT_KEYWORD || 'PO' }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6950e445-d643-4b28-bdb5-363fffaf87cf",
+      "name": "Is PO mail?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCUVISION_BASE_URL }}/api/v1/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "={{ Object.keys($binary || {})[0] || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1837d4e3-372b-4093-8ae7-f091f5cb86b6",
+      "name": "POST /api/v1/upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, -160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCUVISION_BASE_URL }}/api/v1/analyze",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "={{ Object.keys($binary || {})[0] || '' }}"
+            },
+            {
+              "name": "document_type",
+              "value": "={{ $env.DOCUVISION_PO_DOCUMENT_TYPE || 'auto' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "82843bcf-cb9c-43e4-bd6d-98c467899718",
+      "name": "POST /api/v1/analyze",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 120]
+    },
+    {
+      "parameters": {},
+      "id": "c776a379-45fb-4d5b-841f-dfa73ecf7a28",
+      "name": "Non-PO mail (no-op)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [40, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "docuvision-outlook-watch-csv",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "f5c4498a-d795-4a23-b287-8b9b8292cdd3",
+      "name": "DocuVision Callback (task.completed)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "webhookId": "6567f0c4-45a0-4590-b439-467c28d8530c",
+      "position": [-440, 560]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5ccb873f-71f8-4f38-abb3-bc60e45adc2d",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "task.completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "98f86f18-f472-46df-852e-d23e005e387f",
+      "name": "Is task.completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-200, 560]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f22fc35b-b48a-4861-8c1a-f3565cbfc7f9",
+              "name": "task_id",
+              "value": "={{ $json.body.payload.task_id }}",
+              "type": "string"
+            },
+            {
+              "id": "d3b8e69f-0828-445a-8086-cd110347e01d",
+              "name": "file_name",
+              "value": "={{ $json.body.payload.file_name }}",
+              "type": "string"
+            },
+            {
+              "id": "571c855a-60a3-4d8d-9763-9f80f8baefe4",
+              "name": "status",
+              "value": "={{ $json.body.payload.status }}",
+              "type": "string"
+            },
+            {
+              "id": "28c72906-978a-448b-af66-fbf07af21073",
+              "name": "validation_passed",
+              "value": "={{ $json.body.payload.validation_passed }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "36a765f7-0261-4f45-aefd-74a987aa6b94",
+      "name": "Map Callback Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [40, 480]
+    },
+    {
+      "parameters": {},
+      "id": "8163c4be-0602-43f8-b79b-fe2ca317c662",
+      "name": "Other Event (no-op)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [40, 700]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DOCUVISION_BASE_URL }}/api/v1/tasks/{{ $json.task_id }}/result",
+        "options": {}
+      },
+      "id": "bf4f6205-36b1-465a-9990-e32c52d5cb74",
+      "name": "GET /api/v1/tasks/{task_id}/result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 480]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Flatten DocuVision result.view.fields (a dict: field name -> scalar | list) into\n// one row per field for CSV output. Never invents values.\n// Sources (branch feat/r003-p042-egress, 2026-11-15):\n//   view[\"fields\"] = kie_fields            backend/app/orchestration/steps/envelope.py:151,153\n//   scalar keys backfilled \"\", list keys   backend/app/services/kie/field_merge.py (backfill_schema_keys)\n//   merged into result for GET result      backend/app/orchestration/steps/governance.py:95-99\nconst taskId = $('Map Callback Payload').first().json.task_id;\nconst fileName = $('Map Callback Payload').first().json.file_name;\nconst result = $json;\nconst view = result && typeof result === 'object' ? result.view : undefined;\nconst fields = view && typeof view === 'object' ? view.fields : undefined;\n\nif (!fields || typeof fields !== 'object') {\n  // KIE off or non-KIE document: emit an observable marker row instead of nothing.\n  return [{ json: { task_id: taskId, file_name: fileName, field: '__no_kie_fields__', value: '' } }];\n}\n\nconst rows = [];\nfor (const [name, value] of Object.entries(fields)) {\n  let v;\n  if (value === null || value === undefined) v = '';\n  else if (['string', 'number', 'boolean'].includes(typeof value)) v = String(value);\n  else v = JSON.stringify(value); // lists (items/line_items/findings) and objects\n  rows.push({ json: { task_id: taskId, file_name: fileName, field: name, value: v } });\n}\nreturn rows.length ? rows : [{ json: { task_id: taskId, file_name: fileName, field: '__no_kie_fields__', value: '' } }];"
+      },
+      "id": "c08d26db-ba5d-4acd-8052-21f22baa124c",
+      "name": "Extract KIE Fields to Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 480]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "fileName": "={{ $('Map Callback Payload').first().json.task_id }}.csv",
+        "options": {}
+      },
+      "id": "68a8e603-a5a5-47a6-b3ba-cbfdaa5005ed",
+      "name": "Convert to CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [700, 480]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $env.DOCUVISION_WATCH_DIR }}/{{ $('Map Callback Payload').first().json.task_id }}.csv",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "c306746b-f3c9-4b02-87c6-f2ae7a8af7be",
+      "name": "Write CSV to Watch Dir",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [920, 480]
+    },
+    {
+      "parameters": {},
+      "id": "87ad45bb-34cb-4c00-bb74-56e1d604e509",
+      "name": "Manual Trigger (one-off registration)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-440, 1300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCUVISION_BASE_URL }}/api/v1/webhooks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-DocuVision-Admin-Token",
+              "value": "={{ $env.DOCUVISION_WEBHOOK_ADMIN_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $env.DOCUVISION_CALLBACK_URL }}"
+            },
+            {
+              "name": "events",
+              "value": "task.completed"
+            },
+            {
+              "name": "secret",
+              "value": "={{ $env.DOCUVISION_WEBHOOK_SECRET || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "48403446-bbdb-48f4-85b8-cf6ff26c8a41",
+      "name": "POST /api/v1/webhooks (register)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-200, 1300]
+    }
+  ],
+  "connections": {
+    "Outlook Trigger (inbox watch)": {
+      "main": [
+        [
+          {
+            "node": "Is PO mail?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PO mail?": {
+      "main": [
+        [
+          {
+            "node": "POST /api/v1/upload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "POST /api/v1/analyze",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Non-PO mail (no-op)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DocuVision Callback (task.completed)": {
+      "main": [
+        [
+          {
+            "node": "Is task.completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is task.completed?": {
+      "main": [
+        [
+          {
+            "node": "Map Callback Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Other Event (no-op)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Callback Payload": {
+      "main": [
+        [
+          {
+            "node": "GET /api/v1/tasks/{task_id}/result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET /api/v1/tasks/{task_id}/result": {
+      "main": [
+        [
+          {
+            "node": "Extract KIE Fields to Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract KIE Fields to Rows": {
+      "main": [
+        [
+          {
+            "node": "Convert to CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to CSV": {
+      "main": [
+        [
+          {
+            "node": "Write CSV to Watch Dir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger (one-off registration)": {
+      "main": [
+        [
+          {
+            "node": "POST /api/v1/webhooks (register)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

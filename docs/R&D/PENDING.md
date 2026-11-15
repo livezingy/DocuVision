@@ -554,13 +554,16 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
 - **指针**：`docs/R&D/runs/split/` 已于 2026-10-25 收尾批删除（03 §4 候选池实证与 L1 强度裁决表明细进 git 历史；候选池定稿真源即上文本条正文）｜ P-037（还债批次序列与消解目标）。
 
-### P-047 · R-005 云测 V4「PADDLE_PDX_PDF_RENDER_SCALE 源码命中」声明未证——归因待查（2026-11-15，自 fitz_abc_p046_closure.md §10 云测登记立项）
-> status: open · since: 2026-11-15
-- **现象（云端实测，`r005_cloud_verify.sh` evidence 模式 @ `e284cd2`，A10 GPU，PIN_DRIFT=0）**：V4 段 `RENDER_SCALE_VERIFY=NOT_VERIFIED_NO_SOURCE_HIT`、`source_hits=0`——R-005 pack sec.0 声称的 `PADDLE_PDX_PDF_RENDER_SCALE` 官方源码命中在 paddlex 3.3.12 + pypdfium2 5.13.0 构建上未复现（脚注纪律：paddlex 可用性失败不计命中——`paddlex_status=AVAILABLE`，是真 0 命中）。
-- **影响面**：不阻塞其他云测读数（V4 尺寸等值 `equal=True` 独立成立）；影响的是 pack sec.0「喂入尺度语义由 paddlex 环境变量锚定」的声明链。
-- **待查方向**：① paddlex 3.3.12 源码中该环境变量是否更名/移除（rg paddlex 源码 `RENDER_SCALE`）；② pypdfium2 5.13.0 与 paddlex 内部渲染路径的适配变化；③ pack sec.0 引述是否过时（写稿时 paddlex 版本不同）。
-- **裁决预分支**：变量已更名 → 更新 pack/闭包文档声明链；paddlex 不再暴露 → 按「喂入尺度由仓内预渲染自锚（R-005 已移除 paddlex PDF 路径依赖）」收口。
-- **指针**：`docs/R&D/runs/R-005/attachments/fitz_abc_p046_closure.md` §10.1/§10.3｜`scripts/cloud/r005_cloud_verify.sh` V4 段｜R-005 pack sec.0。
+### P-047 · R-005 云测 V4 RENDER_SCALE 预期项无源——已结 retained（幻影锚判例）（2026-11-15 立项，同日结案）
+> status: retained · since: 2026-11-15
+- **结案理由（三重实证 + 声明链更正）**：
+  ① **声明链无源**：`PADDLE_PDX_PDF_RENDER_SCALE` 在 pack 正文无出处——pack.md v2.1 0 命中；`pack-v1.0-archived.md` 本地不存在（bus-only，本地不可核）；声明唯一载体 = 探针 V4 自设预期 + README 行（rg 实证）。原立项措辞「pack sec.0 声称」不准确，已更正。
+  ② **paddlex 3.3.12 全量 grep 0 命中**：installed source os.walk 全 .py、无截断、paddlex AVAILABLE（非可用性豁免）——真 0 命中；公网精确串零索引（web/GitHub code search），公开文档仅有「PDF 渲染 scale 环境变量」行为描述、无精确名 → 该精确名在本栈不可证。
+  ③ **尺度语义现行真锚 = 仓内预渲染自锚**：R-005 `render(scale=2.0)` ×9 处固定（本分支），与 paddlex 内部渲染路径无关；V4 尺寸等值 equal=True 独立成立。
+- **readers.py PDFReaderBackend(zoom=2.0) = 幻影锚，不采信（反例证据）**：仓库树 / git 全历史（`-S` 0 提交）/ bus 镜像三重 0 命中；其唯一出处 = pack.md:104 的 P1-7 修复注记——以幻影锚结案即 P1-7 同族缺陷复发。**同族判例两条：①工具自设预期必须有 pack 出处（探针缺陷即缺陷，不因读数通过而豁免）；②锚点引用前必须三重验证（树 / 全历史 / bus）**。
+- **同源顺手项（已修）**：`r005_cloud_verify.sh` V4 预期措辞改为 `N/A_NO_PACK_ANCHOR` 形态（tools-only）。
+- **保留理由**：判例沉淀——「锚点三重验证 + 预期项出处纪律」对 R-006 M1（readers.py 若真立项须先落树）与后续云测探针编写直接适用。
+- **指针**：`fitz_abc_p046_closure.md` §10.1/§10.3｜`scripts/cloud/r005_cloud_verify.sh` V4 段｜p046tl-cloud-verdict.md（bus @bc5ab269）§2/§8。
 
 ### P-048 · KIE carrier 兜底样板句与 P-034 X2 验收口径不一致——归因待查（2026-11-15，自批次③ cloud_round 立项）
 > status: open · since: 2026-11-15

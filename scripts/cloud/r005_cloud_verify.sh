@@ -438,7 +438,11 @@ def cmd_pins():
 
 
 def cmd_v4():
-    """V4: fitz Matrix(2,2) vs pypdfium2 scale=2.0; resolve RENDER_SCALE in paddlex source."""
+    """V4: fitz Matrix(2,2) vs pypdfium2 scale=2.0 (hard gate).
+
+    RENDER_SCALE expectation RETIRED (P-047, 2026-11-15): the probe self-set it
+    with no pack anchor; paddlex 3.3.12 full-source grep = 0 hits and the exact
+    name has zero public index. Scan kept as informational only."""
     import fitz
     import pypdfium2
     path = make_tr3_fixture()
@@ -481,7 +485,7 @@ def cmd_v4():
     if paddlex_status.startswith("AVAILABLE") and hits:
         verify = "VERIFIED"
     elif paddlex_status.startswith("AVAILABLE"):
-        verify = "NOT_VERIFIED_NO_SOURCE_HIT (pack sec.0 claim unverified on this build)"
+        verify = "N/A_NO_PACK_ANCHOR (probe self-set expectation retired - P-047 closed 2026-11-15: no pack text carries this var; scale is repo-self-anchored)"
     else:
         verify = "NOT_VERIFIED_PADDLEX_UNAVAILABLE (local/no-GPU side; Cloud build must recheck)"
     lines.append("paddlex_status=%s" % paddlex_status)

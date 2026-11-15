@@ -71,17 +71,15 @@ def _page_words(page: Any) -> List[Any]:
         return []
 
     tops = sorted({float(w["top"]) for w in raw_words})
-    line_of: Dict[float, int] = {}
-    cluster: List[float] = [tops[0]]
+    clusters: List[List[float]] = [[tops[0]]]
     for top in tops[1:]:
-        if top <= cluster[-1] + 3.0:  # pdfplumber DEFAULT_Y_TOLERANCE
-            cluster.append(top)
+        if top <= clusters[-1][-1] + 3.0:  # pdfplumber DEFAULT_Y_TOLERANCE
+            clusters[-1].append(top)
         else:
-            for t in cluster:
-                line_of[t] = len(line_of)
-            cluster = [top]
-    for t in cluster:
-        line_of[t] = len(line_of)
+            clusters.append([top])
+    line_of: Dict[float, int] = {
+        t: line_no for line_no, cluster in enumerate(clusters) for t in cluster
+    }
 
     members_by_line: Dict[int, List[Any]] = {}
     for w in raw_words:

@@ -15,6 +15,7 @@ from app.services.table_backfill import (
     PROVENANCE_TEXT_MISMATCH,
     PROVENANCE_VISION,
     _finalize,
+    _page_words,
     backfill_table_cells,
     backfill_tables,
     is_candidate_cell,
@@ -404,3 +405,59 @@ def test_finalize_reason_counts_stay_nine_key_closed() -> None:
     assert sum(counts1.values()) == stats1["confirmed"] + stats1["backfilled"] + stats1["mismatch"]
     assert sum(counts2.values()) == 1
     assert counts2["geometric"] == 1
+
+
+class _FakePlumberPage:
+    """Minimal pdfplumber-page stand-in: only extract_words() is read."""
+
+    def __init__(self, raw_words):
+        self._raw_words = raw_words
+
+    def extract_words(self):
+        return self._raw_words
+
+
+def _raw_word(x0, top, x1, bottom, text):
+    # pdfplumber extract_words() dict (subset of the keys _page_words reads)
+    return {"x0": x0, "top": top, "x1": x1, "bottom": bottom, "text": text}
+
+
+def test_page_words_chains_mixed_size_visual_line() -> None:
+    # Regression (P-046 follow-up review): one visual line typeset at two
+    # font sizes yields tops 0.634pt apart (<< 3pt y_tolerance) -- the words
+    # must chain into ONE line with word_no ordered by x0, not split into a
+    # line per distinct top (which fragmented _gen_runs buckets / T2 keys).
+    page = _FakePlumberPage([
+        _raw_word(72.0, 91.277, 100.0, 103.5, "AAA"),  # 11pt
+        _raw_word(150.0, 90.643, 190.0, 104.0, "BBB"),  # 11.8pt, same baseline
+        _raw_word(72.0, 291.277, 120.0, 303.5, "ROW2"),  # separate visual row
+    ])
+    words = _page_words(page)
+    assert [(w[4], w[6], w[7]) for w in words] == [
+        ("AAA", 0, 0),
+        ("BBB", 0, 1),
+        ("ROW2", 1, 0),
+    ]
+
+
+def test_page_words_chain_accumulates_within_tolerance() -> None:
+    # tops 100 -> 102.5 -> 105 chain transitively (each <= prev + 3) into a
+    # single line; 105 alone exceeds 100 + 3. The y-box maps top/bottom 1:1
+    # and block stays constant (consumption contract, see _page_words).
+    page = _FakePlumberPage([
+        _raw_word(10.0, 100.0, 30.0, 112.0, "A"),
+        _raw_word(40.0, 102.5, 60.0, 114.0, "B"),
+        _raw_word(70.0, 105.0, 90.0, 116.5, "C"),
+        _raw_word(10.0, 200.0, 30.0, 212.0, "D"),
+    ])
+    words = _page_words(page)
+    assert [(w[4], w[6], w[7]) for w in words] == [
+        ("A", 0, 0),
+        ("B", 0, 1),
+        ("C", 0, 2),
+        ("D", 1, 0),
+    ]
+    a, d = words[0], words[-1]
+    assert a[:5] == [10.0, 100.0, 30.0, 112.0, "A"]
+    assert a[5] == 0  # block constant
+    assert d[1] == 200.0 and d[3] == 212.0  # top/bottom map 1:1

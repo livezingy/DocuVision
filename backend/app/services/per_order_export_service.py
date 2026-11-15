@@ -31,7 +31,40 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.batch_service import BatchJob, BatchTask, TaskStatus
 
-__all__ = ["build_order_csv", "export_batch_per_order"]
+__all__ = ["build_order_csv", "export_batch_per_order", "resolve_per_order_output_dir"]
+
+
+def resolve_per_order_output_dir(raw_dir: str, batch_id: str, base_dir: str) -> str:
+    """Resolve and confine the per-order watch directory (R-003/P-042
+    hardening, consumed by R-004 watch-dir flows: the batch API is callable by
+    external automation such as n8n, so a caller-chosen directory must stay
+    under the operator-controlled ``base_dir`` — ``settings.OUTPUT_DIR``).
+
+    Empty ``raw_dir`` -> ``<base>/per_order/<batch_id>`` (ERP watch default).
+    A relative path is read under ``base_dir``; an absolute path is allowed
+    only when it already resolves inside ``base_dir``. Anything that escapes
+    the base (``..`` traversal, a different drive on Windows) raises
+    ``ValueError`` — the routers layer maps that to HTTP 422 at batch
+    creation, and the completion dispatch treats it like any export failure
+    (swallowed, never affects batch final state).
+    """
+    base = os.path.realpath(str(base_dir))
+    raw = str(raw_dir or "").strip()
+    if not raw:
+        return os.path.join(base, "per_order", str(batch_id))
+    candidate = raw if os.path.isabs(raw) else os.path.join(base, raw)
+    resolved = os.path.realpath(candidate)
+    try:
+        contained = os.path.commonpath(
+            [os.path.normcase(base), os.path.normcase(resolved)]
+        ) == os.path.normcase(base)
+    except ValueError:
+        contained = False  # e.g. different drives on Windows — not contained
+    if not contained:
+        raise ValueError(
+            f"per_order_output_dir must stay under OUTPUT_DIR ({resolved!r} escapes {base!r})"
+        )
+    return resolved
 
 _UNSAFE_FILENAME_RE = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 _MAX_STEM_LEN = 100

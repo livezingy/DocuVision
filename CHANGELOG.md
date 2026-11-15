@@ -69,6 +69,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (webhook + Sheets + per-order, exports dispatched off the event loop via `asyncio.to_thread`),
   failures swallowed — batch final state unaffected. No new REST
   endpoint; no new services-layer cross-domain edge.
+- **P-042 hardening (R-003, consumed by R-004 watch-dir flows)**: `per_order_output_dir` is now confined
+  under `settings.OUTPUT_DIR` — new pure helper `resolve_per_order_output_dir` (empty → default
+  `<base>/per_order/<batch_id>`; relative → under base; absolute → allowed only inside base; `..`/
+  cross-drive escapes raise `ValueError`) with HTTP 422 at batch creation (`_confine_per_order_dir` in
+  `routers/batch.py`) and defensive re-confinement at the completion dispatch. Motivated by the R-004
+  integration boundary: external automation (n8n) calls the batch API, so a caller-chosen watch
+  directory must not become an arbitrary file-write primitive (review finding, low).
 - **P-042 T4 + e2e (R-003) — same-source-same-value assertion (AC3) and Pro e2e for one-config batch
   mapping (AC1 frontend half)**: (1) `backend/tests/test_export_service.py` gains
   `TestSameSourceSameValue` — the batch's mapping result (`mapped_table_rows` + T2 stamp) is one source

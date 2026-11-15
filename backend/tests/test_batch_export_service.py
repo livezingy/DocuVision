@@ -853,6 +853,64 @@ def test_export_batch_per_order_file_idempotent_on_rerun(tmp_path) -> None:
         assert open(path, "rb").read() == content  # same path overwritten in place
 
 
+def test_resolve_per_order_output_dir_defaults_and_confines(tmp_path) -> None:
+    import os
+
+    from app.services.per_order_export_service import resolve_per_order_output_dir
+
+    base = str(tmp_path)
+    # empty -> ERP watch default <base>/per_order/<batch_id>
+    default = resolve_per_order_output_dir("", "b123", base)
+    assert os.path.realpath(default) == os.path.realpath(os.path.join(base, "per_order", "b123"))
+    # relative path -> read under base, never outside it
+    rel = resolve_per_order_output_dir("watch/inbox", "b123", base)
+    assert os.path.realpath(rel) == os.path.realpath(os.path.join(base, "watch", "inbox"))
+    # absolute path already inside base -> allowed
+    inside = os.path.join(base, "watch2")
+    assert os.path.realpath(resolve_per_order_output_dir(inside, "b123", base)) == os.path.realpath(inside)
+
+
+def test_resolve_per_order_output_dir_rejects_escape(tmp_path) -> None:
+    import os
+
+    import pytest
+
+    from app.services.per_order_export_service import resolve_per_order_output_dir
+
+    base = str(tmp_path)
+    with pytest.raises(ValueError):
+        resolve_per_order_output_dir(os.path.join(base, "..", "escape"), "b123", base)
+    with pytest.raises(ValueError):
+        resolve_per_order_output_dir("../escape", "b123", base)
+
+
+def test_confine_per_order_dir_rejects_escape_with_422(tmp_path) -> None:
+    import pytest
+    from fastapi import HTTPException
+
+    from app.routers.batch import _confine_per_order_dir
+
+    raw = str(tmp_path / "outside_outputs")  # pytest tmp is not under settings.OUTPUT_DIR
+    opts = {"per_order": True, "per_order_output_dir": raw}
+    with pytest.raises(HTTPException) as exc_info:
+        _confine_per_order_dir(opts)
+    assert exc_info.value.status_code == 422
+    assert opts["per_order_output_dir"] == raw  # rejected value left untouched
+
+
+def test_confine_per_order_dir_accepts_relative_under_base(tmp_path, monkeypatch) -> None:
+    import os
+
+    from app.routers import batch as batch_router
+
+    monkeypatch.setattr(batch_router.settings, "OUTPUT_DIR", str(tmp_path))
+    opts = {"per_order": True, "per_order_output_dir": "watch/inbox"}
+    batch_router._confine_per_order_dir(opts)
+    assert os.path.realpath(opts["per_order_output_dir"]) == os.path.realpath(
+        os.path.join(str(tmp_path), "watch", "inbox")
+    )
+
+
 def test_export_batch_per_order_duplicate_stem_suffix_deterministic(tmp_path) -> None:
     import os
 
@@ -903,12 +961,17 @@ def test_export_batch_per_order_no_orders_writes_nothing(tmp_path) -> None:
 
 def test_batch_completed_hook_per_order_export(tmp_path, monkeypatch) -> None:
     import asyncio
+    import os
 
     from app.routers import batch as batch_router
     from app.services import per_order_export_service
 
+    # per_order_output_dir is confined under OUTPUT_DIR (P-042 hardening):
+    # point the base at the tmp dir so the explicit dir is inside it.
+    real_tmp = os.path.realpath(str(tmp_path))
+    monkeypatch.setattr(batch_router.settings, "OUTPUT_DIR", real_tmp)
     batch = _sheets_batch()
-    batch.options = {"per_order": True, "per_order_output_dir": str(tmp_path)}
+    batch.options = {"per_order": True, "per_order_output_dir": real_tmp}
     dispatched: list = []
 
     async def fake_webhook(payload):
@@ -933,7 +996,7 @@ def test_batch_completed_hook_per_order_export(tmp_path, monkeypatch) -> None:
 
     asyncio.run(batch_router._on_batch_completed({"batch_id": "sheet-batch"}))
     assert dispatched == [("webhook", "sheet-batch")]  # webhook unaffected (AC4)
-    assert seen == {"batch_id": "sheet-batch", "output_dir": str(tmp_path)}
+    assert seen == {"batch_id": "sheet-batch", "output_dir": real_tmp}
 
 
 def test_batch_completed_hook_per_order_fallback_dir_and_opt_out(monkeypatch) -> None:
@@ -968,7 +1031,10 @@ def test_batch_completed_hook_per_order_fallback_dir_and_opt_out(monkeypatch) ->
     monkeypatch.setattr(per_order_export_service, "export_batch_per_order", fake_export)
 
     asyncio.run(batch_router._on_batch_completed({"batch_id": "sheet-batch"}))
-    assert seen["output_dir"] == os.path.join(settings.OUTPUT_DIR, "per_order", "sheet-batch")
+    # resolver returns the realpath-absolute default under OUTPUT_DIR
+    assert os.path.realpath(seen["output_dir"]) == os.path.realpath(
+        os.path.join(settings.OUTPUT_DIR, "per_order", "sheet-batch")
+    )
 
     # opt-out: no per_order flag -> export skipped, webhook still fires (AC4)
     batch.options = {}

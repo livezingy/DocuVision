@@ -140,7 +140,10 @@ async def _dispatch_batch_per_order_export(payload: Dict[str, Any]) -> None:
 
     Opt-in per batch via ``options.per_order=True``; target directory from
     ``options.per_order_output_dir``, falling back to
-    ``<settings.OUTPUT_DIR>/per_order/<batch_id>`` (ERP watch semantics).
+    ``<settings.OUTPUT_DIR>/per_order/<batch_id>`` (ERP watch semantics); the
+    directory is re-confined here through ``resolve_per_order_output_dir`` —
+    batch creation already rejects escapes with 422, this is belt-and-braces
+    for options mutated through other paths.
     Local small-file writes, but still dispatched off the event loop via
     ``asyncio.to_thread`` (review round 1: one execution model for both
     export dispatches). Failures are swallowed to a debug log — export
@@ -148,7 +151,10 @@ async def _dispatch_batch_per_order_export(payload: Dict[str, Any]) -> None:
     webhook/Sheets dispatch).
     """
     try:
-        from app.services.per_order_export_service import export_batch_per_order
+        from app.services.per_order_export_service import (
+            export_batch_per_order,
+            resolve_per_order_output_dir,
+        )
 
         batch = batch_service.get_batch(str(payload.get("batch_id") or ""))
         if batch is None:
@@ -156,9 +162,11 @@ async def _dispatch_batch_per_order_export(payload: Dict[str, Any]) -> None:
         opts = batch.options or {}
         if not opts.get("per_order"):
             return
-        output_dir = str(opts.get("per_order_output_dir") or "").strip()
-        if not output_dir:
-            output_dir = os.path.join(settings.OUTPUT_DIR, "per_order", str(batch.batch_id))
+        output_dir = resolve_per_order_output_dir(
+            str(opts.get("per_order_output_dir") or ""),
+            str(batch.batch_id),
+            settings.OUTPUT_DIR,
+        )
         summary = await asyncio.to_thread(export_batch_per_order, batch, output_dir)
         logger.debug(f"Batch per-order export done: {summary}")
     except Exception as exc:
@@ -172,6 +180,28 @@ async def _on_batch_completed(payload: Dict[str, Any]) -> None:
     await _dispatch_batch_completed_webhook(payload)
     await _dispatch_batch_sheets_export(payload)
     await _dispatch_batch_per_order_export(payload)
+
+
+def _confine_per_order_dir(opts: Dict[str, Any]) -> None:
+    """R-003/P-042 hardening (consumed by R-004 watch-dir flows): the batch
+    API is callable by external automation (n8n), so a caller-chosen
+    ``per_order_output_dir`` must stay under ``settings.OUTPUT_DIR`` —
+    otherwise it is an arbitrary file-write primitive. Confined here at
+    creation time (HTTP 422 on escape): the completion dispatch is
+    fire-and-forget and cannot report back. The resolved (absolute,
+    inside-base) value is written back so the dispatch never sees a raw
+    unvalidated path."""
+    raw = str(opts.get("per_order_output_dir") or "").strip()
+    if not raw:
+        return
+    from app.services.per_order_export_service import resolve_per_order_output_dir
+
+    try:
+        opts["per_order_output_dir"] = resolve_per_order_output_dir(
+            raw, "", settings.OUTPUT_DIR
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.post("/api/v1/batch")
@@ -191,6 +221,7 @@ async def create_batch(
     if not isinstance(opts, dict):
         opts = {}
     _resolve_kie_query_fields_in_options(opts)
+    _confine_per_order_dir(opts)
 
     # Save files and create file list
     batch_dir = os.path.join(settings.UPLOAD_DIR, "batch_" + str(uuid.uuid4())[:8])

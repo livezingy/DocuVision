@@ -192,7 +192,13 @@
       "parameters": {
         "method": "GET",
         "url": "={{ $env.DOCUVISION_BASE_URL }}/api/v1/tasks/{{ $json.task_id }}/result",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
       },
       "id": "d1f7b0a2-2b1e-4a3d-9e0e-0f1a2b3c4d5e",
       "name": "GET /api/v1/tasks/{task_id}/result",

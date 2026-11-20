@@ -108,7 +108,7 @@ async def _dispatch_batch_sheets_export(payload: Dict[str, Any]) -> None:
     """
     try:
         from app.core.config import settings
-        from app.services.sheets_export_service import export_batch_to_sheets
+        from app.services.sheets_export_service import DEFAULT_WORKSHEET, export_batch_to_sheets
 
         credentials_file = str(settings.GOOGLE_SERVICE_ACCOUNT_FILE or "").strip()
         if not credentials_file:
@@ -122,7 +122,7 @@ async def _dispatch_batch_sheets_export(payload: Dict[str, Any]) -> None:
         spreadsheet_id = str(sheets_cfg.get("spreadsheet_id") or "").strip()
         if not spreadsheet_id:
             return
-        worksheet_name = str(sheets_cfg.get("worksheet") or "").strip() or "MappedRows"
+        worksheet_name = str(sheets_cfg.get("worksheet") or "").strip() or DEFAULT_WORKSHEET
         summary = await asyncio.to_thread(
             export_batch_to_sheets,
             batch,

@@ -51,6 +51,14 @@ Start with [architecture/module-map.md](architecture/module-map.md) for the curr
 | [release/README.md](release/README.md) | Historical release index (v1.6 and earlier); **from v1.7 on, [`../CHANGELOG.md`](../CHANGELOG.md) is the single entry point** for release notes |
 | [release/KNOWN_LIMITATIONS.md](release/KNOWN_LIMITATIONS.md) | Known limitations (living summary; applies through v1.8.3) |
 
+## Integrations
+
+| Doc | Purpose |
+|-----|---------|
+| [integrations/rest-api.md](integrations/rest-api.md) | REST API 全量文档（**generated**，手改无效；端点真源 = 仓内 OpenAPI 快照闸 + 冻结 55；对账用例 `backend/tests/test_route_doc_reconciliation.py`） |
+| [integrations/n8n/README.md](integrations/n8n/README.md) | n8n workflow templates（R-004 / P-043 T1+T5；导入 JSON `docuvision-v1-generic.json` / `docuvision-v1.1-outlook.json` + 逐字段真源对账表 + 闭环前置与半环 smoke 用法） |
+| [integrations/webhook-events.md](integrations/webhook-events.md) | Webhook 事件类型全表（**living**：task.completed / batch.completed 触发点·载荷·派发行为·WS 对照，每条带真源锚） |
+
 ## Component-local READMEs
 
 | Path | Scope |

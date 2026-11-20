@@ -125,6 +125,19 @@ class Settings(BaseSettings):
         ),
     )
 
+    # PaddleX model cache root — official models land under <root>/official_models.
+    # Empty string = PaddleX default (~/.paddlex). Bridged into the process env at
+    # import time (see below): paddlex.utils.cache resolves the cache home from
+    # os.environ at first paddlex import, and pydantic-settings does NOT export
+    # .env entries into os.environ on its own.
+    PADDLE_PDX_CACHE_HOME: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "DOCUVISION_PADDLE_PDX_CACHE_HOME",
+            "PADDLE_PDX_CACHE_HOME",
+        ),
+    )
+
     # KIE (Qwen2.5-VL) — HuggingFace id or local directory
     KIE_QWEN_MODEL_ID: str = Field(
         default=os.path.expanduser(
@@ -181,6 +194,24 @@ class Settings(BaseSettings):
 
 # 创建配置实例
 settings = Settings()
+
+
+def _bridge_paddle_pdx_cache_home(cache_home: str) -> None:
+    """Export the PaddleX cache dir into the process env BEFORE any paddlex import.
+
+    paddlex.utils.cache resolves the cache home from os.environ at first paddlex
+    import, and pydantic-settings does NOT export .env entries into os.environ.
+    All paddlex/paddleocr imports in this codebase are lazy (engine init), so
+    anything set here takes effect; a shell-exported value still wins (setdefault).
+    """
+    if cache_home:
+        os.environ.setdefault(
+            "PADDLE_PDX_CACHE_HOME",
+            os.path.expanduser(cache_home),
+        )
+
+
+_bridge_paddle_pdx_cache_home(settings.PADDLE_PDX_CACHE_HOME)
 
 # Ensure directories exist
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

@@ -1,0 +1,17 @@
+# Root pytest config (X2 fix, agentD sandbox-verified 2026-11-18 — bus
+# runs/R-005/steps/audit-pr119-x1-x2-2026-11-18.md; Ying-approved clearing PR).
+# Root cause: two same-named `tests` packages (backend/tests/__init__.py +
+# packages/docuvision-core/tests/__init__.py) collide under the default prepend
+# importmode — sys.modules['tests'] registers the backend side first, so
+# collecting packages/docuvision-core/tests raises ModuleNotFoundError and
+# interrupts the whole run (6 core cases never reached the test surface).
+# - importlib importmode removes the package-name registration collision;
+# - pythonpath explicitly declares the two import roots (app / docuvision_core),
+#   replacing the implicit basedir sys.path injection that importlib mode drops
+#   (bare importlib without it was empirically rejected: No module named 'app').
+# NOTE: backend/pytest.ini (P-008: --continue-on-collection-errors) stays —
+# it governs backend-rootdir runs (e.g. `pytest backend/tests`); this file
+# governs repo-root runs (whole-repo collection, both test trees in one pass).
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+pythonpath = ["backend", "packages/docuvision-core"]

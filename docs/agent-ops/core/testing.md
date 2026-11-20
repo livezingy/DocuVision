@@ -38,8 +38,12 @@
   `full`（本机或云端全量）。**删除测试文件时一并删除条目**（无 `retired` 态，历史由 git 承担）。
 - 登记表是机检唯一真源：`scripts/audit_agent_ops.py` **check 4** 双向对账（未登记文件 / 幽灵条目 /
   与 `kie-phase-a.yml` Phase A 列表不一致，见 `scripts/test_registry_audit.py`）。漏登记 = audit 红。
-- 全量 pytest 走 `backend/pytest.ini` 的 `--continue-on-collection-errors`：单个 collection error 不再
-  中断其余用例（P-008：曾致 430 用例全灭），但仍以非零码退出——容错不掩盖错误。
+- 全量 pytest 配置双入口（X2 修复，2026-11-20）：仓根 `pyproject.toml`（`--import-mode=importlib` +
+  `pythonpath` 显式声明 `backend` / `packages/docuvision-core` 两导入根）管**全仓收集**——修复双同名
+  `tests` 包在 prepend 模式下的 `sys.modules['tests']` 撞名（曾致 packages 侧用例从未进测试面且中断
+  掩盖非零码退出）；`backend/pytest.ini`（P-008 `--continue-on-collection-errors`：单个 collection error
+  不再中断其余用例）管 backend-rootdir 跑（`pytest backend/tests`）——两入口均以非零码退出，容错不掩盖
+  错误。新测试计数基线以 CHANGELOG `[Unreleased]` 的 X2 条目为准，kernel 不记易漂移计数。
 - **把测试加进 Phase A CI 清单时的验证义务（P-023）**：本机验证必须跑**该命令的完整文件清单**，不许只跑单文件
   ——跨文件污染（stub 作用域、`sys.modules` 污染）**只在整表运行时暴露**（P-023：首版只跑单文件全绿，CI 才炸）。
 

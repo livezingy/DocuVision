@@ -115,8 +115,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   → payload/HMAC assert → result endpoint; admin token from `DOCUVISION_WEBHOOK_ADMIN_TOKEN` env only; same-host
   private-addressed machines get a structural SSRF diagnosis — callback must resolve non-private, e.g. cloud-box
   public IP; n8n docker-side import testing stays manual per pack §5, UNRUN without docker).
+- **R-005 / P-046 — runtime AGPL (PyMuPDF) elimination, zero `fitz` imports left in `backend/app` (#119,
+  merged 2026-11-15; CHANGELOG backfill — 周检 X1)**: the runtime render/tool/proof path now runs on
+  permissively-licensed libraries only — `pypdfium2>=5,<6` (pdf raster & page-text extraction:
+  `pdf_raster.py` / `page_type_probe.py` / table side), `pypdf==3.17.4` (`pdf_tools_service.py`: split /
+  merge / encrypt / metadata; P0-5/P0-6 pins re-verified), `reportlab>=5.0,<6` (`proof_render.py` visual
+  proof sheets; verified on 5.1.0). PyMuPDF is demoted to a **test/measurement-only** dependency
+  (`scripts/measure`, fixture creation — `requirements.txt` carries an explicit NOT-runtime note; no
+  `backend/app` import remains) and the same three pins are mirrored into
+  `backend/requirements-ci-phase-a.txt` so `kie-contract` CI no longer trips on ModuleNotFoundError
+  (fix `5d4cb23`). Same batch landed the `scripts/cloud/` verification tool family distilled from the
+  R-002/R-005 cloud rounds (`t1_render_compare.py`, `t1b_downstream_diff.py`, `t1c_render_alignment.py`,
+  `t1c_visual_overlay.py`, `t1c/t1d-verdict-template.md`, `t1_render_downstream_test.sh`,
+  `r005_cloud_verify.sh`, `p046_textlayer_verify.sh` + README) — rules in `scripts/cloud/README.md`.
+
+### Removed
+- **Audit-driven dead-code cleanup + AGENTS.md kernel alignment (#117, merged 2026-11-08; CHANGELOG
+  backfill — 周检 X1, same zero-record pattern as #119)**: pure-deletion pass (+14/−390 over 22 files) —
+  dead backend models/orchestrator branches (`api_models.py`, `document_pipeline_orchestrator.py`,
+  `value_typer.py`, `kie_field_metrics.py`, `services/kie/__init__.py` re-export), dead frontend modules
+  (`overlay-render.js` 77 lines, `status-bar.js`, `batch.js` segment), stale test fixtures
+  (`pp_structure_invoice.json` / `uie_output_invoice.json`), obsolete `scripts/aistudio_setup.sh`, seven
+  redundant `GeneralFiles` samples, and a `.gitignore` line — `AGENTS.md` re-aligned to the kernel
+  (14 lines) and `frontend_domain_map.json` tightened accordingly. No behavior change; suite green.
 
 ### Fixed
+- **Whole-repo pytest collection was broken by two same-named `tests` packages (周检 X2, real defect —
+  not environment-specific, predates #119)**: `backend/tests/__init__.py` +
+  `packages/docuvision-core/tests/__init__.py` collide under the default prepend importmode —
+  `sys.modules['tests']` registers the backend side first, so collecting
+  `packages/docuvision-core/tests/test_normalize_for_compare.py` raises `ModuleNotFoundError` and
+  **interrupts the whole run**: the file's cases (6 in the audit-time reading) never reached the test
+  surface and the non-zero exit was masked as a mere "interruption". Fix (agentD sandbox-verified, bus
+  `runs/R-005/steps/audit-pr119-x1-x2-2026-11-18.md`): root `pyproject.toml` with
+  `addopts = "--import-mode=importlib"` + `pythonpath = ["backend", "packages/docuvision-core"]`
+  (importlib removes the package-name registration collision; pythonpath replaces the implicit basedir
+  sys.path injection that importlib drops — bare importlib without it was empirically rejected). Dual
+  rejected alternatives on record: deleting the two `__init__.py` (breaks evidence/kie subpackage tree),
+  writing an `importmode` ini key (unknown option). `backend/pytest.ini` (P-008
+  `--continue-on-collection-errors`) is kept and still governs backend-rootdir runs
+  (`pytest backend/tests` → rootdir=backend, configfile=pytest.ini; repo-root runs → rootdir=.,
+  configfile=pyproject.toml — both verified). New whole-repo baseline on current `main` (post-#120):
+  **959 collected / 0 error; 944 passed, 15 skipped, 0 failed** (audit-time reading was 762→768 collected
+  on `main@3070546`; counts legitimately advanced with the R-003/R-004 merges). `test_registry.json`
+  entries unchanged (per-file registry, not a case counter).
 - **KIE never-omit backfill, scoped to the text-first channel (P-034 P0)**: Qwen may drop keys it cannot
   determine (round 3: `carrier`/`limits` omitted entirely, diluting the acceptance criteria) —
   `field_merge.backfill_schema_keys` restores missing scalar schema keys as `""` at assembly time

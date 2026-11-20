@@ -34,7 +34,8 @@ mkdir -p "$OUT"
 
 # ---------- 0. 快照 + 轮询等待新 CSV ----------
 declare -A SEEN
-for f in "$WATCH_DIR"/*.csv; do [ -e "$f" ] && SEEN["$(basename "$f")"]=1; done
+# 基线键必须与轮询循环同形（都去 .csv 后缀），否则 SEEN 永远查不到、基线失效 → 旧 CSV 会被误判为“新”
+for f in "$WATCH_DIR"/*.csv; do [ -e "$f" ] && SEEN["$(basename "$f" .csv)"]=1; done
 BASELINE=$(ls "$WATCH_DIR"/*.csv 2>/dev/null | wc -l)
 log "起始快照: watch 目录现有 $BASELINE 个 CSV（已知 task 视为基线，不参与本轮判定）"
 

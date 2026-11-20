@@ -64,6 +64,7 @@ celerybeat.pid
 .env
 .env.local
 .env.*.local
+backend/.env.bak-*
 
 # mypy
 .mypy_cache/
@@ -181,6 +182,8 @@ docs/*
 !docs/release/**
 !docs/agent-ops/
 !docs/agent-ops/**
+!docs/integrations/
+!docs/integrations/**
 !docs/R&D/
 docs/R&D/**
 !docs/R&D/README.md
@@ -219,6 +222,10 @@ backend/outputs/
 !backend/app/services/evidence/closed_lists.json
 # Test registration table (P-008 check 4) - the audit reads it, so it must be versioned
 !backend/tests/test_registry.json
+# R-004 T1 n8n import templates (docs/integrations/n8n/) - the endpoint-ref
+# reconciliation test reads them, so they must be versioned (the late `*.json`
+# rule above would otherwise re-ignore them despite !docs/integrations/**)
+!docs/integrations/n8n/*.json
 # E2E runtime-error allowlist (P-008 gap 2, step 2) - the Playwright fixture reads it and it is
 # the gate's own tolerance list, so it must be versioned and reviewable as data
 !frontend/tests/e2e/expected-errors.json
@@ -301,6 +308,9 @@ scripts/*
 # on/off + channel self-cert + judge runner; rules in scripts/cloud/README.md
 !scripts/cloud/
 !scripts/cloud/**
+# R-004 T4: n8n integrations backend half-loop smoke (scripts/integrations/)
+!scripts/integrations/
+!scripts/integrations/**
 !test_data/scripts/
 !test_data/scripts/**
 # ...but never the byte-compiled cache that negation would otherwise re-include

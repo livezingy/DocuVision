@@ -169,3 +169,231 @@ class TestExportExcel:
         assert ws.cell(row=1, column=1).value == "Table 1 (Page 16) confidence=87%"
         assert ws.cell(row=2, column=1).value == "H1"
         assert ws.cell(row=3, column=1).value == "a"
+
+
+class TestSameSourceSameValue:
+    """R-003/P-042 T4 (AC3): the batch's mapping result (``mapped_table_rows``
+    + the ``mapped_table_fields`` stamp, R-003 T2) is ONE source flowing to
+    three export surfaces — the Google Sheets write path (rows captured at the
+    service's worksheet seam, mock level, no network), the aggregate xlsx
+    MappedRows sheet, and the per-order CSV files (R-003 T5). Field-by-field
+    equality across all three. All fixture data is fictional."""
+
+    _FIELDS = ["po_number", "quantity", "unit_price", "line_total"]
+    _TASKS = (("ac3-task-1", "a.png"), ("ac3-task-2", "b.png"))
+
+    @staticmethod
+    def _batch():
+        from datetime import datetime
+
+        from app.services.batch_service import (
+            BatchJob,
+            BatchStatus,
+            BatchTask,
+            TaskStatus,
+        )
+
+        def _row(idx, po, qty, price, total):
+            return {
+                "template": "po_line_schema",
+                "source_table_index": 0,
+                "page": 1,
+                "row_index": idx,
+                "po_number": po,
+                "quantity": qty,
+                "unit_price": price,
+                "line_total": total,
+            }
+
+        batch = BatchJob(
+            batch_id="ac3-batch",
+            name="same-source",
+            status=BatchStatus.COMPLETED,
+            options={"table_template": "po_line_schema"},
+            created_at=datetime.now(),
+        )
+        batch.total_tasks = 2
+        t1 = BatchTask(
+            task_id="ac3-task-1", file_path="/a.png", file_name="a.png", status=TaskStatus.COMPLETED
+        )
+        t1.result = {
+            "mapped_table_fields": list(TestSameSourceSameValue._FIELDS),
+            "mapped_table_rows": [
+                _row(0, "PO-1001", "2", "10.50", "21.00"),
+                _row(1, "PO-1002", "", "5.00", "5.00"),
+            ],
+        }
+        t2 = BatchTask(
+            task_id="ac3-task-2", file_path="/b.png", file_name="b.png", status=TaskStatus.COMPLETED
+        )
+        t2.result = {
+            "mapped_table_fields": list(TestSameSourceSameValue._FIELDS),
+            "mapped_table_rows": [_row(0, "PO-1003", "1", "7.25", "7.25")],
+        }
+        batch.tasks = [t1, t2]
+        batch.completed_tasks = 2
+        batch.failed_tasks = 0
+        return batch
+
+    class _CaptureWorksheet:
+        """In-memory gspread worksheet double capturing what the service wrote."""
+
+        def __init__(self):
+            self.rows = []
+
+        def get_all_values(self):
+            return [list(r) for r in self.rows]
+
+        def update(self, values, range_name=None, **kwargs):
+            start = 0
+            if range_name and range_name.startswith("A"):
+                start = max(int(range_name[1:]) - 1, 0)
+            while len(self.rows) < start + len(values):
+                self.rows.append([])
+            for offset, row_values in enumerate(values):
+                self.rows[start + offset] = list(row_values)
+
+        def append_rows(self, values, **kwargs):
+            self.rows.extend([list(r) for r in values])
+
+        def delete_rows(self, start_index, end_index=None):
+            end = end_index if end_index is not None else start_index
+            del self.rows[start_index - 1 : end]
+
+    def _capture_sheets_rows(self, batch):
+        """Run the real Sheets write path with the client seam stubbed; return
+        the matrix the service handed to the worksheet (mock level, no net)."""
+        from app.services.sheets_export_service import export_batch_to_sheets
+
+        worksheet = self._CaptureWorksheet()
+
+        class _Spreadsheet:
+            def worksheet(self, title):
+                return worksheet
+
+        class _Client:
+            def open_by_key(self, key):
+                return _Spreadsheet()
+
+        summary = export_batch_to_sheets(
+            batch,
+            credentials_file="C:/fake/ac3-service-account.json",
+            spreadsheet_id="fake-ac3-spreadsheet",
+            client_builder=lambda credentials_file: _Client(),
+        )
+        assert summary["appended"] == 3
+        return worksheet.rows
+
+    def test_sheets_csv_xlsx_field_by_field(self, tmp_path):
+        pytest.importorskip("pandas")
+        pytest.importorskip("openpyxl")
+        import csv
+        import io
+
+        import pandas as pd
+
+        from app.services.batch_export_service import build_batch_xlsx_bytes
+        from app.services.per_order_export_service import export_batch_per_order
+
+        batch = self._batch()
+
+        # (1) Sheets — rows captured from the service write path (mock seam)
+        sheet_matrix = self._capture_sheets_rows(batch)
+        sheets_header = [str(c) for c in sheet_matrix[0]]
+        sheets_rows = [
+            dict(zip(sheets_header, (str(c) for c in row))) for row in sheet_matrix[1:]
+        ]
+        sheets_field_cols = [c for c in sheets_header if c not in ("batch_id", "task_id")]
+        assert sheets_field_cols[0] == "file_name"
+        assert sheets_field_cols[1:5] == self._FIELDS
+
+        # (2) xlsx — aggregate workbook, MappedRows sheet read back
+        payload = build_batch_xlsx_bytes(batch, mode="all")
+        xlsx_df = pd.ExcelFile(io.BytesIO(payload)).parse("MappedRows")
+        xlsx_cols = [str(c) for c in xlsx_df.columns.tolist()]
+        assert xlsx_cols == sheets_field_cols  # same columns, same order
+
+        # (3) csv — per-order split files (one CSV per order, T5 surface)
+        export_batch_per_order(batch, str(tmp_path))
+        csv_tables = {}
+        for name, (task_id, _) in zip(("a.csv", "b.csv"), self._TASKS):
+            with open(tmp_path / name, "r", encoding="utf-8", newline="") as fh:
+                table = list(csv.reader(fh))
+            csv_tables[task_id] = table
+            assert [str(c) for c in table[0]] == sheets_field_cols  # set format shared
+
+        # field-by-field: rows aligned per task (order preserved on every surface)
+        def _norm(value):
+            return "" if pd.isna(value) else str(value)
+
+        def _canon(value):
+            """Numeric values canonicalize to float: the xlsx round-trip
+            numericises text cells ('2' -> 2.0) — a storage artifact, not a
+            value change. Everything else compares as exact text."""
+            s = _norm(value)
+            try:
+                return float(s)
+            except ValueError:
+                return s
+
+        for task_id, file_name in self._TASKS:
+            s_rows = [r for r in sheets_rows if r["task_id"] == task_id]
+            x_rows = xlsx_df[xlsx_df["file_name"] == file_name]
+            c_table = csv_tables[task_id]
+            assert len(x_rows) == len(s_rows) == len(c_table) - 1
+            x_records = [
+                {col: _norm(v) for col, v in zip(xlsx_cols, row)}
+                for row in x_rows.values.tolist()
+            ]
+            for idx, s_row in enumerate(s_rows):
+                x_row = x_records[idx]
+                c_row = {col: str(v) for col, v in zip(sheets_field_cols, c_table[idx + 1])}
+                for col in sheets_field_cols:
+                    assert _canon(s_row[col]) == _canon(x_row[col]) == _canon(c_row[col]), (
+                        f"{task_id} row {idx} column {col}: "
+                        f"sheets={s_row[col]!r} xlsx={x_row[col]!r} csv={c_row[col]!r}"
+                    )
+
+    def test_empty_mapping_rows_agrees_across_surfaces(self, tmp_path):
+        pytest.importorskip("pandas")
+        pytest.importorskip("openpyxl")
+        import io
+
+        import pandas as pd
+
+        from app.services.batch_export_service import build_batch_xlsx_bytes
+        from app.services.per_order_export_service import export_batch_per_order
+        from app.services.sheets_export_service import export_batch_to_sheets
+
+        batch = self._batch()
+        for task in batch.tasks:
+            task.result.pop("mapped_table_rows")
+
+        # Sheets: the write is skipped, nothing reaches the worksheet
+        worksheet = self._CaptureWorksheet()
+
+        class _Spreadsheet:
+            def worksheet(self, title):
+                return worksheet
+
+        class _Client:
+            def open_by_key(self, key):
+                return _Spreadsheet()
+
+        summary = export_batch_to_sheets(
+            batch,
+            credentials_file="C:/fake/ac3-service-account.json",
+            spreadsheet_id="fake-ac3-spreadsheet",
+            client_builder=lambda credentials_file: _Client(),
+        )
+        assert summary.get("skipped") == "no mapping rows"
+        assert worksheet.rows == []
+
+        # xlsx: no MappedRows sheet
+        sheets = pd.ExcelFile(io.BytesIO(build_batch_xlsx_bytes(batch, mode="all"))).sheet_names
+        assert "MappedRows" not in sheets
+
+        # csv: no per-order files
+        result = export_batch_per_order(batch, str(tmp_path))
+        assert result["written"] == 0
+        assert list(tmp_path.iterdir()) == []

@@ -109,6 +109,20 @@ async def table_step(ctx: PipelineContext) -> None:
         mapped_rows = apply_table_template(ctx["result"]["tables"], table_template)
         ctx["result"]["mapped_table_rows"] = mapped_rows
         ctx["result"]["table_template"] = table_template
+    else:
+        # P-042 T2 (R-003 AC1): customer schema column mapping — one config on
+        # the batch options applies to every task of the batch. The resolved
+        # output fields are stamped on the result so the MappedRows export
+        # face (batch_export_service) can drive its columns from the mapping
+        # result without importing the kie domain (no new S1b edge).
+        from app.services.kie.schema_mapping import apply_schema_mapping, resolve_mapping_config
+
+        mapping_config = resolve_mapping_config(options)
+        if mapping_config is not None:
+            mapped_rows = apply_schema_mapping(ctx["result"]["tables"], mapping_config)
+            ctx["result"]["mapped_table_rows"] = mapped_rows
+            ctx["result"]["mapped_table_fields"] = list(mapping_config.get("output_fields") or [])
+            ctx["result"]["table_template"] = str(mapping_config.get("template_id") or table_template)
 
     # v1.8 E2: selective cell backfill (table_step tail, CPU-only).
     # Enhancement, never replacement — failures keep vision results.

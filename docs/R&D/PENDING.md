@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **19** 条）
+## 待确认（本区共 **22** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-047` `P-048`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-042` `P-043` `P-047` `P-048` `P-049`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -554,6 +554,28 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
 - **指针**：`docs/R&D/runs/split/` 已于 2026-10-25 收尾批删除（03 §4 候选池实证与 L1 强度裁决表明细进 git 历史；候选池定稿真源即上文本条正文）｜ P-037（还债批次序列与消解目标）。
 
+### P-042 · Egress 出口层——客户 schema → Google Sheets / Excel 直写（2026-11-15，R-003 承接）
+> status: open · since: 2026-11-15
+- **来源与登记义务**：R-003 pack v1.2 §7 编号登记义务（AgentE 落地首动作）——P1-1 编号勘误（原 P-044 三方双指）后勘误登 **P-042**（登记时 PENDING 真源未占用）。pack v1.2 awaiting-dispatch（待 Ying 投放）；施工由 ZCode workflow 承担中。
+- **在途义务（R-003 施工与验收）**：Sheets 直写通道（选型 **gspread**，MIT；绑定事件 **batch.completed** = batch 全量出口语义）＋客户 schema 字段映射配置化（一次配置 batch 全量生效）＋幂等（同 task 重跑不重复行）＋Sheets/csv/xlsx 同源同值断言＋**per-order 拆分导出**（Upwork 单显式出口形态「one CSV file per order」，定稿点 3 已采纳）。
+- **需求佐证锚**：Upwork 单 ~022120614538119429026（US 制造商 PO 自动化：出口 = 「Produces one CSV file per order in a set format」＋自托管「hosted inside our own environment, fully owned by us」）。
+- **契约**：AC 6 条（v1.2 随 review-01 处置由 5 扩 6：映射一次配置 batch 生效 / 幂等 / 同源同值 / webhook 不受影响 / 全量回归 0 failed / per-order 拆分）；gate 名口径 = 仓内 `backend/tests/test_registry.json` 键名。
+- **out（勿在此面扩）**：CRM/ERP/会计平台直连（pack 原文注 P-052 挂起）；n8n 入口归 **P-043**/R-004；ERP 参照校验层（值级对账缺口）另案评估。
+- **红线**：客户 schema/客户材料永不进 git；Sheets 类凭据不进仓、不进日志、不进对话。
+- **指针**：`docs/R&D/runs/R-003/pack.md`（v1.2；review-01 conditional pass 已闭环）｜ P-043（同单 n8n 入口）。
+
+### P-043 · n8n / Make 集成包（2026-11-15，R-004 承接）
+> status: open · since: 2026-11-15
+- **来源与登记义务**：R-004 pack v1.2 §7 编号勘误（R-003 review P1-1 同型外推）登 **P-043**；PENDING 补登与 P-042 同批（AgentE 落地首动作）。pack v1.2 awaiting-dispatch（待 Ying 投放）。
+- **在途义务（R-004 施工与验收）**：REST API 全量文档（**INV-1 冻结 55 端点 == OpenAPI paths** 对账用例）＋n8n 导入模板（workflow JSON 工件落 `docs/integrations/n8n/`；DOC 门禁覆盖 = 目录 README 索引行 + `docs_refs_audit` 对账）＋webhook 事件类型全表化＋WS 口径对账断言（`task.completed` ⟺ WS `{"type":"status","status":"completed"}`，succeeded 归一别名）＋n8n 实例最小闭环实测＋Outlook 版模板（定稿点 4）。
+- **云端闭环未完成（2026-11-18 登记，暂挂起）**：n8n 实例最小闭环实测（AC1）Cloud 轮次未收口。卡点 = Flow A 的 Outlook Trigger 命中邮件后报 `The connection to the server was closed unexpectedly`——exec=4（唯一 trigger 命中）cause = `Client network socket disconnected before secure TLS connection was established`（ECONNRESET，TLS 握手前）。定谳：出网经**腾讯云平台 fake-ip 透明代理**（`graph.microsoft.com` 解析为 `198.18.0.48`，`ip route get` = `via 172.24.0.1`、网关之外不可见不可控），为平台代理**间歇性 RST**，**非** MTU / 265KB 大包 / 容器 HTTP 代理（handoff-flowb-closure §2「已排除代理」漏判了 TUN/fake-ip 层）。核心未解 = 从未成功过一次「trigger 命中→附件下载→upload/analyze」；手动测试（无 token `/me`）单连 20 / 并发 10 / 循环 30 次全 OK，但**未覆盖 trigger 真实请求**（带 OAuth token + 附件 `$value`）。重启流程（隧道/容器/订阅/Azure）已试多次、verify 仍 `BLOCKED(7)` ⇒ **不属重启恢复范畴**。交接与下一步见 `docs/R&D/runs/R-004/attachments/2026-11-16-n8n-local/handoff-flowb-core-2026-11-18.md`。
+- **交付形态（定稿点 2，维持原判）**：n8n 导入模板（workflow JSON）主交付、community node 后置触发——仓栈 Python/FastAPI 引入 Node 构建链 = 技术栈污染，无客户需求驱动不立项。
+- **闭环前置三件（缺任一件 = 默认静默 no-op，P-027 判例 2「含模块缺接线」同型）**：①后端 `WEBHOOK_ENABLED=true`；②非空 `WEBHOOK_ADMIN_TOKEN`；③n8n 经 `POST /api/v1/webhooks` 订阅注册。
+- **需求佐证锚**：Upwork 单 ~022120614538119429026（收件箱监控 = Microsoft 365 / Outlook / Front ⇒ n8n 原生 Trigger 节点 + DocuVision API 编排，零自研邮箱监听；R-004 由「生态入口」升级为该类需求完整方案骨架）。
+- **契约**：AC 6 条（模板一键导入闭环 / webhook 与 WS 口径一致 / 文档 == 冻结 55 / OpenAPI 快照回归 / 交付物落仓登记 `docs_refs_audit` 0 error / 全量回归 0 failed）。
+- **out（勿在此面扩）**：Make 平台模板（文档覆盖、后置）；QuickBooks/Xero 直连（pack 原文注 P-052 挂起）；community node 脚手架（需时另立项）。
+- **指针**：`docs/R&D/runs/R-004/pack.md`（v1.2；review-01 conditional pass 已闭环）｜ P-042（同单 Egress 出口层）。
+
 ### P-047 · R-005 云测 V4 RENDER_SCALE 预期项无源——已结 retained（幻影锚判例）（2026-11-15 立项，同日结案）
 > status: retained · since: 2026-11-15
 - **结案理由（三重实证 + 声明链更正）**：
@@ -572,3 +594,11 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **待查方向**：① PROMPT_CHECK（`kie_configs/coi.yaml:v3.2`）在分支上的实际内容与 P-034 验收轮（`dcf99a2`）是否一致；② `EVIDENCE_TEXT_FIRST` 旗标 / warmup env 组合差异；③ `dcf99a2..8a45ba6` 间 KIE 层（kie_configs / kie_qwen_service / prompt）git 变更清单；④ KIE 模型非确定性（P-034 有 marker 波动先例）。
 - **裁决预分支**：prompt/旗标组合差异 → 复跑对照即收口；KIE 层真回归 → 按 P-034 判据面立案修复；两种结论均不改 R-005/P-046 的引擎面结论。
 - **指针**：`docs/R&D/runs/R-005/attachments/fitz_abc_p046_closure.md` §10.1/§10.3｜`scripts/cloud/cloud_round_test.sh`｜P-034（retained）X2 口径。
+
+### P-049 · kie_template_id 键无 document_type 门禁即激活 schema 表格映射——v1.5 KIE 接线时复核（2026-11-16 立项，R-003 审查触发式）
+> status: open · since: 2026-11-16
+- **现象**：`backend/app/services/kie/schema_mapping.py:41,126`（R-003/P-042 T2 落地）——`resolve_mapping_config` 对带 `kie_template_id` 的批次直接激活表格列映射，不经 document_type 门禁。该键现为 KIE 侧保留键（`resolve_custom_schema` 未接线，`query_fields.py:29-33` 注明 analyze Form 尚未暴露），**当前无活跃消费者、非回归**。
+- **触发条件**：v1.5 KIE 接线（analyze Form 暴露 `kie_template_id` 或 `resolve_custom_schema` 接线）时复核——届时为 KIE 选模板将静默开启表格列映射并改写 MappedRows 导出面，语义相撞。
+- **候选处置**：键门禁（document_type 白名单）或键改名（`table_template_id` 与 KIE 模板键分离）；由接线批次顺带处置，不单独施工。
+- **来源与登记**：R-003 施工独立审查 low（2026-11-15，详见 verdict 草案 §审查）；批次 C 规划项经 Ying 2026-11-16 批登记。
+- **指针**：`docs/R&D/runs/R-003/steps/p042-egress-verdict-draft.md`｜P-042（retained 候选，施工已落地）｜R-003 pack v1.2 §2 T2。

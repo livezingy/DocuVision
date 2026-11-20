@@ -30,7 +30,7 @@ cd frontend && npm run test:e2e
 | 套件 | 路径 | 后端 |
 |------|------|------|
 | Vitest | `frontend/tests/unit/queue.test.js`, `envelope_display.test.js` | 无 |
-| Playwright | `frontend/tests/e2e/process-smoke.e2e.js`, `process-queue.e2e.js`, `process-table-mapping.e2e.js`, `process-pdf-tools.e2e.js` | **Mock** |
+| Playwright | `frontend/tests/e2e/process-smoke.e2e.js`, `process-queue.e2e.js`, `process-table-mapping.e2e.js`, `process-pdf-tools.e2e.js`, `process-quality-panel.e2e.js`, `batch-table-mapping.e2e.js` | **Mock** |
 
 ### 2.2 用例映射（当前已落地）
 
@@ -46,6 +46,7 @@ cd frontend && npm run test:e2e
 | UI-TM-02 | Document profile eligibility 文案 | Playwright | `process-table-mapping` UI-TM-02 | 是（未改 profile / eligibility DOM） |
 | UI-TM-03 | Mapped rows 子 Tab 展示 | Playwright | `process-table-mapping` UI-TM-03 | 是（mock `mapped_table_rows`；真实 PDF 映射仍 Cloud） |
 | UI-TM-04 | 扫描/图片阻止 table mapping Run | Playwright | `process-table-mapping` UI-TM-04 | 是（未改 blocked 逻辑） |
+| UI-BM-01 | Batch 映射一次配置、batch 生效（create 载荷带 `table_template` + 2/2 completed） | Playwright | `batch-table-mapping` UI-BM-01 | 是——lint.yml e2e job（`npm run test:e2e`）全目录 glob 覆盖（testMatch `**/*.e2e.js`），且 check_e2e_allowlist 强制 6 specs/16 tests pin |
 | UI-PT-01 | PDF Tools 顶栏与分区 | Playwright | `process-pdf-tools` UI-PT-01 | 是（未改 PDF Tools shell） |
 | UI-PT-02 | Merge ≥2 PDF 下载 | Playwright | `process-pdf-tools` UI-PT-02 | 是（mock merge；真实 PyMuPDF 仍手工 **PDF-TOOL-001**） |
 | UI-PT-03 | Metadata JSON | Playwright | `process-pdf-tools` UI-PT-03 | 部分 — mock JSON；真实 PDF 元数据仍手工 |
@@ -61,7 +62,8 @@ cd frontend && npm run test:e2e
 | **真实 Analyze 管道** | `POST /api/v1/analyze` 轮询至 completed，Result JSON 可读 | 改 `backend/app`、orchestrator、非 mock 的 API 契约 |
 | **Analysis Options** | layout/table/KIE/`kie_query_fields` 传入 analyze | 改 Options 对话框或 Form 字段（无 UI-A-* E2E  yet） |
 | **Export 下载** | JSON/CSV 等与 API 一致 | 改 `export-ui.js` 或 export 路由（无 UI-R-03 E2E yet） |
-| **Batch tab** | 建批、暂停、CSV 行数 | 改 Batch UI（无 UI-B-* E2E yet） |
+| **Batch tab** | 建批、暂停、CSV 行数 | 改 Batch UI（`batch-table-mapping` UI-BM-01 已覆盖建批/启动/完成态 mock 流，**CI 已覆盖**——lint.yml e2e job 全目录 glob，本机复跑仅作诊断；暂停/Resume/Retry/CSV 行数仍无 E2E） |
+| **UI-BM-01 batch 映射一次配置、batch 生效** | Options 对话框选 table mapping 模板一次 → Batch tab 建批（2 文件）→ POST /api/v1/batch 载荷 `options.table_template` 与所选一致 → Start → 2/2 completed、任务表渲染 | **CI 已覆盖**（lint.yml e2e job `npm run test:e2e` = `playwright test`，testMatch `**/*.e2e.js` 全目录 glob 自动含本 spec；check_e2e_allowlist 在 lint job 强制 6 specs/16 tests pin）——本机 `npx playwright test batch-table-mapping` 复跑仅作诊断：改 Batch UI（`batch.js`）、Options 对话框（`options-dialog.js` table_template 装配）、批处理路由 `options` 透传时复跑；真批处理管道行为另按「真实 Analyze 管道」行手工 |
 | **PDF-TOOL-001** | PDF Tools tab: merge ≥2 PDF → download valid `merged.pdf`; metadata JSON | 改 PDF Tools UI 或 `/api/v1/pdf-tools/*`；E2E mock 绿可减 merge/metadata 重复点击，**真实 PDF 有效性仍 Cloud/手工** |
 | **HITL-EDIT-001** | Reviews: edit fields → Save → Approve → task `kie_fields` updated | 改 HITL UI 或 PATCH `/tasks/{id}/kie-fields` |
 | **三栏 resize** | 拖拽 handle 有效 | 改 `panel-resize.js` / layout CSS |

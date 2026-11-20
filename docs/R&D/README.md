@@ -50,6 +50,15 @@ Deletion rule: a pack/record is deletable once **no tracked document still refer
 | [P034/P-034-云测第2-3轮-复核记录.md](runs/P034/P-034-云测第2-3轮-复核记录.md) | P-034 云测第 2-3 轮复核记录（X2 键省略稀释 + limits 退化再定性 → P0-P3 对策待裁决） |
 | （已删）P034/p034_round4_cloud_test.sh → [scripts/cloud/cloud_round_test.sh](../../scripts/cloud/cloud_round_test.sh) | P-034 第 4 轮一键云测脚本**已提炼入库**（2026-10-27，`dcf99a2`/`4eb3939`，用户改版的 venv/基线包含核验/打包改进一并吸收）；目录原件同批删除，git 历史可回溯；后续云测一律用 `scripts/cloud/` 金样例 |
 | [P034/p034_round4_artifacts_dcf99a2_20261027_065004.tar.gz](runs/P034/p034_round4_artifacts_dcf99a2_20261027_065004.tar.gz) | P-034 第 4 轮产物包（七件齐：双侧日志/result JSON×4/summary；已解包留档同目录） |
+| [R-003/pack.md](runs/R-003/pack.md) | R-003 执行包 v1.2（P-042 Egress：客户 schema → Sheets/Excel 直写；`awaiting-dispatch`；v1.2 定稿 @ bus `5c62c477`） |
+| [R-003/contract.md](runs/R-003/contract.md) | R-003 契约（P-042 六 AC / 范围 / 实施纪律） |
+| [R-003/review-01.md](runs/R-003/review-01.md) | R-003 执行包 v1.1 审核记录（有条件通过：P1×4 / P2×5；已回投 bus @ `53c0b600`；v1.2 处置闭环） |
+| [R-003/steps/p042-egress-verdict-draft.md](runs/R-003/steps/p042-egress-verdict-draft.md) | P-042 施工 verdict 草案（ZCode workflow 2026-11-15：快闸 8 绿 + 全量 770 passed；verdict 生产者 agentD 待收口） |
+| [R-004/pack.md](runs/R-004/pack.md) | R-004 执行包 v1.2（P-043 n8n / Make 集成包；`awaiting-dispatch`；v1.2 定稿 @ bus `5c62c477`） |
+| [R-004/contract.md](runs/R-004/contract.md) | R-004 契约（P-043 六 AC / 范围 / 实施纪律） |
+| [R-004/R-004-执行包-审核记录.md](runs/R-004/R-004-执行包-审核记录.md) | R-004 执行包 v1.1 审核记录（有条件通过：P1×3 / P2×6；已回投 bus @ `309f5bb7`；v1.2 处置闭环） |
+
+> 2026-11-15 拉取登记：`runs/R-003/` 与 `runs/R-004/` 各含 `pack.md` / `contract.md` 及同名 `.provenance.txt` 侧车；v1.1 首拉 `agent-bus@af57c881`（`via: bus-fetch -Provenance`），v1.2 更拉 `agent-bus@5c62c477`（github.com:443 三连失败改道 gh api contents raw，blob sha 四件对拍一致）；消费登记见仓根 `bus-refs.md`。
 
 **保留依据**：`runs/P027/` 的保留理由写在 PENDING **P-027** 条目——**2026-10-16 更新**：P-027 已由 `decided` 转 **`retained`**，保留依据不再是「在途义务未清」，而是**被 tracked 文档反引**（PENDING 的 P-002 条目把 IE-p079 判据指向「P-027 R4 执行记录 §4.1」；[../architecture/ocr-quality-harness.md](../architecture/ocr-quality-harness.md) 的 R2/R3/R4 行；R4 记录 §6 是隔离区 `test_data/derived/**` 证据链的唯一盘存表）⇒ 仍**未到删除条件**。
 

@@ -26,6 +26,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (key-presence + boilerplate ban + OFF-majority denominator), artifacts packaged as tar.gz next to the
   script. Rules and judging conventions in `scripts/cloud/README.md`; future GPU/Cloud verification rounds
   reuse it with env overrides only (registered in AGENTS.md task routing).
+- **P-042 T2 (R-003) — customer schema column mapping made configurable (AC1 backend half)**: a customer
+  schema persisted through the existing KIE template store (`POST /api/v1/kie/templates/{id}` → YAML) or an
+  inline `kie_custom_schema` on the batch options now drives table column mapping for every task of the
+  batch. New config layer `backend/app/services/kie/schema_mapping.py` (resolve/build/apply, pure functions,
+  fail-closed: unusable schema → no mapping) wired into `table_step`'s custom-template branch
+  (`orchestration/steps/extraction.py`), which stamps the resolved schema field order on the task result
+  (`mapped_table_fields`); the MappedRows export sheet (`batch_export_service.py`) derives its column order
+  from that stamp (batch context column `file_name` first; legacy first-seen key order kept when no stamp —
+  built-in `bank_statement`/`invoice_line_items` behavior unchanged). No new REST endpoint; no new
+  services-layer cross-domain edge (export face reads stamped result keys only); customer schema truth
+  values never enter git (test fixtures are fictional, template store monkeypatched to tmp_path).
+- **P-042 T1+T3 (R-003) — Google Sheets direct-write with per-task idempotency (AC2)**: new batch-domain
+  service `backend/app/services/sheets_export_service.py` — `gspread==6.2.1` (MIT, pure Python) pinned in
+  `backend/requirements.txt`; bound to `batch.completed` via the routers-layer composed `on_complete`
+  closure (`routers/batch.py`: webhook dispatch + opt-in Sheets export, same fire-and-forget/swallow
+  semantics as the webhook — the sync gspread export dispatched off the event loop via
+  `asyncio.to_thread`). Opt-in per batch through `options.sheets_export`
+  (`spreadsheet_id` + optional `worksheet`, default `MappedRows`); credentials travel by parameter only
+  from the operator machine (`GOOGLE_SERVICE_ACCOUNT_FILE` / `GOOGLE_APPLICATION_CREDENTIALS` alias in
+  settings, empty = disabled) — never into repo, logs, return values or error text (client errors
+  re-raised sanitized). The gspread client gets an explicit per-call timeout (`HTTPClient.set_timeout`;
+  6.2.1 defaults to unbounded) and the dispatch runs off the event loop via `asyncio.to_thread` — sync
+  gspread inline in the `batch.completed` callback would stall the worker (review round 1). Rows carry
+  `batch_id`/`task_id`/`file_name` identity columns + the mapping-result field columns (same source as
+  the MappedRows xlsx face, so the T4 comparison lines up field by field); idempotency per AC2: existing
+  rows whose `task_id` matches the current batch's tasks are replaced bottom-up and fresh rows appended —
+  same-task re-runs never duplicate (uuid4 task ids can never collide across batches); fresh worksheets
+  auto-create; header mismatch fails closed. No new REST endpoint; unit tests fake gspread through the
+  `_build_client` monkeypatch seam (no network).
+- **P-042 T5 (R-003) — per-order CSV split export (AC6, 定稿点 3)**: batch-level `per_order=True` opt-in
+  splits the finished batch into one CSV per order — "one CSV file per order in a set format" (Upwork
+  demand anchor) — new batch-domain service `backend/app/services/per_order_export_service.py` reusing
+  `batch_export_service.render_csv` and the aggregate MappedRows column derivation, so every order file
+  carries the identical mapping-result header set (ERP column mapping stays stable across orders).
+  Filenames are deterministic (sanitized file stem; duplicate stems get a task-id suffix whose prefix
+  width grows until unique — re-runs compute the exact same names), making the export file-level
+  idempotent: same-batch re-runs overwrite in place, never duplicate files. Target directory is
+  configurable (`options.per_order_output_dir`, fallback `<settings.OUTPUT_DIR>/per_order/<batch_id>` —
+  ERP watch semantics); completed tasks without mapping rows are skipped (no empty CSVs for the ERP).
+  Bound to `batch.completed` via the same routers-layer composed `on_complete` closure
+  (webhook + Sheets + per-order, exports dispatched off the event loop via `asyncio.to_thread`),
+  failures swallowed — batch final state unaffected. No new REST
+  endpoint; no new services-layer cross-domain edge.
+- **P-042 hardening (R-003, consumed by R-004 watch-dir flows)**: `per_order_output_dir` is now confined
+  under `settings.OUTPUT_DIR` — new pure helper `resolve_per_order_output_dir` (empty → default
+  `<base>/per_order/<batch_id>`; relative → under base; absolute → allowed only inside base; `..`/
+  cross-drive escapes raise `ValueError`) with HTTP 422 at batch creation (`_confine_per_order_dir` in
+  `routers/batch.py`) and defensive re-confinement at the completion dispatch. Motivated by the R-004
+  integration boundary: external automation (n8n) calls the batch API, so a caller-chosen watch
+  directory must not become an arbitrary file-write primitive (review finding, low).
+- **P-042 T4 + e2e (R-003) — same-source-same-value assertion (AC3) and Pro e2e for one-config batch
+  mapping (AC1 frontend half)**: (1) `backend/tests/test_export_service.py` gains
+  `TestSameSourceSameValue` — the batch's mapping result (`mapped_table_rows` + T2 stamp) is one source
+  flowing to three surfaces, compared field-by-field: the Google Sheets write path (rows captured at the
+  service's worksheet seam, mock level, no network), the aggregate xlsx MappedRows sheet (read back via
+  pandas), and the T5 per-order CSV files (parsed back); numeric text cells canonicalize to float because
+  the xlsx round-trip numericises them ('2' -> 2.0 — a storage artifact, not a value change); the
+  empty-mapping case agrees across all three surfaces (nothing written anywhere). (2) New Pro Playwright
+  spec `frontend/tests/e2e/batch-table-mapping.e2e.js` (UI-BM-01): the mapping template configured once in
+  the Options dialog reaches the batch create payload verbatim (`options.table_template` on
+  POST /api/v1/batch) and the whole batch completes under it (2/2 tasks, task table rendered) — backend
+  endpoints mocked at the route level, no GPU. The spec is **covered by CI**: the lint.yml e2e job runs
+  `npm run test:e2e` = `playwright test`, whose testMatch `**/*.e2e.js` picks up every spec under
+  `tests/e2e` automatically (review round 1 correction — the spec was never CI-exempt), and
+  check_e2e_allowlist in the lint job enforces the updated suite pin. Suite pin
+  `scripts/e2e_suite_pin.json` 5→6 specs / 15→16 tests (only-increase, same-change discipline);
+  `test_data/acceptance/UI_VERIFICATION_MATRIX.md` §2.1/§2.2/§2.3 updated accordingly (local reruns of
+  `npx playwright test batch-table-mapping` are diagnostic); spec verified green locally (1 passed,
+  0 runtime errors, eslint clean).
+- **R-004 / P-043 — n8n integration pack (T1/T3/T4 closes; pack v1.2, Ying 2026-11-12 batch)**: n8n import
+  templates `docs/integrations/n8n/docuvision-v1-generic.json` + `docuvision-v1.1-outlook.json` (intake
+  upload/analyze → `task.completed` callback → result fetch, plus a one-off webhook registration flow; Outlook
+  variant watches an M365 inbox, filters PO mail, and writes per-field CSV to an n8n-side watch dir; zero
+  credentials, every backend URL via `$env.DOCUVISION_BASE_URL` expressions) with a directory README index
+  (`docs/integrations/n8n/README.md`, directory-index + import/prerequisites per pack §5). Generated REST API
+  reference `docs/integrations/rest-api.md` (49 distinct paths / 54 HTTP operations + 1 WebSocket = frozen 55;
+  hand-edits invalid — `backend/tests/test_route_doc_reconciliation.py` regenerates via
+  `DOCUVISION_REST_DOC=write` and diffs the committed file line-by-line in check mode). Webhook event reference
+  `docs/integrations/webhook-events.md` (task.completed / batch.completed 触发点·载荷·派发行为·WS 对照，
+  每条字段带 governance/batch_runner/webhook_service 真源锚). Reconciliation tests: `test_route_doc_reconciliation.py`
+  (doc == openapi == frozen 55; per_order_output_dir escape → HTTP 422 at batch create; n8n template HTTP-node
+  endpoint refs — `$env` base-url placeholder stripped, `$json.FIELD` → `{FIELD}` — asserted ⊆ openapi paths,
+  unresolvable expressions skipped and reported, never guessed) and `test_webhook_service.py` (same-finalize
+  dual capture: webhook `task.completed` ⟺ WS `completed` 帧; `succeeded` alias accepted by both result gates;
+  WS route emits the pinned `{"type":"status","status":"completed"}` frame on its current-frame branch). Backend
+  half-loop smoke `scripts/integrations/n8n_loop_smoke.py` (local receiver → register → analyze → await callback
+  → payload/HMAC assert → result endpoint; admin token from `DOCUVISION_WEBHOOK_ADMIN_TOKEN` env only; same-host
+  private-addressed machines get a structural SSRF diagnosis — callback must resolve non-private, e.g. cloud-box
+  public IP; n8n docker-side import testing stays manual per pack §5, UNRUN without docker).
 
 ### Fixed
 - **KIE never-omit backfill, scoped to the text-first channel (P-034 P0)**: Qwen may drop keys it cannot

@@ -12,7 +12,10 @@
       "name": "Sticky Note - Flow A",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-940, -80]
+      "position": [
+        -940,
+        -80
+      ]
     },
     {
       "parameters": {
@@ -25,7 +28,10 @@
       "name": "Sticky Note - Flow B",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-940, 520]
+      "position": [
+        -940,
+        520
+      ]
     },
     {
       "parameters": {
@@ -38,7 +44,10 @@
       "name": "Sticky Note - Flow C",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-940, 1140]
+      "position": [
+        -940,
+        1140
+      ]
     },
     {
       "parameters": {
@@ -62,7 +71,10 @@
       "name": "Outlook Trigger (inbox watch)",
       "type": "n8n-nodes-base.microsoftOutlookTrigger",
       "typeVersion": 1,
-      "position": [-440, 0]
+      "position": [
+        -440,
+        0
+      ]
     },
     {
       "parameters": {
@@ -92,7 +104,10 @@
       "name": "Is PO mail?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-200, 0]
+      "position": [
+        -200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -115,7 +130,10 @@
       "name": "POST /api/v1/upload",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [40, -160]
+      "position": [
+        40,
+        -160
+      ]
     },
     {
       "parameters": {
@@ -142,7 +160,10 @@
       "name": "POST /api/v1/analyze",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [40, 120]
+      "position": [
+        40,
+        120
+      ]
     },
     {
       "parameters": {},
@@ -150,7 +171,10 @@
       "name": "Non-PO mail (no-op)",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [40, 300]
+      "position": [
+        40,
+        300
+      ]
     },
     {
       "parameters": {
@@ -164,7 +188,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "webhookId": "6567f0c4-45a0-4590-b439-467c28d8530c",
-      "position": [-440, 560]
+      "position": [
+        -440,
+        560
+      ]
     },
     {
       "parameters": {
@@ -194,7 +221,10 @@
       "name": "Is task.completed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-200, 560]
+      "position": [
+        -200,
+        560
+      ]
     },
     {
       "parameters": {
@@ -232,7 +262,10 @@
       "name": "Map Callback Payload",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [40, 480]
+      "position": [
+        40,
+        480
+      ]
     },
     {
       "parameters": {},
@@ -240,7 +273,10 @@
       "name": "Other Event (no-op)",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [40, 700]
+      "position": [
+        40,
+        700
+      ]
     },
     {
       "parameters": {
@@ -258,18 +294,24 @@
       "name": "GET /api/v1/tasks/{task_id}/result",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [260, 480]
+      "position": [
+        260,
+        480
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Flatten DocuVision result.view.fields (a dict: field name -> scalar | list) into\n// one row per field for CSV output. Never invents values.\n// Sources (branch feat/r003-p042-egress, 2026-11-15):\n//   view[\"fields\"] = kie_fields            backend/app/orchestration/steps/envelope.py:151,153\n//   scalar keys backfilled \"\", list keys   backend/app/services/kie/field_merge.py (backfill_schema_keys)\n//   merged into result for GET result      backend/app/orchestration/steps/governance.py:95-99\n// 2026-11-18 hardening #2 (actual root cause, n8n 2.x): Run Once for Each Item mode REJECTS array\n// returns - return [{ json: ... }] there raises A 'json' property isn't an object [item 0]\n// (result-validation.ts). Node therefore switched to runOnceForAllItems + $input.first().json;\n// the GET node outputs exactly one item, so semantics are unchanged.\n// 2026-11-18 hardening #1: tolerate a response body that was not parsed\n// into an object (autodetect / n8n version drift) - $input.first().json may be the raw JSON string or\n// the text wrapper {data: '<body>'}; the cross-node $('...') reference is guarded too.\nconst cb = ( () => { try { return $('Map Callback Payload').first().json || {}; } catch (e) { return {}; } )();\nconst taskId = cb.task_id || '';\nconst fileName = cb.file_name || '';\nlet result = $input.first().json;\nif (typeof result === 'string') {\n  try { result = JSON.parse(result); } catch (e) { result = undefined; }\n} else if (result && typeof result === 'object' && result.view === undefined && typeof result.data === 'string') {\n  try { const parsed = JSON.parse(result.data); if (parsed && typeof parsed === 'object') { result = parsed; } } catch (e) { }\n}\nconst view = result && typeof result === 'object' ? result.view : undefined;\nconst fields = view && typeof view === 'object' ? view.fields : undefined;\n\nif (!fields || typeof fields !== 'object') {\n  // KIE off or non-KIE document: emit an observable marker row instead of nothing.\n  return [{ json: { task_id: taskId, file_name: fileName, field: '__no_kie_fields__', value: '' } }];\n}\n\nconst rows = [];\nfor (const [name, value] of Object.entries(fields)) {\n  let v;\n  if (value === null || value === undefined) v = '';\n  else if (['string', 'number', 'boolean'].includes(typeof value)) v = String(value);\n  else v = JSON.stringify(value); // lists (items/line_items/findings) and objects\n  rows.push({ json: { task_id: taskId, file_name: fileName, field: name, value: v } });\n}\nreturn rows.length ? rows : [{ json: { task_id: taskId, file_name: fileName, field: '__no_kie_fields__', value: '' } }];"
+        "jsCode": "// Flatten DocuVision result.view.fields (a dict: field name -> scalar | list) into\n// one row per field for CSV output. Never invents values.\n// Sources (branch feat/r003-p042-egress, 2026-11-15):\n//   view[\"fields\"] = kie_fields            backend/app/orchestration/steps/envelope.py:151,153\n//   scalar keys backfilled \"\", list keys   backend/app/services/kie/field_merge.py (backfill_schema_keys)\n//   merged into result for GET result      backend/app/orchestration/steps/governance.py:95-99\n// 2026-11-18 hardening #2 (actual root cause, n8n 2.x): Run Once for Each Item mode REJECTS array\n// returns - return [{ json: ... }] there raises A 'json' property isn't an object [item 0]\n// (result-validation.ts). Node therefore switched to runOnceForAllItems + $input.first().json;\n// the GET node outputs exactly one item, so semantics are unchanged.\n// 2026-11-18 hardening #1: tolerate a response body that was not parsed\n// into an object (autodetect / n8n version drift) - $input.first().json may be the raw JSON string or\n// the text wrapper {data: '<body>'}; the cross-node $('...') reference is guarded too.\nconst cb = ( () => { try { return $('Map Callback Payload').first().json || {}; } catch (e) { return {}; } } )();\nconst taskId = cb.task_id || '';\nconst fileName = cb.file_name || '';\nlet result = $input.first().json;\nif (typeof result === 'string') {\n  try { result = JSON.parse(result); } catch (e) { result = undefined; }\n} else if (result && typeof result === 'object' && result.view === undefined && typeof result.data === 'string') {\n  try { const parsed = JSON.parse(result.data); if (parsed && typeof parsed === 'object') { result = parsed; } } catch (e) { }\n}\nconst view = result && typeof result === 'object' ? result.view : undefined;\nconst fields = view && typeof view === 'object' ? view.fields : undefined;\n\nif (!fields || typeof fields !== 'object') {\n  // KIE off or non-KIE document: emit an observable marker row instead of nothing.\n  return [{ json: { task_id: taskId, file_name: fileName, field: '__no_kie_fields__', value: '' } }];\n}\n\nconst rows = [];\nfor (const [name, value] of Object.entries(fields)) {\n  let v;\n  if (value === null || value === undefined) v = '';\n  else if (['string', 'number', 'boolean'].includes(typeof value)) v = String(value);\n  else v = JSON.stringify(value); // lists (items/line_items/findings) and objects\n  rows.push({ json: { task_id: taskId, file_name: fileName, field: name, value: v } });\n}\nreturn rows.length ? rows : [{ json: { task_id: taskId, file_name: fileName, field: '__no_kie_fields__', value: '' } }];\n"
       },
       "id": "c08d26db-ba5d-4acd-8052-21f22baa124c",
       "name": "Extract KIE Fields to Rows",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 480]
+      "position": [
+        480,
+        480
+      ]
     },
     {
       "parameters": {
@@ -281,7 +323,10 @@
       "name": "Convert to CSV",
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
-      "position": [700, 480]
+      "position": [
+        700,
+        480
+      ]
     },
     {
       "parameters": {
@@ -294,7 +339,10 @@
       "name": "Write CSV to Watch Dir",
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
-      "position": [920, 480]
+      "position": [
+        920,
+        480
+      ]
     },
     {
       "parameters": {},
@@ -302,7 +350,10 @@
       "name": "Manual Trigger (one-off registration)",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [-440, 1300]
+      "position": [
+        -440,
+        1300
+      ]
     },
     {
       "parameters": {
@@ -341,7 +392,10 @@
       "name": "POST /api/v1/webhooks (register)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-200, 1300]
+      "position": [
+        -200,
+        1300
+      ]
     }
   ],
   "connections": {

@@ -4,6 +4,10 @@
 # 用法（Cloud Studio 终端）:
 #   bash r004_n8n_rebuild.sh                    # 默认删卷重建（DEL_VOLUME=1）
 #   DEL_VOLUME=0 bash r004_n8n_rebuild.sh       # 保卷重建（幂等重跑/空间重启后恢复用）
+# 可选段（默认全关，不影响既有幂等行为）:
+#   DEL_VOLUME=1 FRESH_IMPORT=1 bash r004_n8n_rebuild.sh   # 新卷场景：一次性容器 headless 导入工作流 + CLI 激活尝试
+#   REGISTER=1 bash r004_n8n_rebuild.sh                     # 兜底：直连后端注册 webhook（前置：后端 run.py 已起）
+#                                                           # （标准路径 = runbook 阶段 3 经 n8n API 触发 Flow C；用了本段须登记 flowCVerified=false）
 #
 # 设计要点:
 #   - 宿主 5678 由 python3 哨兵监听（零依赖），转发到桥接口 15678（docker -p 15678:5678）
@@ -24,6 +28,8 @@ BRIDGE_PID="/root/n8n_bridge.pid"
 BRIDGE_LOG="/root/n8n_bridge.log"
 BACKUP_DIR="${BACKUP_DIR:-/workspace/n8n_backup}"
 DEL_VOLUME="${DEL_VOLUME:-1}"
+FRESH_IMPORT="${FRESH_IMPORT:-0}"
+REGISTER="${REGISTER:-0}"
 
 log(){ echo "[$(date +%H:%M:%S)] $*"; }
 die(){ log "❌ $*"; exit 1; }
@@ -77,6 +83,35 @@ else
   log "新密钥已生成并落 $KEY_FILE（权限 0600，禁止入 git）"
 fi
 
+# ---------- 3.5 可选：新卷导入工作流（FRESH_IMPORT=1，默认关）----------
+# 仅删卷/新卷场景有意义：保卷时 workflow 随卷复活，重复导入会产生同名副本。
+# 原理：一次性容器挂 n8n_data 卷做 headless CLI 导入（无 owner/API Key 依赖），
+#       在主容器启动前完成，避免与运行中的 n8n 进程争 SQLite。
+# 不可自动化的部分（新卷必手工）：① UI owner 首建账户 ② Outlook/Azure AD 凭据
+#   Reconnect（OAuth 交互式同意；凭据禁落盘/禁入脚本=红线）③ Public API Key 创建（可选）。
+WF_JSON="$REPO_DIR/docs/integrations/n8n/docuvision-v1.1-outlook.json"
+WF_ID=""
+if [ "$FRESH_IMPORT" = "1" ]; then
+  log "== 3.5 FRESH_IMPORT：一次性容器导入工作流 =="
+  [ -f "$WF_JSON" ] || die "FRESH_IMPORT 找不到 $WF_JSON（云端须已拉取 feat/r004-p043-n8n-integration @bcf5cbe+）"
+  if docker volume ls --format '{{.Name}}' | grep -qx n8n_data; then
+    log "n8n_data 卷已存在——跳过导入（防同名副本；确需重灌请 DEL_VOLUME=1）"
+  else
+    docker volume create n8n_data >/dev/null || die "n8n_data 卷创建失败"
+    docker run --rm -v n8n_data:/home/node/.n8n -e N8N_ENCRYPTION_KEY="$ENCRYPTION_KEY" \
+      -v "$WF_JSON":/files/import.json:ro "$IMG" \
+      n8n import:workflow --input=/files/import.json || die "工作流导入失败"
+    WF_ID=$(docker run --rm -v n8n_data:/home/node/.n8n -e N8N_ENCRYPTION_KEY="$ENCRYPTION_KEY" \
+      "$IMG" n8n export:workflow --all 2>/dev/null \
+      | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['id'] if d else '')" 2>/dev/null || true)
+    if [ -n "$WF_ID" ]; then
+      log "导入 OK：workflow id=$WF_ID（新卷产生新 id——verify/判读一律用本动态值，勿沿用旧 N8N_WORKFLOW_ID）"
+    else
+      log "⚠️ workflow id 探测失败（不阻塞；UI 里查看或稍后 n8n export:workflow --all 重探）"
+    fi
+  fi
+fi
+
 # ---------- 4. 重建容器（宿主 BRIDGE_PORT → 容器 5678）----------
 log "== 4. 重建容器（镜像 $IMG，宿主 ${BRIDGE_PORT} → 容器 5678）=="
 docker pull "$IMG" >/dev/null 2>&1 || log "⚠️ pull 跳过/失败（本地可能已有该镜像层，继续）"
@@ -99,6 +134,17 @@ docker run -d --name n8nDocker -p "${BRIDGE_PORT}:5678" \
   "$IMG" || die "容器启动失败"
 docker volume ls --format '{{.Name}}' | grep -qx n8n_data || die "n8n_data 卷未创建"
 sleep 8
+
+# ---------- 4.6 可选：CLI 激活尝试（FRESH_IMPORT=1 时；失败不阻塞，UI 兜底）----------
+if [ "$FRESH_IMPORT" = "1" ] && [ -n "$WF_ID" ]; then
+  log "== 4.6 激活尝试（CLI）=="
+  if docker exec n8nDocker n8n update:workflow --id="$WF_ID" --active=true >/dev/null 2>&1; then
+    log "激活 OK（CLI）"
+  else
+    log "⚠️ CLI 激活未果（旗标以 n8n update:workflow --help 实测为准）——UI 里 Active 一键兜底；"
+    log "   凭据必须 UI Reconnect（OAuth 交互同意，红线禁自动化）；Public API Key 若需 API 侧判读也在 UI 创建"
+  fi
+fi
 
 # ---------- 5. 5678 端口哨兵 ----------
 log "== 5. 5678 端口哨兵（端口面板检测目标）=="
@@ -150,6 +196,22 @@ sleep 2
 ss -ltn 2>/dev/null | grep -q ":${HOST_PORT} " || die "哨兵未监听 ${HOST_PORT}（查 $BRIDGE_LOG）"
 log "哨兵 OK: 宿主 ${HOST_PORT} 监听中（pid=$(cat "$BRIDGE_PID")）→ 端口面板应显示 5678"
 
+# ---------- 5.5 可选：Flow C 注册兜底（REGISTER=1，默认关）----------
+# 直连后端注册（等价 Flow C 的容器 env 行为）。注意：跳过了 Flow C 节点本身的验证面——
+# 用了本段须在重测 summary 如实登记 flowCVerified=false；标准路径 = runbook 阶段 3 经 n8n API 触发 Flow C。
+# 前置：后端 run.py 已起（本脚本不拉起后端）。后端重启会清内存订阅（排障链 #8）——重启后重跑 REGISTER=1 即可。
+if [ "$REGISTER" = "1" ]; then
+  log "== 5.5 REGISTER：后端 webhook 注册兜底 =="
+  BE_HEALTH=$(curl -s --max-time 6 "http://localhost:8000/healthz" 2>/dev/null || true)
+  echo "$BE_HEALTH" | grep -q '"status":"ok"' || die "后端 :8000 未起（先 python run.py）——REGISTER 需要"
+  REG=$(curl -s --max-time 10 -X POST "http://localhost:8000/api/v1/webhooks" \
+    -H "X-DocuVision-Admin-Token: $TOKEN" \
+    --data-urlencode "url=$SPACE_URL/webhook/docuvision-outlook-watch-csv" \
+    --data-urlencode "events=task.completed" \
+    --data-urlencode "secret=" || true)
+  echo "$REG" | grep -q "subscription_id" && log "注册 OK: $REG" || die "注册失败: $REG（查 DOCUVISION_WEBHOOK_ENABLED / SSRF 门 / token）"
+fi
+
 # ---------- 6. 四验 ----------
 log "== 6. 验证 =="
 PASS=0; TOTAL=4
@@ -165,6 +227,7 @@ if echo "$v4" | grep -q '"status":"ok"'; then log "✅ 4/4 平台域名透传 OK
 log "== 完成 $PASS/$TOTAL =="
 if [ $PASS -eq $TOTAL ]; then
   log "下一步: 端口面板确认 5678【公网访问】开 → 阶段1（n8n 凭据 Reconnect，Azure redirect 无需改）→ 阶段2 冒烟"
+  log "新卷全自动程度: FRESH_IMPORT=1 已导入工作流（id 见 3.5 日志）→ 手工: UI owner 首建 + 凭据 Reconnect → REGISTER=1 重跑注册（或 runbook 阶段 3 走 Flow C）"
   log "空间重启后恢复: DEL_VOLUME=0 bash $0（幂等，凭据随固定密钥复活）"
 else
   exit 1

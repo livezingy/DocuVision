@@ -9,6 +9,7 @@
 #   TIMEOUT=1200 POLL=20 bash r004_retest_judge.sh  # 自定义轮询窗口
 #   NEW_TASK_ID=<id> bash r004_retest_judge.sh      # 已知 task_id（跳过轮询直接判读）
 #   BACKEND_LOG=/workspace/DocuVision/debug/backend.log bash r004_retest_judge.sh  # 提供 5.2 判据的日志源
+#   EXEC_WINDOW_SEC=3600 bash r004_retest_judge.sh         # 判据① execution 时间窗（默认 3600s，防手动/注册执行挤出 trigger 记录）
 #
 # 纪律：判据预写死不因读数回改；本机 bash -n 校验过，云端首跑 = 实测轮（UNRUN 如实标注，不自愈）。
 set -uo pipefail
@@ -20,6 +21,7 @@ BACKEND_LOG="${BACKEND_LOG:-}"
 TIMEOUT="${TIMEOUT:-900}"
 POLL="${POLL:-30}"
 NEW_TASK_ID="${NEW_TASK_ID:-}"
+EXEC_WINDOW_SEC="${EXEC_WINDOW_SEC:-3600}"
 STAMP="$(date +%Y%m%d_%H%M%S)"
 OUT="${OUT:-$REPO_DIR/debug/r004_retest_$STAMP}"
 
@@ -66,19 +68,46 @@ else
 fi
 
 # ---------- 判据① execution mode=trigger success（SQLite 直读仲裁法，handoff v3 §4）----------
+# 加固1（WAL）：n8n 的 SQLite 走 WAL，只拷 database.sqlite 会漏掉未 checkpoint 的最近执行；
+#   须连同 -wal/-shm 一起拷到同名前缀，sqlite3 才能读到最新已提交的 execution 记录。
+# 加固2（窗口）：不再只看最近 8 条（手工/注册产生的 manual、webhook 记录会把 trigger 记录挤出窗口），
+#   改为 startedAt 时间窗（EXEC_WINDOW_SEC，默认 3600s）过滤，窗口内任一 mode=trigger+success 即命中。
 TRIGGER_OK=0
 if docker cp n8nDocker:/home/node/.n8n/database.sqlite "$OUT/execution_entity.sqlite" >/dev/null 2>&1; then
-  python3 - "$OUT/execution_entity.sqlite" > "$OUT/executions.txt" <<'PYEOF'
-import sqlite3, sys
+  docker cp n8nDocker:/home/node/.n8n/database.sqlite-wal "$OUT/execution_entity.sqlite-wal" >/dev/null 2>&1 || true
+  docker cp n8nDocker:/home/node/.n8n/database.sqlite-shm "$OUT/execution_entity.sqlite-shm" >/dev/null 2>&1 || true
+  python3 - "$OUT/execution_entity.sqlite" "$EXEC_WINDOW_SEC" > "$OUT/executions.txt" <<'PYEOF'
+import sqlite3, sys, datetime
 db = sqlite3.connect(sys.argv[1])
-rows = list(db.execute("SELECT id, mode, status, startedAt FROM execution_entity ORDER BY id DESC LIMIT 8"))
-hit = any(r[1] == "trigger" and str(r[2]).lower() == "success" for r in rows)
+window_sec = int(sys.argv[2]) if len(sys.argv) > 2 else 3600
+cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=window_sec)
+
+def parse_ts(s):
+    if not s:
+        return None
+    try:
+        t = datetime.datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+        return t if t.tzinfo is not None else t.replace(tzinfo=datetime.timezone.utc)
+    except Exception:
+        return None
+
+rows = list(db.execute(
+    "SELECT id, workflowId, mode, status, startedAt FROM execution_entity ORDER BY id DESC LIMIT 500"
+))
+kept = []
+for r in rows:
+    t = parse_ts(r[4])
+    if t is None or t >= cutoff:
+        kept.append(r)
+rows = kept
+hit = any(r[2] == "trigger" and str(r[3]).lower() == "success" for r in rows)
 print("TRIGGER_SUCCESS=" + ("yes" if hit else "no"))
+print("window_sec=%d in_window=%d" % (window_sec, len(rows)))
 for r in rows:
     print(r)
 PYEOF
   grep -q "TRIGGER_SUCCESS=yes" "$OUT/executions.txt" && TRIGGER_OK=1
-  [ "$TRIGGER_OK" -eq 1 ] && log "✅ 判据① execution: trigger success 在案" || log "❌ 判据① execution: 无 trigger success 新记录"
+  [ "$TRIGGER_OK" -eq 1 ] && log "✅ 判据① execution: 窗口内 trigger success 在案" || log "❌ 判据① execution: 窗口内无 trigger success 新记录（见 executions.txt）"
 else
   echo "TRIGGER_SUCCESS=unrun (docker cp 失败——容器不在跑?)" > "$OUT/executions.txt"
   log "⚠️ 判据① execution: UNRUN（docker cp 失败）"

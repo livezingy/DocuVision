@@ -98,11 +98,13 @@ if [ "$FRESH_IMPORT" = "1" ]; then
     log "n8n_data 卷已存在——跳过导入（防同名副本；确需重灌请 DEL_VOLUME=1）"
   else
     docker volume create n8n_data >/dev/null || die "n8n_data 卷创建失败"
+    # 注意：镜像 entrypoint（docker-entrypoint.sh）会对非 "-" 开头的首参自动前置 n8n，
+    # 这里不能再写 "n8n import:workflow"，否则实际执行 `n8n n8n import:workflow` 报 Command "n8n" not found。
     docker run --rm -v n8n_data:/home/node/.n8n -e N8N_ENCRYPTION_KEY="$ENCRYPTION_KEY" \
       -v "$WF_JSON":/files/import.json:ro "$IMG" \
-      n8n import:workflow --input=/files/import.json || die "工作流导入失败"
+      import:workflow --input=/files/import.json || die "工作流导入失败"
     WF_ID=$(docker run --rm -v n8n_data:/home/node/.n8n -e N8N_ENCRYPTION_KEY="$ENCRYPTION_KEY" \
-      "$IMG" n8n export:workflow --all 2>/dev/null \
+      "$IMG" export:workflow --all 2>/dev/null \
       | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['id'] if d else '')" 2>/dev/null || true)
     if [ -n "$WF_ID" ]; then
       log "导入 OK：workflow id=$WF_ID（新卷产生新 id——verify/判读一律用本动态值，勿沿用旧 N8N_WORKFLOW_ID）"
@@ -202,8 +204,9 @@ log "哨兵 OK: 宿主 ${HOST_PORT} 监听中（pid=$(cat "$BRIDGE_PID")）→ �
 # 前置：后端 run.py 已起（本脚本不拉起后端）。后端重启会清内存订阅（排障链 #8）——重启后重跑 REGISTER=1 即可。
 if [ "$REGISTER" = "1" ]; then
   log "== 5.5 REGISTER：后端 webhook 注册兜底 =="
-  BE_HEALTH=$(curl -s --max-time 6 "http://localhost:8000/healthz" 2>/dev/null || true)
-  echo "$BE_HEALTH" | grep -q '"status":"ok"' || die "后端 :8000 未起（先 python run.py）——REGISTER 需要"
+  # 后端探活走 /health（返回 {"status":"healthy"}），非 n8n 的 /healthz（{"status":"ok"}）。
+  BE_HEALTH=$(curl -s --max-time 6 "http://localhost:8000/health" 2>/dev/null || true)
+  echo "$BE_HEALTH" | grep -q '"status":"healthy"' || die "后端 :8000 未起（先 python run.py）——REGISTER 需要（GET /health 应返回 status=healthy）"
   REG=$(curl -s --max-time 10 -X POST "http://localhost:8000/api/v1/webhooks" \
     -H "X-DocuVision-Admin-Token: $TOKEN" \
     --data-urlencode "url=$SPACE_URL/webhook/docuvision-outlook-watch-csv" \

@@ -295,6 +295,12 @@ class PPStructureSubprocessEngine(BaseLayoutEngine):
 
         if msg[0] == 'error':
             error_msg = msg[1]
+            # Worker sends ('error', str(e), traceback) — log the full traceback or
+            # only the one-line str(e) reaches the page-skip warning and the real
+            # crash site (e.g. which paddlex NMS frame) is lost.
+            tb_text = msg[2] if len(msg) > 2 else ""
+            if tb_text:
+                logger.warning(f"PPStructureV3 worker traceback:\n{tb_text}")
             is_cuda = any(kw in error_msg for kw in self._CUDA_KEYWORDS)
             if is_cuda:
                 logger.warning("PPStructureV3 worker CUDA error — restarting worker and retrying once...")

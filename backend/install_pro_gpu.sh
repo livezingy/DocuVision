@@ -71,6 +71,15 @@ print("paddle", paddle.__version__, "cuda", paddle.is_compiled_with_cuda())
 print("torch", torch.__version__, "cuda_available", torch.cuda.is_available())
 print("torchvision", torchvision.__version__)
 print("paddlex OK")
+
+try:
+    import docuvision_core
+    print("docuvision_core OK:", docuvision_core.__file__)
+except Exception as _e:
+    # Non-fatal at runtime (table backfill degrades), but flag it loudly: a stale
+    # editable-install path or a partial requirements install shows up exactly here.
+    print("WARNING: docuvision_core MISSING:", _e)
+    print("         fix: python -m pip install -e ../packages/docuvision-core")
 PY
 
 echo ""

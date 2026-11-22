@@ -57,6 +57,8 @@ Deletion rule: a pack/record is deletable once **no tracked document still refer
 | [R-004/pack.md](runs/R-004/pack.md) | R-004 执行包 v1.2（P-043 n8n / Make 集成包；`awaiting-dispatch`；v1.2 定稿 @ bus `5c62c477`） |
 | [R-004/contract.md](runs/R-004/contract.md) | R-004 契约（P-043 六 AC / 范围 / 实施纪律） |
 | [R-004/R-004-执行包-审核记录.md](runs/R-004/R-004-执行包-审核记录.md) | R-004 执行包 v1.1 审核记录（有条件通过：P1×3 / P2×6；已回投 bus @ `309f5bb7`；v1.2 处置闭环） |
+| [R-004/r004-standard-retest-runbook-2026-11-20.md](runs/R-004/r004-standard-retest-runbook-2026-11-20.md) | R-004 云端标准重测 runbook（六阶段判读器口径 / on-off 双跑 / F6-F7 归档清单；勘误两条待登见 11-21 判读报告 §5） |
+| [R-004/r004-evidence-ledger.md](runs/R-004/r004-evidence-ledger.md) | R-004 n8n 集成链实测证据台账 v1.0（E-01~E-10 障碍快照 / marker 对照组 / 订阅内存态时间线；handoff v3 §5 F7 台账增量落点——Evidence 类唯一实例，95 卡不重建 @ Ying 2026-11-22 裁决，见台账 G 节） |
 
 > 2026-11-15 拉取登记：`runs/R-003/` 与 `runs/R-004/` 各含 `pack.md` / `contract.md` 及同名 `.provenance.txt` 侧车；v1.1 首拉 `agent-bus@af57c881`（`via: bus-fetch -Provenance`），v1.2 更拉 `agent-bus@5c62c477`（github.com:443 三连失败改道 gh api contents raw，blob sha 四件对拍一致）；消费登记见仓根 `bus-refs.md`。
 

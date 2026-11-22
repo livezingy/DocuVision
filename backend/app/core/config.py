@@ -5,6 +5,7 @@ DocuVision 配置文件
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
+from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -160,6 +161,23 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "DOCUVISION_KIE_QWEN_TORCH_DTYPE",
             "KIE_QWEN_TORCH_DTYPE",
+        ),
+    )
+    # Optional Qwen2.5-VL vision resolution cap (pixels). Unset = model preprocessor
+    # defaults (behaviour unchanged): per-deployment knob — the V100 OOM fix sets it
+    # in that host's backend/.env; other hosts (e.g. Cloud Studio A10) keep defaults.
+    KIE_QWEN_MIN_PIXELS: Optional[int] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "DOCUVISION_KIE_QWEN_MIN_PIXELS",
+            "KIE_QWEN_MIN_PIXELS",
+        ),
+    )
+    KIE_QWEN_MAX_PIXELS: Optional[int] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "DOCUVISION_KIE_QWEN_MAX_PIXELS",
+            "KIE_QWEN_MAX_PIXELS",
         ),
     )
     KIE_MAX_PAGES: int = Field(

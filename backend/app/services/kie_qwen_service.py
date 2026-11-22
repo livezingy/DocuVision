@@ -247,7 +247,20 @@ class QwenDocumentKIEService:
 
         t0 = time.time()
         logger.info("KIE Qwen: loading model %s (dtype=%s device_map=%s)", model_id, dtype_key, device_map)
-        processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
+        # Optional resolution cap (env: DOCUVISION_KIE_QWEN_MIN/MAX_PIXELS). Unset =
+        # pass nothing and use the model preprocessor defaults (behaviour unchanged).
+        pixel_kwargs: Dict[str, int] = {}
+        if settings.KIE_QWEN_MIN_PIXELS:
+            pixel_kwargs["min_pixels"] = settings.KIE_QWEN_MIN_PIXELS
+        if settings.KIE_QWEN_MAX_PIXELS:
+            pixel_kwargs["max_pixels"] = settings.KIE_QWEN_MAX_PIXELS
+        if pixel_kwargs:
+            logger.info(
+                "KIE Qwen: pixel cap applied min_pixels=%s max_pixels=%s",
+                pixel_kwargs.get("min_pixels"),
+                pixel_kwargs.get("max_pixels"),
+            )
+        processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True, **pixel_kwargs)
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             model_id,
             torch_dtype=torch_dtype,

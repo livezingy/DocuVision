@@ -602,3 +602,10 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **候选处置**：键门禁（document_type 白名单）或键改名（`table_template_id` 与 KIE 模板键分离）；由接线批次顺带处置，不单独施工。
 - **来源与登记**：R-003 施工独立审查 low（2026-11-15，详见 verdict 草案 §审查）；批次 C 规划项经 Ying 2026-11-16 批登记。
 - **指针**：`docs/R&D/runs/R-003/steps/p042-egress-verdict-draft.md`｜P-042（retained 候选，施工已落地）｜R-003 pack v1.2 §2 T2。
+
+### R-004-L1 · Flow C 注册路径穿越验证——已清偿销账（2026-11-21 自 R-004 verdict-closure 悬挂登记；2026-11-26 清偿）
+> status: landed · since: 2026-11-26
+- **来源**：R-004 收尾轮 flowCVerified=false（2026-11-21 判件 32eda8d）→ Ying 裁乙（现状收口 + 悬挂登记），verdict-closure @ 7fdc8f9 登记 R-004-L1 触发型悬挂（非契约义务，AC1 文义 Flow A 最小闭环已达成）。
+- **清偿（2026-11-26）**：判件 `runs/R-004/steps/p043-cloud-retest-e2e-2026-11-26.md`（bus @ e5da8b2）4/4 全 PASS——flowCVerified=true 三面物证（n8n 整链 Execute workflow / 容器 IP 172.17.0.2 POST /api/v1/webhooks 200 与宿主 127.0.0.1 来源可区分 / dispatch 真实投递成功）+ ②UNRUN 升级宿主日志直接锚（fields_count=16）；agentD 收尾轮判读 verdict（bus @ 4617894，judge 脚本 7d574ec 零漂移四锚核验）+ Ying 签「同意判读，R-004 收口证据面正式全闭」。
+- **状态**：已清偿销账——R-004 收口证据面零遗留验证项；verdict-closure 收尾轮全闭注记已回写（bus）。
+- **指针**：`runs/R-004/verdict-closure.md`（收尾轮全闭段）｜判件 e5da8b2｜收尾轮 verdict 4617894。

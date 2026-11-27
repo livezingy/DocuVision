@@ -130,6 +130,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `r005_cloud_verify.sh`, `p046_textlayer_verify.sh` + README) — rules in `scripts/cloud/README.md`.
 
 ### Removed
+- **PENDING closeout — P-042/P-043 removed (2026-11-27, v1.14 closeout batch)**: both runs (R-003/R-004) fully closed with six-AC verdicts and clean CI; conclusions live in CHANGELOG entries above, docs/integrations/n8n/, and bus verdict chains. No code change.
 - **Audit-driven dead-code cleanup + AGENTS.md kernel alignment (#117, merged 2026-11-08; CHANGELOG
   backfill — 周检 X1, same zero-record pattern as #119)**: pure-deletion pass (+14/−390 over 22 files) —
   dead backend models/orchestrator branches (`api_models.py`, `document_pipeline_orchestrator.py`,

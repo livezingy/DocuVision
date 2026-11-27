@@ -3,9 +3,9 @@
 > 每次会话开始时检查本文件——可见"有 N 条结论待确认"。
 > 结论确认后：晋升 `docs/architecture/`，然后从本清单移除。
 
-## 待确认（本区共 **22** 条）
+## 待确认（本区共 **20** 条）
 
-- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-042` `P-043` `P-047` `P-048` `P-049`
+- **机检索引（勿手改）**：`P-008` `P-011` `P-015` `P-017` `P-018` `P-020` `P-023` `P-024` `P-025` `P-026` `P-027` `P-033` `P-034` `P-035` `P-036` `P-037` `P-038` `P-047` `P-048` `P-049` `R-004-L1`
 - **状态是单一事实源**：每条标题下首行的 `> status: <open|decided|landed|retained> · since: YYYY-MM-DD`。
   状态计数与 90 天滞留 WARN 由 `scripts/audit_agent_ops.py`（门禁 **DOC-3**）输出——**本抬头不再手写统计副本**
   （P-019 单源化教训（该条已结并移除，见上行历史）：数字副本必漂，清账前此处曾把 5 条已结条目计在"待裁决"）。
@@ -25,6 +25,7 @@
 **P-033 由 `landed` 改列 `retained`**（2026-10-16，用户裁决；保留理由已写入该条首行——E3 边界「只覆盖该生成器三个输出」是 `module-map.md` §5 E3 行的判据出处）；
 **P-027 / P-018 由 `decided` 改列 `retained`；P-026 核定保留；迁出 2 条触发式残留为 P-035 / P-036；压缩 P-008 / P-017 / P-027 正文**（2026-10-16 **清账批次（第二批）**：① P-027 / P-018 的在途义务经处置/迁出后清空（P-027 另经用户裁决**移除**「BR 葡语解锁触发」与「R1 taxonomy 转用例」两项工作项）⇒ 收口为 `retained`，保留理由 + 判例 + 指针已写入各条首段；② P-026 保留理由核查通过（`doc-governance.md` 仍以其作正控先例），状态不变；③ 原埋藏在 P-027 / P-011 / P-008 正文的两条触发式残留迁出为独立 `open` 条目 **P-035**（分岔 C 优先级重排）与 **P-036**（CI 触发范围与 paths 重收窄，P-008 · P-011 合并项）；④ P-008 / P-017 / P-027 长流水账压至「保留理由 / 待决三要素 + 判例 + 指针」，正文裸 commit hash 一并消除；⑤ `runs/P027/` 保留依据由「在途义务未清」改为「被 tracked 文档反引」，P-034 落「实施读数走 `runs/` 不进正文」口径。明细证据仍在 CHANGELOG 与 git 历史）
 **P-039 / P-040 / P-041 已结并移除**（2026-10-25 **收尾清账批次**，用户裁决：三条均无可晋升 architecture 内容，结论载体 = **main 代码 + CHANGELOG `[Unreleased]` + git 历史**——P-039（main/runtime paddle import 惰性化，landed）：改动与 openapi 快照本机面即代码载体，kernel `testing.md` 本机/Cloud 判据经其实证自洽，`review.md` 的 PR #97 判例编号引用已同步改写；P-040（formula PDF ROI 修复，landed）：本机 715 passed + 云测四项全 PASS（F1 单页/F2 两页/F3 旋转页/④batch 1v8 噪声级维持默认 1），判据与读数在 CHANGELOG；P-041（webhook e2e，landed）：SMOKE-5 PASS，命令要点已内联条目后随移除进 git 历史）。**同批删除 `docs/R&D/runs/split/` 全目录**（local-only 无 git 历史；删除前提达成 = P-037 已收口、P-038 已定稿 6 叶封册、三条目已结；21 号 §八 模板与 §四 判据已先行内联迁移，README runs 索引同步，`docs_refs_audit --check-rnd-index` 过）。**条目正文中的 `runs/split 01/03/06/21/22` 与「登记 P-040」等编号指涉 = 已删除目录与已移除条目**，明细见 CHANGELOG 与 git 历史）
+**P-042 / P-043 已结并移除**（2026-11-27 收口批次，Ying 裁 C：施工 landed 六 AC 全过 + R-003/R-004 双销案 + R-004 收尾轮全闭零遗留；结论载体 = CHANGELOG [Unreleased] 七段 + `docs/integrations/n8n/` + kie.md + bus `runs/R-003`·`R-004` verdict 链 + git 历史）
 
 ### P-008 · v1.9 候选：孤儿模块与悬空测试的巡检门禁（2026-09-16，FRONT-C1 走查衍生）
 > status: retained · since: 2026-09-26
@@ -554,28 +555,6 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **触发条件**：P-037 批 1 启动时（首登 `pdf_raster` 是批 1 第一项的前置）。
 - **指针**：`docs/R&D/runs/split/` 已于 2026-10-25 收尾批删除（03 §4 候选池实证与 L1 强度裁决表明细进 git 历史；候选池定稿真源即上文本条正文）｜ P-037（还债批次序列与消解目标）。
 
-### P-042 · Egress 出口层——客户 schema → Google Sheets / Excel 直写（2026-11-15，R-003 承接）
-> status: open · since: 2026-11-15
-- **来源与登记义务**：R-003 pack v1.2 §7 编号登记义务（AgentE 落地首动作）——P1-1 编号勘误（原 P-044 三方双指）后勘误登 **P-042**（登记时 PENDING 真源未占用）。pack v1.2 awaiting-dispatch（待 Ying 投放）；施工由 ZCode workflow 承担中。
-- **在途义务（R-003 施工与验收）**：Sheets 直写通道（选型 **gspread**，MIT；绑定事件 **batch.completed** = batch 全量出口语义）＋客户 schema 字段映射配置化（一次配置 batch 全量生效）＋幂等（同 task 重跑不重复行）＋Sheets/csv/xlsx 同源同值断言＋**per-order 拆分导出**（Upwork 单显式出口形态「one CSV file per order」，定稿点 3 已采纳）。
-- **需求佐证锚**：Upwork 单 ~022120614538119429026（US 制造商 PO 自动化：出口 = 「Produces one CSV file per order in a set format」＋自托管「hosted inside our own environment, fully owned by us」）。
-- **契约**：AC 6 条（v1.2 随 review-01 处置由 5 扩 6：映射一次配置 batch 生效 / 幂等 / 同源同值 / webhook 不受影响 / 全量回归 0 failed / per-order 拆分）；gate 名口径 = 仓内 `backend/tests/test_registry.json` 键名。
-- **out（勿在此面扩）**：CRM/ERP/会计平台直连（pack 原文注 P-052 挂起）；n8n 入口归 **P-043**/R-004；ERP 参照校验层（值级对账缺口）另案评估。
-- **红线**：客户 schema/客户材料永不进 git；Sheets 类凭据不进仓、不进日志、不进对话。
-- **指针**：`docs/R&D/runs/R-003/pack.md`（v1.2；review-01 conditional pass 已闭环）｜ P-043（同单 n8n 入口）。
-
-### P-043 · n8n / Make 集成包（2026-11-15，R-004 承接）
-> status: open · since: 2026-11-15
-- **来源与登记义务**：R-004 pack v1.2 §7 编号勘误（R-003 review P1-1 同型外推）登 **P-043**；PENDING 补登与 P-042 同批（AgentE 落地首动作）。pack v1.2 awaiting-dispatch（待 Ying 投放）。
-- **在途义务（R-004 施工与验收）**：REST API 全量文档（**INV-1 冻结 55 端点 == OpenAPI paths** 对账用例）＋n8n 导入模板（workflow JSON 工件落 `docs/integrations/n8n/`；DOC 门禁覆盖 = 目录 README 索引行 + `docs_refs_audit` 对账）＋webhook 事件类型全表化＋WS 口径对账断言（`task.completed` ⟺ WS `{"type":"status","status":"completed"}`，succeeded 归一别名）＋n8n 实例最小闭环实测＋Outlook 版模板（定稿点 4）。
-- **云端闭环未完成（2026-11-18 登记，暂挂起）**：n8n 实例最小闭环实测（AC1）Cloud 轮次未收口。卡点 = Flow A 的 Outlook Trigger 命中邮件后报 `The connection to the server was closed unexpectedly`——exec=4（唯一 trigger 命中）cause = `Client network socket disconnected before secure TLS connection was established`（ECONNRESET，TLS 握手前）。定谳：出网经**腾讯云平台 fake-ip 透明代理**（`graph.microsoft.com` 解析为 `198.18.0.48`，`ip route get` = `via 172.24.0.1`、网关之外不可见不可控），为平台代理**间歇性 RST**，**非** MTU / 265KB 大包 / 容器 HTTP 代理（handoff-flowb-closure §2「已排除代理」漏判了 TUN/fake-ip 层）。核心未解 = 从未成功过一次「trigger 命中→附件下载→upload/analyze」；手动测试（无 token `/me`）单连 20 / 并发 10 / 循环 30 次全 OK，但**未覆盖 trigger 真实请求**（带 OAuth token + 附件 `$value`）。重启流程（隧道/容器/订阅/Azure）已试多次、verify 仍 `BLOCKED(7)` ⇒ **不属重启恢复范畴**。交接与下一步见 `docs/R&D/runs/R-004/attachments/2026-11-16-n8n-local/handoff-flowb-core-2026-11-18.md`。
-- **交付形态（定稿点 2，维持原判）**：n8n 导入模板（workflow JSON）主交付、community node 后置触发——仓栈 Python/FastAPI 引入 Node 构建链 = 技术栈污染，无客户需求驱动不立项。
-- **闭环前置三件（缺任一件 = 默认静默 no-op，P-027 判例 2「含模块缺接线」同型）**：①后端 `WEBHOOK_ENABLED=true`；②非空 `WEBHOOK_ADMIN_TOKEN`；③n8n 经 `POST /api/v1/webhooks` 订阅注册。
-- **需求佐证锚**：Upwork 单 ~022120614538119429026（收件箱监控 = Microsoft 365 / Outlook / Front ⇒ n8n 原生 Trigger 节点 + DocuVision API 编排，零自研邮箱监听；R-004 由「生态入口」升级为该类需求完整方案骨架）。
-- **契约**：AC 6 条（模板一键导入闭环 / webhook 与 WS 口径一致 / 文档 == 冻结 55 / OpenAPI 快照回归 / 交付物落仓登记 `docs_refs_audit` 0 error / 全量回归 0 failed）。
-- **out（勿在此面扩）**：Make 平台模板（文档覆盖、后置）；QuickBooks/Xero 直连（pack 原文注 P-052 挂起）；community node 脚手架（需时另立项）。
-- **指针**：`docs/R&D/runs/R-004/pack.md`（v1.2；review-01 conditional pass 已闭环）｜ P-042（同单 Egress 出口层）。
-
 ### P-047 · R-005 云测 V4 RENDER_SCALE 预期项无源——已结 retained（幻影锚判例）（2026-11-15 立项，同日结案）
 > status: retained · since: 2026-11-15
 - **结案理由（三重实证 + 声明链更正）**：
@@ -601,7 +580,7 @@ A1 试件 / S-1·S-2 切分规则 / D8 engine 列原样复用；新 D 系列契�
 - **触发条件**：v1.5 KIE 接线（analyze Form 暴露 `kie_template_id` 或 `resolve_custom_schema` 接线）时复核——届时为 KIE 选模板将静默开启表格列映射并改写 MappedRows 导出面，语义相撞。
 - **候选处置**：键门禁（document_type 白名单）或键改名（`table_template_id` 与 KIE 模板键分离）；由接线批次顺带处置，不单独施工。
 - **来源与登记**：R-003 施工独立审查 low（2026-11-15，详见 verdict 草案 §审查）；批次 C 规划项经 Ying 2026-11-16 批登记。
-- **指针**：`docs/R&D/runs/R-003/steps/p042-egress-verdict-draft.md`｜P-042（retained 候选，施工已落地）｜R-003 pack v1.2 §2 T2。
+- **指针**：`docs/R&D/runs/R-003/steps/p042-egress-verdict-draft.md`｜P-042（已移除，结论载体 = CHANGELOG [Unreleased] 五段 + git 历史）｜R-003 pack v1.2 §2 T2。
 
 ### R-004-L1 · Flow C 注册路径穿越验证——已清偿销账（2026-11-21 自 R-004 verdict-closure 悬挂登记；2026-11-26 清偿）
 > status: landed · since: 2026-11-26

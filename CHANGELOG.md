@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Removed
+
+### Changed
+
+### Fixed
+
+## [1.14.0] — 2026-11-27
+
+### Added
 - **P-034 — KIE text-first channel generalized to `coi`, `carrier` boilerplate fallback truly fixed (2026-10-27)**:
   the P-032 text-first input channel (native text layer cut into `[pN_bM]`-marked blocks, same-source with the
   evidence gate grounding) now serves `coi` in addition to `pico` — the doc-type whitelist lives in

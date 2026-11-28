@@ -1,7 +1,7 @@
 # DocuVision Module Map（当前态模块地图）
 
 > Status: living — 结构变化时同步（owning 行见 `docs/agent-ops/core/doc-sync.md`）
-> 最近对照：v1.13.0 / main 07de132（2026-10-26，v1.13 收口：S1 结构门禁全收口——冻结边 14→0、size pins 清零、§2b 15 域表运行；
+> 最近对照：v1.14.0 / main c2dda33（2026-11-27，v1.14 收口：P-042/P-043 移除 + 切版 docs-only，backend 零结构变更 #127/#128）；
 > 共享叶 6 叶封册；P-039 main/runtime paddle import 惰性化（本机 TestClient 面解锁）；P-040 formula 链路修复重做
 > （页感知 PDF ROI / formula_number 并轨 / envelope 原位替换 + $$..$$ 进正文）；P-041 webhook e2e 云验 PASS。
 > 契约变更 = confidence Optional[float]（键消失语义）+ 公式进正文；路由 49 守恒（openapi 快照口径）；
